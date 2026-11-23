@@ -162,20 +162,24 @@ fn open() -> io::Result<OwnedFd> {
     // SAFETY: just opened, and owned by nothing else.
     let fd = unsafe { OwnedFd::from_raw_fd(fd) };
     // The kernel answers before send() returns; the wait is bounded all
-    // the same, so that a connection is never held up by this.
+    // the same, so that a connection is never held up by this. A socket
+    // without the bound is not used: it would wait with the lock held.
     let wait = libc::timeval {
         tv_sec: 1,
         tv_usec: 0,
     };
     // SAFETY: the timeval lives through the call and is passed with its size.
-    unsafe {
+    let set = unsafe {
         libc::setsockopt(
             fd.as_raw_fd(),
             libc::SOL_SOCKET,
             libc::SO_RCVTIMEO,
             (&raw const wait).cast(),
             size_of::<libc::timeval>() as u32,
-        );
+        )
+    };
+    if set < 0 {
+        return Err(io::Error::last_os_error());
     }
     Ok(fd)
 }
