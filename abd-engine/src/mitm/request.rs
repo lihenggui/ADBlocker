@@ -80,6 +80,7 @@ fn told_page<B>(req: &Request<B>) -> Option<(&str, adblock::url_parser::RequestU
 }
 
 pub(super) fn clear_target(method: &Method, target: &str, host: &str) -> Option<(String, String)> {
+    crate::public_suffix::install();
     if *method == Method::CONNECT
         || !target.starts_with('/')
         || target.contains('#')

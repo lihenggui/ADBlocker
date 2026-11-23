@@ -45,6 +45,7 @@ pub mod pins;
 pub mod policy;
 pub mod protocol;
 mod protocol_types;
+mod public_suffix;
 pub mod quic;
 pub mod relay;
 mod rule_text;

@@ -25,6 +25,7 @@ use crate::list_files::MAX_COMPILED;
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
     pub(super) fn read_cache(cache: &Path, key: u64) -> Option<Self> {
+        crate::public_suffix::install();
         let key_file = cache.join("key");
         let _lock = files::lock(&key_file).ok()?;
         let meta = files::read_text(&key_file, 128).ok()?;

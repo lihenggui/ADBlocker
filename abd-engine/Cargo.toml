@@ -7,8 +7,7 @@ license.workspace = true
 publish.workspace = true
 
 [dependencies]
-addr = { version = "0.15", default-features = false, features = ["psl", "std"] }
-adblock = { version = "0.13.6", default-features = false, features = ["css-validation", "embedded-domain-resolver", "full-regex-handling"] }
+adblock = { version = "0.13.6", default-features = false, features = ["css-validation", "full-regex-handling"] }
 anyhow = { workspace = true, default-features = true }
 base64 = "0.23.1"
 bytes = "1.12.2"
@@ -22,6 +21,7 @@ libc = "0.2.191"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
 ring = "0.17.14"
+rustc-hash = "2.1.3"
 rcgen = { version = "0.14", features = ["pem", "x509-parser"] }
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
 socket2 = "0.6.5"
@@ -31,6 +31,9 @@ tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring
 x509-parser = "0.18"
 
 [dev-dependencies]
+# What public_suffix.rs answers as, compared in its tests.
+addr = { version = "0.15", default-features = false, features = ["psl", "std"] }
+psl = "2.1.258"
 futures-core = "0.3"
 tempfile = "3"
 tokio = { version = "1.54.1", features = ["test-util"] }

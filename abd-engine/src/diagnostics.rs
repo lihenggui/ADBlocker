@@ -190,6 +190,7 @@ fn load(dirs: &[&Path], cache: &Path) -> Result<(Vec<PathBuf>, Diagnostics)> {
 
 /// `abd check --json` keeps the original rule text for attribution.
 pub fn check(paths: &Paths, url: &str, page: &str, kind: &str) -> Result<Check> {
+    crate::public_suffix::install();
     let rules = paths.rules();
     let lists = paths.lists();
     let (files, diagnostics) = load(&[&lists, &rules], &paths.cache().join("diagnostic-v1"))?;

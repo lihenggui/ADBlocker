@@ -71,6 +71,7 @@ fn plain_dns_name(host: &str) -> bool {
 
 impl ListFiles {
     pub fn filters(&self, cache: Option<&Path>, debug: bool) -> Result<Filters> {
+        crate::public_suffix::install();
         let cache = cache.filter(|_| !debug);
         if let Some(kept) = cache.and_then(|dir| Filters::read_cache(dir, self.generation)) {
             return Ok(kept);
@@ -150,6 +151,7 @@ fn project_exception(out: &mut String, line: &str, rule: &NetworkFilter<'_>) {
 }
 
 fn network(line: &str) -> Option<NetworkFilter<'_>> {
+    crate::public_suffix::install();
     let options = ParseOptions {
         rule_types: RuleTypes::NetworkOnly,
         ..ParseOptions::default()
@@ -204,6 +206,7 @@ pub(crate) struct RequestRules {
 
 impl RequestRules {
     pub(crate) fn build(lists: Vec<String>, debug: bool, options: ParseOptions) -> Self {
+        crate::public_suffix::install();
         let disabled = badfilters(lists.iter().map(String::as_str));
         let sources = lists
             .iter()
@@ -336,6 +339,7 @@ fn is_http_page(page: &RequestUrl) -> bool {
 }
 
 pub(crate) fn parse_http_page(source: &str) -> Option<RequestUrl> {
+    crate::public_suffix::install();
     parse_url(source).filter(is_http_page)
 }
 
@@ -394,6 +398,7 @@ impl Filters {
         generation: Option<u64>,
         debug: bool,
     ) -> Result<Self> {
+        crate::public_suffix::install();
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
         let rules_count = lists.iter().map(|(_, text)| text.lines().count()).sum();
         let texts = || lists.iter().map(|(_, text)| text.as_str());
