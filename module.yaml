@@ -1,0 +1,31 @@
+# Copyright (C) 2026 Mercury Li
+# SPDX-License-Identifier: GPL-3.0-only
+
+# What KernelSU Modules shows of the module. The version, its code and the
+# download come from module.prop in the released package, not from here.
+# Reference: https://developers.kernelsu.org/docs/module-yaml
+schemaVersion: 1
+id: adblocker
+name: ADBlocker
+summary: >-
+  Blocks ads and trackers in the apps you choose with browser ad-blocking
+  lists (EasyList, uBlock Origin, AdGuard), including inside HTTPS.
+description: README.md
+license: GPL-3.0-only
+homepage: https://github.com/lihenggui/ADBlocker
+support: https://github.com/lihenggui/ADBlocker/issues
+tags: [adblock, privacy, network]
+metamodule: false
+
+authors:
+  - name: Mercury Li
+    url: https://github.com/lihenggui
+
+compatibility:
+  androidMinApi: 29
+  architectures: [arm64-v8a, x86_64]
+
+# A release also carries the source archive, the checksums and the R8
+# mapping. The package is the one asset that is both an APK and a module.
+release:
+  assetPattern: "adblocker-*.apk.zip"
