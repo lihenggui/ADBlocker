@@ -252,6 +252,45 @@ class VpnSessionTest {
     }
 
     @Test
+    fun givenAllPersonalApps_whenOnlyTheNetworkOrASettingChanges_thenThePackagesAreNotInventoriedAgain() = runTest {
+        val vpn = Vpn(this)
+        vpn.host.installed += mapOf(NEWS to 10_001)
+        vpn.apps.selections = AppSelections(FilteringScope.All)
+        vpn.session.start(1)
+        assertEquals(1, vpn.host.inventories)
+
+        changed(vpn)
+        vpn.host.ipv6 = false
+        vpn.session.networkChanged()
+        runCurrent()
+        assertEquals(1, vpn.host.inventories)
+
+        vpn.host.installed[SHOP] = 10_002
+        vpn.session.packagesChanged()
+        runCurrent()
+        assertEquals(2, vpn.host.inventories)
+        assertEquals(setOf(NEWS, SHOP), vpn.host.built.last())
+
+        changed(vpn)
+        assertEquals(2, vpn.host.inventories)
+    }
+
+    @Test
+    fun givenAllPersonalApps_whenTheVpnEndsAndStartsAgain_thenThePackagesAreInventoriedAgain() = runTest {
+        val vpn = Vpn(this)
+        vpn.host.installed += mapOf(NEWS to 10_001)
+        vpn.apps.selections = AppSelections(FilteringScope.All)
+        vpn.session.start(1)
+        vpn.session.stop()
+
+        vpn.host.installed[SHOP] = 10_002
+        vpn.session.start(2)
+
+        assertEquals(2, vpn.host.inventories)
+        assertEquals(setOf(NEWS, SHOP), vpn.host.built.last())
+    }
+
+    @Test
     fun onlyTheChosenAppsThatAreInstalledAreRoutedAndNeverThisApp() = runTest {
         val vpn = Vpn(this)
         vpn.choose(NEWS, SHOP, OWN, "com.example.uninstalled")

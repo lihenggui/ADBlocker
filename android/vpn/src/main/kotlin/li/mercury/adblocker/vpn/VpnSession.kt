@@ -147,6 +147,15 @@ internal class VpnSession(
     private val refreshes = Channel<Unit>(Channel.CONFLATED)
     private val reloadAsked = AtomicBoolean()
 
+    /**
+     * The personal apps as last read, in All apps. Reading them asks the
+     * package manager about every package, which the other causes of a
+     * refresh (a pause ending, the network, a setting) do not change: it is
+     * read again after a package change, and not otherwise.
+     */
+    private var personalApps: List<PersonalAppIdentity>? = null
+    private val personalAppsStale = AtomicBoolean()
+
     private val binding = object : VpnBinding {
         override fun protect(fd: Int): Boolean = host.protect(fd)
 
@@ -195,6 +204,7 @@ internal class VpnSession(
     /** A package was installed or removed: the engine reads them again, and the VPN may change. */
     fun packagesChanged() {
         reloadAsked.set(true)
+        personalAppsStale.set(true)
         refreshes.trySend(Unit)
     }
 
@@ -230,7 +240,7 @@ internal class VpnSession(
         val selection = suspendRunCatching { vpnApps.appSelections() }
         val config = selection.getOrNull()
         if (config?.scope == FilteringScope.All) {
-            val inventory = host.personalAppIdentities()
+            val inventory = personalAppInventory()
             val selected = inventory.filterNot { it.isExcluded(config.excluded) }
             val wanted = selected.flatMap { app -> app.members.map { it to app.uid } }.toMap()
             return engine.withPersonalAppSnapshot(inventory) {
@@ -256,6 +266,14 @@ internal class VpnSession(
         }
         val wanted = allowedApps(chosen, ownPackage, host::uidOf)
         return refreshRoutes(wanted, wanted.size)
+    }
+
+    private fun personalAppInventory(): List<PersonalAppIdentity> {
+        // Cleared before the read: a package changing meanwhile asks again.
+        val stale = personalAppsStale.getAndSet(false)
+        val cached = personalApps
+        if (cached != null && !stale) return cached
+        return host.personalAppIdentities().also { personalApps = it }
     }
 
     private suspend fun reloadIfAsked() {
@@ -368,6 +386,7 @@ internal class VpnSession(
         pauseEnd?.cancel()
         stopStack()
         routed = null
+        personalApps = null
         if (engine.binding === binding) engine.binding = null
         publish(state)
         if (state == VpnState.Revoked) host.noticeRevoked()
