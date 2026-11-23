@@ -248,17 +248,22 @@ impl Rules {
     /// families are tried whatever happens to either.
     pub(super) fn remove(&mut self) -> anyhow::Result<()> {
         let withdrawn = self.withdraw();
-        let chains = Family::BOTH.map(|family| {
-            self.chains[family as usize] = Chain::Unknown;
-            let removed = remove_chain(self.kernel.tools(), family);
+        self.chains = [Chain::Unknown; 2];
+        let removed = remove_tproxy(self.kernel.tools());
+        for (chain, removed) in self.chains.iter_mut().zip(&removed) {
             if removed.is_ok() {
-                self.chains[family as usize] = Chain::Absent;
+                *chain = Chain::Absent;
             }
-            removed
-        });
-        let chains: anyhow::Result<()> = chains.into_iter().collect();
+        }
+        let chains: anyhow::Result<()> = removed.into_iter().collect();
         withdrawn.and(chains)
     }
+}
+
+/// Takes the TPROXY rules of each family away, whatever happens to the
+/// other. They need only the packet filter's tools.
+pub(super) fn remove_tproxy(tools: &mut dyn Tools) -> [anyhow::Result<()>; 2] {
+    Family::BOTH.map(|family| remove_chain(tools, family))
 }
 
 fn has(rules: &BTreeSet<Rule>, family: Family) -> bool {

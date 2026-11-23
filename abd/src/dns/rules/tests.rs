@@ -377,3 +377,20 @@ fn a_lookup_chain_somebody_else_deleted_meanwhile_counts_as_removed() {
     let state = fake.0.borrow();
     assert!(state.rules.is_empty() && state.chains.is_empty() && state.jumps.is_empty());
 }
+
+#[test]
+fn the_tproxy_rules_go_without_touching_the_routing_rules_and_each_family_alone() {
+    let (mut rules, fake) = rules(true);
+    rules.set(&chosen(), Families::DualStack).unwrap();
+    {
+        let mut state = fake.0.borrow_mut();
+        state.blocked = vec!["iptables "];
+        state.commands.clear();
+    }
+    let [v4, v6] = remove_tproxy(&mut fake.clone());
+    assert!(v4.is_err() && v6.is_ok());
+    let state = fake.0.borrow();
+    assert!(state.commands.iter().all(|c| !c.starts_with("rule")));
+    assert_eq!(state.chains, BTreeSet::from(["iptables".to_owned()]));
+    assert_eq!(state.rules.len(), 24);
+}

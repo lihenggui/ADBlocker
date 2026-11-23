@@ -242,17 +242,34 @@ pub fn withdraw() -> anyhow::Result<()> {
 /// running: the TPROXY rules, the table's routes and the device. Each is
 /// tried whatever happens to the others.
 pub fn clear() -> anyhow::Result<()> {
-    let chains = rules::Rules::new(Box::new(rules::System::open()?), 0, false).remove();
-    let mut netlink = Netlink::open().context("opening rtnetlink")?;
+    let chains = match rules::System::open() {
+        Ok(system) => rules::Rules::new(Box::new(system), 0, false).remove(),
+        // Without netlink our routing rules cannot be seen gone, but the
+        // TPROXY rules go all the same, as after a failed withdrawal.
+        Err(error) => {
+            let removed: anyhow::Result<()> = rules::remove_tproxy(&mut crate::rules::System)
+                .into_iter()
+                .collect();
+            removed.and(Err(error).context("opening rtnetlink"))
+        }
+    };
+    let routes = Netlink::open()
+        .context("opening rtnetlink")
+        .and_then(|mut netlink| remove_routes(&mut netlink));
+    chains.and(routes)
+}
+
+/// The table's routes and the device they go through.
+fn remove_routes(netlink: &mut Netlink) -> anyhow::Result<()> {
     let routes = [false, true].map(|v6| match netlink.change(netlink::no_route(v6)) {
         Err(error) if !matches!(error.raw_os_error(), Some(libc::ESRCH | libc::ENOENT)) => {
             Err(error).context("removing a lookup route")
         }
         _ => Ok(()),
     });
-    let device = remove_device(&mut netlink);
+    let device = remove_device(netlink);
     let routes: anyhow::Result<()> = routes.into_iter().collect();
-    chains.and(routes).and(device)
+    routes.and(device)
 }
 
 #[cfg(test)]
