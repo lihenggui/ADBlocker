@@ -95,6 +95,12 @@ android {
     sourceSets.named("main") {
         jniLibs.directories.add(rootDir.resolve("../out/jni").path)
     }
+
+    // Compressed in the APK, and extracted for the device's one ABI when
+    // the app is installed. Stored, the libraries of every ABI the APK
+    // carries count in full in what is downloaded, and the engine's alone
+    // made up more than half of it.
+    packaging.jniLibs.useLegacyPackaging = true
 }
 
 baselineProfile {
