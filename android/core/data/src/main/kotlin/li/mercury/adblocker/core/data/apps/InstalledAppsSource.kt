@@ -108,7 +108,9 @@ class InstalledAppsSource @Inject constructor(
                 trySend(Unit)
             }
         }
-        ContextCompat.registerReceiver(context, receiver, profileEvents, ContextCompat.RECEIVER_EXPORTED)
+        // Every action is a protected broadcast, which only the system sends,
+        // and which reaches a receiver that is not exported.
+        ContextCompat.registerReceiver(context, receiver, profileEvents, ContextCompat.RECEIVER_NOT_EXPORTED)
         val registered = try {
             launcher?.registerCallback(callback, Handler(Looper.getMainLooper()))
             launcher != null
