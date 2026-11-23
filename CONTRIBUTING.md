@@ -6,7 +6,9 @@
 (`libabd_vpn.so`, for VPN mode) for arm64 and x86_64, then the app, whose
 APK carries the daemons and the module scripts at its root and the library
 in `lib/`, and copies it to `out/adblocker-<version>.apk.zip`. Without the
-library the app builds, and reports VPN mode unavailable. It needs:
+library the app builds, and reports VPN mode unavailable. With
+`ADBLOCKER_NATIVE_ONLY=1` it stops after the native components, for a
+build that runs Gradle on its own, as F-Droid's does. It needs:
 
 - Rust stable with the targets `aarch64-linux-android` and
   `x86_64-linux-android`

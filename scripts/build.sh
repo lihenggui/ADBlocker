@@ -19,6 +19,9 @@
 #
 # Requires: rustup targets aarch64-linux-android and x86_64-linux-android,
 # an Android NDK, a JDK and the Android SDK.
+#
+# With ADBLOCKER_NATIVE_ONLY=1 it stops once the native components are
+# staged in out/, for a build system that runs Gradle itself (F-Droid).
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -103,6 +106,9 @@ for target in "${TARGETS[@]}"; do
     cp "target/$target/release/abd" "$daemon"
     echo "built: $daemon ($(du -h "$daemon" | cut -f1))"
 done
+if [[ "${ADBLOCKER_NATIVE_ONLY:-}" == 1 ]]; then
+    exit 0
+fi
 
 # The APK is the app and the flashable module at once: the module's files
 # are at the root of the archive, where the root managers look for them.
