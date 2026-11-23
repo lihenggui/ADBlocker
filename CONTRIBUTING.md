@@ -202,7 +202,11 @@ for such a log.
 ## Releasing
 
 `module/module.prop` holds the version. A release sets `version` to the tag
-(`v0.2.0`) and increases `versionCode`.
+(`v0.2.0`) and increases `versionCode`. The same commit adds
+`fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, the
+changes in a few sentences, which app stores such as F-Droid show for the
+version. The rest of `fastlane/metadata/` describes the app there; its
+screenshots are copies of the `*_phone.png` screenshot tests.
 
 Generate a release keystore and keep a private backup. Android uses the
 same signing key to accept updates, and the module installs the APK it
