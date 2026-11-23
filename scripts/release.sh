@@ -98,4 +98,7 @@ cp licenses/Apache-2.0.txt "$native_dir/LICENSE.txt"
 } > "$source_dir/release-info/build.txt"
 tar -czf "$build_info/$source_name.tar.gz" -C "$build_info" "$source_name"
 mv "$build_info/$source_name.tar.gz" out/
-(cd out && sha256sum "$artifact.apk.zip" "$artifact-mapping.txt" "$source_name.tar.gz" > "$artifact-SHA256SUMS")
+# The same package under an APK's name, for app stores that take only
+# files ending in .apk (IzzyOnDroid) and for installing without root.
+cp "out/$artifact.apk.zip" "out/$artifact.apk"
+(cd out && sha256sum "$artifact.apk.zip" "$artifact.apk" "$artifact-mapping.txt" "$source_name.tar.gz" > "$artifact-SHA256SUMS")

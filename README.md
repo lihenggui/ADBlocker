@@ -91,15 +91,16 @@ Both methods require a 64-bit ARM (arm64) or x86 (x86_64) device.
 
 ## Installation
 
-Download `adblocker-<version>.apk.zip` from [Releases](../../releases).
-The package contains both the Android app and the root module. To build
-it yourself, see the [build instructions](CONTRIBUTING.md#building).
+Download from [Releases](../../releases). `adblocker-<version>.apk.zip`
+and `adblocker-<version>.apk` are the same package, which contains both
+the Android app and the root module, under two names. To build it
+yourself, see the [build instructions](CONTRIBUTING.md#building).
 
-- **With root**, install the ZIP as a module in your root manager. This
-  also attempts to install the app. Alternatively, remove the final
-  `.zip`, install the APK, and follow the root setup in ADBlocker.
-- **Without root**, remove the final `.zip` and install the APK. Open
-  ADBlocker, choose your apps and lists, and grant VPN permission.
+- **With root**, install the `.apk.zip` as a module in your root manager.
+  This also attempts to install the app. Alternatively, install the
+  `.apk` and follow the root setup in ADBlocker.
+- **Without root**, install the `.apk`. Open ADBlocker, choose your apps
+  and lists, and grant VPN permission.
 
 KernelSU applies the module immediately. Magisk and APatch require a
 restart. ADBlocker saves the selected subscriptions, downloads the lists,

@@ -218,8 +218,9 @@ path is absolute or relative to `android/`.
 
 From a clean checkout of the release tag, run `./scripts/release.sh v0.2.0`
 on Linux with the build prerequisites above. The signed
-`out/adblocker-<version>.apk.zip` can be flashed directly or renamed to
-end in `.apk` for Android installation. Publish it together with
+`out/adblocker-<version>.apk.zip` can be flashed directly; its copy
+`out/adblocker-<version>.apk` is for Android installation and for app
+stores that take only APK names. Publish both together with
 `adblocker-<version>-source.tar.gz`, `adblocker-<version>-SHA256SUMS`
 and the R8 mapping. The source archive carries the tagged code, vendored
 Rust dependencies, the AndroidX modules that supply native libraries, and
