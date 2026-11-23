@@ -736,6 +736,19 @@ fn quiet_and_recreated_profiles_do_not_resolve_a_saved_choice() {
 }
 
 #[test]
+fn a_token_that_names_no_app_makes_a_malformed_command() {
+    let roster = || -> Result<Vec<Profile>> { panic!("nothing to look up") };
+    let query = |_| -> Result<ResolvedPackages> { panic!("nothing to look up") };
+    for error in [
+        validate_new_apps(&["01:com.example"], roster, query).unwrap_err(),
+        canonicalize(&["01:com.example"], CanonicalMode::Existing, roster, query).unwrap_err(),
+    ] {
+        let malformed = error.downcast_ref::<abd_engine::malformed::Malformed>();
+        assert!(malformed.is_some_and(|m| m.0.contains("not an app identity")));
+    }
+}
+
+#[test]
 fn a_profile_answer_is_kept_only_if_the_profile_is_unchanged_after_the_query() {
     let profile = |id, serial| Profile {
         id,

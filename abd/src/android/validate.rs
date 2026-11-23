@@ -15,6 +15,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use abd_engine::apps::Identity;
+use abd_engine::malformed::Malformed;
 use anyhow::{Context as _, Result, bail, ensure};
 
 use super::classification::{Resolution, ResolvedPackages, query_resolved_packages};
@@ -32,9 +33,7 @@ pub(super) fn validate_new_apps(
     let mut personal = BTreeSet::new();
     let mut work: BTreeMap<u32, BTreeSet<&str>> = BTreeMap::new();
     for &token in tokens {
-        let app = Identity::parse(token).ok_or_else(|| {
-            abd_engine::malformed::Malformed(format!("not an app identity: {token:?}"))
-        })?;
+        let app = identity(token)?;
         if let Some(serial) = app.profile_serial {
             work.entry(serial).or_default().insert(token);
         } else {
@@ -69,6 +68,11 @@ pub(super) fn validate_new_apps(
         );
     }
     Ok(())
+}
+
+/// The app `token` names; a command given anything else was malformed.
+fn identity(token: &str) -> std::result::Result<Identity<'_>, Malformed> {
+    Identity::parse(token).ok_or_else(|| Malformed(format!("not an app identity: {token:?}")))
 }
 
 fn validate_packages(names: &BTreeSet<&str>, packages: &ResolvedPackages) -> Result<()> {
@@ -133,11 +137,7 @@ pub(super) fn canonicalize(
 ) -> Result<Vec<String>> {
     let identities: Vec<_> = tokens
         .iter()
-        .map(|token| {
-            Identity::parse(token).ok_or_else(|| {
-                abd_engine::malformed::Malformed(format!("not an app identity: {token:?}"))
-            })
-        })
+        .map(|token| identity(token))
         .collect::<std::result::Result<_, _>>()?;
     let serials: BTreeSet<_> = identities
         .iter()
