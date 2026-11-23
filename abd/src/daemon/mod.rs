@@ -56,7 +56,7 @@ pub async fn run(paths: Paths) -> Result<()> {
         listener_finished: false,
         reconcile,
         ipv6: Ipv6::new(event),
-        users: UserChanges::new(),
+        android: AndroidChanges::new(),
         compiling: JoinSet::new(),
     };
     let stopped = daemon.drive().await;
@@ -71,7 +71,7 @@ struct Daemon<'a> {
     listener_finished: bool,
     reconcile: Reconciler<'a>,
     ipv6: Ipv6,
-    users: UserChanges,
+    android: AndroidChanges,
     compiling: JoinSet<reload::Compiled>,
 }
 
@@ -90,7 +90,7 @@ impl Daemon<'_> {
             .packages
             .as_ref()
             .is_ok_and(watch::Packages::has_profiles);
-        self.users.track(needs_tracking);
+        self.android.track(needs_tracking);
         let v6 = self.ipv6.on;
         tokio::select! {
             result = &mut self.accepting => return ControlFlow::Break(self.listener_stopped(result)),
@@ -104,17 +104,17 @@ impl Daemon<'_> {
             }
             changed = package_changes(&mut self.reconcile.packages) => {
                 self.reconcile.on_packages_changed(v6, changed);
-                self.users.schedule_apply();
+                self.android.schedule_apply();
             }
-            () = self.users.retry.fired(), if self.users.watch.is_none() => self.users.open_watch(),
-            changed = user_states(&mut self.users.watch) => {
-                self.users.on_user_state(changed);
+            () = self.android.retry.fired(), if self.android.watch.is_none() => self.android.open_watch(),
+            changed = user_states(&mut self.android.watch) => {
+                self.android.on_user_state(changed);
                 if self.reconcile.on_user_state(v6, changed) {
-                    self.users.schedule_apply();
+                    self.android.schedule_apply();
                 }
             }
-            () = &mut self.users.settle, if self.users.changed => {
-                self.users.changed = false;
+            () = &mut self.android.settle, if self.android.changed => {
+                self.android.changed = false;
                 self.reconcile.reapply(v6);
             }
             () = reconcile::due(&mut self.reconcile.pause_timer, &mut self.reconcile.apps_retry) => self.reconcile.reapply(v6),
@@ -204,7 +204,9 @@ async fn app_start(starts: &mut Option<watch::Starts>) -> u32 {
 /// installation replaces it more than once.
 const PACKAGES_SETTLE: Duration = Duration::from_secs(2);
 
-struct UserChanges {
+/// Android's users starting and stopping, and the wait after a change of
+/// them or of the packages before the apps are read again.
+struct AndroidChanges {
     watch: Option<watch::UserStates>,
     retry: watch::Retry,
     tracking: bool,
@@ -212,7 +214,7 @@ struct UserChanges {
     changed: bool,
 }
 
-impl UserChanges {
+impl AndroidChanges {
     fn new() -> Self {
         Self {
             watch: None,
