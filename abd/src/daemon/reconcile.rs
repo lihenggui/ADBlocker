@@ -507,7 +507,13 @@ fn retire_changed_owners(
     // These snapshots can prove a UID changed owner. Retire it before
     // doing any per-user PackageManager queries.
     let roster = roster_changed.then(android::profiles);
-    let owners = owners_changed.then(android::known_packages);
+    // No owner can be confirmed from a list that cannot be read: every app
+    // is retired until a later reading confirms it again.
+    let owners = owners_changed.then(|| {
+        android::known_packages()
+            .inspect_err(|error| eprintln!("packages: {error:#}; no owner confirmed"))
+            .unwrap_or_default()
+    });
     if let Some(roster) = &roster {
         ctx.selection
             .profile_tls

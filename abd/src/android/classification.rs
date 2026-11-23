@@ -53,11 +53,11 @@ impl Resolution {
 
 /// Stable owners used to retire kernel capture when the Android package
 /// database changes. A numeric collision never creates an identity.
-pub fn known_packages() -> BTreeMap<u32, String> {
-    let known = package_list().unwrap_or_default();
+pub fn known_packages() -> Result<BTreeMap<u32, String>> {
+    let known = package_list()?;
     let owners = package_owners(&known);
     let shared = read_shared_users().ok();
-    owners
+    Ok(owners
         .owners
         .iter()
         .filter_map(|(&id, packages)| {
@@ -76,7 +76,7 @@ pub fn known_packages() -> BTreeMap<u32, String> {
                 && !shared.as_ref().is_some_and(|shared| shared.declared(id)))
             .then(|| (id, package.to_owned()))
         })
-        .collect()
+        .collect())
 }
 
 #[derive(Default)]
