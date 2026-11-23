@@ -178,6 +178,10 @@ jobs:
           export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
           printf '%s\n' "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
           image='system-images;android-35;google_apis;x86_64'
+          # avdmanager and the emulator each choose a default place for
+          # AVDs, and on a runner they differ: name the same one to both.
+          export ANDROID_AVD_HOME="$HOME/.android/avd"
+          mkdir -p "$ANDROID_AVD_HOME"
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator "$image"
           "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
             --name adblocker-ci --package "$image" <<< no
