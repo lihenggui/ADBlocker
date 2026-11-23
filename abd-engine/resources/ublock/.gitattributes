@@ -1,0 +1,3 @@
+# SPDX-License-Identifier: GPL-3.0-only
+# Keep the pinned upstream sources byte-for-byte.
+*.js -text -whitespace

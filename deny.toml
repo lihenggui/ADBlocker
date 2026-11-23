@@ -1,0 +1,39 @@
+# What `cargo deny check` holds the dependencies to. The daemon runs as
+# root on every device it is installed on: a dependency with a known
+# vulnerability, or under terms the module cannot be distributed with,
+# does not come in unnoticed.
+
+[graph]
+# What the module is built for; dependencies of other platforms are not
+# shipped.
+targets = ["aarch64-linux-android", "x86_64-linux-android"]
+
+[advisories]
+# Unmaintained crates are reported for the daemon's direct dependencies as
+# well as the rest.
+unmaintained = "all"
+yanked = "deny"
+
+[licenses]
+# All compatible with distribution under GPL-3.0.
+allow = [
+    "0BSD",
+    "Apache-2.0",
+    "BSD-3-Clause",
+    "GPL-3.0-only",
+    "ISC",
+    "MIT",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unlicense",
+]
+
+[bans]
+multiple-versions = "allow"
+wildcards = "deny"
+# Path dependencies within the workspace carry no version.
+allow-wildcard-paths = true
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"

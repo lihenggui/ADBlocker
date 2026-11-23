@@ -1,0 +1,5 @@
+{
+  "scope": "all",
+  "chosen": ["com.example.browser", "37:com.example.news"],
+  "excluded": ["@com.example.suite", "com.example.shop"]
+}

@@ -1,0 +1,40 @@
+[package]
+name = "abd-vpn"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+abd-engine = { path = "../abd-engine" }
+anyhow = { workspace = true, default-features = true }
+smoltcp = { version = "0.14.0", default-features = false, features = ["std", "medium-ip", "proto-ipv4", "proto-ipv6", "socket-tcp"] }
+bytes = "1.12.2"
+ring = "0.17.14"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+jni = "0.22.4"
+libc = "0.2.191"
+socket2 = "0.6.5"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "net", "io-util", "macros", "time", "sync"] }
+
+[[example]]
+name = "check_http3"
+test = true
+
+[dev-dependencies]
+rcgen = "0.13"
+h3 = "0.0.8"
+h3-quinn = "0.0.10"
+http = "1"
+quinn = { version = "0.11.12", default-features = false, features = ["runtime-tokio", "rustls-ring"] }
+tempfile = "3"
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12"] }
+tokio = { version = "1.54.1", features = ["test-util"] }
+
+[lints]
+workspace = true
+
+[lib]
+# The library the app loads, and a crate for the tests.
+crate-type = ["cdylib", "rlib"]

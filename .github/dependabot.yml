@@ -1,0 +1,29 @@
+version: 2
+updates:
+  # The workflows pin actions by commit; this keeps the pins current.
+  - package-ecosystem: github-actions
+    directories:
+      - /
+      - /.github/actions/setup
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # The daemon and filtering engine.
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: weekly
+
+  # The app: its libraries, Gradle plugins and the build logic.
+  - package-ecosystem: gradle
+    directory: /android
+    schedule:
+      interval: weekly
+    groups:
+      androidx:
+        patterns: ["androidx.*"]
+      kotlin:
+        patterns: ["org.jetbrains.kotlin*", "com.google.devtools.ksp*"]

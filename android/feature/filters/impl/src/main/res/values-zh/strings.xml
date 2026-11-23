@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">规则</string>
+    <string name="feature_filters_settings">设置</string>
+    <string name="feature_filters_tab_lists">订阅</string>
+    <string name="feature_filters_tab_rules">我的规则</string>
+    <string name="feature_filters_tab_trusted">信任的网站</string>
+    <string name="feature_filters_add_list">添加订阅</string>
+    <string name="feature_filters_add_list_text">EasyList 或 uBlock Origin 语法的订阅地址。仅支持 HTTPS 地址。</string>
+    <string name="feature_filters_add_list_label">订阅地址</string>
+    <string name="feature_filters_add">添加</string>
+    <string name="feature_filters_cancel">取消</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="other">条已下载规则 · %1$d 个订阅</item>
+    </plurals>
+    <string name="feature_filters_update_now">立即更新</string>
+    <string name="feature_filters_updating">正在更新</string>
+    <string name="feature_filters_update_progress">更新进度</string>
+    <string name="feature_filters_last_updated">%1$s更新</string>
+    <string name="feature_filters_never_updated">尚未下载</string>
+    <string name="feature_filters_subscribed_header">已订阅</string>
+    <string name="feature_filters_available">可添加 · %1$s</string>
+    <string name="feature_filters_subscribe">订阅 %1$s</string>
+    <string name="feature_filters_list_fetching">正在下载并检查</string>
+    <string name="feature_filters_list_failed">更新失败</string>
+    <string name="feature_filters_list_done">%1$s 条 · 刚刚更新</string>
+    <string name="feature_filters_list_off">已停用</string>
+    <string name="feature_filters_list_error">上次更新失败</string>
+    <string name="feature_filters_list_pending">等待下载</string>
+    <string name="feature_filters_list_detail">%1$s 条 · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s 条规则</string>
+    <string name="feature_filters_list_last_error">上次错误：%1$s</string>
+    <string name="feature_filters_remove_list">取消订阅</string>
+    <string name="feature_filters_cosmetic_note">此类订阅主要包含元素隐藏规则，仅在“设置”中开启“隐藏页面元素”后生效。</string>
+    <string name="feature_filters_my_rules">我的规则</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="other">%1$d 条</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="other">%1$d 条 · %2$d 条未生效</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">无法检查规则</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">编辑</string>
+    <string name="feature_filters_tools">工具</string>
+    <string name="feature_filters_block_domain">拦截域名</string>
+    <string name="feature_filters_block_domain_supporting">添加形如 ||example.com^ 的规则</string>
+    <string name="feature_filters_block_domain_text">在所有被过滤的应用中拦截此域名及其子域名。</string>
+    <string name="feature_filters_domain_label">域名</string>
+    <string name="feature_filters_block">拦截</string>
+    <string name="feature_filters_test_url">测试网址</string>
+    <string name="feature_filters_test_url_supporting">显示会拦截它的规则</string>
+    <string name="feature_filters_import">导入规则</string>
+    <string name="feature_filters_import_supporting">uBlock Origin 或 AdGuard 语法</string>
+    <string name="feature_filters_export">导出规则</string>
+    <string name="feature_filters_export_supporting">保存为 .txt 文件</string>
+    <string name="feature_filters_syntax_note">元素隐藏规则（##）仅在“设置”中开启“隐藏页面元素”后生效。不支持脚本注入（scriptlet）。编辑器会标出这两类规则。</string>
+    <string name="feature_filters_trusted_text">不解密、不拦截与这些网站的连接。适用于网上银行、内网和支付页面。</string>
+    <string name="feature_filters_add_trusted">添加网站</string>
+    <string name="feature_filters_remove_trusted">移除 %1$s</string>
+    <string name="feature_filters_url_label">网址</string>
+    <string name="feature_filters_page_label">来源页面（可选）</string>
+    <string name="feature_filters_check">检查</string>
+    <string name="feature_filters_would_block">会被拦截</string>
+    <string name="feature_filters_would_allow">不会被拦截</string>
+    <string name="feature_filters_source_mine">我的规则</string>
+    <string name="feature_filters_kind_script">脚本</string>
+    <string name="feature_filters_kind_image">图片</string>
+    <string name="feature_filters_kind_document">页面</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">其他</string>
+    <string name="feature_filters_issue_cosmetic">元素隐藏仅在开启“隐藏页面元素”后生效；不支持脚本注入。</string>
+    <string name="feature_filters_issue_invalid">不是有效的规则。</string>
+    <string name="feature_filters_issue_line">第 %1$d 行</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="other">另有 %1$d 处。</item>
+    </plurals>
+    <string name="feature_filters_back">返回</string>
+    <string name="feature_filters_save">保存并应用</string>
+    <string name="feature_filters_undo">撤销</string>
+    <string name="feature_filters_redo">重做</string>
+    <string name="feature_filters_discard_title">放弃修改？</string>
+    <string name="feature_filters_discard_text">对规则的修改尚未保存。</string>
+    <string name="feature_filters_discard_failed">无法删除草稿。请重试。</string>
+    <string name="feature_filters_discard">放弃</string>
+    <string name="feature_filters_keep_editing">继续编辑</string>
+    <string name="feature_filters_rules_saved">规则已保存并生效</string>
+    <string name="feature_filters_earlier_rules_saved">之前的规则已应用，新修改尚未保存。</string>
+    <string name="feature_filters_draft_failed">无法保留规则草稿</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="other">已更新 %1$d 个订阅</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="other">已更新 %1$d 个订阅，%2$d 个失败</item>
+    </plurals>
+    <string name="feature_filters_update_failed">订阅更新失败</string>
+    <string name="feature_filters_subscribed">已订阅，正在下载。</string>
+    <string name="feature_filters_removed">已取消订阅</string>
+    <string name="feature_filters_https_only">仅支持 HTTPS 地址</string>
+    <string name="feature_filters_not_a_domain">域名无效</string>
+    <string name="feature_filters_blocked_domain">已拦截 %1$s</string>
+    <string name="feature_filters_trusted">已将 %1$s 添加到信任的网站</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="other">已导入 %1$d 条规则</item>
+    </plurals>
+    <string name="feature_filters_exported">规则已导出</string>
+    <string name="feature_filters_failed">操作失败。请在“设置”中检查过滤服务。</string>
+    <string name="feature_filters_issue_separator">：</string>
+    <string name="feature_filters_search">搜索订阅和规则</string>
+    <string name="feature_filters_search_hint">搜索订阅和规则</string>
+    <string name="feature_filters_search_none">未找到结果</string>
+    <string name="feature_filters_search_available">可添加的订阅</string>
+    <string name="feature_filters_list_on">已启用</string>
+    <string name="feature_filters_block_preview">将添加 %1$s</string>
+    <string name="feature_filters_list_added">%1$s 条 · 刚刚更新，新增 %2$s</string>
+    <string name="feature_filters_test_url_text">根据当前的订阅和规则检查请求。</string>
+    <string name="feature_filters_syntax">规则语法</string>
+    <string name="feature_filters_syntax_text">每行一条规则，使用 EasyList、uBlock Origin 或 AdGuard 语法。</string>
+    <string name="feature_filters_syntax_host">拦截域名及其子域名。</string>
+    <string name="feature_filters_syntax_option">$ 后面的选项用于限定规则。此处只拦截来自其他网站的请求。</string>
+    <string name="feature_filters_syntax_path">拦截匹配的网址。* 匹配任意文字，$image 将规则限定为图片。</string>
+    <string name="feature_filters_syntax_exception">@@ 放行其他规则会拦截的请求。</string>
+    <string name="feature_filters_syntax_cosmetic">隐藏页面元素。仅在“设置”中开启“隐藏页面元素”后生效。</string>
+    <string name="feature_filters_syntax_comment">以 ! 开头的行是注释。</string>
+    <string name="feature_filters_import_too_large">文件超过规则的 16 MB 上限</string>
+    <string name="feature_filters_schedule">%1$s自动更新</string>
+    <string name="feature_filters_schedule_wifi">%1$s在 Wi-Fi 下自动更新</string>
+    <string name="feature_filters_schedule_never">不自动更新</string>
+    <string name="feature_filters_every_day">每天</string>
+    <string name="feature_filters_every_three_days">每 3 天</string>
+    <string name="feature_filters_every_week">每周</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="other">已更新 %1$d 个订阅，新增 %2$s 条规则</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">HTTPS 排除列表尚未就绪。目前仅过滤域名。</string>
+    <string name="feature_filters_exclusions_failed">部分 HTTPS 排除列表更新失败，仍在使用已保存的副本。</string>
+</resources>

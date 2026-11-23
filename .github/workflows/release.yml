@@ -1,0 +1,68 @@
+# Copyright (C) 2026 Mercury Li
+# SPDX-License-Identifier: GPL-3.0-only
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    uses: ./.github/workflows/ci.yml
+    with:
+      device_checks: true
+
+  release:
+    name: Build and publish
+    needs: verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Build the signed APK and corresponding source
+        env:
+          TAG: ${{ github.ref_name }}
+          KEYSTORE_BASE64: ${{ secrets.SIGNING_KEYSTORE_BASE64 }}
+          ADBLOCKER_SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          ADBLOCKER_SIGNING_KEY_ALIAS: ${{ secrets.SIGNING_KEY_ALIAS }}
+          ADBLOCKER_SIGNING_KEY_PASSWORD: ${{ secrets.SIGNING_KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$ADBLOCKER_SIGNING_STORE_PASSWORD" ] ||
+            [ -z "$ADBLOCKER_SIGNING_KEY_ALIAS" ] || [ -z "$ADBLOCKER_SIGNING_KEY_PASSWORD" ]; then
+            echo "::error::the SIGNING_* repository secrets are not set"
+            exit 1
+          fi
+          umask 077
+          signing_dir="$(mktemp -d "$RUNNER_TEMP/adblocker-signing.XXXXXX")"
+          trap 'rm -rf -- "$signing_dir"' EXIT
+          export ADBLOCKER_SIGNING_STORE_FILE="$signing_dir/release.jks"
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$ADBLOCKER_SIGNING_STORE_FILE"
+          unset KEYSTORE_BASE64
+          ./scripts/release.sh "$TAG"
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$TAG" "out/adblocker-$TAG.apk.zip" \
+            "out/adblocker-$TAG-source.tar.gz" \
+            "out/adblocker-$TAG-SHA256SUMS" \
+            "out/adblocker-$TAG-mapping.txt" \
+            --repo "$GITHUB_REPOSITORY" --verify-tag --generate-notes --title "$TAG"

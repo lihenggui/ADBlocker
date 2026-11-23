@@ -1,0 +1,71 @@
+/*
+ * Copyright (C) 2026 Mercury Li
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+package li.mercury.adblocker.core.common.di
+
+import android.content.Context
+import android.os.Process
+import dagger.Module
+import dagger.Provides
+import dagger.hilt.InstallIn
+import dagger.hilt.android.qualifiers.ApplicationContext
+import dagger.hilt.components.SingletonComponent
+import li.mercury.adblocker.core.common.PER_USER_RANGE
+import java.io.File
+import javax.inject.Qualifier
+
+/** The app's private files directory. */
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class FilesDir
+
+/** This app's package name, to leave its own lookups out of what is shown. */
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class AppPackageName
+
+/** The app's cache directory. */
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class CacheDir
+
+/**
+ * The Android user this app runs as, whose apps the package manager
+ * describes: an app of another user is told apart by it.
+ */
+@Retention(AnnotationRetention.RUNTIME)
+@Qualifier
+annotation class CurrentUserId
+
+@Module
+@InstallIn(SingletonComponent::class)
+internal object SysModule {
+    @Provides
+    @FilesDir
+    fun providesFilesDir(@ApplicationContext context: Context): File = context.filesDir
+
+    @Provides
+    @AppPackageName
+    fun providesAppPackageName(@ApplicationContext context: Context): String = context.packageName
+
+    @Provides
+    @CacheDir
+    fun providesCacheDir(@ApplicationContext context: Context): File = context.cacheDir
+
+    @Provides
+    @CurrentUserId
+    fun providesCurrentUserId(): Int = Process.myUid() / PER_USER_RANGE
+}

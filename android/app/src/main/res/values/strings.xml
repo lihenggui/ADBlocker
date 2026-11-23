@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="app_name" translatable="false">ADBlocker</string>
+    <!-- Shown by root managers as the module's description. -->
+    <string name="module_description">Filters the traffic of chosen apps with the filter lists of browser ad blockers, including HTTPS traffic.</string>
+    <string name="nav_overview">Overview</string>
+    <string name="nav_apps">Apps</string>
+    <string name="nav_filters">Filters</string>
+    <string name="nav_activity">Activity</string>
+    <string name="pane_drag_handle">Pane expansion drag handle</string>
+    <string name="pane_current_split">Current pane split, %1$s</string>
+    <string name="pane_change_split">Change pane split to %1$s</string>
+    <string name="tile_label">Ad blocking</string>
+    <string name="tile_filtering">On</string>
+    <string name="tile_paused">Paused</string>
+    <string name="tile_stopped">Not running</string>
+</resources>

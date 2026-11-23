@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- The VPN runs as a foreground service for as long as it filters. Of
+         the types Android 14 asks for, systemExempted is the one for a VPN
+         app: the platform allows it to an app the user has given the VPN
+         to (the ACTIVATE_VPN app op), which is the only time it starts. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SYSTEM_EXEMPTED" />
+
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
+
+    <!-- Check IPv6 reachability again when the default network changes. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- The notification of the running VPN, and the one that says another
+         VPN app took it over. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <application>
+        <!-- Started by the app, or by the system for Always-on VPN; only the
+             system can bind it (BIND_VPN_SERVICE). Lint knows of the exact
+             alarm permissions only as what systemExempted needs besides its
+             own; the platform takes the ACTIVATE_VPN app op as well, which
+             the user's consent to the VPN grants. -->
+        <service
+            android:name=".AdblockerVpnService"
+            android:exported="false"
+            android:foregroundServiceType="systemExempted"
+            android:permission="android.permission.BIND_VPN_SERVICE"
+            tools:ignore="ForegroundServicePermission">
+            <intent-filter>
+                <action android:name="android.net.VpnService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.net.VpnService.SUPPORTS_ALWAYS_ON"
+                android:value="true" />
+        </service>
+
+        <!-- The actions of the VPN's notification. -->
+        <receiver
+            android:name=".VpnActionReceiver"
+            android:exported="false" />
+    </application>
+
+</manifest>

@@ -1,0 +1,5 @@
+{"time":1763538401123,"app":"com.example.news","verdict":"blocked","host":"ads.adnet.example","url":"https://ads.adnet.example/v2/serve?slot=feed_3","page":"https://news.example/","kind":"script","reason":null}
+{"time":1763538401500,"app":"com.example.news","verdict":"allowed","host":"img.news.example","url":"https://img.news.example/cover.webp","page":"https://news.example/","kind":"image","reason":null}
+{"time":1763538402010,"app":"com.example.shop","verdict":"host_blocked","host":"track.adsdk.example","url":null,"page":null,"kind":null,"reason":null}
+{"time":1763538402777,"app":"com.example.video","verdict":"passed","host":"api.video.example","url":null,"page":null,"kind":null,"reason":"pinned"}
+{"dropped":12}

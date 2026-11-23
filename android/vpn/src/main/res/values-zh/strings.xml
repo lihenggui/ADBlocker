@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">过滤中</string>
+    <string name="vpn_channel_stopped">过滤已停止</string>
+
+    <string name="vpn_starting">正在启动过滤</string>
+    <plurals name="vpn_filtering">
+        <item quantity="other">正在过滤 %d 个应用</item>
+    </plurals>
+    <string name="vpn_no_apps">未选择应用</string>
+    <string name="vpn_paused_until">已暂停，%s 恢复</string>
+    <string name="vpn_paused">已暂停</string>
+    <string name="vpn_action_pause_hour">暂停 1 小时</string>
+    <string name="vpn_action_resume">恢复</string>
+    <string name="vpn_action_open">打开</string>
+
+    <string name="vpn_revoked_title">过滤已停止</string>
+    <string name="vpn_revoked_text">VPN 已被其他 VPN 应用或系统设置断开。所选应用的连接照常进行，但未经过滤。</string>
+    <string name="vpn_status_unavailable">过滤状态不可用</string>
+</resources>

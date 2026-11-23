@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">活动</string>
+    <string name="feature_activity_settings">设置</string>
+    <string name="feature_activity_start_recording">开始录制</string>
+    <string name="feature_activity_stop_recording">停止录制</string>
+    <string name="feature_activity_starting">正在启动录制…</string>
+    <string name="feature_activity_recording">正在录制请求</string>
+    <string name="feature_activity_recorded">录制已停止</string>
+    <string name="feature_activity_interrupted">录制已中断</string>
+    <string name="feature_activity_no_recording">尚无录制</string>
+    <string name="feature_activity_recording_intro">录制被过滤应用的请求。录制期间可以切换应用，最近 500 条请求保留在内存中。</string>
+    <string name="feature_activity_no_matches">没有符合筛选条件的请求</string>
+    <string name="feature_activity_empty_result">未录制到请求</string>
+    <string name="feature_activity_app_requests_hint">在“活动”中开始录制后，即可在这里查看请求。</string>
+    <string name="feature_activity_notification_channel">活动录制</string>
+    <string name="feature_activity_notification_title">ADBlocker 正在录制活动</string>
+    <string name="feature_activity_all">全部</string>
+    <string name="feature_activity_blocked">已拦截</string>
+    <string name="feature_activity_allowed">已放行</string>
+    <string name="feature_activity_encrypted">未解密</string>
+    <string name="feature_activity_all_apps">全部应用</string>
+    <string name="feature_activity_dropped">（已跳过 %1$d 条）</string>
+    <string name="feature_activity_empty">正在等待请求</string>
+    <string name="feature_activity_empty_idle">当前未在过滤</string>
+    <string name="feature_activity_verdict_blocked">已拦截请求</string>
+    <string name="feature_activity_verdict_host_blocked">已拦截域名</string>
+    <string name="feature_activity_verdict_allowed">已放行</string>
+    <string name="feature_activity_verdict_passed">未解密</string>
+    <string name="feature_activity_kind_script">脚本</string>
+    <string name="feature_activity_kind_image">图片</string>
+    <string name="feature_activity_kind_document">页面</string>
+    <string name="feature_activity_kind_stylesheet">样式</string>
+    <string name="feature_activity_kind_font">字体</string>
+    <string name="feature_activity_kind_media">媒体</string>
+    <string name="feature_activity_app">应用</string>
+    <string name="feature_activity_kind">类型</string>
+    <string name="feature_activity_page">来源页面</string>
+    <string name="feature_activity_rule">当前规则匹配（GET）</string>
+    <string name="feature_activity_rule_unavailable">无法检查</string>
+    <string name="feature_activity_why">原因</string>
+    <string name="feature_activity_my_rules">我的规则</string>
+    <string name="feature_activity_reason_pinned">应用不接受 ADBlocker 为此域名提供的证书，因此仅按域名过滤。</string>
+    <string name="feature_activity_reason_hosts_only">此连接仅按域名过滤。按网址过滤已关闭，或无法检查 HTTPS。</string>
+    <string name="feature_activity_reason_excluded">此域名在 HTTPS 排除列表中，例如银行列表。</string>
+    <string name="feature_activity_reason_trusted">此网站已设为信任。</string>
+    <string name="feature_activity_reason_sensitive">服务器使用扩展验证（EV）证书，因此不解密此连接。</string>
+    <string name="feature_activity_reason_no_name">此连接未指明域名。</string>
+    <string name="feature_activity_reason_untrusted">此应用尚未信任 ADBlocker。</string>
+    <string name="feature_activity_reason_unverified">无法验证服务器，由应用自行检查。</string>
+    <string name="feature_activity_reason_other">已原样转交给应用，未读取。</string>
+    <string name="feature_activity_trust_site">信任 %1$s</string>
+    <string name="feature_activity_block_host">拦截此域名</string>
+    <string name="feature_activity_forget">重新尝试解密</string>
+    <string name="feature_activity_copy">复制</string>
+    <string name="feature_activity_trusted">已将 %1$s 添加到信任的网站</string>
+    <string name="feature_activity_blocked_host">已拦截 %1$s</string>
+    <string name="feature_activity_forgotten">下次连接时将重新尝试解密</string>
+    <string name="feature_activity_failed">操作失败。请在“设置”中检查过滤服务。</string>
+    <string name="feature_activity_select">选择请求</string>
+    <string name="feature_activity_select_text">用当前规则检查网址，或信任、拦截该网站</string>
+    <string name="feature_activity_reason_host_blocked">整个域名已被拦截，因此连接被拒绝。</string>
+    <string name="feature_activity_app_requests">请求</string>
+    <string name="feature_activity_open_activity">在“活动”中打开</string>
+    <string name="feature_activity_reason_exclusions_pending">HTTPS 排除列表尚未就绪</string>
+    <string name="feature_activity_apps_unavailable">无法加载应用名称和筛选项</string>
+    <string name="feature_activity_status_unavailable">过滤状态不可用</string>
+</resources>

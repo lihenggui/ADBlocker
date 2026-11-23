@@ -1,0 +1,6 @@
+! My rules
+||ads.adnet.example^
+||pixel.trackr.example^$third-party
+@@||cdn.news.example/player/ads.js^$script
+news.example##.ad-banner
+||tracker.example^$frobnicate

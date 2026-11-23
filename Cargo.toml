@@ -1,0 +1,34 @@
+[workspace]
+resolver = "2"
+members = ["abd", "abd-engine", "abd-vpn"]
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Mercury Li"]
+license = "GPL-3.0-only"
+edition = "2024"
+# Shipped as a module, never as crates.
+publish = false
+
+[workspace.dependencies]
+anyhow = { version = "1.0.104", default-features = false }
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+# Allowed again, with a reason, in the few modules that talk to the kernel.
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+too_many_lines = "deny"
+undocumented_unsafe_blocks = "deny"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+# A daemon that panicked is taken down whole, for the supervisor to remove
+# its rules and start another: one left alive with a dead task or a poisoned
+# lock would hold the filtered apps' connections and answer none.
+panic = "abort"
+# It parses what apps, servers and lists send it, as root.
+overflow-checks = true

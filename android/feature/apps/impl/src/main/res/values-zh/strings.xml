@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">搜索应用</string>
+    <string name="feature_apps_settings">设置</string>
+    <string name="feature_apps_filtered">已过滤 %1$d</string>
+    <string name="feature_apps_all">全部 %1$d</string>
+    <string name="feature_apps_section_filtered">已过滤</string>
+    <string name="feature_apps_section_others">其他应用</string>
+    <string name="feature_apps_empty_filtered">没有已过滤的应用</string>
+    <string name="feature_apps_empty_filtered_text">选择要过滤的应用，打开它旁边的开关即可开始过滤。</string>
+    <string name="feature_apps_browse_apps">浏览应用</string>
+    <string name="feature_apps_status_filtered">今天拦截 %1$s</string>
+    <string name="feature_apps_status_hosts">仅按域名 · 今天拦截 %1$s</string>
+    <string name="feature_apps_status_paused">已暂停 · %1$s后恢复</string>
+    <string name="feature_apps_status_off">未过滤</string>
+    <string name="feature_apps_now_filtering">已开始过滤%1$s</string>
+    <string name="feature_apps_stopped_filtering">已停止过滤%1$s</string>
+    <string name="feature_apps_undo">撤销</string>
+    <string name="feature_apps_failed">操作失败。请在“设置”中检查过滤服务。</string>
+    <string name="feature_apps_select">选择应用</string>
+    <string name="feature_apps_select_text">查看其过滤方式和拦截数</string>
+    <string name="feature_apps_status_work_quiet">工作资料已暂停</string>
+    <string name="feature_apps_status_work_unavailable">在工作资料中不可用</string>
+    <string name="feature_apps_work_inventory_unavailable">部分工作应用无法加载。</string>
+    <string name="feature_apps_work_inventory_retry">重试</string>
+    <string name="feature_apps_selection_removed">已移除%1$s的选择</string>
+    <string name="feature_apps_status_mixed">HTTP 按请求、HTTPS 按域名 · 今天拦截 %1$s</string>
+    <string name="feature_apps_exclude">排除</string>
+    <string name="feature_apps_include">重新纳入</string>
+    <string name="feature_apps_excluded">已排除</string>
+    <string name="feature_apps_included">已重新纳入%1$s</string>
+    <string name="feature_apps_excluded_message">已排除%1$s</string>
+    <string name="feature_apps_status_filtered_no_count">拦截数不可用</string>
+    <string name="feature_apps_status_hosts_no_count">仅按域名 · 拦截数不可用</string>
+    <string name="feature_apps_status_mixed_no_count">HTTP 按请求、HTTPS 按域名 · 拦截数不可用</string>
+</resources>

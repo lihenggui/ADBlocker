@@ -1,0 +1,4 @@
+[
+  { "app": "com.example.video", "host": "api.video.example", "since": 1763400000 },
+  { "app": "com.example.video", "host": "drm.video.example", "since": 1763401234 }
+]
