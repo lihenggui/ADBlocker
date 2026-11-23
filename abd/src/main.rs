@@ -71,6 +71,14 @@ fn main() -> Result<()> {
     if args == ["unhook"] {
         return unhook();
     }
+    // So must leaving the user's store as Android has it, which every app
+    // reads: first at each start, and last on uninstall, after which
+    // nothing of ours runs. Filtering goes on whatever becomes of it.
+    if (args == ["run"] || args == ["trust", "remove"])
+        && let Err(error) = trust::repair_user_store()
+    {
+        eprintln!("trust: the user's store: {error:#}");
+    }
     let data = std::env::var("ABD_DATA").unwrap_or_else(|_| paths::DATA.to_owned());
     let paths = Paths::new(Path::new(&data));
     make_private_data_dir(&data)?;

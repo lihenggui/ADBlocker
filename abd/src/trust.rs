@@ -47,6 +47,7 @@ use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 
 mod profile;
+mod user_store;
 
 pub use self::profile::{PROFILE_STORES, profile_roots};
 use crate::paths::{Module as _, Paths};
@@ -57,8 +58,6 @@ const USER_STORE: &str = "/data/misc/user/0/cacerts-added";
 const STORE_LABEL: &str = "u:object_r:system_security_cacerts_file:s0";
 /// What the user's store is labelled where it cannot be asked.
 const USER_STORE_LABEL: &str = "u:object_r:misc_user_data_file:s0";
-/// AID_SYSTEM, which owns the user's store.
-const SYSTEM_UID: u32 = 1000;
 const CA_LIMIT: usize = 64 << 10;
 
 /// What `abd trust mount` exits with for a process that is gone: no
@@ -164,6 +163,11 @@ fn label_of(path: &Path) -> Option<String> {
     Some(std::str::from_utf8(label).ok()?.to_owned())
 }
 
+/// Leaves the user's store, if there is one, readable by every app.
+pub fn repair_user_store() -> Result<()> {
+    user_store::repair(Path::new(USER_STORE))
+}
+
 /// Builds the two copies, with the roots of the authority in `paths`.
 pub fn prepare(paths: &Paths) -> Result<()> {
     let ca = paths.ca();
@@ -180,48 +184,12 @@ pub fn prepare(paths: &Paths) -> Result<()> {
         system.target.display()
     );
 
-    // The user's store is made when the user first adds a certificate. A
-    // mount needs it to be there: made empty, as it is after the user
-    // removed the last.
-    if std::fs::symlink_metadata(&user.target).is_err() {
-        use std::os::unix::fs::DirBuilderExt as _;
-        std::fs::DirBuilder::new()
-            .mode(0o755)
-            .create(&user.target)?;
-        std::os::unix::fs::lchown(&user.target, Some(SYSTEM_UID), Some(SYSTEM_UID))?;
-        restorecon(&user.target);
-    }
-    ensure!(
-        std::fs::symlink_metadata(&user.target)?
-            .file_type()
-            .is_dir(),
-        "{} is not a directory",
-        user.target.display()
-    );
+    user_store::ensure(&user.target)?;
     let label = label_of(&user.target).unwrap_or_else(|| USER_STORE_LABEL.to_owned());
     let pem = std::fs::read(ca.join("user.pem"))?;
     build_copy(&user.target, &user.copy, &user.root, &pem, &|path| {
         set_label(path, &label)
     })
-}
-
-/// Labels a directory we made as the system labels it there, for the copy
-/// to take its label. Unlabelled, it keeps what it inherited, which is
-/// said and gone on with.
-fn restorecon(path: &Path) {
-    let labelled = crate::rules::device_command("restorecon")
-        .arg(path)
-        .stdin(std::process::Stdio::null())
-        .stdout(std::process::Stdio::null())
-        .stderr(std::process::Stdio::null())
-        .status();
-    if !labelled
-        .as_ref()
-        .is_ok_and(std::process::ExitStatus::success)
-    {
-        let failure = labelled.map_or_else(|e| e.to_string(), |status| status.to_string());
-        eprintln!("trust: restorecon {}: {failure}", path.display());
-    }
 }
 
 /// A copy of `store` in `copy` with our root added.
