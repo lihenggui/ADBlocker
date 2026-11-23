@@ -85,9 +85,14 @@ Assembling `:app` needs the daemons in `../out/` (`../scripts/build.sh`).
   `su --mount-master` process (`RootShell.stream`), ended by closing it.
   Nothing else holds a process open. One list update runs at a time in the
   process (`ListsRepository`).
-- Every root command runs under `timeout` (60 s, longer for the module
-  install), in the global mount namespace; exit 124 is
+- Every root command runs under `timeout` (60 s, longer for installing
+  and removing the module), in the global mount namespace; exit 124 is
   `AbdException.TimedOut`.
+- The module is flashed in a root manager or installed by the app with
+  root alone, and either can change while the app runs. A command that
+  names the module's files begins with `ModulePaths.LOCATE` and names them
+  through `MODULE_DIR`; `ModulePaths.ABD` does so for `abd`. The app
+  installs with the `direct.sh` in its own APK (`ModuleRepository`).
 - Screens ask `Capabilities` what the method in use can do, never the
   method itself. Without the engine in the build, the VPN method's commands
   throw `AbdException.EngineMissing`.

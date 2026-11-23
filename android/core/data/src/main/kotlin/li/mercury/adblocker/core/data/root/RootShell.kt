@@ -268,14 +268,38 @@ internal fun exitFailure(code: Int, output: String): AbdException = when (code) 
 fun String.shellQuoted(): String = "'" + replace("'", "'\\''") + "'"
 
 /**
- * Where the module's files live once it is installed. KernelSU, Magisk and
- * APatch use the same layout under /data/adb.
+ * Where the module's files live once it is installed: in the directory
+ * KernelSU, Magisk and APatch keep their modules in when it was flashed in
+ * one of them, or in a directory of its own when this app installed it with
+ * root alone (module/direct.sh).
  */
 object ModulePaths {
     const val MODULE_ID = "adblocker"
-    const val MODULE_DIR = "/data/adb/modules/$MODULE_ID"
-    const val ABD = "$MODULE_DIR/bin/abd"
+
+    /** The module this app installed, which no root manager lists. */
+    const val DIRECT_DIR = "/data/adb/${MODULE_ID}_direct"
+
+    /**
+     * Finds the module in use, for the rest of a shell command to name as
+     * [MODULE_DIR]: the one in the root manager once it has its daemon, or
+     * else the one this app installed. A manager keeps a directory without
+     * the daemon for a module it applies at the next boot. Asked in every
+     * command: a module is flashed or removed while the app runs.
+     */
+    const val LOCATE = "m=/data/adb/modules/$MODULE_ID; [ -e \$m/bin/abd ] || m=$DIRECT_DIR"
+
+    /** The module's directory, in a command that begins with [LOCATE]. */
+    const val MODULE_DIR = "\$m"
+
+    /** The daemon's file, in a command that begins with [LOCATE]. */
+    const val DAEMON = "$MODULE_DIR/bin/abd"
     const val MODULE_PROP = "$MODULE_DIR/module.prop"
+
+    /**
+     * `abd` of the module in use, as one command that takes its arguments
+     * and its input: it also goes after `exec`, and into the background.
+     */
+    const val ABD = "sh -c '$LOCATE; exec $DAEMON \"\$@\"' abd"
 
     /** Where a module update is staged until the next boot. */
     const val PENDING_UPDATE_DIR = "/data/adb/modules_update/$MODULE_ID"

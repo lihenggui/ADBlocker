@@ -29,8 +29,11 @@ import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.AbdClient
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.fixedAbdClient
-import li.mercury.adblocker.core.data.root.ModulePaths.ABD
+import li.mercury.adblocker.core.data.root.ModulePaths.DAEMON
+import li.mercury.adblocker.core.data.root.ModulePaths.DIRECT_DIR
+import li.mercury.adblocker.core.data.root.ModulePaths.LOCATE
 import li.mercury.adblocker.core.data.root.ModulePaths.MODULE_DIR
+import li.mercury.adblocker.core.data.root.ModulePaths.MODULE_ID
 import li.mercury.adblocker.core.data.root.ModulePaths.MODULE_PROP
 import li.mercury.adblocker.core.data.root.ModulePaths.PENDING_UPDATE_DIR
 import li.mercury.adblocker.core.data.root.RootShell
@@ -44,9 +47,16 @@ import java.util.zip.ZipFile
 import javax.inject.Inject
 import javax.inject.Singleton
 
-/** The root module (KernelSU, Magisk or APatch) that does the filtering. */
+/**
+ * The root module that does the filtering: flashed in a root manager
+ * (KernelSU, Magisk or APatch), or installed by this app with root alone.
+ */
 interface ModuleRepository {
-    /** Where the app stands with root and the module. */
+    /**
+     * Where the app stands with root and the module in use. A module a root
+     * manager has yet to apply needs a restart only while none that matches
+     * this app is in use.
+     */
     suspend fun state(): ModuleState
 
     /** The installed module's version name, or null if it is not installed or root is missing. */
@@ -56,30 +66,51 @@ interface ModuleRepository {
     suspend fun rootManager(): String?
 
     /**
-     * Flashes the module this app's own APK carries, with the installer of the
-     * root manager present, and returns whether it is active at once (KernelSU
-     * applies a module without a restart; Magisk and APatch at the next boot).
+     * Installs the module this app's own APK carries, with root alone, and
+     * starts it: no restart, and no root manager's installer. A module in a
+     * root manager is brought up to date where it is and stays the manager's;
+     * without one the module goes into a directory of this app's, and no
+     * manager lists it. Returns whether it is active at once, which it is
+     * whenever this returns.
      *
      * @throws AbdException if root is missing or the installer fails.
      */
     suspend fun installBundled(): Boolean
 
     /**
+     * Whether this app installed the module in use, and so is what removes
+     * it. One flashed in a root manager is removed there. False without root.
+     */
+    suspend fun isInstalledByApp(): Boolean
+
+    /**
+     * Removes a module this app installed: stops the daemon, has the apps
+     * stop trusting the authority, destroys its key and deletes the module
+     * with everything it kept.
+     *
+     * @throws AbdException.CommandFailed if the module is not this app's, or
+     * could not be removed; it is then still installed.
+     */
+    suspend fun remove()
+
+    /**
      * Starts the daemon through the module's own service script, as at boot,
-     * and waits a few seconds for it to run. Returns false if the module
-     * is disabled or marked for removal, and throws [AbdException.TimedOut]
-     * if the service did not become ready.
+     * and waits a few seconds for it to run. A module this app installed
+     * that turned itself off is turned on again, as no root manager can.
+     * Returns false if a module in a root manager is disabled or marked for
+     * removal there, and throws [AbdException.TimedOut] if the service did
+     * not become ready.
      */
     suspend fun startDaemon(): Boolean
 
     /**
      * Turns the module on again after its boot guard turned it off, as the
      * root manager's switch would, and starts the daemon. Returns false when
-     * the module is marked for removal.
+     * the module is marked for removal in a root manager.
      */
     suspend fun turnOnAgain(): Boolean
 
-    /** Restarts the device, as a new module needs with Magisk and APatch. */
+    /** Restarts the device, as a module flashed in Magisk or APatch needs before it runs. */
     suspend fun restartDevice()
 }
 
@@ -121,31 +152,44 @@ internal class RootModuleRepository(
     private suspend fun verifyState(): ModuleState {
         val result = rootShell.run(
             """
+            $LOCATE
             if [ -d $PENDING_UPDATE_DIR ]; then
-                echo restart
+                echo $PENDING
             elif [ -e $PENDING_UPDATE_DIR ] || [ -L $PENDING_UPDATE_DIR ]; then
                 exit 1
-            elif [ ! -e $MODULE_DIR ] && [ ! -L $MODULE_DIR ]; then
-                echo absent
+            fi
+            if [ ! -e $MODULE_DIR ] && [ ! -L $MODULE_DIR ]; then
+                echo $ABSENT
             else
-                [ -x $ABD ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP && { stat -c "$STAT_PREFIX$STAT_FORMAT" $ABD 2>/dev/null || true; }
+                [ -x $DAEMON ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP && { stat -c "$STAT_PREFIX$STAT_FORMAT" $DAEMON 2>/dev/null || true; }
             fi
             """.trimIndent(),
             label = "module state",
         )
         if (!result.isSuccess) return ModuleState.Unavailable
-        val lines = result.output.trim().lines()
-        val code = when (val output = lines.first().trim()) {
-            "restart" -> return ModuleState.NeedsRestart
-            "absent" -> return ModuleState.NotInstalled
+        val probe = result.output.trim().lines().map(String::trim)
+        val pending = probe.first() == PENDING
+        val inUse = if (pending) probe.drop(1) else probe
+
+        // A module waiting in a root manager replaces the one in use at the
+        // next boot. Where none in use is this app's, that restart comes
+        // before anything else is installed.
+        fun orRestart(state: ModuleState) = if (pending) ModuleState.NeedsRestart else state
+        val code = when (val output = inUse.firstOrNull()) {
+            null -> return ModuleState.Unavailable
+            ABSENT -> return orRestart(ModuleState.NotInstalled)
             else -> output.removePrefix("version ").toLongOrNull() ?: return ModuleState.Unavailable
         }
-        if (code != bundledVersionCode()) return ModuleState.Mismatched
-        return verifyDaemon(daemonFileKey(lines))
+        if (code != bundledVersionCode()) return orRestart(ModuleState.Mismatched)
+        return when (val verified = verifyDaemon(daemonFileKey(inUse))) {
+            ModuleState.Mismatched -> orRestart(verified)
+            else -> verified
+        }
     }
 
     override suspend fun installedVersion(): String? = try {
-        rootShell.run("sed -n 's/^version=//p' $MODULE_PROP").output.lineSequence().firstOrNull()?.trim()?.ifEmpty { null }
+        rootShell.run("$LOCATE; sed -n 's/^version=//p' $MODULE_PROP", label = "module version")
+            .output.lineSequence().firstOrNull()?.trim()?.ifEmpty { null }
     } catch (_: AbdException.NoRoot) {
         null
     }
@@ -163,20 +207,39 @@ internal class RootModuleRepository(
     override suspend fun installBundled(): Boolean {
         val result = rootShell.run(installCommand(context.applicationInfo.sourceDir), label = "module install", timeoutSeconds = INSTALL_TIMEOUT_SECONDS)
         if (!result.isSuccess) throw AbdException.CommandFailed(result.output.ifBlank { result.error })
-        return when (state()) {
-            ModuleState.Ready -> true
-            ModuleState.NeedsRestart -> false
-            else -> throw AbdException.CommandFailed("Could not verify the installed module")
-        }
+        // The installer leaves the module in use: one that is not this
+        // app's now was not installed.
+        if (state() != ModuleState.Ready) throw AbdException.CommandFailed("Could not verify the installed module")
+        return true
+    }
+
+    override suspend fun isInstalledByApp(): Boolean = try {
+        rootShell.run("$LOCATE; [ $MODULE_DIR = $DIRECT_DIR ] && [ -f $DIRECT_DIR/direct.sh ]", label = "module owner").isSuccess
+    } catch (_: AbdException.NoRoot) {
+        false
+    }
+
+    override suspend fun remove() = changes.changing {
+        // The script of the module itself: it removes what that version kept.
+        val result = rootShell.run(
+            "$LOCATE; [ $MODULE_DIR = $DIRECT_DIR ] && sh $DIRECT_DIR/direct.sh remove </dev/null 2>&1",
+            label = "module remove",
+            timeoutSeconds = REMOVE_TIMEOUT_SECONDS,
+        )
+        if (!result.isSuccess) throw AbdException.CommandFailed(result.output.ifBlank { "The module was not removed" })
     }
 
     override suspend fun startDaemon(): Boolean = changes.changing {
+        // Only its own boot guard turns off a module this app installed, and
+        // no root manager has a switch for it. A switch that could not be
+        // cleared is found by the check that follows.
+        rootShell.run("$LOCATE; [ $MODULE_DIR != $DIRECT_DIR ] || rm -f $DIRECT_DIR/disable", label = "module enable")
         if (disabledOrRemoved()) return@changing false
         // The script leaves the supervisor running in the background; with
         // its output detached, the shell returns once it has been started.
         val script = "$MODULE_DIR/service.sh"
         val result = rootShell.run(
-            "if [ -f $script ]; then sh $script </dev/null >/dev/null 2>&1; else echo '$script not found'; false; fi",
+            "$LOCATE; if [ -f $script ]; then sh $script </dev/null >/dev/null 2>&1; else echo 'service.sh not found'; false; fi",
             label = "daemon start",
         )
         if (!result.isSuccess) throw AbdException.CommandFailed(result.output)
@@ -186,7 +249,7 @@ internal class RootModuleRepository(
     }
 
     override suspend fun turnOnAgain(): Boolean {
-        val result = rootShell.run("rm -f $MODULE_DIR/disable", label = "module enable")
+        val result = rootShell.run("$LOCATE; rm -f $MODULE_DIR/disable", label = "module enable")
         if (!result.isSuccess) throw AbdException.CommandFailed(result.error.ifBlank { result.output })
         return startDaemon()
     }
@@ -196,7 +259,7 @@ internal class RootModuleRepository(
         rootShell.run("svc power reboot || reboot", label = "reboot", timeoutSeconds = REBOOT_TIMEOUT_SECONDS)
     }
 
-    private suspend fun disabledOrRemoved(): Boolean = rootShell.run("[ -e $MODULE_DIR/disable ] || [ -e $MODULE_DIR/remove ]").isSuccess
+    private suspend fun disabledOrRemoved(): Boolean = rootShell.run("$LOCATE; [ -e $MODULE_DIR/disable ] || [ -e $MODULE_DIR/remove ]", label = "module switch").isSuccess
 
     private fun bundledVersionCode(): Long = context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
 
@@ -210,9 +273,16 @@ internal class RootModuleRepository(
     }
 
     private companion object {
-        /** Flashing unpacks and checks the whole module. */
+        /** Installing unpacks and checks the whole module. */
         const val INSTALL_TIMEOUT_SECONDS = 300
+
+        /** Removing waits for the daemon to stop, and for the packet filter's locks. */
+        const val REMOVE_TIMEOUT_SECONDS = 120
         const val REBOOT_TIMEOUT_SECONDS = 30
+
+        /** What the probe of the module prints first for a module waiting for a restart, and for none in use. */
+        const val PENDING = "pending"
+        const val ABSENT = "absent"
     }
 }
 
@@ -234,7 +304,7 @@ internal class InstalledDaemonHash(private val rootShell: RootShell) {
     /** Null if it cannot be read. Without a [key] nothing is kept: the file is hashed every time. */
     suspend fun hash(key: String?): String? {
         known?.takeIf { key != null && it.first == key }?.let { return it.second }
-        val result = rootShell.run("sha256sum $ABD")
+        val result = rootShell.run("$LOCATE; sha256sum $DAEMON", label = "module daemon")
         val hash = result.output.substringBefore(' ').trim()
         if (!result.isSuccess || !SHA256.matches(hash)) return null
         known = key?.let { it to hash }
@@ -275,26 +345,13 @@ internal suspend fun awaitRunning(abd: AbdClient): Boolean = withTimeoutOrNull(5
 } ?: false
 
 /**
- * A shell command that flashes the module in [apkPath] with the installer of
- * whichever root manager is present.
- *
- * Magisk is tested first because `magisk -V` asks the running daemon, so it
- * only succeeds while Magisk is the active root. The daemons of KernelSU and
- * APatch are found by their files, which can outlive a switch to another
- * manager; KernelSU wins if both exist.
+ * A shell command that installs the module in [apkPath] with the module's
+ * own installer, module/direct.sh. The script and what it installs both come
+ * out of the installed APK, which only the package manager replaces; the
+ * script is run from a copy in a directory of root's.
  */
 internal fun installCommand(apkPath: String): String {
     val apk = apkPath.shellQuoted()
-    return """
-        if magisk -V >/dev/null 2>&1; then
-            magisk --install-module $apk 2>&1
-        elif [ -x /data/adb/ksud ]; then
-            /data/adb/ksud module install $apk 2>&1
-        elif [ -x /data/adb/apd ]; then
-            /data/adb/apd module install $apk 2>&1
-        else
-            echo "No module installer found (KernelSU, Magisk or APatch)."
-            exit 1
-        fi
-    """.trimIndent()
+    return "(umask 077; d=\$(mktemp -d /data/adb/.$MODULE_ID-install.XXXXXX) || exit 1; trap 'rm -rf \"\$d\"' EXIT; " +
+        "unzip -p $apk direct.sh >\"\$d/direct.sh\" && sh \"\$d/direct.sh\" install $apk) 2>&1"
 }

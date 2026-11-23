@@ -113,10 +113,10 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   a command or a file name together with the scripts.
 - The module is in `/data/adb/modules/adblocker` when a root manager has
   it, and in `/data/adb/adblocker_direct`, with a launcher in
-  `/data/adb/service.d/adblocker.sh`, when it was installed with root alone
+  `/data/adb/service.d/adblocker.sh`, when the app installed it
   (`module/direct.sh`). The manager's is in use once it has `bin/abd`.
-  `module/*.sh`, `abd/src/daemon/owner.rs` and the device checks all go by
-  this; change them together.
+  `module/*.sh`, `ModulePaths` in the app, `abd/src/daemon/owner.rs` and
+  the device checks all go by this; change them together.
 - The app reads the daemon only through `abd ... --json`, whose outputs are
   in `testdata/protocol/`. Change an output, its case, `abd-engine/src/protocol.rs`
   and `android/core/data/.../AbdProtocol.kt` in the same commit. An invalid

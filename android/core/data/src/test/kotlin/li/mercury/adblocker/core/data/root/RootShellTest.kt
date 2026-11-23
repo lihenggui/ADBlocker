@@ -31,6 +31,7 @@ import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
 import java.io.SequenceInputStream
+import java.nio.file.Files
 import java.util.concurrent.TimeUnit
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -218,12 +219,53 @@ class RootShellTest {
     }
 
     @Test
-    fun theInstallerIsGivenTheApkPathAsOneWord() {
+    fun theInstallerIsTakenOutOfTheApkAndGivenItsPathAsOneWord() {
         val bin = fakeBin()
-        bin.script("magisk", "[ \"\$1\" = -V ] && exit 0\nprintf '%s\\n' \"\$@\"")
+        val stage = bin.resolve("stage")
+        // Root's directory is not the host's to write in.
+        bin.script("mktemp", "mkdir ${stage.path} && echo ${stage.path}")
+        // The installer in this archive prints what it was asked for.
+        bin.script("unzip", "printf '%s\\n' \"\$@\" >${bin.path}/unzipped\necho 'printf \"%s\\n\" \"\$@\"'")
         val apk = "/data/app/~~x y/li.mercury.adblocker-'1'/base.apk"
         val ran = sh(installCommand(apk), bin)
         assertEquals(0, ran.code)
-        assertEquals(listOf("--install-module", apk), ran.output.lines().filter { it.isNotEmpty() })
+        assertEquals(listOf("install", apk), ran.output.lines().filter { it.isNotEmpty() })
+        assertEquals(listOf("-p", apk, "direct.sh"), bin.resolve("unzipped").readLines())
+        assertTrue(!stage.exists())
+    }
+
+    @Test
+    fun anInstallerThatFailsKeepsItsStatusAndLeavesNothingBehind() {
+        val bin = fakeBin()
+        val stage = bin.resolve("stage")
+        bin.script("mktemp", "mkdir ${stage.path} && echo ${stage.path}")
+        bin.script("unzip", "echo 'echo \"! Unsupported architecture: riscv64\"; exit 1'")
+        val ran = sh(installCommand("/base.apk"), bin)
+        assertEquals(1, ran.code)
+        assertEquals("! Unsupported architecture: riscv64", ran.output.trim())
+        assertTrue(!stage.exists())
+    }
+
+    @Test
+    fun abdIsTheManagersModuleOnceItHasItsDaemonAndElseTheOneTheAppInstalled() {
+        val adb = Files.createTempDirectory("adb").toFile().apply { deleteOnExit() }
+        val abd = ModulePaths.ABD.replace("/data/adb", adb.path)
+        fun install(dir: String) = adb.resolve("$dir/bin").apply { mkdirs() }.script("abd", "echo $dir\nprintf '%s\\n' \"\$@\"\ncat\nexit 3")
+        assertEquals(127, sh("$abd status").code)
+
+        install("adblocker_direct")
+        // What a manager keeps for a module it applies at the next boot.
+        adb.resolve("modules/adblocker").mkdirs()
+        val arguments = listOf("it's", "two words", "\$HOME")
+        val ran = sh("echo input | $abd ${arguments.joinToString(" ") { it.shellQuoted() }}")
+        assertEquals(listOf("adblocker_direct") + arguments + "input", ran.output.lines().filter { it.isNotEmpty() })
+        assertEquals(3, ran.code)
+
+        install("modules/adblocker")
+        fun said(command: String) = sh(command).output.lines().filter { it.isNotEmpty() }
+        assertEquals(listOf("modules/adblocker"), said("$abd </dev/null"))
+        // In the forms the root shell runs it in.
+        assertEquals(listOf("modules/adblocker", "status"), said(bounded("$abd status", 5)))
+        assertEquals(listOf("modules/adblocker", "input"), said("echo input | exec timeout 5 $abd"))
     }
 }

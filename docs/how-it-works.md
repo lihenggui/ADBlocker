@@ -352,6 +352,37 @@ limits.
   IPv6 capture when it detects this condition, allowing the app's own
   `connect()` to report the failure.
 
+## Installing the root module
+
+The module is a set of scripts and the daemon for the device, taken from
+the app's APK by its installer (`module/customize.sh`). It has no system
+overlay, SELinux rules or `post-fs-data` script, so root alone can install
+it, and it can be in either of two places.
+
+- The app installs it with `module/direct.sh` into
+  `/data/adb/adblocker_direct` and starts it at once. No root manager lists
+  it. A launcher in `/data/adb/service.d`, which KernelSU, Magisk and APatch
+  run at late_start, starts it at boot. Where nothing runs that directory,
+  the daemon runs from when it is started in the app.
+- Flashed in a root manager, it is in `/data/adb/modules/adblocker`. This
+  one is in use once it has its daemon: a manager keeps a directory without
+  it for a module it applies at the next boot. When it first starts, it
+  stops the daemon of a module the app had installed and removes that
+  module. Installing from the app then brings the manager's module up to
+  date where it is, without a restart.
+- Both keep their data in `/data/adb/adblocker`, so the selection, the
+  lists and the authority carry over from one to the other.
+- The app removes a module it installed: the daemon stops, apps stop
+  trusting the authority, its key is destroyed and the data is deleted. A
+  module in a root manager is removed there.
+- With the app uninstalled, nothing is left to control a module it
+  installed. Its daemon reads Android's package list when the list changes
+  and ends, removing its rules, once the app has been absent for 30
+  seconds; the data stays for the app installed again. At the next boot the
+  launcher removes the module and its data if the app is still absent. A
+  package list that cannot be read, or that lacks a package every device
+  has, changes nothing.
+
 ## Without root
 
 On devices without root, the Android app runs the filtering engine in its
