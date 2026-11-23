@@ -23,13 +23,13 @@
 //! whose connection was handed on. An app whose processes cannot be given
 //! the mounts is not decrypted.
 
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::os::unix::fs::MetadataExt as _;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tokio::sync::{Mutex, Semaphore};
+use tokio::sync::{Mutex, OwnedMutexGuard, Semaphore};
 
 use crate::trust::{EXIT_GONE, EXIT_HAD};
 use abd_engine::mitm::Trusting;
@@ -44,6 +44,9 @@ pub const GROUPS: [&str; 3] = ["/sys/fs/cgroup", "/sys/fs/cgroup/apps", "/acct"]
 
 /// How long the mounting in one process may take.
 const MOUNT_TIME: Duration = Duration::from_secs(5);
+/// How long a connection or a start waits for its app's turn before
+/// going on without it: as long as one mounting may take.
+const TURN_TIME: Duration = MOUNT_TIME;
 const SCAN_TIME: Duration = Duration::from_secs(1);
 const MAX_CACHED_UIDS: usize = 1024;
 
@@ -63,9 +66,12 @@ pub struct Mounts {
     program: PathBuf,
     /// The processes that have the mounts, by UID: an entry for each app
     /// that was ever decrypted for, of which there are as many as the
-    /// user chose. Held while the mounts are given to more, so that two
-    /// connections of an app do not both set about it.
-    done: Mutex<HashMap<u32, Mounted>>,
+    /// user chose. Changed only by the holder of the app's turn.
+    done: std::sync::Mutex<HashMap<u32, Mounted>>,
+    /// A turn for each app given the mounts, held while they are given to
+    /// more of its processes or taken away, so that two connections of an
+    /// app do not both set about it. One app never waits for another's.
+    turns: std::sync::Mutex<HashMap<u32, Arc<Mutex<()>>>>,
     /// What was found for each UID when its processes were last gone
     /// through, and what its directory was like then. The directory
     /// changes when a process of the app starts or ends: until it does,
@@ -186,7 +192,8 @@ impl Mounts {
     pub fn new() -> std::io::Result<Self> {
         Ok(Self {
             program: std::env::current_exe()?,
-            done: Mutex::default(),
+            done: std::sync::Mutex::default(),
+            turns: std::sync::Mutex::default(),
             seen: std::sync::Mutex::default(),
             directories: std::sync::Mutex::default(),
             groups: std::sync::Mutex::default(),
@@ -383,14 +390,22 @@ impl Mounts {
     /// Called after `set_apps`. An app that is among them again by the
     /// time this runs keeps what it has.
     pub async fn release(&self) {
-        let mut done = self.done.lock().await;
-        let dropped: Vec<u32> = done
-            .keys()
-            .copied()
-            .filter(|uid| !self.is_given(*uid))
-            .collect();
+        // Those being given the mounts now hold a turn, and may have no
+        // entry yet: they are waited for, then taken from.
+        let apps = self.apps.read().unwrap().clone();
+        let mut dropped: BTreeSet<u32> = self.done.lock().unwrap().keys().copied().collect();
+        dropped.extend(self.turns.lock().unwrap().keys());
+        dropped.retain(|uid| !apps.contains_key(uid));
         for uid in dropped {
-            let Some(mounted) = done.remove(&uid) else {
+            // Waited for without a bound of its own: whoever holds the
+            // turn is held to `MOUNT_TIME` for each process, and an app no
+            // longer given must not keep the mounts until another release.
+            let turn = self.turns.lock().unwrap().entry(uid).or_default().clone();
+            let _turn = turn.lock_owned().await;
+            if self.is_given(uid) {
+                continue;
+            }
+            let Some(mounted) = self.done.lock().unwrap().remove(&uid) else {
                 continue;
             };
             self.seen.lock().unwrap().remove(&uid);
@@ -402,6 +417,25 @@ impl Mounts {
                 self.run("unmount", pid, uid).await;
             }
         }
+        self.forget_turns();
+    }
+
+    /// Waits for the turn of `uid`, for at most [`TURN_TIME`].
+    async fn turn(&self, uid: u32) -> Option<OwnedMutexGuard<()>> {
+        let turn = self.turns.lock().unwrap().entry(uid).or_default().clone();
+        tokio::time::timeout(TURN_TIME, turn.lock_owned())
+            .await
+            .ok()
+    }
+
+    /// Keeps the turns of the apps given the mounts and of those somebody
+    /// holds or waits for: no more than there are apps and connections.
+    fn forget_turns(&self) {
+        let apps = self.apps.read().unwrap().clone();
+        self.turns
+            .lock()
+            .unwrap()
+            .retain(|uid, turn| apps.contains_key(uid) || Arc::strong_count(turn) > 1);
     }
 
     fn is_given(&self, uid: u32) -> bool {
@@ -487,20 +521,52 @@ impl Mounts {
             (inspected_at, processes)
         })
         .await?;
-        let mut done = self.done.lock().await;
+        // Only the holder of the turn changes the app's entry in `done`.
+        let _turn = self.turn(uid).await?;
+        let newer = self
+            .done
+            .lock()
+            .unwrap()
+            .get(&uid)
+            .is_some_and(|last| last.inspected_at > inspected_at);
         if !self.is_given(uid)
             || group_generation
                 .is_some_and(|generation| generation != self.groups.lock().unwrap().generation)
-            || done
-                .get(&uid)
-                .is_some_and(|last| last.inspected_at > inspected_at)
+            || newer
         {
             return None;
         }
-        let had = done
+        let had = self
+            .done
+            .lock()
+            .unwrap()
             .remove(&uid)
             .map(|mounted| mounted.processes)
             .unwrap_or_default();
+        let (have, all, mounted) = self.give(uid, now, &had).await;
+        // No process at all is no app to show a certificate to: one
+        // started outside the system's own way of starting apps, whose
+        // processes are not where they are looked for.
+        let trusted = all && !have.is_empty();
+        self.done.lock().unwrap().insert(
+            uid,
+            Mounted {
+                inspected_at,
+                processes: have,
+            },
+        );
+        Some((trusted, mounted))
+    }
+
+    /// Gives the mounts to each of the processes `now` of `uid` that `had`
+    /// not got them. Returns those that have them, whether all do, and
+    /// whether any was given them just now.
+    async fn give(
+        &self,
+        uid: u32,
+        now: Vec<Process>,
+        had: &HashSet<Process>,
+    ) -> (HashSet<Process>, bool, bool) {
         let mut have = HashSet::new();
         let (mut all, mut mounted) = (true, false);
         for process in now {
@@ -526,18 +592,7 @@ impl Mounts {
                 _ => all = false,
             }
         }
-        // No process at all is no app to show a certificate to: one
-        // started outside the system's own way of starting apps, whose
-        // processes are not where they are looked for.
-        let trusted = all && !have.is_empty();
-        done.insert(
-            uid,
-            Mounted {
-                inspected_at,
-                processes: have,
-            },
-        );
-        Some((trusted, mounted))
+        (have, all, mounted)
     }
 
     /// What `abd trust mount` exited with for process `pid` of `uid`.
@@ -662,7 +717,7 @@ mod tests {
         mounts.set_apps(Arc::new(BTreeMap::from([(me + 1, "com.other".to_owned())])));
         assert_eq!(mounts.ensure(me).await, Trusting::No);
         mounts.started(me).await;
-        assert!(mounts.done.lock().await.is_empty());
+        assert!(mounts.done.lock().unwrap().is_empty());
     }
 
     #[tokio::test]
@@ -674,7 +729,81 @@ mod tests {
         assert!(!mounts.is_given(uid));
         assert_eq!(mounts.ensure(uid).await, Trusting::No);
         mounts.started(uid).await;
-        assert!(mounts.done.lock().await.is_empty());
+        assert!(mounts.done.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn one_app_being_given_the_mounts_does_not_hold_up_another() {
+        let mounts = Mounts::new().unwrap();
+        let _first = mounts.turn(10001).await.unwrap();
+        let start = tokio::time::Instant::now();
+        assert!(mounts.turn(10002).await.is_some());
+        assert_eq!(start.elapsed(), Duration::ZERO);
+        // The same app's next waits for no longer than the turn time.
+        assert!(mounts.turn(10001).await.is_none());
+        assert_eq!(start.elapsed(), TURN_TIME);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_connection_waiting_for_its_apps_turn_too_long_is_not_decrypted() {
+        let mounts = Mounts::new().unwrap();
+        // This test's own processes: there to be gone through.
+        // SAFETY: cannot fail and touches no memory.
+        #[allow(unsafe_code)]
+        let me = unsafe { libc::getuid() };
+        mounts.set_apps(Arc::new(BTreeMap::from([(me, "com.example".to_owned())])));
+        let _held = mounts.turn(me).await.unwrap();
+        let start = tokio::time::Instant::now();
+        assert_eq!(mounts.ensure(me).await, Trusting::No);
+        assert!(start.elapsed() >= TURN_TIME);
+        assert!(mounts.done.lock().unwrap().is_empty());
+    }
+
+    #[tokio::test]
+    async fn a_release_takes_from_an_app_no_longer_given_while_another_holds_its_turn() {
+        let mounts = Mounts::new().unwrap();
+        mounts.set_apps(Arc::new(BTreeMap::from([(10002, "com.kept".to_owned())])));
+        mounts.done.lock().unwrap().insert(
+            10001,
+            Mounted {
+                inspected_at: Instant::now(),
+                processes: HashSet::new(),
+            },
+        );
+        let _held = mounts.turn(10002).await.unwrap();
+        tokio::time::timeout(Duration::from_secs(1), mounts.release())
+            .await
+            .unwrap();
+        assert!(mounts.done.lock().unwrap().is_empty());
+        // Only the turns of the apps still given are kept.
+        let turns: Vec<u32> = mounts.turns.lock().unwrap().keys().copied().collect();
+        assert_eq!(turns, [10002]);
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_release_waits_out_whoever_holds_the_turn_of_an_app_no_longer_given() {
+        let mounts = Arc::new(Mounts::new().unwrap());
+        mounts.done.lock().unwrap().insert(
+            10001,
+            Mounted {
+                inspected_at: Instant::now(),
+                processes: HashSet::new(),
+            },
+        );
+        let held = mounts.turn(10001).await.unwrap();
+        let releasing = tokio::spawn({
+            let mounts = mounts.clone();
+            async move { mounts.release().await }
+        });
+        // Longer than a connection would wait: the app is not left with
+        // the mounts for a release that may never come.
+        tokio::time::sleep(TURN_TIME * 3).await;
+        assert!(!releasing.is_finished());
+        assert!(!mounts.done.lock().unwrap().is_empty());
+        drop(held);
+        releasing.await.unwrap();
+        assert!(mounts.done.lock().unwrap().is_empty());
+        assert!(mounts.turns.lock().unwrap().is_empty());
     }
 
     #[tokio::test]
