@@ -19,7 +19,10 @@ use std::path::Path;
 use abd_engine::apps::{PER_USER_RANGE, named};
 use anyhow::{Result, bail};
 
-use super::classification::{Installed, Resolution, ResolvedPackages, resolved_packages};
+use super::classification::{
+    COMPANION_PACKAGE, Installed, ON_EVERY_DEVICE, Resolution, ResolvedPackages, companion_listed,
+    resolved_packages,
+};
 use super::eligibility::{personal_eligibility, report_eligibility};
 use super::groups::retained_groups;
 use super::package_inventory::{SharedUsers, package_owners, shared_users};
@@ -30,6 +33,28 @@ use crate::paths::Paths;
 
 fn profile(id: u32, bytes: &[u8]) -> Option<Profile> {
     user(id, bytes)?.1
+}
+
+#[test]
+fn the_app_is_gone_only_by_a_list_with_what_every_device_has() {
+    let shell =
+        "com.android.shell 2000 0 /data/user/0/com.android.shell shell:s0 none 0 0 1 @null\n";
+    let app =
+        "li.mercury.adblocker 10200 0 /data/user/0/li.mercury.adblocker default none 0 3 1 @null\n";
+    // Another package whose name begins with the app's.
+    let check = "li.mercury.adblocker.check 10201 0 /data/user/0/li.mercury.adblocker.check default none 0 1 1 @null\n";
+    assert_eq!(companion_listed(&format!("{shell}{app}")), Some(true));
+    assert_eq!(companion_listed(&format!("{shell}{check}")), Some(false));
+    assert_eq!(companion_listed(shell), Some(false));
+    for implausible in ["", check, app, "com.android.shell\n"] {
+        assert_eq!(companion_listed(implausible), None, "{implausible:?}");
+    }
+    // module/direct.sh looks for the same two packages in the list at boot.
+    let script = include_str!("../../../module/direct.sh");
+    for (package, found) in [(ON_EVERY_DEVICE, "device"), (COMPANION_PACKAGE, "app")] {
+        let line = format!("'s/^{} .*/{found}/p'", package.replace('.', "\\."));
+        assert!(script.contains(&line), "{line}");
+    }
 }
 
 #[test]

@@ -35,8 +35,10 @@ and pid files in `/data/adb/adblocker`.
   daemon is started from the app. `boot` does nothing while a root manager
   has the module or the module is disabled. `remove` uninstalls, from the
   app or at boot once the app is gone from `/data/system/packages.list`;
-  a list that lacks what every device has says nothing.
-  `scripts/install-on-emulator.sh` installs with `direct.sh` too.
+  a list that lacks what every device has says nothing. The daemon of such
+  a module ends by itself when the app is uninstalled
+  (`abd/src/daemon/owner.rs`). `scripts/install-on-emulator.sh` installs
+  with `direct.sh` too.
 - `service.sh` runs at boot (late_start) and must return quickly. It starts
   the daemon under `supervise.sh` and does nothing else to the device,
   except that in a root manager it removes a module the app had installed:

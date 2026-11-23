@@ -25,7 +25,25 @@ use super::package_inventory::{PackageUids, SharedUsers, package_owners, package
 use super::package_settings::read_shared_users;
 use super::packages::{package_list, package_snapshot};
 
-const COMPANION_PACKAGE: &str = "li.mercury.adblocker";
+pub(super) const COMPANION_PACKAGE: &str = "li.mercury.adblocker";
+
+/// A package of Android's own. A list of packages without it is not the
+/// package manager's whole list.
+pub(super) const ON_EVERY_DEVICE: &str = "com.android.shell";
+
+/// Whether the app is installed for any user, by Android's list of
+/// packages. `None` when the list cannot be read or lacks what every device
+/// has: such a list says nothing about the app.
+pub fn companion_installed() -> Option<bool> {
+    companion_listed(&package_list().ok()?)
+}
+
+pub(super) fn companion_listed(packages: &str) -> Option<bool> {
+    let known = package_owners(packages).packages;
+    known
+        .contains_key(ON_EVERY_DEVICE)
+        .then(|| known.contains_key(COMPANION_PACKAGE))
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum Resolution {
