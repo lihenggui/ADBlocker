@@ -42,7 +42,4 @@ interface VpnController {
     fun requestBatteryExemptionIntent(): Intent? = null
 
     fun dismissBatteryExemption() = Unit
-
-    /** Builds the VPN again: the set of chosen apps changed. */
-    suspend fun rebuild()
 }

@@ -87,8 +87,6 @@ class OverviewViewModelTest {
         override suspend fun stop() {
             done += "vpn stop"
         }
-
-        override suspend fun rebuild() = Unit
     }
 
     private val methods = object : FilterMethodRepository by unexpected() {

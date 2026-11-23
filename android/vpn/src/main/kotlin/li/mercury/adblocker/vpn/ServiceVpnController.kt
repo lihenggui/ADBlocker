@@ -91,9 +91,4 @@ internal class ServiceVpnController internal constructor(
     override fun dismissBatteryExemption() {
         recovery?.clear()
     }
-
-    /** Builds the VPN again if the set of chosen apps changed; the service also does when told of a change. */
-    override suspend fun rebuild() {
-        running.session?.refresh()
-    }
 }

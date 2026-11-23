@@ -201,8 +201,6 @@ internal class FilterMethodRepositoryFixture {
         override suspend fun stop() {
             stops++
         }
-
-        override suspend fun rebuild() = Unit
     }
 
     val userData = TestUserDataRepository(UserData(filterMethod = FilterMethod.Root))

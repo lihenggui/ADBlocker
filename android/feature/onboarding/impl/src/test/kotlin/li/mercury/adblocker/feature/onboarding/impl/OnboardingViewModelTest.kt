@@ -166,8 +166,6 @@ class OnboardingViewModelTest {
         }
 
         override suspend fun stop() = Unit
-
-        override suspend fun rebuild() = Unit
     }
 
     private val daemon = object : DaemonRepository by unexpected() {
