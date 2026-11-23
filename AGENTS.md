@@ -24,9 +24,10 @@ SECURITY.md, and building, checks and releasing in CONTRIBUTING.md.
 - `testdata/protocol/`: what each `abd ... --json` command prints, read by
   the tests of the daemon and of the app.
 - `scripts/`: `build.sh` (full build), `install-on-emulator.sh` (the module
-  on an emulator without a root manager) and `check-device.sh` (on-device
+  on an emulator without a root manager), `check-device.sh` (on-device
   check that an app's traffic is filtered, and that the app keeps its
-  network when the daemon is killed).
+  network when the daemon is killed) and `check-module-*.sh` (the module
+  scripts against a model of the device, on the host).
 
 ## Commands
 
@@ -110,6 +111,11 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   `abd.pid`, `supervisor.pid`, `abd.log`, `boot-guard` and `boot_pending` in
   `/data/adb/adblocker`. Change
   a command or a file name together with the scripts.
+- The module is in `/data/adb/modules/adblocker` when a root manager has
+  it, and in `/data/adb/adblocker_direct`, with a launcher in
+  `/data/adb/service.d/adblocker.sh`, when it was installed with root alone
+  (`module/direct.sh`). The manager's is in use once it has `bin/abd`.
+  `module/*.sh` and the device checks go by this; change them together.
 - The app reads the daemon only through `abd ... --json`, whose outputs are
   in `testdata/protocol/`. Change an output, its case, `abd-engine/src/protocol.rs`
   and `android/core/data/.../AbdProtocol.kt` in the same commit. An invalid

@@ -60,6 +60,7 @@ jobs:
           done
           sh scripts/check-module-uninstall.sh
           sh scripts/check-module-boot.sh
+          sh scripts/check-module-direct.sh
 
       - name: Check license headers
         run: |
@@ -216,7 +217,9 @@ jobs:
 
       - name: Check module restart and uninstall
         run: |
-          module=/data/adb/modules/adblocker
+          # Where install-on-emulator.sh leaves it, as the app does.
+          module=/data/adb/adblocker_direct
+          launcher=/data/adb/service.d/adblocker.sh
           # A saved selection should republish its routing gates after reboot.
           adb shell "$module/bin/abd app add li.mercury.adblocker"
           adb reboot
@@ -229,8 +232,10 @@ jobs:
           adb root
           timeout 60 adb wait-for-device
           test "$(adb shell id -u | tr -d '\r')" = 0
-          # The emulator has no root manager to invoke the late-start script.
-          adb shell "setsid sh $module/service.sh </dev/null >/dev/null 2>&1"
+          # The emulator has no root manager to run what is in service.d
+          # at late_start.
+          adb shell "test -x $launcher"
+          adb shell "setsid sh $launcher </dev/null >/dev/null 2>&1"
           deadline=$((SECONDS + 60))
           until adb shell "$module/bin/abd status --json" | jq -e '.running and (.started != null) and .apps == 1' >/dev/null; do
             ((SECONDS < deadline)) || exit 1
@@ -257,7 +262,7 @@ jobs:
             test -n "$ipv6"
           fi
           adb shell 'test -d /data/adb/adblocker/ca'
-          adb shell sh "$module/uninstall.sh"
+          adb shell sh "$module/direct.sh" remove
           ipv4=$(capture_gate 4)
           ipv6=$(capture_gate 6)
           test -z "$ipv4"
@@ -267,6 +272,7 @@ jobs:
                      test ! -e /data/adb/adblocker/user-store &&
                      test ! -e /data/adb/adblocker/supervisor.pid &&
                      test ! -e /data/adb/adblocker/abd.pid'
+          adb shell "test ! -e $module && test ! -e $launcher"
           adb uninstall li.mercury.adblocker
 
       - name: Check VPN filtering and lifecycle

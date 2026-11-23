@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+# Sourced by the module installer of KernelSU, Magisk or APatch, and by
+# direct.sh, which installs the module without a root manager.
+#
 # The installer must not unpack the whole archive: it carries a daemon for
 # each architecture, and only this device's is wanted. The archive is also
 # the app's APK (scripts/build.sh), whose files are of no use to the module.
@@ -23,7 +26,9 @@ APP_PACKAGE=li.mercury.adblocker
 
 # Magisk is tested last: KernelSU and APatch also set MAGISK_VER_CODE, for
 # modules that only know Magisk.
-if [ "$APATCH" = true ]; then
+if [ "$DIRECT_INSTALL" = true ]; then
+    ui_print "- Installing with root alone"
+elif [ "$APATCH" = true ]; then
     ui_print "- Installing on APatch"
 elif [ "$KSU" = true ]; then
     ui_print "- Installing on KernelSU"
@@ -55,16 +60,17 @@ for tool in timeout ip iptables iptables-restore ip6tables ip6tables-restore; do
 done
 
 ui_print "- Extracting module files"
-unzip -o "$ZIPFILE" module.prop service.sh supervise.sh stop.sh uninstall.sh \
-    action.sh -d "$MODPATH" >&2 ||
+# The module's own files beside the daemon. direct.sh replaces a module in
+# this order, the version last.
+MODULE_FILES="service.sh supervise.sh stop.sh uninstall.sh action.sh direct.sh module.prop"
+unzip -o "$ZIPFILE" $MODULE_FILES -d "$MODPATH" >&2 ||
     abort "! Failed to extract module files"
 # Only the daemon for this device, as bin/abd (-j drops the bin/$ARCH/ part).
 mkdir -p "$MODPATH/bin"
 unzip -o -j "$ZIPFILE" "bin/$ARCH/abd" -d "$MODPATH/bin" >&2 ||
     abort "! Failed to extract the daemon for $ARCH"
 # unzip does not reliably fail for a name that is missing from the archive.
-for file in module.prop service.sh supervise.sh stop.sh uninstall.sh \
-    action.sh bin/abd; do
+for file in $MODULE_FILES bin/abd; do
     [ -f "$MODPATH/$file" ] || abort "! $file is missing from the archive"
 done
 set_perm_recursive "$MODPATH" 0 0 0755 0644
@@ -96,7 +102,10 @@ fi
 MODULE_HOT_INSTALL_REQUEST=true
 MODULE_HOT_RUN_SCRIPT=service.sh
 
-ui_print "- Choose the filtering scope and apps in ADBlocker, or run:"
-ui_print "    su -c $MODPATH/bin/abd app add <package>"
-ui_print "    su -c $MODPATH/bin/abd update"
+# direct.sh has yet to move the module to where it stays.
+if [ "$DIRECT_INSTALL" != true ]; then
+    ui_print "- Choose the filtering scope and apps in ADBlocker, or run:"
+    ui_print "    su -c $MODPATH/bin/abd app add <package>"
+    ui_print "    su -c $MODPATH/bin/abd update"
+fi
 ui_print "- Data is stored in /data/adb/adblocker"

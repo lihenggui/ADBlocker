@@ -31,6 +31,15 @@ log() {
     printf '%s\n' "$message" >>"$LOG" || printf '%s\n' "$message" >&2 || :
 }
 
+# Flashed in a root manager over the module the app had installed: this one
+# takes over. stop.sh has stopped that one's daemon, by the pid files every
+# installation shares.
+DIRECT=/data/adb/adblocker_direct
+if [ "$MODDIR" != "$DIRECT" ] && [ -e "$DIRECT" ]; then
+    rm -rf "$DIRECT" /data/adb/service.d/adblocker.sh ||
+        log "could not remove the module the app had installed"
+fi
+
 # Boot guard. A marker is left while the system boots and removed once it has
 # finished; it holds how many boots in a row started the module and never
 # finished. After two the module disables itself rather than risk a third.

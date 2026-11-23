@@ -259,6 +259,10 @@ mod tests {
         assert!(is(
             b"/data/adb/magisk/busybox\0ash\0/data/adb/modules/adblocker/supervise.sh\0"
         ));
+        // Installed by the app, without a root manager (module/direct.sh).
+        assert!(is(
+            b"/system/bin/sh\0/data/adb/adblocker_direct/supervise.sh\0"
+        ));
         assert!(!is(b"sh\0-c\0/data/adb/modules/adblocker/supervise.sh\0"));
         assert!(!is(b"log\0/data/adb/modules/adblocker/supervise.sh\0"));
         assert!(!is(b"/system/bin/sh\0/sdcard/supervise.sh.txt\0"));
@@ -269,6 +273,7 @@ mod tests {
         let is = |cmdline: &[u8]| matches_command(cmdline, Program::Daemon);
         assert!(is(b"/data/adb/modules/adblocker/bin/abd\0run\0"));
         assert!(is(b"/data/adb/modules_update/adblocker/bin/abd\0run\0"));
+        assert!(is(b"/data/adb/adblocker_direct/bin/abd\0run\0"));
         assert!(!is(b"/data/adb/modules/adblocker/bin/abd\0update\0"));
         assert!(!is(b"abd\0run\0"));
         assert!(!is(b"/data/local/tmp/abd\0run\0"));

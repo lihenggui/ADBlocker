@@ -36,8 +36,6 @@ case "${1:-}" in
     --cosmetic) ;;
     *) echo "usage: $0 [--cosmetic]" >&2; exit 2 ;;
 esac
-MODPATH=/data/adb/modules/adblocker
-ABD=$MODPATH/bin/abd
 DATA=/data/adb/adblocker
 LIST=$DATA/rules/zz-check.txt
 EXCLUDED=$DATA/exclusions/zz-check.txt
@@ -75,6 +73,11 @@ if [[ -z "${ANDROID_SERIAL:-}" ]]; then
         exit 2
     fi
 fi
+# The module in a root manager once it has its daemon, or else the one
+# installed without a manager (module/direct.sh).
+MODPATH=$(adb shell 'm=/data/adb/modules/adblocker; [ -e $m/bin/abd ] || m=/data/adb/adblocker_direct; echo $m' | tr -d '\r')
+[[ $MODPATH == /data/adb/* ]] || die "could not ask the device where the module is"
+ABD=$MODPATH/bin/abd
 
 ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"

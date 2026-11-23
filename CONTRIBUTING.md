@@ -35,6 +35,7 @@ sh scripts/check-engine-jni.sh
 for s in module/*.sh scripts/*.sh scripts/check/*.sh scripts/check/http3/*.sh; do bash -n "$s"; done
 sh scripts/check-module-uninstall.sh
 sh scripts/check-module-boot.sh
+sh scripts/check-module-direct.sh
 if command -v actionlint >/dev/null; then actionlint; fi
 ./scripts/build.sh --locked
 cd android
@@ -128,14 +129,20 @@ IPv6 filtering when its underlying network has an IPv6 route.
 
 ## On a device
 
-The packet filter rules, capture routes, mounts of the certificate
-store and the module scripts are only exercised on a device. On an emulator
-with a `google_apis` image, which allows `adb root`:
+The packet filter rules, capture routes and mounts of the certificate
+store are only exercised on a device, and so are the module scripts beyond
+what `scripts/check-module-*.sh` model on the host. On an emulator with a
+`google_apis` image, which allows `adb root`:
 
 ```sh
 ./scripts/install-on-emulator.sh
 ./scripts/check-device.sh
 ```
+
+`install-on-emulator.sh` installs as the app does with root alone, with
+`module/direct.sh`, into `/data/adb/adblocker_direct`. The emulator has no
+root manager to start the module after a restart: run
+`/data/adb/service.d/adblocker.sh` as root, as a manager would.
 
 `check-device.sh` builds a small app to be the client, and needs a JDK and
 the Android build tools and a platform in the SDK. It expects the AOSP

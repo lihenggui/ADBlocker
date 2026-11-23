@@ -225,7 +225,9 @@ another reader of these events, or a file they go to.
 - `main` sets the umask to 077 before anything else. The key is written by
   `ca::write_key` only: mode 600, never over an existing file.
 - A process is signalled only through `lifecycle.rs`, which holds it by a
-  pidfd and checks whose it is and what it runs.
+  pidfd and checks whose it is and what it runs. The pid files are the same
+  wherever the module is installed, so a module stops the daemon of the one
+  it replaces.
 
 ## Power and performance
 

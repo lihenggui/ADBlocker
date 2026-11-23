@@ -35,7 +35,8 @@ for script in service supervise stop; do
     {
         # An orphaned test waiter can still see boot completion after cleanup.
         printf '%s\n' 'getprop() { if [ ! -d "$FIXTURE" ] || [ -f "$FIXTURE/booted" ]; then echo 1; else echo 0; fi; }'
-        sed 's|^DATA=/data/adb/adblocker$|DATA=$FIXTURE/data|' "module/$script.sh"
+        # The module the app may have installed is looked for under the fixture too.
+        sed -e 's|^DATA=/data/adb/adblocker$|DATA=$FIXTURE/data|' -e 's|/data/adb/|$FIXTURE/adb/|g' "module/$script.sh"
     } >"$module/$script.sh"
 done
 : >"$fixture/calls"
