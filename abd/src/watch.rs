@@ -528,9 +528,13 @@ impl Starts {
                 continue;
             }
             drop(ready);
-            for (watch, _, name) in events(&buf[..n as usize]) {
+            for (watch, mask, name) in events(&buf[..n as usize]) {
                 let name = std::str::from_utf8(name).unwrap_or_default();
-                if watch == self.tree {
+                if mask & libc::IN_IGNORED != 0 {
+                    // The app's last process ended and its directory went
+                    // with the watch; its next start makes a new one.
+                    self.apps.remove(&watch);
+                } else if watch == self.tree {
                     // The first process of an app: its directory is new.
                     let uid = name.strip_prefix("uid_").and_then(|u| u.parse().ok());
                     if let Some(uid) = uid.filter(|uid| self.wanted.contains(uid)) {
@@ -805,6 +809,21 @@ mod tests {
         std::fs::create_dir(tree.path().join("uid_10001/pid_8")).unwrap();
         std::fs::create_dir(tree.path().join("uid_10002/pid_9")).unwrap();
         assert_eq!(starts.started().await, 10002);
+    }
+
+    #[tokio::test]
+    async fn the_watch_of_an_app_whose_last_process_ended_is_forgotten() {
+        let tree = tempfile::tempdir().unwrap();
+        let app = tree.path().join("uid_10001");
+        std::fs::create_dir(&app).unwrap();
+        let mut starts = Starts::watch(tree.path()).unwrap();
+        starts.set(&BTreeSet::from([10001]));
+        for _ in 0..3 {
+            std::fs::remove_dir(&app).unwrap();
+            std::fs::create_dir(&app).unwrap();
+            assert_eq!(starts.started().await, 10001);
+        }
+        assert_eq!(starts.apps.len(), 1);
     }
 
     #[test]
