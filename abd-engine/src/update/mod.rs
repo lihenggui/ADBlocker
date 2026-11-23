@@ -134,11 +134,7 @@ fn reason(e: &anyhow::Error) -> String {
 fn configured_sources(sources: &Path, default: &str) -> Result<String> {
     // Rollback can restore the file's absence during a download. The
     // defaults are still subscribed when that happens.
-    if sources.try_exists()? {
-        Ok(files::read_text(sources, sources::MAX_FILE)?)
-    } else {
-        Ok(default.to_owned())
-    }
+    sources::text_or(sources, default)
 }
 
 /// Fetches every list named in `sources` (created with `default` if it is

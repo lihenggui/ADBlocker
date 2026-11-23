@@ -30,11 +30,10 @@ pub(crate) enum ListKind {
 
 impl ListKind {
     pub(super) fn start_sources(self, file: &Path, bundled: &str) -> Result<String> {
-        if !file.try_exists()? {
+        let Some(mut configured) = sources::text_of(file)? else {
             files::replace(file, bundled.as_bytes())?;
             return Ok(bundled.to_owned());
-        }
-        let mut configured = files::read_text(file, sources::MAX_FILE)?;
+        };
         if matches!(self, Self::Filter) {
             return Ok(configured);
         }

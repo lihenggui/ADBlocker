@@ -65,11 +65,23 @@ fn parse(text: &str) -> Vec<Source> {
         .collect()
 }
 
-fn text(paths: &Paths) -> Result<String> {
-    if !paths.sources().exists() {
-        return Ok(crate::catalog::default_sources().to_owned());
+/// What the sources file `file` holds, or `default` while there is none.
+/// A file that cannot be told to be there is an error, not one missing:
+/// what is built on the defaults would replace what the user chose.
+pub(crate) fn text_or(file: &Path, default: &str) -> Result<String> {
+    Ok(text_of(file)?.unwrap_or_else(|| default.to_owned()))
+}
+
+/// What the sources file `file` holds, if there is one.
+pub(crate) fn text_of(file: &Path) -> Result<Option<String>> {
+    if !file.try_exists()? {
+        return Ok(None);
     }
-    Ok(files::read_text(&paths.sources(), MAX_FILE)?)
+    Ok(Some(files::read_text(file, MAX_FILE)?))
+}
+
+fn text(paths: &Paths) -> Result<String> {
+    text_or(&paths.sources(), crate::catalog::default_sources())
 }
 
 /// The sources, in the order of the file; those a new installation has if
@@ -481,6 +493,18 @@ mod tests {
         assert_eq!(std::fs::read_to_string(paths.sources()).unwrap(), saved);
         configure(&paths, &format!("#{B}")).unwrap();
         assert!(read(&paths).iter().all(|source| !source.enabled));
+    }
+
+    #[test]
+    fn a_sources_file_that_cannot_be_looked_at_is_not_replaced_by_the_defaults() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        // A link to itself: whether a file is there cannot be told.
+        std::os::unix::fs::symlink(paths.sources(), paths.sources()).unwrap();
+        assert!(configure(&paths, &format!("#{A}")).is_err());
+        assert!(edit(&paths, A, Change::Add).is_err());
+        let still = std::fs::symlink_metadata(paths.sources()).unwrap();
+        assert!(still.file_type().is_symlink());
     }
 
     #[test]
