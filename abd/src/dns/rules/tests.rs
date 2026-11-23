@@ -27,6 +27,8 @@ struct State {
     staged: BTreeMap<String, String>,
     commands: Vec<String>,
     blocked: Vec<&'static str>,
+    /// Whether somebody else deletes a chain as soon as it is listed.
+    taken: bool,
 }
 
 #[derive(Clone, Default)]
@@ -55,12 +57,23 @@ impl Tools for Fake {
         }
         // -w 5 -t mangle <action> <chain> ...
         let jump = format!("{tool} {}", args[5..].join(" "));
+        let referred = state.jumps.iter().any(|jump| {
+            jump.starts_with(&format!("{tool} ")) && jump.ends_with(&format!(" -j {CHAIN}"))
+        });
         Ok(match args[4] {
-            "-S" => i32::from(!state.chains.contains(tool)),
+            "-S" => {
+                let listed = state.chains.contains(tool);
+                if state.taken {
+                    state.chains.remove(tool);
+                }
+                i32::from(!listed)
+            }
             "-C" => i32::from(!state.jumps.contains(&jump)),
             "-I" => i32::from(!state.jumps.insert(jump)),
             "-D" => i32::from(!state.jumps.remove(&jump)),
-            "-F" => 0,
+            "-F" => i32::from(!state.chains.contains(tool)),
+            // Like the kernel, refuse a chain that a rule still jumps to.
+            "-X" if referred => 1,
             "-X" => i32::from(!state.chains.remove(tool)),
             other => panic!("unexpected {other}"),
         })
@@ -333,6 +346,33 @@ fn removal_from_nothing_known_takes_away_what_a_crashed_run_left() {
             "iptables PREROUTING -i lo -p udp --dport 53 -j {CHAIN}"
         ));
     }
+    rules.remove().unwrap();
+    let state = fake.0.borrow();
+    assert!(state.rules.is_empty() && state.chains.is_empty() && state.jumps.is_empty());
+}
+
+#[test]
+fn a_lookup_chain_a_jump_still_refers_to_is_not_reported_removed() {
+    let (mut rules, fake) = rules(true);
+    rules.set(&chosen(), Families::DualStack).unwrap();
+    // A jump that the deletions do not match, as one made by hand.
+    fake.0
+        .borrow_mut()
+        .jumps
+        .insert(format!("iptables PREROUTING -j {CHAIN}"));
+    assert!(rules.remove().is_err());
+    let state = fake.0.borrow();
+    assert!(state.rules.is_empty());
+    assert!(state.chains.contains("iptables"));
+    // The other family is cleaned up all the same.
+    assert!(!state.chains.contains("ip6tables"));
+}
+
+#[test]
+fn a_lookup_chain_somebody_else_deleted_meanwhile_counts_as_removed() {
+    let (mut rules, fake) = rules(true);
+    rules.set(&chosen(), Families::DualStack).unwrap();
+    fake.0.borrow_mut().taken = true;
     rules.remove().unwrap();
     let state = fake.0.borrow();
     assert!(state.rules.is_empty() && state.chains.is_empty() && state.jumps.is_empty());

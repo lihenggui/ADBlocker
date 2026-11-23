@@ -479,10 +479,8 @@ pub(crate) fn remove_chains<'a>(
     let tool = family.tool();
     let mut present = Vec::new();
     for &(table, chain) in chains {
-        match single(tools, tool, &["-t", table, "-S", chain])? {
-            0 => present.push((table, chain)),
-            NOT_THERE => {}
-            code => anyhow::bail!("{tool} -S failed ({code})"),
+        if listed(tools, tool, table, chain)? {
+            present.push((table, chain));
         }
     }
     for jump in jumps {
@@ -497,16 +495,27 @@ pub(crate) fn remove_chains<'a>(
             }
         }
     }
+    // The chain was there, so a failure here is one only if it still is:
+    // the same status means it was gone, deleted by somebody else, or that
+    // it could not be, as when a jump the deletions missed refers to it.
     for action in ["-F", "-X"] {
         for &(table, chain) in &present {
             let code = single(tools, tool, &["-t", table, action, chain])?;
             anyhow::ensure!(
-                code == 0 || code == NOT_THERE,
+                code == 0 || (code == NOT_THERE && !listed(tools, tool, table, chain)?),
                 "{tool} {action} failed ({code})"
             );
         }
     }
     Ok(())
+}
+
+fn listed(tools: &mut dyn Tools, tool: &str, table: &str, chain: &str) -> anyhow::Result<bool> {
+    match single(tools, tool, &["-t", table, "-S", chain])? {
+        0 => Ok(true),
+        NOT_THERE => Ok(false),
+        code => anyhow::bail!("{tool} -S failed ({code})"),
+    }
 }
 
 pub fn unhook() -> anyhow::Result<()> {
@@ -760,6 +769,8 @@ mod tests {
         blocked: Vec<&'static str>,
         jumps: BTreeSet<String>,
         chains: BTreeSet<(String, String, String)>,
+        /// Chains somebody else deletes as soon as they are listed.
+        taken: BTreeSet<&'static str>,
     }
 
     #[derive(Clone, Default)]
@@ -814,15 +825,27 @@ mod tests {
             }
             let key = (tool.to_owned(), args[3].to_owned(), args[5].to_owned());
             let jump = format!("{tool} {} {}", args[3], args[5..].join(" "));
+            let referred = kernel.jumps.iter().any(|jump| {
+                jump.starts_with(&format!("{tool} {} ", args[3]))
+                    && jump.ends_with(&format!(" -j {}", args[5]))
+            });
             Ok(match args[4] {
-                "-S" => i32::from(!kernel.chains.contains(&key)),
+                "-S" => {
+                    let listed = kernel.chains.contains(&key);
+                    if kernel.taken.remove(args[5]) {
+                        kernel.chains.remove(&key);
+                    }
+                    i32::from(!listed)
+                }
                 "-C" => i32::from(!kernel.jumps.contains(&jump)),
                 "-I" => {
                     kernel.jumps.insert(jump);
                     0
                 }
                 "-D" => i32::from(!kernel.jumps.remove(&jump)),
-                "-F" => 0,
+                "-F" => i32::from(!kernel.chains.contains(&key)),
+                // Like the kernel, refuse a chain that a rule still jumps to.
+                "-X" if referred => 1,
                 "-X" => i32::from(!kernel.chains.remove(&key)),
                 _ => panic!("unexpected xtables change {tool} {args:?}"),
             })
@@ -1208,6 +1231,42 @@ mod tests {
         let kernel = fake.0.borrow();
         assert_eq!(kernel.gates, [true, false]);
         assert!(!kernel.routes[0]);
+    }
+
+    #[test]
+    fn a_chain_a_jump_still_refers_to_is_not_reported_removed() {
+        let (mut rules, fake) = rules();
+        rules
+            .set(&chosen(), Families::DualStack, Owners::Confirmed)
+            .unwrap();
+        // A jump that the deletions do not match, as one made by hand.
+        fake.0
+            .borrow_mut()
+            .jumps
+            .insert(format!("iptables mangle OUTPUT -j {OUT}"));
+        assert!(rules.remove().is_err());
+        let kernel = fake.0.borrow();
+        assert!(!kernel.capture_gate);
+        assert_eq!(kernel.gates, [false; 2]);
+        assert!(kernel.chains.contains(&(
+            "iptables".to_owned(),
+            "mangle".to_owned(),
+            OUT.to_owned()
+        )));
+        // The other family is cleaned up all the same.
+        assert!(kernel.chains.iter().all(|(tool, _, _)| tool == "iptables"));
+    }
+
+    #[test]
+    fn a_chain_somebody_else_deleted_meanwhile_counts_as_removed() {
+        let (mut rules, fake) = rules();
+        rules
+            .set(&chosen(), Families::DualStack, Owners::Confirmed)
+            .unwrap();
+        fake.0.borrow_mut().taken = BTreeSet::from([OUT, QUIC]);
+        rules.remove().unwrap();
+        let kernel = fake.0.borrow();
+        assert!(kernel.chains.is_empty() && kernel.jumps.is_empty());
     }
 
     #[test]
