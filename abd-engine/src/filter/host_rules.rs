@@ -28,16 +28,13 @@ use crate::list_files::MAX_LISTS;
 /// connection of the filtered apps to that part of the internet refused:
 /// no list means that, and one that says it is mistaken or hostile.
 fn registrable(host: &str) -> bool {
-    use addr::parser::DomainName as _;
     let plain = host
         .bytes()
         .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
     plain
-        && addr::psl::List
-            .parse_domain_name(host)
-            // A suffix the list of public ones does not know is taken
-            // for one label, so a name below it still has a root.
-            .is_ok_and(|name| name.root().is_some())
+        // A suffix the list of public ones does not know is taken for one
+        // label, so a name below it still has a root.
+        && crate::public_suffix::Name::parse(host).is_some_and(|name| name.root().is_some())
 }
 
 /// `||host^` with nothing else, or a hosts-file line; and what takes

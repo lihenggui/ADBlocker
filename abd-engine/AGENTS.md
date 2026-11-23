@@ -44,6 +44,10 @@ own filter compilation schedule.
   Keep storage independent of the runtime that assembles its snapshots.
 - Reuse `host` for basic hostname syntax and `clock` for epoch time.
   Keep caller-specific host policy in the caller.
+- `public_suffix` says where a registrable name begins, for the engine
+  and as `adblock`'s resolver. A function that has `adblock` parse a rule
+  or a URL calls `public_suffix::install()` first: `adblock` panics
+  without it.
 - Use `files` for shared staging and replacement. Preserve the caller's
   existing durability and locking requirements.
 - Keep list URL validation and naming in `list_url`, and bounded inventory

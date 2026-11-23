@@ -25,6 +25,7 @@ pub use crate::rule_text::{count, is_comment};
 
 /// The rules of `text` that will not be applied, by line.
 pub fn check(text: &str) -> RulesCheck {
+    crate::public_suffix::install();
     let mut rules = 0;
     let mut issues = Vec::new();
     for (n, line) in text.lines().enumerate() {

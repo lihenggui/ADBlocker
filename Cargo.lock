@@ -38,8 +38,10 @@ dependencies = [
  "hyper-util",
  "idna",
  "libc",
+ "psl",
  "rcgen",
  "ring",
+ "rustc-hash",
  "rustls",
  "serde",
  "serde_json",
@@ -80,7 +82,6 @@ version = "0.13.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7d0e54f8c5fda98d15b910f3d787a6290cbdf5448b6318ce4fcaa39ff8ce2b0c"
 dependencies = [
- "addr",
  "arrayvec",
  "base64",
  "bitflags 2.13.2",
