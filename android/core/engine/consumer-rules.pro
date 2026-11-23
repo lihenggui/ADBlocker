@@ -6,6 +6,7 @@
     boolean protect(int);
     int ownerUid(int, byte[], int, byte[], int);
     int uidOf(java.lang.String);
+    java.lang.String personalAppIdentities(java.lang.String);
     boolean userCaInstalled();
     void stopped(int);
 }
