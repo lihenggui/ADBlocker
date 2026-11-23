@@ -16,9 +16,11 @@
 
 package li.mercury.adblocker.vpn
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
@@ -119,6 +121,9 @@ class VpnSessionTest {
         var answer = 0
         var throwsOnStart = false
 
+        /** Holds [stop] until it completes, as an engine that takes time to let go. */
+        var stopGate: CompletableDeferred<Unit>? = null
+
         /** Runs while the engine stops, as a stack that ends meanwhile would tell. */
         var whileStopping: (() -> Unit)? = null
 
@@ -133,6 +138,7 @@ class VpnSessionTest {
         override suspend fun <T> withPersonalAppSnapshot(apps: List<PersonalAppIdentity>, refresh: suspend () -> T): T = refresh()
 
         override suspend fun stop() {
+            stopGate?.await()
             if (running != null) whileStopping?.invoke()
             stops++
             running = null
@@ -313,6 +319,28 @@ class VpnSessionTest {
         assertEquals(listOf(setOf(NEWS), setOf(NEWS, SHOP)), vpn.host.built)
         assertEquals(listOf(100, 101), vpn.engine.started)
         assertEquals(101, vpn.engine.running)
+        assertEquals(VpnState.On, vpn.state)
+    }
+
+    @Test
+    fun givenABuildIsCancelledWhileTheOldStackStops_whenTheStackHasStopped_thenTheNewDescriptorIsStillHandedToTheEngine() = runTest {
+        val vpn = Vpn(this)
+        vpn.host.installed += mapOf(NEWS to 10_001, SHOP to 10_002)
+        vpn.choose(NEWS)
+        vpn.session.start(1)
+        vpn.choose(NEWS, SHOP)
+        val gate = CompletableDeferred<Unit>()
+        vpn.engine.stopGate = gate
+
+        val caller = launch { vpn.session.refresh() }
+        runCurrent()
+        caller.cancel()
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(listOf(100, 101), vpn.engine.started)
+        assertEquals(101, vpn.engine.running)
+        assertEquals(emptyList(), vpn.host.closed)
         assertEquals(VpnState.On, vpn.state)
     }
 

@@ -303,10 +303,12 @@ internal class VpnSession(
             return false
         }
         // The new VPN has taken the old one's place: the engine lets go of
-        // the old descriptor before it is given the new one.
-        stopStack()
+        // the old descriptor before it is given the new one. Both steps are
+        // carried through once begun, so that a caller cancelled between
+        // them cannot leave the new descriptor with nobody reading it.
         val code = withContext(NonCancellable) {
             try {
+                stopStack()
                 engine.start(fd, ipv6, dns)
             } catch (e: Exception) {
                 // Thrown before the engine had the descriptor, which takes it
