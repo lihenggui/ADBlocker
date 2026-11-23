@@ -15,6 +15,7 @@ license: GPL-3.0-only
 homepage: https://github.com/lihenggui/ADBlocker
 support: https://github.com/lihenggui/ADBlocker/issues
 tags: [adblock, privacy, network]
+icon: assets/icon.png
 metamodule: false
 
 authors:
