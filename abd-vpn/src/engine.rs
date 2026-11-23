@@ -228,12 +228,12 @@ impl Engine {
     }
 
     /// Reads the chosen apps, the pauses and the settings.
-    pub fn apply(&self) -> Option<u64> {
+    pub fn apply(&self) {
         let _loading = self.loading.lock().unwrap();
-        self.apply_locked()
+        self.apply_locked();
     }
 
-    fn apply_locked(&self) -> Option<u64> {
+    fn apply_locked(&self) {
         let now = clock::now();
         let text = abd_engine::files::read_text(&self.paths.apps(), apps::MAX_FILE)
             .inspect_err(|error| log(&format!("app selection: {error}")))
@@ -298,9 +298,8 @@ impl Engine {
         if let Err(error) = state::write(&self.paths.state(), &state) {
             log(&format!("state: could not publish snapshot: {error:#}"));
         }
-        let ends = pauses.next_end();
         let apply_at = if text.is_some() {
-            ends
+            pauses.next_end()
         } else {
             Some(clock::now() + CONFIG_RETRY_SECS)
         };
@@ -309,7 +308,6 @@ impl Engine {
             *old = apply_at;
             changed
         });
-        ends
     }
 
     /// The next pause expiry or retry, including changes while the VPN runs.

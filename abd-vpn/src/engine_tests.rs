@@ -326,7 +326,8 @@ async fn a_paused_app_has_its_connections_handed_on_unread() {
         p.pause_app("com.app", until);
     })
     .unwrap();
-    assert_eq!(rig.engine.apply(), Some(until));
+    rig.engine.apply();
+    assert_eq!(*rig.engine.apply_at().borrow(), Some(until));
     // Blocked while the app is filtered; not looked at now.
     assert_eq!(answered(&mut rig, &hello("blocked.test")).await, b"pong");
     assert_eq!(rig.received.lock().unwrap().len(), 1);
@@ -402,7 +403,8 @@ async fn unreadable_user_policy_suspends_filtering_until_reloaded() {
     let pauses = paths.pauses();
     let until = clock::now() + 600;
     std::fs::write(&pauses, format!("{until} com.app\n")).unwrap();
-    assert_eq!(engine.apply(), Some(until));
+    engine.apply();
+    assert_eq!(*engine.apply_at().borrow(), Some(until));
     assert!(engine.ctx.selection.apps.read().unwrap().is_empty());
     std::fs::write(&pauses, [0xff]).unwrap();
     engine.reload();
@@ -410,10 +412,11 @@ async fn unreadable_user_policy_suspends_filtering_until_reloaded() {
     assert_eq!(answered(&mut rig, &hello("blocked.test")).await, b"pong");
 
     std::fs::write(&pauses, format!("{until} com.app\n")).unwrap();
-    assert_eq!(engine.apply(), Some(until));
+    engine.apply();
+    assert_eq!(*engine.apply_at().borrow(), Some(until));
     assert!(engine.ctx.selection.apps.read().unwrap().is_empty());
     std::fs::write(&pauses, "").unwrap();
-    assert_eq!(engine.apply(), None);
+    engine.apply();
     assert!(engine.ctx.blocks_udp_host(UID, "blocked.test"));
     assert_eq!(*engine.apply_at().borrow(), None);
 }

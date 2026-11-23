@@ -388,7 +388,7 @@ fn send_udp_reply(tun: &UnixDatagram) -> (SocketAddr, SocketAddr) {
         .unwrap();
     let client = "10.0.0.2:40000".parse().unwrap();
     let dst = server.local_addr().unwrap();
-    tun.send(&crate::udp::packet(client, dst, b"hello", MTU).unwrap())
+    tun.send(&crate::datagram::packet(client, dst, b"hello", MTU).unwrap())
         .unwrap();
     let mut packet = [0u8; MTU];
     let (n, peer) = server.recv_from(&mut packet).unwrap();
@@ -401,7 +401,7 @@ fn check_udp_round_trip(tun: &UnixDatagram) {
     let (client, dst) = send_udp_reply(tun);
     let mut packet = [0u8; MTU];
     let n = tun.recv(&mut packet).unwrap();
-    let reply = crate::udp::parse(&packet[..n]).unwrap();
+    let reply = crate::datagram::parse(&packet[..n]).unwrap();
     assert_eq!(
         (reply.app, reply.server, reply.payload),
         (dst, client, b"reply".as_slice())

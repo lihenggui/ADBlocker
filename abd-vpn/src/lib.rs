@@ -17,16 +17,20 @@
 //! into connections and given to the engine (`abd_engine`), as the module
 //! gives it those the packet filter delivers.
 
+//!
+//! The library's one interface is the JNI functions (`jni.rs`); nothing
+//! else is for another crate.
+
 mod datagram;
 mod dns;
-pub mod engine;
+mod engine;
 #[cfg(test)]
 mod fake;
-pub mod fd;
-pub mod jni;
+mod fd;
+mod jni;
 mod log;
 mod platform;
-pub mod session;
-pub mod stack;
-pub mod tunnel;
-pub mod udp;
+mod session;
+mod stack;
+mod tunnel;
+mod udp;

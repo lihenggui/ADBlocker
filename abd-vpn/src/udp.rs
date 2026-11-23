@@ -30,10 +30,9 @@ use smoltcp::wire::{
 use tokio::net::UdpSocket;
 use tokio::sync::{Semaphore, mpsc};
 
-pub use crate::datagram::{Datagram, packet, parse};
+use crate::datagram::{Datagram, packet, parse};
 use crate::log::log;
-pub use crate::platform::Protect;
-use crate::platform::{lookup_owner, protect_socket};
+use crate::platform::{Protect, lookup_owner, protect_socket};
 
 /// Separate relays for ordinary UDP and UDP 443 share the 256-socket budget.
 const MAX_PORTS: usize = 128;
@@ -403,10 +402,12 @@ impl Forwarder {
     }
 
     /// How many sockets are held.
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.ports.len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.ports.is_empty()
     }
@@ -534,25 +535,44 @@ mod tests {
     #[tokio::test]
     async fn only_selected_initials_get_refused_on_web_and_alternative_ports() {
         let initial = include_bytes!("../../testdata/quic/aioquic-v2-initial.bin");
+        let paused: Lookup = Arc::new(|_, _| {
+            Some(Admission {
+                uid: 10001,
+                epoch: 1,
+                generation: 0,
+                filter: false,
+            })
+        });
+        let selected = Policy::test(Some(10001)).lookup;
+        let unselected = Policy::test(None).lookup;
         for port in [443, 14443] {
-            let (back, _) = mpsc::channel(4);
-            let policy = Policy::test(Some(10001));
-            let mut forwarder = Forwarder::new(
-                back,
-                Arc::new(|_| panic!("unexpected upstream")),
-                policy,
-                1500,
-            );
-            assert!(
-                forwarder
-                    .send(&Datagram {
-                        app: "10.0.0.2:60000".parse().unwrap(),
-                        server: SocketAddr::from(([192, 0, 2, 1], port)),
-                        payload: initial,
-                    })
-                    .await
-            );
-            assert!(forwarder.is_empty());
+            for (lookup, refused) in [
+                (selected.clone(), true),
+                (unselected.clone(), false),
+                (paused.clone(), false),
+            ] {
+                let (back, _) = mpsc::channel(4);
+                let policy = Policy {
+                    lookup,
+                    current: Arc::new(|_| true),
+                };
+                // Passed on, as far as asking for a socket to send it by.
+                let passed = Arc::new(AtomicBool::new(false));
+                let asked = passed.clone();
+                let protect: Protect = Arc::new(move |_| {
+                    asked.store(true, Relaxed);
+                    false
+                });
+                let mut forwarder = Forwarder::new(back, protect, policy, 1500);
+                let datagram = Datagram {
+                    app: "10.0.0.2:60000".parse().unwrap(),
+                    server: SocketAddr::from(([192, 0, 2, 1], port)),
+                    payload: initial,
+                };
+                assert_eq!(forwarder.send(&datagram).await, refused, "{port}");
+                assert_eq!(passed.load(Relaxed), !refused, "{port}");
+                assert!(forwarder.is_empty());
+            }
         }
     }
 

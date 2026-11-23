@@ -22,7 +22,7 @@
 //!
 //! Nothing here reads or writes anything: packets are given and taken, and
 //! the bytes of a connection read and written, by whoever drives it
-//! (`tunnel.rs`). That is also what lets it be tested with no device.
+//! (`tunnel/`). That is also what lets it be tested with no device.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::net::SocketAddr;
@@ -38,7 +38,8 @@ use smoltcp::wire::{
 };
 use tokio::time::Instant as TokioInstant;
 
-type Ends = (SocketAddr, SocketAddr);
+/// The app's address and the server's, which name a connection.
+pub(crate) type Ends = (SocketAddr, SocketAddr);
 
 /// The most connections held at a time, for all the apps together: each
 /// has its two buffers, and this many are 32 MiB. An app is held to far
@@ -170,8 +171,7 @@ pub enum Read {
 
 struct Flow {
     handle: SocketHandle,
-    /// The app's address and the server's, which name the connection.
-    ends: (SocketAddr, SocketAddr),
+    ends: Ends,
     /// Whether it has been told of as opened.
     told: bool,
 }
@@ -183,7 +183,7 @@ pub struct Stack {
     queues: Queues,
     sockets: SocketSet<'static>,
     flows: HashMap<Id, Flow>,
-    by_ends: HashMap<(SocketAddr, SocketAddr), Id>,
+    by_ends: HashMap<Ends, Id>,
     opened: VecDeque<Opened>,
     /// At most MAX_FLOWS live IDs, plus removals until the next pump.
     changed: HashSet<Id>,
@@ -191,7 +191,8 @@ pub struct Stack {
     next: u64,
 }
 
-/// The two ends of the connection a packet begins, if it begins one.
+/// The two ends of the connection a TCP packet is of, and whether it
+/// begins one.
 fn tcp_ends(packet: &[u8]) -> Option<(Ends, bool)> {
     let (src, dst, payload): (IpAddress, IpAddress, &[u8]) = match packet.first()? >> 4 {
         4 => {
@@ -294,7 +295,7 @@ impl Stack {
     /// The app's end and the server's of the connection a packet begins,
     /// if it begins one that is not held: for whoever would first see
     /// that the server is there before the app is answered in its place.
-    pub fn begins(&self, packet: &[u8]) -> Option<(SocketAddr, SocketAddr)> {
+    pub fn begins(&self, packet: &[u8]) -> Option<Ends> {
         let (ends, syn) = tcp_ends(packet)?;
         (syn && !self.by_ends.contains_key(&ends)).then_some(ends)
     }
@@ -461,6 +462,7 @@ impl Stack {
     }
 
     /// Whether everything written has been taken by the app.
+    #[cfg(test)]
     pub fn flushed(&mut self, id: Id) -> bool {
         self.socket(id)
             .is_none_or(|socket| socket.send_queue() == 0)
@@ -489,10 +491,12 @@ impl Stack {
     }
 
     /// How many connections are held.
+    #[cfg(test)]
     pub fn len(&self) -> usize {
         self.flows.len()
     }
 
+    #[cfg(test)]
     pub fn is_empty(&self) -> bool {
         self.flows.is_empty()
     }

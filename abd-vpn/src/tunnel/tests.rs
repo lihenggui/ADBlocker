@@ -25,7 +25,6 @@ use tokio::sync::mpsc;
 
 use super::*;
 use crate::fake::{MTU, app_and_channels, first_syn, tunnel};
-use crate::udp;
 
 const SERVER: &str = "93.184.216.34:443";
 
@@ -209,7 +208,8 @@ async fn a_transfer_larger_than_the_buffers_and_its_fin_pass_during_udp_traffic(
         .await
         .unwrap();
     let at = server.local_addr().unwrap();
-    let datagram = udp::packet("10.0.0.2:5353".parse().unwrap(), at, b"udp", MTU).unwrap();
+    let datagram =
+        crate::datagram::packet("10.0.0.2:5353".parse().unwrap(), at, b"udp", MTU).unwrap();
     let mut app = tunnel(shouting());
     let sender = app.packet_sender();
     let flood = tokio::spawn(async move { while sender.send(datagram.clone()).await.is_ok() {} });
@@ -365,10 +365,10 @@ async fn datagrams_pass_both_ways_without_polling_tcp() {
         },
     ));
     let from: SocketAddr = "10.0.0.2:5353".parse().unwrap();
-    app.send(udp::packet(from, at, b"a question", 1500).unwrap())
+    app.send(crate::datagram::packet(from, at, b"a question", 1500).unwrap())
         .await;
     let bytes = app.given().await.unwrap();
-    let answer = udp::parse(&bytes).unwrap();
+    let answer = crate::datagram::parse(&bytes).unwrap();
     assert_eq!(
         (answer.app, answer.server, answer.payload),
         (at, from, b"A QUESTION".as_slice())
@@ -515,7 +515,8 @@ async fn a_syn_ack_dropped_on_backpressure_is_retransmitted_at_its_deadline_duri
     let start = Instant::now();
     let server = std::net::UdpSocket::bind((Ipv4Addr::LOCALHOST, 0)).unwrap();
     let at = server.local_addr().unwrap();
-    let datagram = udp::packet("10.0.0.2:5353".parse().unwrap(), at, b"udp", MTU).unwrap();
+    let datagram =
+        crate::datagram::packet("10.0.0.2:5353".parse().unwrap(), at, b"udp", MTU).unwrap();
     let (sent, mut replies) = mpsc::unbounded_channel();
     let tun = BusyTun {
         syn: Some(first_syn(SERVER)),

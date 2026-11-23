@@ -14,7 +14,6 @@
 
 use std::collections::HashMap;
 use std::io;
-use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -26,7 +25,7 @@ use super::{Reach, Tun};
 use crate::datagram;
 use crate::dns::{self, Resolver};
 use crate::platform::Protect;
-use crate::stack::Stack;
+use crate::stack::{Ends, Stack};
 use crate::udp::{self, Policy};
 
 /// The most connections waiting at a time to be found reachable, and how
@@ -36,7 +35,6 @@ const REACH_TIME: Duration = Duration::from_secs(12);
 
 pub(super) const PACKET_BATCH: usize = 32;
 
-type Ends = (SocketAddr, SocketAddr);
 pub(super) type ReachResult = (Ends, io::Result<()>);
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -51,7 +49,7 @@ enum Route {
     Udp,
     Refuse,
     Stack,
-    Reach(Ends),
+    Reach(Reach, Ends),
 }
 
 fn classify(
@@ -72,7 +70,7 @@ fn classify(
     match (reach, stack.begins(packet)) {
         (_, Some((_, server))) if dns.is_some() && Resolver::refuses(server) => Route::Refuse,
         (_, Some((_, server))) if dns.is_some() && Resolver::answers(server) => Route::Stack,
-        (Some(_), Some(ends)) => Route::Reach(ends),
+        (Some(reach), Some(ends)) => Route::Reach(reach.clone(), ends),
         _ => Route::Stack,
     }
 }
@@ -100,9 +98,10 @@ impl Ingress {
         let (udp_tx, udp_rx) = mpsc::channel(64);
         let (web_tx, web_rx) = mpsc::channel(64);
         let (answered, answers) = mpsc::channel(16);
-        // Dropping the join set cancels the relay together with the TUN.
         let mut relay = tokio::task::JoinSet::new();
-        // A slow Android owner lookup on 443 must not hold up DNS or other UDP.
+        // A slow Android owner lookup on 443 must not hold up DNS or other
+        // UDP. A QUIC Initial on another port still waits for its own in
+        // the relay of other UDP, which keeps an app port on one socket.
         relay.spawn(udp::relay(
             udp_rx,
             answered.clone(),
@@ -180,8 +179,8 @@ impl Ingress {
                 stack.receive(packet);
                 return Turn::Tcp;
             }
-            Route::Reach(ends) => {
-                self.begin_reach(stack, packet, ends);
+            Route::Reach(reach, ends) => {
+                self.begin_reach(stack, packet, reach, ends);
                 return Turn::Tcp;
             }
         };
@@ -193,7 +192,7 @@ impl Ingress {
         Turn::UdpOnly
     }
 
-    fn begin_reach(&mut self, stack: &mut Stack, packet: &[u8], ends: Ends) {
+    fn begin_reach(&mut self, stack: &mut Stack, packet: &[u8], reach: Reach, ends: Ends) {
         // Sent again by the app while the server is being checked, it is
         // the same connection.
         if self.asked.contains_key(&ends) {
@@ -203,9 +202,8 @@ impl Ingress {
             stack.refuse(packet);
             return;
         }
-        let Some(reach) = &self.reach else { return };
         self.asked.insert(ends, packet.to_vec());
-        let (reach, found) = (reach.clone(), self.found.clone());
+        let found = self.found.clone();
         tokio::spawn(async move {
             let there = tokio::time::timeout(REACH_TIME, reach(ends.0, ends.1));
             let there = match there.await {
