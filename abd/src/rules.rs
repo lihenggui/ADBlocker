@@ -57,8 +57,8 @@ const CHAINS: [(&str, &str); 5] = [
 ];
 
 const TOOLS: &str = "/system/bin";
-pub(crate) const LOCK_WAIT: &str = "5";
-pub(crate) const NOT_THERE: i32 = 1;
+const LOCK_WAIT: &str = "5";
+const NOT_THERE: i32 = 1;
 const MAX_UIDS: usize = 4096;
 const MAX_RULES_BYTES: usize = 1024 * 1024;
 
@@ -293,11 +293,12 @@ fn chains(family: Family, port: u16, ranges: &[(u32, u32)]) -> String {
     text
 }
 
-struct Jump {
-    table: &'static str,
-    from: &'static str,
-    packets: &'static [&'static str],
-    chain: &'static str,
+/// A rule in a chain of the system's that sends packets to one of ours.
+pub(crate) struct Jump {
+    pub(crate) table: &'static str,
+    pub(crate) from: &'static str,
+    pub(crate) packets: &'static [&'static str],
+    pub(crate) chain: &'static str,
 }
 
 impl Jump {
@@ -350,7 +351,7 @@ const JUMPS: [Jump; 4] = [
     },
 ];
 
-pub(crate) fn single(tools: &mut dyn Tools, tool: &str, action: &[&str]) -> anyhow::Result<i32> {
+fn single(tools: &mut dyn Tools, tool: &str, action: &[&str]) -> anyhow::Result<i32> {
     let args: Vec<&str> = ["-w", LOCK_WAIT].iter().chain(action).copied().collect();
     tools.run(tool, &args, "")
 }
@@ -438,23 +439,21 @@ fn remove_route(tools: &mut dyn Tools, family: Family) {
     );
 }
 
-fn install(
+/// Writes the chains of `text` in one restore, then links each of
+/// `jumps` that is not there yet, in order.
+pub(crate) fn install_chains(
     tools: &mut dyn Tools,
     family: Family,
-    port: u16,
-    ranges: &[(u32, u32)],
+    text: &str,
+    jumps: &[Jump],
     linked: bool,
 ) -> anyhow::Result<()> {
     let tool = family.tool();
     let restore = family.restore();
-    let code = tools.run(
-        restore,
-        &["--noflush", "-w", LOCK_WAIT],
-        &chains(family, port, ranges),
-    )?;
+    let code = tools.run(restore, &["--noflush", "-w", LOCK_WAIT], text)?;
     anyhow::ensure!(code == 0, "{restore} failed ({code})");
     if !linked {
-        for jump in &JUMPS {
+        for jump in jumps {
             match jump.run(tools, tool, "-C")? {
                 0 => {}
                 NOT_THERE => {
@@ -468,19 +467,25 @@ fn install(
     Ok(())
 }
 
-/// All jumps go before deleting their chains. Stop on a family whose lock
-/// could not be acquired; the other family is still cleaned up.
-fn remove_chains(tools: &mut dyn Tools, family: Family) -> anyhow::Result<()> {
+/// All jumps go before deleting their chains, in the order given. Stop on
+/// a family whose lock could not be acquired; the caller still cleans up
+/// the other family.
+pub(crate) fn remove_chains<'a>(
+    tools: &mut dyn Tools,
+    family: Family,
+    chains: &[(&'static str, &'static str)],
+    jumps: impl Iterator<Item = &'a Jump>,
+) -> anyhow::Result<()> {
     let tool = family.tool();
     let mut present = Vec::new();
-    for (table, chain) in CHAINS {
+    for &(table, chain) in chains {
         match single(tools, tool, &["-t", table, "-S", chain])? {
             0 => present.push((table, chain)),
             NOT_THERE => {}
             code => anyhow::bail!("{tool} -S failed ({code})"),
         }
     }
-    for jump in JUMPS.iter().rev() {
+    for jump in jumps {
         if !present.contains(&(jump.table, jump.chain)) {
             continue;
         }
@@ -700,17 +705,17 @@ impl Rules {
         let state = &mut self.state[family as usize];
         let before = std::mem::replace(state, State::Unknown);
         if plan.wants(family) {
-            install(
+            install_chains(
                 self.tools.as_mut(),
                 family,
-                self.port,
-                ranges,
+                &chains(family, self.port, ranges),
+                &JUMPS,
                 before == State::Linked,
             )?;
             *state = State::Linked;
         } else {
             if before != State::Absent {
-                remove_chains(self.tools.as_mut(), family)?;
+                remove_chains(self.tools.as_mut(), family, &CHAINS, JUMPS.iter().rev())?;
                 remove_route(self.tools.as_mut(), family);
             }
             *state = State::Absent;
@@ -725,7 +730,7 @@ impl Rules {
             remove_route(self.tools.as_mut(), family);
         }
         let cleanup = Family::BOTH.map(|family| {
-            let result = remove_chains(self.tools.as_mut(), family);
+            let result = remove_chains(self.tools.as_mut(), family, &CHAINS, JUMPS.iter().rev());
             self.state[family as usize] = if result.is_ok() {
                 State::Absent
             } else {

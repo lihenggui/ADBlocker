@@ -169,9 +169,10 @@ fn tproxy_takes_only_what_came_by_our_route_to_somewhere_else() {
     assert!(v6.contains(&format!(
         "-A {CHAIN} -s {SOURCE_V6}/128 ! -d {SOURCE_V6}/128 -p udp -j TPROXY --on-ip ::1 --on-port 40001"
     )));
-    for packets in JUMPS {
-        assert_eq!(packets[..2], ["-i", "lo"]);
-        assert_eq!(packets[4..], ["--dport", "53"]);
+    for jump in JUMPS {
+        assert_eq!((jump.table, jump.from), ("mangle", "PREROUTING"));
+        assert_eq!(jump.packets[..2], ["-i", "lo"]);
+        assert_eq!(jump.packets[4..], ["--dport", "53"]);
     }
 }
 

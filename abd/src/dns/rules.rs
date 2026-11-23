@@ -32,7 +32,7 @@ use anyhow::{Context as _, ensure};
 
 use super::netlink::{self, Netlink, Rule, Source};
 use super::{CHAIN, SOURCE_V4, SOURCE_V6};
-use crate::rules::{Families, Family, LOCK_WAIT, NOT_THERE, Tools, single, uid_ranges};
+use crate::rules::{Families, Family, Jump, Tools, install_chains, remove_chains, uid_ranges};
 
 /// The most rules of a family: one for each protocol and source of each
 /// of the most UID ranges capture takes, and room for what a run before
@@ -40,9 +40,19 @@ use crate::rules::{Families, Family, LOCK_WAIT, NOT_THERE, Tools, single, uid_ra
 const MAX_RULES: usize = 4 * 4096 + 64;
 const SOURCES: [Source; 2] = [Source::Unset, Source::Anchor];
 const PROTOCOLS: [u8; 2] = [libc::IPPROTO_UDP as u8, libc::IPPROTO_TCP as u8];
-const JUMPS: [&[&str]; 2] = [
-    &["-i", "lo", "-p", "udp", "--dport", "53"],
-    &["-i", "lo", "-p", "tcp", "--dport", "53"],
+const JUMPS: [Jump; 2] = [
+    Jump {
+        table: "mangle",
+        from: "PREROUTING",
+        packets: &["-i", "lo", "-p", "udp", "--dport", "53"],
+        chain: CHAIN,
+    },
+    Jump {
+        table: "mangle",
+        from: "PREROUTING",
+        packets: &["-i", "lo", "-p", "tcp", "--dport", "53"],
+        chain: CHAIN,
+    },
 ];
 
 /// What changes the kernel's rules.
@@ -280,70 +290,17 @@ fn chain(family: Family, port: u16) -> String {
     text
 }
 
-fn jump(
-    tools: &mut dyn Tools,
-    family: Family,
-    action: &str,
-    packets: &[&str],
-) -> anyhow::Result<i32> {
-    let mut args = vec!["-t", "mangle", action, "PREROUTING"];
-    args.extend_from_slice(packets);
-    args.extend_from_slice(&["-j", CHAIN]);
-    single(tools, family.tool(), &args)
-}
-
 fn install_chain(
     tools: &mut dyn Tools,
     family: Family,
     port: u16,
     linked: bool,
 ) -> anyhow::Result<()> {
-    let restore = family.restore();
-    let code = tools.run(
-        restore,
-        &["--noflush", "-w", LOCK_WAIT],
-        &chain(family, port),
-    )?;
-    ensure!(code == 0, "{restore} failed ({code})");
-    if !linked {
-        for packets in JUMPS {
-            match jump(tools, family, "-C", packets)? {
-                0 => {}
-                NOT_THERE => {
-                    let code = jump(tools, family, "-I", packets)?;
-                    ensure!(code == 0, "{} -I failed ({code})", family.tool());
-                }
-                code => anyhow::bail!("{} -C failed ({code})", family.tool()),
-            }
-        }
-    }
-    Ok(())
+    install_chains(tools, family, &chain(family, port), &JUMPS, linked)
 }
 
 fn remove_chain(tools: &mut dyn Tools, family: Family) -> anyhow::Result<()> {
-    let tool = family.tool();
-    match single(tools, tool, &["-t", "mangle", "-S", CHAIN])? {
-        0 => {}
-        NOT_THERE => return Ok(()),
-        code => anyhow::bail!("{tool} -S failed ({code})"),
-    }
-    for packets in JUMPS {
-        for _ in 0..8 {
-            match jump(tools, family, "-D", packets)? {
-                0 => {}
-                NOT_THERE => break,
-                code => anyhow::bail!("{tool} -D failed ({code})"),
-            }
-        }
-    }
-    for action in ["-F", "-X"] {
-        let code = single(tools, tool, &["-t", "mangle", action, CHAIN])?;
-        ensure!(
-            code == 0 || code == NOT_THERE,
-            "{tool} {action} failed ({code})"
-        );
-    }
-    Ok(())
+    remove_chains(tools, family, &[("mangle", CHAIN)], JUMPS.iter())
 }
 
 #[cfg(test)]
