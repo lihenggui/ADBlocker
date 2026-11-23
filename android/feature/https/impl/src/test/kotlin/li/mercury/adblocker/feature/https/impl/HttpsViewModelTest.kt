@@ -17,6 +17,7 @@
 package li.mercury.adblocker.feature.https.impl
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -111,7 +112,11 @@ class HttpsViewModelTest {
 
     private val written = mutableListOf<ByteArray>()
 
-    private val viewModel by lazy { HttpsViewModel(https, apps, daemon, { _, bytes -> written += bytes }, main.testDispatcher) }
+    private val savedState = SavedStateHandle()
+
+    private fun newViewModel(handle: SavedStateHandle = savedState) = HttpsViewModel(https, apps, daemon, { _, bytes -> written += bytes }, handle, main.testDispatcher)
+
+    private val viewModel by lazy { newViewModel() }
 
     private fun TestScope.show() = backgroundScope.launch { viewModel.uiState.collect {} }.also { runCurrent() }
 
@@ -146,7 +151,7 @@ class HttpsViewModelTest {
 
     @Test
     fun givenCertificateExportFails_whenTheOutcomeIsCollectedAgain_thenItWaitsForAcknowledgement() = runTest {
-        val viewModel = HttpsViewModel(https, apps, daemon, { _, _ -> throw IOException("no stream") }, main.testDispatcher)
+        val viewModel = HttpsViewModel(https, apps, daemon, { _, _ -> throw IOException("no stream") }, SavedStateHandle(), main.testDispatcher)
         viewModel.save(Uri.parse("content://downloads/ADBlocker.crt"))
         runCurrent()
 
@@ -227,5 +232,37 @@ class HttpsViewModelTest {
         assertTrue(urlFiltering)
         assertEquals(listOf("urlFiltering true", "reload"), done)
         assertTrue(requireNotNull(viewModel.uiState.value.results.valueOrNull).all { it.filter?.level == FilterLevel.Full })
+    }
+
+    @Test
+    fun givenTheProcessEndedInTheSystemSettings_whenTheScreenIsOpenedAgain_thenTheSetupContinuesFromThere() = runTest {
+        show()
+        viewModel.next()
+        viewModel.save(Uri.parse("content://downloads/ADBlocker.crt"))
+        viewModel.openingSettings()
+
+        val restored = newViewModel(SavedStateHandle(savedState.keys().associateWith { savedState.get<Any>(it) }))
+        backgroundScope.launch { restored.uiState.collect {} }
+        runCurrent()
+        assertEquals(HttpsStep.Install, restored.uiState.value.step)
+        assertTrue(restored.uiState.value.saved)
+
+        installed = true
+        restored.checkInstalled()
+        runCurrent()
+        assertEquals(HttpsStep.Confirm, restored.uiState.value.step)
+    }
+
+    @Test
+    fun givenTheSetupWasFinished_whenTheProcessEndsAndTheScreenIsOpenedAgain_thenItAsksForConfirmationAgain() = runTest {
+        installed = true
+        show()
+        viewModel.turnOn()
+        runCurrent()
+        assertEquals(HttpsStep.Result, viewModel.uiState.value.step)
+
+        val restored = newViewModel(SavedStateHandle(savedState.keys().associateWith { savedState.get<Any>(it) }))
+        assertEquals(HttpsStep.Confirm, restored.uiState.value.step)
+        assertEquals(ReadState.Pending, restored.uiState.value.results)
     }
 }

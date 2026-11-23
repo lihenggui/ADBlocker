@@ -17,6 +17,7 @@
 package li.mercury.adblocker.feature.https.impl
 
 import android.net.Uri
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -28,6 +29,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
@@ -68,9 +70,13 @@ class HttpsViewModel @Inject constructor(
     private val apps: AppsRepository,
     private val daemon: DaemonRepository,
     private val writer: DocumentWriter,
+    private val savedState: SavedStateHandle,
     @Dispatcher(IO) private val io: CoroutineDispatcher,
 ) : ViewModel() {
-    private val state = MutableStateFlow(HttpsUiState())
+    // The system settings, where the certificate is installed, can cost the
+    // process: the step, whether the certificate was saved and whether the
+    // app waits for the install come back with it. They name no host or app.
+    private val state = MutableStateFlow(restoredState())
     private var initialCheckComplete = false
     val uiState: StateFlow<HttpsUiState> = state.onStart {
         if (!initialCheckComplete) {
@@ -78,14 +84,31 @@ class HttpsViewModel @Inject constructor(
             if (installed() && state.value.step == HttpsStep.Impact) go(HttpsStep.Confirm)
             initialCheckComplete = true
         }
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HttpsUiState())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), state.value)
     private val messages = MessageQueue()
     val pendingMessages = messages.pending
 
     fun onMessageShown(id: Long) = messages.onMessageShown(id)
 
     /** The system settings were opened to install the certificate, and it has not been found since. */
-    private var awaitingInstall = false
+    private var awaitingInstall: Boolean
+        get() = savedState[AWAITING_INSTALL] ?: false
+        set(value) {
+            savedState[AWAITING_INSTALL] = value
+        }
+
+    private fun restoredState() = HttpsUiState(
+        step = savedState.get<String>(STEP)?.let { name -> HttpsStep.entries.firstOrNull { it.name == name } } ?: HttpsStep.Impact,
+        saved = savedState[SAVED] ?: false,
+    )
+
+    /** Changes the state, and what comes back with the process. */
+    private fun change(update: (HttpsUiState) -> HttpsUiState) {
+        val next = state.updateAndGet(update)
+        // The results are not kept: coming back to the last step is asking again.
+        savedState[STEP] = (if (next.step == HttpsStep.Result) HttpsStep.Confirm else next.step).name
+        savedState[SAVED] = next.saved
+    }
 
     /** Reads the key store, off the main thread. */
     private suspend fun installed() = withContext(io) { https.certificateInstalled() }
@@ -104,13 +127,13 @@ class HttpsViewModel @Inject constructor(
     }
 
     private fun go(step: HttpsStep) {
-        state.update { it.copy(step = step, notFound = false) }
+        change { it.copy(step = step, notFound = false) }
     }
 
     /** Saves the certificate where the user chose, for the system's installer. */
     fun save(uri: Uri) = busy(R.string.feature_https_save_failed) {
         writer.write(uri, https.exportCertificate())
-        state.update { it.copy(saved = true) }
+        change { it.copy(saved = true) }
     }
 
     /** The system settings are being opened: the certificate is looked for when the app is back. */
@@ -151,13 +174,13 @@ class HttpsViewModel @Inject constructor(
     fun turnOn() = busy(R.string.feature_https_failed) {
         if (!installed()) {
             awaitingInstall = true
-            state.update { it.copy(step = HttpsStep.Install, notFound = true) }
+            change { it.copy(step = HttpsStep.Install, notFound = true) }
             return@busy
         }
         daemon.setUrlFiltering(true)
         https.reload()
         val results = readSection { apps.apps().filter { it.app.profileSerial == null && it.isFiltered } }
-        state.update { it.copy(step = HttpsStep.Result, results = results) }
+        change { it.copy(step = HttpsStep.Result, results = results) }
     }
 
     private fun busy(failure: Int, block: suspend () -> Unit) {
@@ -174,5 +197,11 @@ class HttpsViewModel @Inject constructor(
                 state.update { it.copy(busy = false) }
             }
         }
+    }
+
+    private companion object {
+        const val STEP = "https_step"
+        const val SAVED = "https_saved"
+        const val AWAITING_INSTALL = "https_awaiting_install"
     }
 }
