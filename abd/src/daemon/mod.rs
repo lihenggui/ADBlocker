@@ -14,6 +14,7 @@
 
 mod capture_rules;
 mod ipv6;
+mod owner;
 mod reconcile;
 mod reload;
 mod setup;
@@ -29,6 +30,7 @@ use tokio::task::{JoinError, JoinHandle, JoinSet};
 use tokio::time::{Instant, Sleep};
 
 use self::ipv6::Ipv6;
+use self::owner::Owner;
 use self::reconcile::Reconciler;
 use self::setup::{Setup, Signals};
 use crate::paths::Paths;
@@ -57,8 +59,10 @@ pub async fn run(paths: Paths) -> Result<()> {
         reconcile,
         ipv6: Ipv6::new(event),
         android: AndroidChanges::new(),
+        owner: Owner::new(),
         compiling: JoinSet::new(),
     };
+    daemon.owner.on_packages();
     let stopped = daemon.drive().await;
     daemon.shutdown(stopped).await
 }
@@ -72,6 +76,7 @@ struct Daemon<'a> {
     reconcile: Reconciler<'a>,
     ipv6: Ipv6,
     android: AndroidChanges,
+    owner: Owner,
     compiling: JoinSet<reload::Compiled>,
 }
 
@@ -115,7 +120,12 @@ impl Daemon<'_> {
             }
             () = &mut self.android.settle, if self.android.changed => {
                 self.android.changed = false;
+                self.owner.on_packages();
                 self.reconcile.reapply(v6);
+            }
+            () = self.owner.gone() => {
+                eprintln!("the app is uninstalled: nothing is filtered until it starts the module again");
+                return ControlFlow::Break(Ok(()));
             }
             () = reconcile::due(&mut self.reconcile.pause_timer, &mut self.reconcile.apps_retry) => self.reconcile.reapply(v6),
             uid = app_start(&mut self.reconcile.starts) => self.reconcile.on_app_started(uid),

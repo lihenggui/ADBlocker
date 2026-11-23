@@ -228,14 +228,20 @@ another reader of these events, or a file they go to.
   pidfd and checks whose it is and what it runs. The pid files are the same
   wherever the module is installed, so a module stops the daemon of the one
   it replaces.
+- The daemon of a module the app installed with root alone, known by the
+  directory it runs from, ends as when asked to stop once the app has been
+  out of Android's list of packages for `owner::CONFIRM`
+  (`daemon/owner.rs`): nothing else could turn it off. A list that cannot be
+  read or lacks what every device has ends nothing. The data stays.
 
 ## Power and performance
 
 The daemon runs on every device all the time; its cost is the product's cost.
 
 - No timers while nothing happens: counts are written some time after they
-  change, the IPv6 retry timer exists only while IPv6 is left alone, and
-  the pause timer (`pause::Timer`) only while a pause is to end.
+  change, the IPv6 retry timer exists only while IPv6 is left alone, the
+  pause timer (`pause::Timer`) only while a pause is to end, and the
+  owner's only while the app is missing from the list of packages.
 - Two worker threads. Nothing is logged per connection.
 - Per connection: one sock_diag question on a socket kept open, one peek,
   and the two handshakes. Do not add a file read, a process or a new

@@ -25,7 +25,7 @@ mod profiles;
 mod selection;
 mod validate;
 
-pub use classification::known_packages;
+pub use classification::{companion_installed, known_packages};
 pub use eligibility::{print_personal_eligibility, report_app_eligibility};
 pub use groups::{personal_group_members, verified_groups};
 pub use profiles::{Profile, print_profiles, profiles};
