@@ -81,6 +81,14 @@ android {
 
     testOptions.unitTests.isIncludeAndroidResources = true
 
+    // The dependency list AGP adds to the signing block is encrypted with
+    // a key only Google can read; the dependencies are in release-info/
+    // of the source archive instead. F-Droid rejects an APK carrying it.
+    dependenciesInfo {
+        includeInApk = false
+        includeInBundle = false
+    }
+
     // The engine for filtering without root, as scripts/build.sh builds it:
     // out/jni/<abi>/libabd_vpn.so, packaged as lib/<abi>/. A build without
     // it goes on, and the VPN method reports itself unavailable.
