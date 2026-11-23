@@ -1,0 +1,18 @@
+{
+  "running": true,
+  "pid": 4242,
+  "started": 1763538000,
+  "version": "v0.2.0",
+  "apps": 5,
+  "rules": 216450,
+  "host_rules": 53211,
+  "exclusions": 812,
+  "paused": false,
+  "resume_at": null,
+  "ipv6": true,
+  "lists_updated": 1763531000,
+  "url_filtering": true,
+  "scope": "chosen",
+  "cosmetic": false,
+  "boot_guard": null
+}

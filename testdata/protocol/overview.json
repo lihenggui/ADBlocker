@@ -1,0 +1,32 @@
+{
+  "status": {
+    "running": true,
+    "pid": 4242,
+    "started": 1763538000,
+    "version": "v0.2.0",
+    "apps": 5,
+    "rules": 216450,
+    "host_rules": 53211,
+    "exclusions": 812,
+    "paused": false,
+    "resume_at": null,
+    "ipv6": true,
+    "lists_updated": 1763531000,
+    "url_filtering": true,
+    "scope": "chosen",
+    "cosmetic": false,
+    "boot_guard": null
+  },
+  "stats": {
+    "days": [[4, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [184, 52]],
+    "apps": {
+      "com.example.news": [[4, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [184, 43]],
+      "com.example.shop": [[0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 0], [0, 9]]
+    }
+  },
+  "lists": [
+    { "url": "https://easylist.to/easylist/easylist.txt", "enabled": true, "title": "EasyList", "rules": 72410, "updated": 1763531000, "error": null },
+    { "url": "https://easylist-downloads.adblockplus.org/easylistchina.txt", "enabled": true, "title": "EasyList China", "rules": 21544, "updated": 1763444600, "error": "connection timed out" },
+    { "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null }
+  ]
+}

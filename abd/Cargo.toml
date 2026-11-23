@@ -1,0 +1,32 @@
+[package]
+name = "abd"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+abd-engine = { path = "../abd-engine" }
+anyhow = { workspace = true, default-features = true }
+libc = "0.2.191"
+md-5 = "0.11"
+roxmltree = "0.21.2"
+serde_json = "1.0.154"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+socket2 = "0.6.5"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "net", "io-util", "macros", "time", "sync", "signal", "process"] }
+x509-parser = "0.18"
+
+[dev-dependencies]
+proc-macro2 = { version = "1.0.107", features = ["span-locations"] }
+syn = { version = "3.0.10", features = ["full", "visit"] }
+tempfile = "3"
+tokio = { version = "1.54.1", features = ["test-util"] }
+
+[[bin]]
+name = "abd"
+path = "src/main.rs"
+
+[lints]
+workspace = true

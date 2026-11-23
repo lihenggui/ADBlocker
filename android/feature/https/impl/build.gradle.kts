@@ -1,0 +1,37 @@
+/*
+ * Copyright (C) 2026 Mercury Li
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 3 as
+ * published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with this program. If not, see <https://www.gnu.org/licenses/>.
+ */
+
+plugins {
+    alias(libs.plugins.adblocker.android.feature.impl)
+    alias(libs.plugins.adblocker.android.library.compose)
+    alias(libs.plugins.roborazzi)
+}
+
+android {
+    namespace = "li.mercury.adblocker.feature.https.impl"
+    testOptions.unitTests.isIncludeAndroidResources = true
+}
+
+dependencies {
+    implementation(projects.core.data)
+    implementation(projects.feature.https.api)
+
+    implementation(libs.androidx.activity.compose)
+
+    testImplementation(libs.robolectric)
+    testImplementation(projects.core.screenshotTesting)
+    testImplementation(projects.core.testing)
+}

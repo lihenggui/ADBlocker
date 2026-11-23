@@ -1,0 +1,5 @@
+[
+  { "package": "com.example.shared", "effective": {"http": {"level": "off", "reason": null}, "https": {"level": "off", "reason": null}}, "paused_until": null, "unavailable_reason": "shared_uid" },
+  { "package": "com.example.shared", "profile_serial": 37, "effective": {"http": {"level": "off", "reason": null}, "https": {"level": "off", "reason": null}}, "paused_until": null, "unavailable_reason": "shared_uid" },
+  { "package": "com.example.unknown", "effective": {"http": {"level": "off", "reason": null}, "https": {"level": "off", "reason": null}}, "paused_until": null, "unavailable_reason": "unavailable" }
+]

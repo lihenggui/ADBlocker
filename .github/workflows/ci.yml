@@ -1,0 +1,287 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+    inputs:
+      device_checks:
+        type: boolean
+        default: false
+  workflow_dispatch:
+    inputs:
+      device_checks:
+        description: Run Root and VPN device checks
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# A newer push to the same branch or pull request replaces the run in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup
+
+      - name: Check formatting
+        run: cargo fmt --all --check
+
+      - name: Lint Rust and check function length
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: Test Rust and check source structure
+        run: cargo test
+
+      - name: Test the VPN JNI bridge
+        run: sh scripts/check-engine-jni.sh
+
+      # Known vulnerabilities, unmaintained crates, licenses the module cannot
+      # be distributed under, and sources other than crates.io (deny.toml).
+      - name: Check the dependencies
+        uses: EmbarkStudios/cargo-deny-action@17aeb3c839e42274e2b8adf721c8c65edfdc74dd # v2.1.3
+
+      - name: Check the module scripts
+        run: |
+          for script in module/*.sh scripts/*.sh scripts/check/*.sh scripts/check/http3/*.sh; do
+            bash -n "$script"
+          done
+          sh scripts/check-module-uninstall.sh
+          sh scripts/check-module-boot.sh
+
+      - name: Check license headers
+        run: |
+          missing=$(git ls-files '*.rs' '*.sh' '*.java' '*.c' | xargs grep -L 'GNU General Public License' || true)
+          if [ -n "$missing" ]; then
+            echo "Missing license header:"
+            echo "$missing"
+            exit 1
+          fi
+
+      - name: Check the app's formatting and license headers
+        working-directory: android
+        run: ./gradlew spotlessCheck :build-logic:convention:spotlessCheck
+
+      # The APK is also the module: packaging it takes the daemons from out/.
+      - name: Build the module
+        run: ./scripts/build.sh --locked
+
+      # Unit tests, and the screenshots compared with the checked-in ones.
+      - name: Test the app
+        working-directory: android
+        run: ./gradlew test
+
+      # A new library, permission or license comes in with a reviewed change:
+      # the baselines are app/dependencies/ and app/release-badging.txt.
+      - name: Check the app's dependencies, permissions and licenses
+        working-directory: android
+        run: ./gradlew :app:dependencyGuard :app:checkReleaseBadging :app:licenseeAndroidRelease
+
+      - name: Lint the app
+        working-directory: android
+        run: ./gradlew :app:lintRelease
+
+      - name: Check Kotlin source structure
+        working-directory: android
+        run: ./gradlew lintStructure -PlintStructureOnly
+
+      - name: Upload the lint report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: lint-report
+          path: |
+            android/app/build/reports/lint-results-release.html
+            android/**/build/reports/lint-results-debug.html
+          if-no-files-found: ignore
+
+      - name: Upload the module
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: adblocker
+          path: out/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+
+      - name: Build device test APKs
+        if: inputs.device_checks
+        working-directory: android
+        run: ./gradlew :app:assembleDebug :app:assembleDebugAndroidTest
+
+      - name: Build the Android HTTP/3 test client and origin
+        if: inputs.device_checks
+        run: ./scripts/build-http3-check.sh
+
+      - name: Record the device build commit
+        if: inputs.device_checks
+        run: git rev-parse HEAD > out/device-build-commit.txt
+
+      - name: Upload device test inputs
+        if: inputs.device_checks
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: adblocker-device
+          path: |
+            out/adblocker-*.apk.zip
+            out/device-build-commit.txt
+            out/check-http3-x86_64
+            android/app/build/outputs/apk/debug/app-debug.apk
+            android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          if-no-files-found: error
+          retention-days: 3
+
+  device:
+    name: Root and VPN on Android 15
+    if: inputs.device_checks
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      ANDROID_SERIAL: emulator-5554
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: adblocker-device
+
+      - name: Verify the device build commit
+        run: test "$(cat out/device-build-commit.txt)" = "$(git rev-parse HEAD)"
+
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Boot a KVM emulator
+        run: |
+          sudo chown "$(id -u)" /dev/kvm
+          sudo chmod u+rw /dev/kvm
+          export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
+          printf '%s\n' "$ANDROID_HOME/platform-tools" "$ANDROID_HOME/emulator" >> "$GITHUB_PATH"
+          image='system-images;android-35;google_apis;x86_64'
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install emulator "$image"
+          "$ANDROID_HOME/cmdline-tools/latest/bin/avdmanager" create avd \
+            --name adblocker-ci --package "$image" <<< no
+          sysdir=$(scripts/check/http3/stock-image.sh "$RUNNER_TEMP/stock-image")
+          nohup emulator -avd adblocker-ci -sysdir "$sysdir" -port 5554 -no-window -no-audio \
+            -no-snapshot -no-boot-anim -gpu swiftshader_indirect \
+            -feature -Uwb,-VulkanVirtualQueue > out/emulator.log 2>&1 &
+          timeout 600 adb wait-for-device
+          deadline=$((SECONDS + 600))
+          until [[ "$(timeout 10 adb shell getprop sys.boot_completed | tr -d '\r')" == 1 ]]; do
+            if ((SECONDS >= deadline)); then
+              cat out/emulator.log
+              exit 1
+            fi
+            sleep 2
+          done
+          adb shell settings put global hide_error_dialogs 1
+          adb shell svc power stayon true
+          adb shell wm dismiss-keyguard
+
+      - name: Check Root filtering
+        env:
+          ABD_CHECK_WORK_TILE: "1"
+        run: |
+          ./scripts/install-on-emulator.sh 2>&1 | tee out/root-install.log
+          ./scripts/check-device.sh 2>&1 | tee out/root-check.log
+
+      - name: Check HTTP/3 with the root module
+        run: |
+          chmod +x out/check-http3-x86_64
+          ./scripts/check-http3-device.sh root
+
+      - name: Check module restart and uninstall
+        run: |
+          module=/data/adb/modules/adblocker
+          # A saved selection should republish its routing gates after reboot.
+          adb shell "$module/bin/abd app add li.mercury.adblocker"
+          adb reboot
+          timeout 600 adb wait-for-device
+          deadline=$((SECONDS + 600))
+          until [[ "$(timeout 10 adb shell getprop sys.boot_completed | tr -d '\r')" == 1 ]]; do
+            ((SECONDS < deadline)) || exit 1
+            sleep 2
+          done
+          adb root
+          timeout 60 adb wait-for-device
+          test "$(adb shell id -u | tr -d '\r')" = 0
+          # The emulator has no root manager to invoke the late-start script.
+          adb shell "setsid sh $module/service.sh </dev/null >/dev/null 2>&1"
+          deadline=$((SECONDS + 60))
+          until adb shell "$module/bin/abd status --json" | jq -e '.running and (.started != null) and .apps == 1' >/dev/null; do
+            ((SECONDS < deadline)) || exit 1
+            sleep 1
+          done
+          adb shell sh -s <<'CHECK_PIDS'
+          set -eu
+          data=/data/adb/adblocker
+          supervisor=$(cat "$data/supervisor.pid")
+          daemon=$(cat "$data/abd.pid")
+          test -n "$supervisor"
+          test -n "$daemon"
+          kill -0 "$supervisor"
+          kill -0 "$daemon"
+          CHECK_PIDS
+          capture_gate() {
+            adb shell "ip -$1 rule show fwmark 0x4000000/0x4000000 lookup 233 pref 100"
+          }
+          ipv4=$(capture_gate 4)
+          test -n "$ipv4"
+          ipv6_enabled=$(adb shell "$module/bin/abd status --json" | jq -r '.ipv6')
+          if [[ $ipv6_enabled == true ]]; then
+            ipv6=$(capture_gate 6)
+            test -n "$ipv6"
+          fi
+          adb shell 'test -d /data/adb/adblocker/ca'
+          adb shell sh "$module/uninstall.sh"
+          ipv4=$(capture_gate 4)
+          ipv6=$(capture_gate 6)
+          test -z "$ipv4"
+          test -z "$ipv6"
+          adb shell 'test ! -e /data/adb/adblocker/ca &&
+                     test ! -e /data/adb/adblocker/store &&
+                     test ! -e /data/adb/adblocker/user-store &&
+                     test ! -e /data/adb/adblocker/supervisor.pid &&
+                     test ! -e /data/adb/adblocker/abd.pid'
+          adb uninstall li.mercury.adblocker
+
+      - name: Check VPN filtering and lifecycle
+        run: |
+          adb install -t android/app/build/outputs/apk/debug/app-debug.apk
+          adb install -t android/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk
+          adb shell appops set li.mercury.adblocker ACTIVATE_VPN allow
+          adb shell am instrument -w -e class li.mercury.adblocker.VpnDeviceTest \
+            li.mercury.adblocker.test/androidx.test.runner.AndroidJUnitRunner | tee out/vpn-check.log
+          grep -Eq '^OK \([1-9][0-9]* tests?\)' out/vpn-check.log
+
+      - name: Check HTTP/3 with the Android VPN
+        run: |
+          ./scripts/check-http3-device.sh vpn
+
+      - name: Upload device logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: adblocker-device-logs
+          path: out/*.log
+          if-no-files-found: ignore

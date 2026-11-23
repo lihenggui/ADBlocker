@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">设置</string>
+    <string name="feature_overview_filtering">正在过滤</string>
+    <string name="feature_overview_paused">已暂停</string>
+    <string name="feature_overview_stopped">过滤服务未运行</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="other">%1$s 个应用</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="other">%1$s 条规则</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">%1$s后恢复</string>
+    <string name="feature_overview_paused_detail">直到手动恢复</string>
+    <string name="feature_overview_stopped_detail">应用直接联网，不经过过滤</string>
+    <string name="feature_overview_resume">恢复过滤</string>
+    <string name="feature_overview_start">启动</string>
+    <string name="feature_overview_pause_hour">暂停 1 小时</string>
+    <string name="feature_overview_more_durations">更多暂停时长</string>
+    <string name="feature_overview_expanded">已展开</string>
+    <string name="feature_overview_collapsed">已收起</string>
+    <string name="feature_overview_until_resumed">直到手动恢复</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="other">%1$d 小时</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="other">%1$d 分钟</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">今天已拦截</string>
+    <string name="feature_overview_blocked_breakdown">请求 %1$s · 连接 %2$s</string>
+    <string name="feature_overview_week_description">最近 7 天的拦截数：%1$s</string>
+    <string name="feature_overview_today">今天</string>
+    <string name="feature_overview_top_apps">拦截最多</string>
+    <string name="feature_overview_status">状态</string>
+    <string name="feature_overview_lists">订阅</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="other">已启用 %1$d 个 · %2$s更新</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="other">已启用 %1$d 个 · 尚未下载</item>
+    </plurals>
+    <string name="feature_overview_service">过滤服务</string>
+    <string name="feature_overview_service_running">运行中</string>
+    <string name="feature_overview_service_running_since">已运行 %1$s</string>
+    <string name="feature_overview_service_stopped">未运行</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="other">已暂停 %1$d 小时。期间应用直接联网，不经过过滤。</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="other">已暂停 %1$d 分钟。期间应用直接联网，不经过过滤。</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">已暂停，直到手动恢复。期间应用直接联网，不经过过滤。</string>
+    <string name="feature_overview_undo">撤销</string>
+    <string name="feature_overview_module_disabled">模块已停用。请在 root 管理器中启用。</string>
+    <string name="feature_overview_service_timeout">过滤服务未及时响应。</string>
+    <string name="feature_overview_root_pending">请在“设置”中完成切换至 root 模式。</string>
+    <string name="feature_overview_action_failed">操作失败。请在“设置”中检查过滤服务。</string>
+    <string name="feature_overview_turned_off">已自动关闭</string>
+    <string name="feature_overview_turned_off_detail">由于设备连续两次未能完成启动，过滤已于 %1$s 自动关闭。应用直接联网，不经过过滤。</string>
+    <string name="feature_overview_turn_on_again">重新开启</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">正在连接</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">已断开</string>
+    <string name="feature_overview_vpn_off_detail">所选应用的连接照常进行，但未经过滤。</string>
+    <string name="feature_overview_vpn_revoked_detail">VPN 已被其他 VPN 应用或系统设置断开。所选应用的连接照常进行，但未经过滤。</string>
+    <string name="feature_overview_vpn_failed_detail">过滤意外停止。所选应用的连接照常进行，但未经过滤。</string>
+    <string name="feature_overview_vpn_lockdown_detail">已启用“屏蔽未使用 VPN 的连接”。重新连接前，所选应用无法联网。</string>
+    <string name="feature_overview_reconnect">重新连接</string>
+    <string name="feature_overview_vpn_refused">未允许建立 VPN。所选应用的连接照常进行，但未经过滤。</string>
+    <string name="feature_overview_method">过滤方式</string>
+    <string name="feature_overview_method_vpn_on">VPN · 已连接</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · 正在连接</string>
+    <string name="feature_overview_method_vpn_off">VPN · 已断开</string>
+    <string name="feature_overview_https">加密网站</string>
+    <string name="feature_overview_https_not_set_up">仅按域名 · 可为浏览器启用</string>
+    <string name="feature_overview_https_off">仅按域名 · 解密已关闭</string>
+    <string name="feature_overview_https_none">仅按域名</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="other">已解密 %1$d 个应用</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">已启用“屏蔽未使用 VPN 的连接”</string>
+    <string name="feature_overview_lockdown_text">过滤服务停止期间，所选应用将无法联网。</string>
+    <string name="feature_overview_notice_ok">知道了</string>
+    <string name="feature_overview_root_title">已检测到 root 权限</string>
+    <string name="feature_overview_root_text">切换至 root 模式后可按网址过滤加密网站，无需使用 VPN。所选应用、订阅与规则将保留。</string>
+    <string name="feature_overview_root_dismiss">暂不切换</string>
+    <string name="feature_overview_root_switch">切换至 root 模式</string>
+    <string name="feature_overview_battery_title">Android 已停止 VPN</string>
+    <string name="feature_overview_battery_text">后台过滤已停止。允许 ADBlocker 不受电池优化限制，以帮助保持过滤。</string>
+    <string name="feature_overview_battery_action">允许后台运行</string>
+</resources>

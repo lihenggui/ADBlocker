@@ -1,0 +1,7 @@
+{
+  "rules": 5,
+  "issues": [
+    { "line": 5, "text": "news.example##.ad-banner", "kind": "cosmetic" },
+    { "line": 6, "text": "||tracker.example^$frobnicate", "kind": "invalid" }
+  ]
+}

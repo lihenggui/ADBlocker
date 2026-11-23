@@ -1,0 +1,6 @@
+{"event":"start","lists":2}
+{"event":"list","url":"https://easylist.to/easylist/easylist.txt","state":"fetching","rules":null,"error":null}
+{"event":"list","url":"https://easylist.to/easylist/easylist.txt","state":"updated","rules":72410,"error":null}
+{"event":"list","url":"https://easylist-downloads.adblockplus.org/easylistchina.txt","state":"fetching","rules":null,"error":null}
+{"event":"list","url":"https://easylist-downloads.adblockplus.org/easylistchina.txt","state":"failed","rules":null,"error":"connection timed out"}
+{"event":"done","updated":1,"unchanged":0,"failed":1,"exclusions_ready":false,"exclusions_failed":1}

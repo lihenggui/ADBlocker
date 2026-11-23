@@ -1,0 +1,7 @@
+{
+  "profiles": [
+    { "serial": 37, "packages": ["com.example.news", "com.example.work"], "groups": [{"id":"com.example.suite","packages":["com.example.work"]}] },
+    { "serial": 38, "packages": [], "groups": [] },
+    { "serial": 39, "packages": null, "groups": null }
+  ]
+}

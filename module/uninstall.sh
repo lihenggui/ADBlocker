@@ -1,0 +1,53 @@
+#!/system/bin/sh
+#
+# Copyright (C) 2026 Mercury Li
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License version 3 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program. If not, see <https://www.gnu.org/licenses/>.
+
+# Root managers run this either at once, with the daemon running, or at the
+# next boot, before anything of the module has started: it works both ways.
+#
+# Every step is taken whatever became of the one before. What matters most
+# comes first: that no app is left without its network, then that no app
+# trusts the authority any longer, then that its key is destroyed.
+MODDIR=${0%/*}
+ABD=$MODDIR/bin/abd
+DATA=/data/adb/adblocker
+
+stopped=0
+"$ABD" module-stop || stopped=$?
+"$ABD" unhook
+
+# A daemon we could not stop could still mount a copy after the scan.
+if [ "$stopped" -eq 0 ]; then
+    "$ABD" trust remove
+    removed=$?
+else
+    ABD_KEEP_TRUST_STORES=1 "$ABD" trust remove
+    removed=3
+fi
+
+# Destroy the key even if trust cleanup could not be verified.
+cleanup=0
+rm -rf "$DATA/ca" || cleanup=1
+if [ "$removed" -eq 0 ]; then
+    rm -rf "$DATA" || cleanup=1
+else
+    for entry in "$DATA"/* "$DATA"/.[!.]*; do
+        case "$entry" in
+        "$DATA/store" | "$DATA/user-store") ;;
+        *) rm -rf "$entry" || cleanup=1 ;;
+        esac
+    done
+fi
+exit "$cleanup"

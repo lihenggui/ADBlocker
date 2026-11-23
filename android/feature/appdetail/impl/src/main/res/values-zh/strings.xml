@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">返回</string>
+    <string name="feature_appdetail_open">打开%1$s</string>
+    <string name="feature_appdetail_not_installed">此应用已卸载</string>
+    <string name="feature_appdetail_filter_this">过滤此应用</string>
+    <string name="feature_appdetail_filter_group">一起过滤这些应用</string>
+    <string name="feature_appdetail_pause_group">暂停过滤此组 1 小时</string>
+    <string name="feature_appdetail_shared_members">共用此 UID 的应用</string>
+    <string name="feature_appdetail_off">流量不经过 ADBlocker</string>
+    <string name="feature_appdetail_on_full">拦截广告和跟踪器</string>
+    <string name="feature_appdetail_on_hosts">仅拦截广告和跟踪域名</string>
+    <string name="feature_appdetail_blocked">已拦截</string>
+    <string name="feature_appdetail_today">今天</string>
+    <string name="feature_appdetail_week">7 天</string>
+    <string name="feature_appdetail_trouble">故障排除</string>
+    <string name="feature_appdetail_pause">暂停过滤此应用 1 小时</string>
+    <string name="feature_appdetail_pause_text">页面或功能异常时使用</string>
+    <string name="feature_appdetail_resume">恢复过滤此应用</string>
+    <string name="feature_appdetail_paused_until">已暂停至 %1$s</string>
+    <string name="feature_appdetail_requests">查看请求</string>
+    <string name="feature_appdetail_requests_text">打开“活动”，仅显示此应用</string>
+    <string name="feature_appdetail_group_requests_text">打开“活动”，仅显示此组</string>
+    <string name="feature_appdetail_pinned">不接受证书的域名</string>
+    <string name="feature_appdetail_pinned_none">无</string>
+    <string name="feature_appdetail_pinned_count">%1$d 个 · 仅按域名过滤</string>
+    <string name="feature_appdetail_pinned_text">此应用自行校验这些域名的证书。忘记某个域名后，下次连接时将重新尝试解密。</string>
+    <string name="feature_appdetail_forget">忘记</string>
+    <string name="feature_appdetail_forget_all">全部忘记</string>
+    <string name="feature_appdetail_forgotten">已忘记。下次连接时将重新尝试解密。</string>
+    <string name="feature_appdetail_paused">已暂停此应用 1 小时</string>
+    <string name="feature_appdetail_group_paused">已暂停此组 1 小时</string>
+    <string name="feature_appdetail_undo">撤销</string>
+    <string name="feature_appdetail_failed">操作失败。请在“设置”中检查过滤服务。</string>
+    <string name="feature_appdetail_level_url_filtering_off">“设置”中的按网址过滤已关闭。仅拦截整个域名。</string>
+    <string name="feature_appdetail_level_unknown">过滤服务目前无法解密此应用，因此 HTTPS 连接仅按域名过滤。</string>
+    <string name="feature_appdetail_level_needs_certificate">要按网址过滤 HTTPS 请求，需要先设置证书，并且此应用必须信任用户证书。</string>
+    <string name="feature_appdetail_set_up_https">设置 HTTPS 过滤</string>
+    <string name="feature_appdetail_exclusions_pending">排除列表就绪前，HTTPS 连接仅按域名过滤。</string>
+    <string name="feature_appdetail_work_certificate">此应用信任工作资料中的证书后，才能按网址过滤 HTTPS 请求。</string>
+    <string name="feature_appdetail_work_quiet">开启工作资料后即可使用此应用。</string>
+    <string name="feature_appdetail_work_unavailable">此应用在工作资料中不可用。</string>
+    <string name="feature_appdetail_shared_uid">此应用与其他应用共用 Android UID，无法在 Root 模式下单独过滤。</string>
+    <string name="feature_appdetail_mixed">按请求过滤 HTTP，按域名过滤 HTTPS</string>
+    <string name="feature_appdetail_include">纳入过滤</string>
+    <string name="feature_appdetail_counts_checking">正在读取拦截数…</string>
+    <string name="feature_appdetail_counts_unavailable">拦截数不可用</string>
+    <string name="feature_appdetail_pinned_checking">正在检查…</string>
+    <string name="feature_appdetail_pinned_unavailable">无法读取域名</string>
+</resources>

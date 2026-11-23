@@ -1,0 +1,184 @@
+{
+  "license": "GPL-3.0-only",
+  "lists": [
+    {
+      "id": "easylist",
+      "url": "https://easylist.to/easylist/easylist.txt",
+      "title": "EasyList",
+      "descriptions": {"en": "Main ad blocking list", "zh": "主要的广告过滤规则"},
+      "category": "Ads",
+      "defaultEnabled": true
+    },
+    {
+      "id": "adguard_mobile",
+      "url": "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+      "title": "AdGuard Mobile Ads",
+      "descriptions": {"en": "Ads in mobile apps", "zh": "移动应用中的广告"},
+      "category": "Ads",
+      "defaultEnabled": true
+    },
+    {
+      "id": "ublock",
+      "trustedScriptlets": true,
+      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
+      "title": "uBlock filters",
+      "descriptions": {"en": "Rules maintained by uBlock Origin", "zh": "uBlock Origin 维护的规则"},
+      "category": "Ads",
+      "defaultEnabled": true
+    },
+    {
+      "id": "easyprivacy",
+      "url": "https://easylist.to/easylist/easyprivacy.txt",
+      "title": "EasyPrivacy",
+      "descriptions": {"en": "Trackers and analytics", "zh": "跟踪器和分析"},
+      "category": "Privacy",
+      "defaultEnabled": true
+    },
+    {
+      "id": "easylist_china",
+      "url": "https://easylist-downloads.adblockplus.org/easylistchina.txt",
+      "title": "EasyList China",
+      "descriptions": {"en": "Ads on Chinese sites", "zh": "中文网站的广告"},
+      "category": "Regional",
+      "offerInSetup": true,
+      "regions": ["CN"]
+    },
+    {
+      "id": "adguard_base",
+      "url": "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
+      "title": "AdGuard Base",
+      "descriptions": {"en": "AdGuard ad rules in addition to EasyList", "zh": "EasyList 之外的 AdGuard 广告规则"},
+      "category": "Ads"
+    },
+    {
+      "id": "peter_lowe",
+      "url": "https://pgl.yoyo.org/adservers/serverlist.php?hostformat=adblockplus&showintro=1&mimetype=plaintext",
+      "title": "Peter Lowe’s Ad and tracking server list",
+      "descriptions": {"en": "Domains that serve ads and trackers", "zh": "提供广告和跟踪器的域名"},
+      "category": "Ads"
+    },
+    {
+      "id": "adguard_tracking",
+      "url": "https://filters.adtidy.org/extension/ublock/filters/3.txt",
+      "title": "AdGuard Tracking Protection",
+      "descriptions": {"en": "Tracking scripts and pixels", "zh": "跟踪脚本和像素"},
+      "category": "Privacy"
+    },
+    {
+      "id": "ublock_privacy",
+      "trustedScriptlets": true,
+      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
+      "title": "uBlock filters – Privacy",
+      "descriptions": {"en": "Supplements EasyPrivacy", "zh": "补充 EasyPrivacy"},
+      "category": "Privacy"
+    },
+    {
+      "id": "urlhaus",
+      "url": "https://malware-filter.gitlab.io/malware-filter/urlhaus-filter.txt",
+      "title": "Online Malicious URL Blocklist",
+      "descriptions": {"en": "Known malware URLs", "zh": "已知的恶意软件网址"},
+      "category": "Security"
+    },
+    {
+      "id": "ublock_badware",
+      "trustedScriptlets": true,
+      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
+      "title": "uBlock filters – Badware risks",
+      "descriptions": {"en": "Scam and badware sites", "zh": "诈骗和恶意软件网站"},
+      "category": "Security"
+    },
+    {
+      "id": "adguard_chinese",
+      "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+      "title": "AdGuard Chinese",
+      "descriptions": {"en": "Ads on Chinese sites, by AdGuard", "zh": "AdGuard 的中文网站广告规则"},
+      "category": "Regional"
+    },
+    {
+      "id": "easylist_dutch",
+      "url": "https://easylist-downloads.adblockplus.org/easylistdutch.txt",
+      "title": "EasyList Dutch",
+      "category": "Regional",
+      "regions": ["NL"]
+    },
+    {
+      "id": "easylist_germany",
+      "url": "https://easylist-downloads.adblockplus.org/easylistgermany.txt",
+      "title": "EasyList Germany",
+      "category": "Regional",
+      "regions": ["DE", "AT"]
+    },
+    {
+      "id": "easylist_italy",
+      "url": "https://easylist-downloads.adblockplus.org/easylistitaly.txt",
+      "title": "EasyList Italy",
+      "category": "Regional",
+      "regions": ["IT"]
+    },
+    {
+      "id": "easylist_polish",
+      "url": "https://easylist-downloads.adblockplus.org/easylistpolish.txt",
+      "title": "EasyList Polish",
+      "category": "Regional",
+      "regions": ["PL"]
+    },
+    {
+      "id": "easylist_portuguese",
+      "url": "https://easylist-downloads.adblockplus.org/easylistportuguese.txt",
+      "title": "EasyList Portuguese",
+      "category": "Regional",
+      "regions": ["PT", "BR"]
+    },
+    {
+      "id": "easylist_spanish",
+      "url": "https://easylist-downloads.adblockplus.org/easylistspanish.txt",
+      "title": "EasyList Spanish",
+      "category": "Regional",
+      "regions": ["ES", "AR", "BO", "CL", "CO", "CR", "CU", "DO", "EC", "GT", "HN", "MX", "NI", "PA", "PE", "PR", "PY", "SV", "UY", "VE"]
+    },
+    {
+      "id": "liste_fr",
+      "url": "https://easylist-downloads.adblockplus.org/liste_fr.txt",
+      "title": "Liste FR",
+      "category": "Regional",
+      "regions": ["FR"]
+    },
+    {
+      "id": "japanese_filters",
+      "url": "https://easylist-downloads.adblockplus.org/japanese-filters.txt",
+      "title": "Japanese Filters",
+      "category": "Regional",
+      "regions": ["JP"]
+    },
+    {
+      "id": "koreanlist",
+      "url": "https://easylist-downloads.adblockplus.org/koreanlist.txt",
+      "title": "KoreanList",
+      "category": "Regional",
+      "regions": ["KR"]
+    },
+    {
+      "id": "easylist_cookie",
+      "url": "https://secure.fanboy.co.nz/fanboy-cookiemonster.txt",
+      "title": "EasyList Cookie List",
+      "descriptions": {"en": "Cookie notices", "zh": "Cookie 提示"},
+      "category": "Annoyances",
+      "cosmetic": true
+    },
+    {
+      "id": "fanboy_annoyance",
+      "url": "https://secure.fanboy.co.nz/fanboy-annoyance.txt",
+      "title": "Fanboy Annoyances",
+      "descriptions": {"en": "Pop-ups, newsletter prompts and social media buttons", "zh": "弹窗、订阅提示和社交媒体按钮"},
+      "category": "Annoyances",
+      "cosmetic": true
+    }
+  ],
+  "httpsExclusions": [
+    "https://raw.githubusercontent.com/AdguardTeam/HttpsExclusions/master/exclusions/banks.txt",
+    "https://raw.githubusercontent.com/AdguardTeam/HttpsExclusions/master/exclusions/sensitive.txt",
+    "https://raw.githubusercontent.com/AdguardTeam/HttpsExclusions/master/exclusions/android.txt",
+    "https://raw.githubusercontent.com/AdguardTeam/HttpsExclusions/master/exclusions/firefox.txt",
+    "https://raw.githubusercontent.com/AdguardTeam/HttpsExclusions/master/exclusions/issues.txt"
+  ]
+}

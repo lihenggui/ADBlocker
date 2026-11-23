@@ -1,0 +1,8 @@
+{
+  "apps": {
+    "com.example.eligible": "eligible",
+    "com.example.shared": "shared_uid",
+    "com.example.unknown": "unavailable"
+  },
+  "groups": [{"id":"com.example.suite","packages":["com.example.shared"]}]
+}

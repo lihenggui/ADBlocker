@@ -1,0 +1,18 @@
+{
+  "running": false,
+  "pid": null,
+  "started": null,
+  "version": "v0.2.0",
+  "apps": 5,
+  "rules": null,
+  "host_rules": null,
+  "exclusions": null,
+  "paused": true,
+  "resume_at": 1763541600,
+  "ipv6": null,
+  "lists_updated": 1763531000,
+  "url_filtering": true,
+  "scope": "chosen",
+  "cosmetic": false,
+  "boot_guard": null
+}

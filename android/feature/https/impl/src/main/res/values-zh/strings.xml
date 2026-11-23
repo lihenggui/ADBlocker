@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">HTTPS 过滤</string>
+    <string name="feature_https_back">返回</string>
+    <string name="feature_https_step">第 %1$d 步，共 %2$d 步</string>
+    <string name="feature_https_later">稍后设置</string>
+    <string name="feature_https_continue">继续</string>
+    <string name="feature_https_previous">上一步</string>
+    <string name="feature_https_impact_title">安全影响</string>
+    <string name="feature_https_impact_text">过滤 HTTPS 内的请求，需要将 ADBlocker 证书安装至系统的用户证书。</string>
+    <string name="feature_https_impact_key">证书在本机生成，私钥存放于应用私有目录，卸载应用时销毁。</string>
+    <string name="feature_https_impact_apps">仅信任用户证书的应用可被解密，主要为部分浏览器。其他应用仍按域名过滤。</string>
+    <string name="feature_https_impact_notice">安装后，系统将持续显示“网络可能受到监控”提示。</string>
+    <string name="feature_https_impact_remove">可随时在系统设置中移除证书，入口位于“设置 › HTTPS”。</string>
+    <string name="feature_https_install_title">安装证书</string>
+    <string name="feature_https_install_text">Android 不允许应用自行安装证书，需在系统设置中完成安装。</string>
+    <string name="feature_https_install_save">保存证书</string>
+    <string name="feature_https_install_save_text">将 ADBlocker.crt 保存至本机</string>
+    <string name="feature_https_install_saved">已保存为 ADBlocker.crt</string>
+    <string name="feature_https_install_open">打开系统设置</string>
+    <string name="feature_https_install_open_text">安全和隐私 › 更多安全和隐私设置 › 加密与凭据 › 安装证书 › CA 证书</string>
+    <string name="feature_https_install_choose">选择 ADBlocker.crt 并确认安装</string>
+    <string name="feature_https_install_choose_text">菜单名称因设备厂商而异</string>
+    <string name="feature_https_install_not_found">尚未在用户证书中检测到 ADBlocker 证书。</string>
+    <string name="feature_https_save">保存证书</string>
+    <string name="feature_https_open_security">打开安全设置</string>
+    <string name="feature_https_save_failed">无法保存证书</string>
+    <string name="feature_https_apps_title">证书已安装</string>
+    <string name="feature_https_apps_text">在支持的情况下，网址规则适用于所有已过滤应用。不接受证书的应用仍保持加密。</string>
+    <string name="feature_https_turn_on">继续</string>
+    <string name="feature_https_failed">操作失败</string>
+    <string name="feature_https_done_title">已开启按网址过滤</string>
+    <string name="feature_https_result_full">完整过滤</string>
+    <string name="feature_https_result_hosts">仅按域名</string>
+    <string name="feature_https_done_hint">可在“设置”中更改按网址过滤。</string>
+    <string name="feature_https_finish">完成</string>
+    <string name="feature_https_work_title">工作资料 HTTPS</string>
+    <string name="feature_https_work_instructions">保存公开证书，再请工作资料管理员在对应的工作资料中安装。若组织政策允许，也可以在该工作资料的证书设置中安装。HTTPS 过滤适用于信任工作资料证书的应用。</string>
+    <string name="feature_https_work_save">保存证书</string>
+    <string name="feature_https_work_saved">证书已保存</string>
+    <string name="feature_https_result_certificate">仅按域名 · 未安装证书</string>
+    <string name="feature_https_result_exclusions">仅按域名 · 正在加载 HTTPS 排除列表</string>
+    <string name="feature_https_results_unavailable">无法读取应用过滤结果</string>
+</resources>

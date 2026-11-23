@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_title" translatable="false">ADBlocker</string>
+    <string name="feature_overview_settings">Settings</string>
+    <string name="feature_overview_filtering">Filtering</string>
+    <string name="feature_overview_paused">Paused</string>
+    <string name="feature_overview_stopped">Filtering service not running</string>
+    <!-- The number of filtered apps and the number of rules, such as "5 apps · 141,207 rules". -->
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s app</item>
+        <item quantity="other">%1$s apps</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s rule</item>
+        <item quantity="other">%1$s rules</item>
+    </plurals>
+    <!-- The time left, such as "15 minutes" or "1 hour". -->
+    <string name="feature_overview_resumes_in">Resumes in %1$s</string>
+    <string name="feature_overview_paused_detail">Until resumed</string>
+    <string name="feature_overview_stopped_detail">Apps connect without filtering</string>
+    <string name="feature_overview_resume">Resume</string>
+    <string name="feature_overview_start">Start</string>
+    <string name="feature_overview_pause_hour">Pause for 1 hour</string>
+    <string name="feature_overview_more_durations">More pause durations</string>
+    <string name="feature_overview_expanded">Expanded</string>
+    <string name="feature_overview_collapsed">Collapsed</string>
+    <string name="feature_overview_until_resumed">Until resumed</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d hour</item>
+        <item quantity="other">%1$d hours</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d minute</item>
+        <item quantity="other">%1$d minutes</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Blocked today</string>
+    <string name="feature_overview_blocked_breakdown">%1$s requests · %2$s connections</string>
+    <string name="feature_overview_week_description">Blocked in the last 7 days: %1$s</string>
+    <string name="feature_overview_today">Today</string>
+    <string name="feature_overview_top_apps">Most blocked</string>
+    <string name="feature_overview_status">Status</string>
+    <string name="feature_overview_lists">Filter lists</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">%1$d enabled · updated %2$s</item>
+        <item quantity="other">%1$d enabled · updated %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">%1$d enabled · not downloaded yet</item>
+        <item quantity="other">%1$d enabled · not downloaded yet</item>
+    </plurals>
+    <string name="feature_overview_service">Filtering service</string>
+    <string name="feature_overview_service_running">Running</string>
+    <string name="feature_overview_service_running_since">Running for %1$s</string>
+    <string name="feature_overview_service_stopped">Not running</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">Paused for %1$d hour. Apps connect without filtering.</item>
+        <item quantity="other">Paused for %1$d hours. Apps connect without filtering.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">Paused for %1$d minute. Apps connect without filtering.</item>
+        <item quantity="other">Paused for %1$d minutes. Apps connect without filtering.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Paused until resumed. Apps connect without filtering.</string>
+    <string name="feature_overview_undo">Undo</string>
+    <string name="feature_overview_module_disabled">The module is disabled. Enable it in the root manager.</string>
+    <string name="feature_overview_service_timeout">The filtering service did not respond in time.</string>
+    <string name="feature_overview_root_pending">Open Settings to finish switching to root mode.</string>
+    <string name="feature_overview_action_failed">Action failed. Check the filtering service in Settings.</string>
+    <string name="feature_overview_turned_off">Turned off</string>
+    <!-- The date the device last failed to finish starting up. -->
+    <string name="feature_overview_turned_off_detail">Filtering turned itself off on %1$s after two consecutive startups did not finish. Apps connect without filtering.</string>
+    <string name="feature_overview_turn_on_again">Turn on again</string>
+    <!-- The number of filtered apps and of rules, after the method: "VPN · 5 apps · 141,207 rules". -->
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Connecting</string>
+    <!-- The number of filtered apps, such as "VPN · 5 apps". -->
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Disconnected</string>
+    <string name="feature_overview_vpn_off_detail">The chosen apps connect without filtering.</string>
+    <string name="feature_overview_vpn_revoked_detail">The VPN was turned off by another VPN app or in the system settings. The chosen apps connect without filtering.</string>
+    <string name="feature_overview_vpn_failed_detail">Filtering stopped unexpectedly. The chosen apps connect without filtering.</string>
+    <string name="feature_overview_vpn_lockdown_detail">Block connections without VPN is on. The chosen apps cannot connect until the VPN is reconnected.</string>
+    <string name="feature_overview_reconnect">Reconnect</string>
+    <string name="feature_overview_vpn_refused">The VPN was not allowed. The chosen apps connect without filtering.</string>
+    <string name="feature_overview_method">Filtering method</string>
+    <string name="feature_overview_method_vpn_on">VPN · Connected</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Connecting</string>
+    <string name="feature_overview_method_vpn_off">VPN · Disconnected</string>
+    <string name="feature_overview_https">Encrypted sites</string>
+    <string name="feature_overview_https_not_set_up">Domain only · Can be set up for browsers</string>
+    <string name="feature_overview_https_off">Domain only · Decryption off</string>
+    <string name="feature_overview_https_none">Domain only</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">%1$d app decrypted</item>
+        <item quantity="other">%1$d apps decrypted</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">Block connections without VPN is on</string>
+    <string name="feature_overview_lockdown_text">While filtering is stopped, the chosen apps cannot connect.</string>
+    <string name="feature_overview_notice_ok">OK</string>
+    <string name="feature_overview_root_title">Root access detected</string>
+    <string name="feature_overview_root_text">Root mode filters encrypted sites by URL without using the VPN. The chosen apps, lists and rules are kept.</string>
+    <string name="feature_overview_root_dismiss">Not now</string>
+    <string name="feature_overview_root_switch">Switch to root mode</string>
+    <string name="feature_overview_battery_title">Android stopped the VPN</string>
+    <string name="feature_overview_battery_text">Filtering stopped in the background. Allow ADBlocker to run without battery restrictions to help keep filtering active.</string>
+    <string name="feature_overview_battery_action">Allow background use</string>
+</resources>

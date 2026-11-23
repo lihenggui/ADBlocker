@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Back</string>
+    <string name="feature_appdetail_open">Open %1$s</string>
+    <string name="feature_appdetail_not_installed">This app is no longer installed</string>
+    <string name="feature_appdetail_filter_this">Filter this app</string>
+    <string name="feature_appdetail_filter_group">Filter these apps together</string>
+    <string name="feature_appdetail_pause_group">Pause this group for 1 hour</string>
+    <string name="feature_appdetail_shared_members">Apps sharing this UID</string>
+    <string name="feature_appdetail_off">Traffic does not pass through ADBlocker</string>
+    <string name="feature_appdetail_on_full">Blocks ads and trackers</string>
+    <string name="feature_appdetail_on_hosts">Blocks ad and tracker domains only</string>
+    <string name="feature_appdetail_blocked">Blocked</string>
+    <string name="feature_appdetail_today">Today</string>
+    <string name="feature_appdetail_week">7 days</string>
+    <string name="feature_appdetail_trouble">Troubleshooting</string>
+    <string name="feature_appdetail_pause">Pause this app for 1 hour</string>
+    <string name="feature_appdetail_pause_text">Use when a page or feature does not work</string>
+    <string name="feature_appdetail_resume">Resume filtering this app</string>
+    <string name="feature_appdetail_paused_until">Paused until %1$s</string>
+    <string name="feature_appdetail_requests">View requests</string>
+    <string name="feature_appdetail_requests_text">Opens Activity, filtered to this app</string>
+    <string name="feature_appdetail_group_requests_text">Opens Activity, filtered to this group</string>
+    <string name="feature_appdetail_pinned">Domains that reject the certificate</string>
+    <string name="feature_appdetail_pinned_none">None</string>
+    <string name="feature_appdetail_pinned_count">%1$d · filtered by domain only</string>
+    <string name="feature_appdetail_pinned_text">This app checks the certificates of these domains itself. After a domain is forgotten, decryption is retried at its next connection.</string>
+    <string name="feature_appdetail_forget">Forget</string>
+    <string name="feature_appdetail_forget_all">Forget all</string>
+    <string name="feature_appdetail_forgotten">Forgotten. Decryption is retried at the next connection.</string>
+    <string name="feature_appdetail_paused">App paused for 1 hour</string>
+    <string name="feature_appdetail_group_paused">Group paused for 1 hour</string>
+    <string name="feature_appdetail_undo">Undo</string>
+    <string name="feature_appdetail_failed">Action failed. Check the filtering service in Settings.</string>
+    <string name="feature_appdetail_level_url_filtering_off">URL filtering is off in Settings. Only whole domains are blocked.</string>
+    <string name="feature_appdetail_level_unknown">The filtering service cannot decrypt this app at the moment, so HTTPS connections are filtered by domain only.</string>
+    <string name="feature_appdetail_level_needs_certificate">To filter URLs inside HTTPS, set up the certificate. The app must trust user certificates.</string>
+    <string name="feature_appdetail_set_up_https">Set up HTTPS filtering</string>
+    <string name="feature_appdetail_exclusions_pending">HTTPS connections are filtered by domain until the exclusion lists are ready.</string>
+    <string name="feature_appdetail_work_certificate">HTTPS connections stay encrypted until this app trusts the certificate in its work profile.</string>
+    <string name="feature_appdetail_work_quiet">Turn on the work profile to use this app.</string>
+    <string name="feature_appdetail_work_unavailable">This app is unavailable in the work profile.</string>
+    <string name="feature_appdetail_shared_uid">This app shares an Android UID with another app. Root mode can’t filter it individually.</string>
+    <string name="feature_appdetail_mixed">Filters HTTP requests and HTTPS domains</string>
+    <string name="feature_appdetail_include">Include in filtering</string>
+    <string name="feature_appdetail_counts_checking">Checking block counts…</string>
+    <string name="feature_appdetail_counts_unavailable">Block counts unavailable</string>
+    <string name="feature_appdetail_pinned_checking">Checking…</string>
+    <string name="feature_appdetail_pinned_unavailable">Couldn’t read domains</string>
+</resources>

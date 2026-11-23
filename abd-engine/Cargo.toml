@@ -1,0 +1,39 @@
+[package]
+name = "abd-engine"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+addr = { version = "0.15", default-features = false, features = ["psl", "std"] }
+adblock = { version = "0.13.6", default-features = false, features = ["css-validation", "embedded-domain-resolver", "full-regex-handling"] }
+anyhow = { workspace = true, default-features = true }
+base64 = "0.23.1"
+bytes = "1.12.2"
+encoding_rs = { version = "0.8.44", default-features = false }
+http-body-util = "0.1.5"
+httparse = "1.10.1"
+hyper = { version = "1.12.0", features = ["server", "client", "http1", "http2"] }
+hyper-util = { version = "0.1.21", features = ["tokio"] }
+idna = "1.1.0"
+libc = "0.2.191"
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.154"
+ring = "0.17.14"
+rcgen = { version = "0.14", features = ["pem", "x509-parser"] }
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
+socket2 = "0.6.5"
+time = "0.3.55"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "net", "io-util", "macros", "time", "sync"] }
+tokio-rustls = { version = "0.26.6", default-features = false, features = ["ring", "tls12"] }
+x509-parser = "0.18"
+
+[dev-dependencies]
+futures-core = "0.3"
+tempfile = "3"
+tokio = { version = "1.54.1", features = ["test-util"] }
+
+[lints]
+workspace = true

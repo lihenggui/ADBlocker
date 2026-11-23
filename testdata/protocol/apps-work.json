@@ -1,0 +1,4 @@
+[
+  {"package": "com.example.news", "effective": {"http": {"level": "full", "reason": null}, "https": {"level": "full", "reason": null}}, "paused_until": null},
+  {"package": "com.example.news", "profile_serial": 37, "effective": {"http": {"level": "full", "reason": null}, "https": {"level": "hosts", "reason": "profile_trust_unavailable"}}, "paused_until": 1763541600}
+]

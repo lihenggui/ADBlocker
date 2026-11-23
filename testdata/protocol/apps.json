@@ -1,0 +1,5 @@
+[
+  {"package": "com.example.browser", "effective": {"http": {"level": "full", "reason": null}, "https": {"level": "full", "reason": null}}, "paused_until": null},
+  {"package": "com.example.news", "effective": {"http": {"level": "full", "reason": null}, "https": {"level": "full", "reason": null}}, "paused_until": 1763541600},
+  {"package": "com.example.shop", "effective": {"http": {"level": "full", "reason": null}, "https": {"level": "full", "reason": null}}, "paused_until": null}
+]
