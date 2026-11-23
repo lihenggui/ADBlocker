@@ -107,7 +107,7 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   chain and device.
 - `module/*.sh` use the commands `abd run`, `trust remove`, `update`,
   `unhook`, `module-stop`, `app list` and `stats`, and the files
-  `abd.pid`, `supervisor.pid`, `abd.log` and `boot-guard` in
+  `abd.pid`, `supervisor.pid`, `abd.log`, `boot-guard` and `boot_pending` in
   `/data/adb/adblocker`. Change
   a command or a file name together with the scripts.
 - The app reads the daemon only through `abd ... --json`, whose outputs are
@@ -193,7 +193,9 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   `watch.sock` is root's only, and what happens is said on it only while somebody
   listens. `state` can name profile serials whose HTTPS trust is ready. It
   stays private. `settings` holds the filtering scope and names no apps or
-  hosts. `list-info/`, `lock` and `boot-guard` name neither an app nor a host.
+  hosts. `list-info/`, `lock` and `boot-guard` name neither an app nor a host,
+  nor does `boot_pending`, which counts the boots in a row that started the
+  module and did not finish.
   `handoff` and its staging file `handoff.new` can contain the
   previous app choices and exclusions, settings, list addresses, user rules
   and trusted hosts. They stay readable by root only and are never exported. A new file there is
