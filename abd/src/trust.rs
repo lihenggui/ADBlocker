@@ -67,7 +67,7 @@ pub const EXIT_GONE: i32 = 2;
 /// And for a process that had the mounts already.
 pub const EXIT_HAD: i32 = 3;
 
-fn system_store() -> &'static Path {
+pub(crate) fn system_store() -> &'static Path {
     if Path::new(APEX_STORE).is_dir() {
         Path::new(APEX_STORE)
     } else {
