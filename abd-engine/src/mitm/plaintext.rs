@@ -28,6 +28,7 @@ use tokio::sync::{Mutex, OnceCell};
 use super::request::{Shared, clear_target, finish_tunnel, serve};
 use super::upstream::{HANDSHAKE_TIME, Upstream, carry, dial};
 use super::{Ctx, Origin};
+use crate::clienthello;
 
 /// Only a complete, ordinary HTTP/1 request can switch port 80 away from
 /// byte forwarding. The same bounds apply even if the sender dribbles
@@ -73,7 +74,7 @@ pub(super) async fn plaintext_http(
         // wakeups while the app is still writing its headers.
         if n == previous {
             tokio::time::sleep_until((tokio::time::Instant::now() + wait).min(deadline)).await;
-            wait = (wait * 2).min(Duration::from_millis(320));
+            wait = (wait * 2).min(clienthello::MAX_WAIT);
         }
         if tokio::time::Instant::now() >= deadline {
             return Ok(false);

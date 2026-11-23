@@ -32,8 +32,12 @@ pub struct Hello {
     pub ech: bool,
 }
 
-/// The longest wait between two looks at a hello that is arriving.
-const MAX_WAIT: Duration = Duration::from_millis(320);
+/// The longest wait between two looks at what a client is still sending
+/// to begin a connection: a hello, or the headers of a request.
+pub(crate) const MAX_WAIT: Duration = Duration::from_millis(320);
+
+/// How long a client is given to send the whole of its hello.
+const HELLO_TIME: Duration = Duration::from_secs(5);
 
 const TLS_1_3: usize = 0x0304;
 
@@ -55,7 +59,7 @@ pub async fn peek(stream: &TcpStream) -> std::io::Result<Peeked> {
     // in it: room for that, and for the most a record can be only when one
     // says it is longer.
     let mut buf = vec![0u8; FIRST_LOOK];
-    let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
+    let deadline = tokio::time::Instant::now() + HELLO_TIME;
     let mut last = 0;
     let mut wait = Duration::from_millis(1);
     loop {
