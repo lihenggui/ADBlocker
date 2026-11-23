@@ -169,8 +169,22 @@ async fn rig(setup: Setup) -> Rig {
                     return;
                 };
                 let h2 = tls.get_ref().1.alpn_protocol() == Some(b"h2");
-                let svc = service_fn(move |req: Request<Incoming>| {
+                let svc = service_fn(move |mut req: Request<Incoming>| {
                     hits.fetch_add(1, Relaxed);
+                    // `/upgrade` switches protocols and then never closes.
+                    if req.uri().path() == "/upgrade" {
+                        let upgraded = hyper::upgrade::on(&mut req);
+                        tokio::spawn(async move {
+                            let _held = upgraded.await;
+                            std::future::pending::<()>().await;
+                        });
+                        return std::future::ready(Ok(Response::builder()
+                            .status(StatusCode::SWITCHING_PROTOCOLS)
+                            .header("connection", "upgrade")
+                            .header("upgrade", "websocket")
+                            .body(Full::new(Bytes::new()))
+                            .unwrap()));
+                    }
                     // `/big/<n>` is answered with n MiB, for the measurements.
                     let body = match req.uri().path().strip_prefix("/big/") {
                         Some(n) => Bytes::from(vec![0u8; n.parse::<usize>().unwrap() << 20]),
@@ -238,6 +252,7 @@ async fn rig(setup: Setup) -> Rig {
                 } else {
                     let _ = hyper::server::conn::http1::Builder::new()
                         .serve_connection(io, svc)
+                        .with_upgrades()
                         .await;
                 }
             });
@@ -2125,6 +2140,34 @@ async fn a_server_that_never_answers_the_hello_does_not_hold_the_app_for_ever() 
     let ended = tokio::time::timeout(HANDSHAKE_TIME + LINGER_TIME * 2, conducted).await;
     assert!(ended.is_ok(), "the connection was never let go");
     held.abort();
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_decrypted_upgrade_whose_server_never_closes_is_let_go_after_the_app_leaves() {
+    let rig = rig(Setup::default()).await;
+    let tls = rig.handshake(Trust::System, H1).await.unwrap();
+    assert!(tls.get_ref().1.peer_certificates().unwrap()[0] != rig.server_leaf);
+    let (mut tx, conn) = hyper::client::conn::http1::handshake(TokioIo::new(tls))
+        .await
+        .unwrap();
+    tokio::spawn(conn.with_upgrades());
+    let req = Request::get("/upgrade")
+        .header(HOST_HEADER, HOST)
+        .header("connection", "upgrade")
+        .header("upgrade", "websocket")
+        .body(Empty::<Bytes>::new())
+        .unwrap();
+    let mut resp = tx.send_request(req).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::SWITCHING_PROTOCOLS);
+    let mut io = TokioIo::new(hyper::upgrade::on(&mut resp).await.unwrap());
+    // The app is done sending; the server never says anything again.
+    io.shutdown().await.unwrap();
+    let mut buf = [0u8; 1];
+    let ended = tokio::time::timeout(LINGER_TIME * 2, io.read(&mut buf)).await;
+    assert!(
+        matches!(ended, Ok(Ok(0) | Err(_))),
+        "the tunnel was never let go"
+    );
 }
 
 #[tokio::test]

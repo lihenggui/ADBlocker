@@ -407,15 +407,9 @@ fn join_upgrade(
         && let Some(app_upgrade) = app_upgrade
     {
         let server_upgrade = hyper::upgrade::on(resp);
-        let plaintext = shared.https.is_none();
         let joined = tokio::spawn(async move {
             if let (Ok(app), Ok(server)) = (app_upgrade.await, server_upgrade.await) {
-                let (mut app, mut server) = (TokioIo::new(app), TokioIo::new(server));
-                if plaintext {
-                    relay::join_streams(app, server, LINGER_TIME).await;
-                } else {
-                    let _ = tokio::io::copy_bidirectional(&mut app, &mut server).await;
-                }
+                relay::join_streams(TokioIo::new(app), TokioIo::new(server), LINGER_TIME).await;
             }
         });
         *shared.tunnel.lock().unwrap() = Some(joined);
