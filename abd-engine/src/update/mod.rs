@@ -121,13 +121,7 @@ impl Tally {
 /// `e`, short enough to be kept and shown.
 fn reason(e: &anyhow::Error) -> String {
     let mut text = format!("{e:#}");
-    if text.len() > MAX_ERROR {
-        let mut end = MAX_ERROR;
-        while !text.is_char_boundary(end) {
-            end -= 1;
-        }
-        text.truncate(end);
-    }
+    text.truncate(text.floor_char_boundary(MAX_ERROR));
     text
 }
 

@@ -154,8 +154,7 @@ impl Filters {
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),
             );
-            std::fs::write(cache.join("key.new"), meta)?;
-            std::fs::rename(cache.join("key.new"), cache.join("key"))
+            files::replace(&cache.join("key"), meta.as_bytes())
         };
         let _ = write();
     }

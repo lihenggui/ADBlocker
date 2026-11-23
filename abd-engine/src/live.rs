@@ -94,11 +94,7 @@ impl Drop for Joined {
 
 /// At most `max` bytes of `s`, cut where a character begins.
 fn cut(s: &str, max: usize) -> String {
-    let mut end = s.len().min(max);
-    while !s.is_char_boundary(end) {
-        end -= 1;
-    }
-    s[..end].to_owned()
+    s[..s.floor_char_boundary(max)].to_owned()
 }
 
 impl Hub {
@@ -256,10 +252,7 @@ pub async fn feed(joined: &mut Joined, out: &mut (impl AsyncWrite + Unpin)) -> i
 /// daemon runs as, root, can connect: the socket is that user's alone, in
 /// a directory that is too.
 pub fn listen(path: &Path, hub: Arc<Hub>) -> io::Result<()> {
-    match std::fs::remove_file(path) {
-        Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
-        _ => {}
-    }
+    crate::files::remove_if_present(path)?;
     let listener = UnixListener::bind(path)?;
     std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600))?;
     // Ours, as we made it.

@@ -127,18 +127,26 @@ impl ListFiles {
     }
 }
 
+/// The `*.txt` entries of `dir`, the lists, and the error of any entry
+/// that cannot be read: a whole inventory stops at it, the readable one
+/// leaves it out.
+fn lists_in(dir: &Path) -> io::Result<impl Iterator<Item = io::Result<PathBuf>>> {
+    let entries = std::fs::read_dir(dir)?.map(|entry| entry.map(|e| e.path()));
+    Ok(entries.filter(|path| {
+        path.as_ref()
+            .map_or(true, |path| path.extension().is_some_and(|e| e == "txt"))
+    }))
+}
+
 fn list_paths(dirs: &[&Path]) -> io::Result<Vec<PathBuf>> {
     let mut paths = Vec::new();
     for dir in dirs {
-        let entries = match std::fs::read_dir(dir) {
+        let entries = match lists_in(dir) {
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             entries => entries?,
         };
-        for entry in entries {
-            let file = entry?.path();
-            if file.extension().is_some_and(|e| e == "txt") {
-                paths.push(file);
-            }
+        for path in entries {
+            paths.push(path?);
         }
     }
     Ok(paths)
@@ -147,11 +155,9 @@ fn list_paths(dirs: &[&Path]) -> io::Result<Vec<PathBuf>> {
 pub(crate) fn readable_paths(dirs: &[&Path]) -> Vec<PathBuf> {
     let mut files: Vec<_> = dirs
         .iter()
-        .filter_map(|dir| std::fs::read_dir(dir).ok())
+        .filter_map(|dir| lists_in(dir).ok())
         .flatten()
         .flatten()
-        .map(|e| e.path())
-        .filter(|path| path.extension().is_some_and(|e| e == "txt"))
         .collect();
     files.sort();
     files

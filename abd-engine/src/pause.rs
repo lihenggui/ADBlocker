@@ -113,10 +113,7 @@ impl Pauses {
 
     fn write(&self, file: &Path) -> std::io::Result<()> {
         if self.entries.is_empty() {
-            return match std::fs::remove_file(file) {
-                Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(e),
-                _ => Ok(()),
-            };
+            return files::remove_if_present(file).map(drop);
         }
         let text: String = self
             .entries
