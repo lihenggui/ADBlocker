@@ -313,7 +313,7 @@ internal suspend fun <User> collectWorkApps(
     return AppInventory(apps, workUnavailable = unavailable || remaining.isNotEmpty())
 }
 
-// The flag classes of these calls came with Android 13; the app runs from 12,
+// The flag classes of these calls came with Android 13; the app runs from 10,
 // where only the int overloads, deprecated since, exist.
 
 private fun PackageManager.installedPackages(flags: Int): List<PackageInfo> = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
