@@ -322,17 +322,25 @@ impl Stack {
         let now = Instant::from_micros(self.started.elapsed().as_micros() as i64);
         while let Some(packet) = self.queues.from_apps.ready.front() {
             let ends = tcp_ends(packet).map(|(ends, _)| ends);
+            let id = ends.and_then(|ends| self.by_ends.get(&ends).copied());
+            let was = id.map(|id| self.state(id));
             self.iface
                 .poll_ingress_single(now, &mut self.queues, &mut self.sockets);
-            if let Some(ends) = ends {
-                if let Some(&id) = self.by_ends.get(&ends) {
-                    self.changed.insert(id);
-                    // Deliver an opening even if a following packet in
-                    // this batch closes the same connection.
-                    let flow = self.flows.get_mut(&id).expect("flow in endpoint index");
-                    Self::opened_if_ready(id, flow, &self.sockets, &mut self.opened);
+            if let Some(id) = id {
+                // A reset before the connection opened takes it back to
+                // listening, for the next beginning to this server from
+                // any port, which may be the next packet: it would then
+                // be told of with this one's app.
+                if was != Some(tcp::State::Listen) && self.state(id) == tcp::State::Listen {
+                    self.forget(id);
+                    continue;
                 }
-            } else {
+                self.changed.insert(id);
+                // Deliver an opening even if a following packet in
+                // this batch closes the same connection.
+                let flow = self.flows.get_mut(&id).expect("flow in endpoint index");
+                Self::opened_if_ready(id, flow, &self.sockets, &mut self.opened);
+            } else if ends.is_none() {
                 self.all = true;
             }
         }
@@ -346,7 +354,10 @@ impl Stack {
                 continue;
             };
             let socket = self.sockets.get::<tcp::Socket>(flow.handle);
-            if socket.state() == tcp::State::Closed {
+            // Every packet taken has been seen: one still listening never
+            // had its beginning, which was lost, and the app sends it
+            // again. A listener has no timeout and would hold its place.
+            if matches!(socket.state(), tcp::State::Closed | tcp::State::Listen) {
                 gone.push(id);
             } else {
                 Self::opened_if_ready(id, flow, &self.sockets, &mut self.opened);
@@ -405,6 +416,12 @@ impl Stack {
     /// A connection an app has made since this was last asked.
     pub fn opened(&mut self) -> Option<Opened> {
         self.opened.pop_front()
+    }
+
+    fn state(&self, id: Id) -> tcp::State {
+        self.sockets
+            .get::<tcp::Socket>(self.flows[&id].handle)
+            .state()
     }
 
     fn socket(&mut self, id: Id) -> Option<&mut tcp::Socket<'static>> {
@@ -484,7 +501,8 @@ impl Stack {
 #[cfg(test)]
 mod tests {
     use smoltcp::iface::SocketStorage;
-    use smoltcp::wire::IpEndpoint;
+    use smoltcp::phy::ChecksumCapabilities;
+    use smoltcp::wire::{IpEndpoint, Ipv4Repr, TcpControl, TcpRepr, TcpSeqNumber};
 
     use super::*;
 
@@ -722,6 +740,126 @@ mod tests {
         settle(&mut app, &mut stack);
         assert_eq!(app.socket(over).state(), tcp::State::Closed);
         assert_eq!(stack.len(), MAX_FLOWS);
+    }
+
+    /// A segment from an app at 10.0.0.2 to 93.184.216.34:443.
+    fn segment(port: u16, control: TcpControl, seq: u32, ack: Option<u32>) -> Vec<u8> {
+        let (app, server) = (Ipv4Address::new(10, 0, 0, 2), SERVER);
+        let tcp = TcpRepr {
+            src_port: port,
+            dst_port: 443,
+            control,
+            seq_number: TcpSeqNumber(seq as i32),
+            ack_number: ack.map(|ack| TcpSeqNumber(ack as i32)),
+            window_len: u16::MAX,
+            window_scale: None,
+            max_seg_size: None,
+            sack_permitted: false,
+            sack_ranges: [None; 3],
+            timestamp: None,
+            payload: &[],
+        };
+        let ip = Ipv4Repr {
+            src_addr: app,
+            dst_addr: server,
+            next_header: IpProtocol::Tcp,
+            payload_len: tcp.buffer_len(),
+            hop_limit: 64,
+        };
+        let mut packet = vec![0; ip.buffer_len() + tcp.buffer_len()];
+        let checksums = ChecksumCapabilities::default();
+        let mut v4 = Ipv4Packet::new_unchecked(&mut packet);
+        ip.emit(&mut v4, &checksums);
+        let mut segment = TcpPacket::new_unchecked(v4.payload_mut());
+        tcp.emit(&mut segment, &app.into(), &server.into(), &checksums);
+        packet
+    }
+
+    const SERVER: Ipv4Address = Ipv4Address::new(93, 184, 216, 34);
+
+    /// The sequence number the stack answered a SYN with.
+    fn syn_ack(stack: &mut Stack) -> u32 {
+        let packet = stack.transmit().unwrap();
+        let ip = Ipv4Packet::new_checked(packet.as_slice()).unwrap();
+        let tcp = TcpPacket::new_checked(ip.payload()).unwrap();
+        assert!(tcp.syn() && tcp.ack());
+        tcp.seq_number().0 as u32
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn a_connection_reset_before_it_opened_is_forgotten() {
+        let mut stack = Stack::new(MTU);
+        stack.receive(&segment(40001, TcpControl::Syn, 100, None));
+        stack.poll();
+        syn_ack(&mut stack);
+        assert_eq!(stack.len(), 1);
+        // The app gave up on it while its server was being reached.
+        stack.receive(&segment(40001, TcpControl::Rst, 101, None));
+        stack.poll();
+        tokio::time::advance(Duration::from_secs(3600)).await;
+        stack.refresh_all();
+        stack.poll();
+        assert!(stack.is_empty());
+        assert_eq!(stack.opened(), None);
+    }
+
+    #[test]
+    fn a_connection_after_one_reset_before_it_opened_is_told_with_its_own_address() {
+        // The reset and the next connection may come in one batch.
+        for polled_between in [true, false] {
+            let mut stack = Stack::new(MTU);
+            stack.receive(&segment(40001, TcpControl::Syn, 100, None));
+            stack.poll();
+            syn_ack(&mut stack);
+            stack.receive(&segment(40001, TcpControl::Rst, 101, None));
+            if polled_between {
+                stack.poll();
+            }
+            stack.receive(&segment(40002, TcpControl::Syn, 500, None));
+            stack.poll();
+            let theirs = syn_ack(&mut stack);
+            stack.receive(&segment(40002, TcpControl::None, 501, Some(theirs + 1)));
+            stack.poll();
+            let opened = stack.opened().unwrap();
+            assert_eq!(opened.app, "10.0.0.2:40002".parse().unwrap());
+            assert_eq!(stack.opened(), None);
+            assert_eq!(stack.len(), 1);
+        }
+    }
+
+    #[test]
+    fn a_beginning_that_was_lost_holds_no_place_and_is_taken_when_sent_again() {
+        let mut stack = Stack::new(MTU);
+        for _ in 0..MAX_QUEUE {
+            stack.receive(&[0x45]);
+        }
+        let syn = segment(40001, TcpControl::Syn, 100, None);
+        stack.receive(&syn);
+        assert_eq!(stack.len(), 1);
+        stack.poll();
+        assert!(stack.is_empty());
+        stack.receive(&syn);
+        stack.poll();
+        let theirs = syn_ack(&mut stack);
+        stack.receive(&segment(40001, TcpControl::None, 101, Some(theirs + 1)));
+        stack.poll();
+        assert_eq!(stack.opened().unwrap().app.port(), 40001);
+    }
+
+    #[test]
+    fn a_beginning_sent_again_is_the_same_connection() {
+        let mut stack = Stack::new(MTU);
+        let syn = segment(40001, TcpControl::Syn, 100, None);
+        stack.receive(&syn);
+        stack.poll();
+        let theirs = syn_ack(&mut stack);
+        stack.receive(&syn);
+        stack.refresh_all();
+        stack.poll();
+        assert_eq!(stack.len(), 1);
+        stack.receive(&segment(40001, TcpControl::None, 101, Some(theirs + 1)));
+        stack.poll();
+        assert_eq!(stack.opened().unwrap().app.port(), 40001);
     }
 
     #[test]
