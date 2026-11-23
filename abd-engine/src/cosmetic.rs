@@ -25,6 +25,7 @@
 //! passed on as it came. Where the page says which styles it allows, this
 //! one is added to them by its hash, which allows no other (`permit`).
 
+mod csp;
 mod script;
 pub(crate) use script::{Prefix, Preparation, assemble as script, safe_raw_text};
 
@@ -41,6 +42,8 @@ use hyper::header::{
     HeaderMap, HeaderValue,
 };
 use hyper::{Response, StatusCode};
+
+use csp::{By, Element};
 
 /// The longest selector taken from a list, and the most of them together
 /// that are put into one page. A page of a site the lists know well has
@@ -214,40 +217,22 @@ fn source(css: &str) -> String {
 /// One policy with the style allowed by it, if the policy would not have
 /// allowed it.
 fn permit_in(policy: &str, source: &str) -> Option<String> {
-    let directives: Vec<&str> = policy.split(';').map(str::trim).collect();
-    let named = |name: &str| {
-        directives.iter().position(|d| {
-            d.split_ascii_whitespace()
-                .next()
-                .is_some_and(|n| n.eq_ignore_ascii_case(name))
-        })
-    };
-    // What a style element goes by is the first of these that is there.
-    let (index, own) = match (named("style-src-elem"), named("style-src")) {
-        (Some(i), _) | (None, Some(i)) => (i, true),
-        (None, None) => (named("default-src")?, false),
-    };
-    let mut words = directives[index].split_ascii_whitespace();
-    let name = words.next()?;
-    let sources: Vec<&str> = words.collect();
-    let is = |s: &&str, what: &str| s.eq_ignore_ascii_case(what);
-    let by_hash_or_nonce = sources.iter().any(|s| {
-        let s = s.to_ascii_lowercase();
-        s.starts_with("'nonce-") || s.starts_with("'sha")
-    });
+    let (directive, by) = csp::effective(policy, Element::Style)?;
     // Every inline style is allowed already; naming one by its hash would
     // take that away from the page's own.
-    if sources.iter().any(|s| is(s, "'unsafe-inline'")) && !by_hash_or_nonce {
+    if directive.has("'unsafe-inline'") && !directive.sources.clone().any(csp::hash_or_nonce) {
         return None;
     }
-    let mut allowed: Vec<&str> = sources.into_iter().filter(|s| !is(s, "'none'")).collect();
+    let mut allowed: Vec<&str> = (directive.sources)
+        .filter(|s| !s.eq_ignore_ascii_case("'none'"))
+        .collect();
     allowed.push(source);
-    let mut directives: Vec<String> = directives.iter().map(|d| (*d).to_owned()).collect();
-    if own {
-        directives[index] = format!("{name} {}", allowed.join(" "));
-    } else {
+    let mut directives: Vec<String> = policy.split(';').map(|d| d.trim().to_owned()).collect();
+    if by == By::Default {
         // Not added to what everything falls back on: scripts go by it too.
         directives.push(format!("style-src {}", allowed.join(" ")));
+    } else {
+        directives[directive.index] = format!("{} {}", directive.name, allowed.join(" "));
     }
     directives.retain(|d| !d.is_empty());
     Some(directives.join("; "))
@@ -306,43 +291,16 @@ pub enum Inline {
 
 /// What one policy has for a style element.
 fn inline_in(policy: &str) -> Inline {
-    let directives: Vec<&str> = policy.split(';').map(str::trim).collect();
-    let named = |name: &str| {
-        directives.iter().find(|d| {
-            d.split_ascii_whitespace()
-                .next()
-                .is_some_and(|n| n.eq_ignore_ascii_case(name))
-        })
-    };
-    let Some(directive) = named("style-src-elem")
-        .or_else(|| named("style-src"))
-        .or_else(|| named("default-src"))
-    else {
+    let Some((directive, _)) = csp::effective(policy, Element::Style) else {
         return Inline::Any;
     };
-    let sources: Vec<&str> = directive.split_ascii_whitespace().skip(1).collect();
-    let nonce = sources.iter().find_map(|s| {
-        let nonce = s.strip_prefix("'nonce-")?.strip_suffix('\'')?;
-        // Nothing that could end the attribute it is put into.
-        let plain = !nonce.is_empty()
-            && nonce.bytes().all(|b| {
-                b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'=' | b'-' | b'_')
-            });
-        plain.then(|| nonce.to_owned())
-    });
-    let hashes = sources
-        .iter()
-        .any(|s| s.to_ascii_lowercase().starts_with("'sha"));
-    match nonce {
-        Some(nonce) => Inline::Nonce(nonce),
-        None if !hashes
-            && sources
-                .iter()
-                .any(|s| s.eq_ignore_ascii_case("'unsafe-inline'")) =>
-        {
-            Inline::Any
-        }
-        None => Inline::No,
+    if let Some(nonce) = directive.sources.clone().find_map(csp::nonce) {
+        return Inline::Nonce(nonce.to_owned());
+    }
+    if directive.has("'unsafe-inline'") && !directive.sources.clone().any(csp::hash_or_nonce) {
+        Inline::Any
+    } else {
+        Inline::No
     }
 }
 
@@ -860,6 +818,19 @@ mod tests {
     }
 
     #[test]
+    fn a_source_that_only_looks_like_a_hash_leaves_every_inline_style_allowed() {
+        // 'unsafe-inline' still holds beside these: one more named by its
+        // hash would forbid the page's own.
+        for policy in [
+            "style-src 'unsafe-inline' 'sha-garbage'",
+            "style-src 'unsafe-inline' 'sha256-abc='",
+            "style-src 'unsafe-inline' 'nonce-'",
+        ] {
+            assert_eq!(permitted(policy), None, "{policy}");
+        }
+    }
+
+    #[test]
     fn every_policy_of_a_page_is_made_to_allow_it() {
         let mut headers = HeaderMap::new();
         headers.append(
@@ -1057,7 +1028,12 @@ mod tests {
         );
         // Named by hash, or not let in at all: nothing to go by now.
         assert_eq!(of(&["style-src 'self'"]), Inline::No);
-        assert_eq!(of(&["style-src 'unsafe-inline' 'sha256-abc='"]), Inline::No);
+        assert_eq!(
+            of(&[
+                "style-src 'unsafe-inline' 'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU='"
+            ]),
+            Inline::No
+        );
         assert_eq!(of(&["default-src 'none'"]), Inline::No);
         // Two policies, each with a nonce of its own.
         assert_eq!(

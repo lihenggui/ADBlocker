@@ -20,7 +20,6 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use base64::Engine as _;
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use http_body_util::BodyExt;
@@ -28,6 +27,7 @@ use hyper::body::{Body, Frame};
 use hyper::header::{CONTENT_SECURITY_POLICY, CONTENT_TYPE, HeaderMap, HeaderValue};
 use tokio::time::{Instant, timeout_at};
 
+use super::csp::{self, By, Element};
 use super::{MAX_HELD, Place, place, source};
 
 // A typical page needs a few KiB of helpers and actions. Large sets of
@@ -421,44 +421,28 @@ fn charset(content: &str) -> Option<&str> {
 // policy already permits it. Keep original directives and source tokens
 // verbatim, including 'strict-dynamic' and 'none'.
 fn permit_policy(policy: &str, hash: &str) -> Result<Option<String>, ()> {
-    let directives = || {
-        policy
-            .split(';')
-            .map(|raw| (raw, raw.split_ascii_whitespace()))
-    };
-    let named = |name: &str| {
-        directives().find_map(|(raw, mut words)| {
-            words
-                .next()?
-                .eq_ignore_ascii_case(name)
-                .then_some((raw, words))
-        })
-    };
-    if named("require-trusted-types-for").is_some()
-        || named("sandbox").is_some_and(|(_, mut words)| {
-            !words.any(|word| word.eq_ignore_ascii_case("allow-scripts"))
-        })
+    if csp::named(policy, "require-trusted-types-for").is_some()
+        || csp::named(policy, "sandbox").is_some_and(|sandbox| !sandbox.has("allow-scripts"))
     {
         return Err(());
     }
-    let elem = named("script-src-elem");
-    let effective = elem
-        .clone()
-        .or_else(|| named("script-src"))
-        .or_else(|| named("default-src"));
-    let Some((raw, words)) = effective else {
+    let Some((directive, by)) = csp::effective(policy, Element::Script) else {
         return Ok(None);
     };
-    let has = |keyword: &str| words.clone().any(|word| word.eq_ignore_ascii_case(keyword));
+    let words = directive.sources.clone();
     if words.clone().any(|word| word == hash) {
         return Ok(None);
     }
-    if has("'unsafe-inline'") && !has("'strict-dynamic'") && !words.clone().any(hash_or_nonce) {
+    if directive.has("'unsafe-inline'")
+        && !directive.has("'strict-dynamic'")
+        && !words.clone().any(csp::hash_or_nonce)
+    {
         // Adding a hash here would take away permission for the page's
         // own inline scripts, so keep the existing allow-all directive.
         return Ok(None);
     }
-    let rewritten = if elem.is_some() {
+    let raw = directive.raw;
+    let rewritten = if by == By::Elements {
         let end = raw.as_ptr() as usize - policy.as_ptr() as usize + raw.trim_end().len();
         format!("{} {hash}{}", &policy[..end], &policy[end..])
     } else {
@@ -475,33 +459,6 @@ fn permit_policy(policy: &str, hash: &str) -> Result<Option<String>, ()> {
         new
     };
     Ok(Some(rewritten))
-}
-
-fn hash_or_nonce(word: &str) -> bool {
-    let Some(token) = word
-        .strip_prefix('\'')
-        .and_then(|word| word.strip_suffix('\''))
-    else {
-        return false;
-    };
-    let Some((kind, value)) = token.split_once('-') else {
-        return false;
-    };
-    if kind.eq_ignore_ascii_case("nonce") {
-        return !value.is_empty()
-            && value.bytes().all(|b| {
-                b.is_ascii_alphanumeric() || matches!(b, b'+' | b'/' | b'-' | b'_' | b'=')
-            });
-    }
-    let len = match kind.to_ascii_lowercase().as_str() {
-        "sha256" => 32,
-        "sha384" => 48,
-        "sha512" => 64,
-        _ => return false,
-    };
-    base64::engine::general_purpose::STANDARD
-        .decode(value)
-        .is_ok_and(|value| value.len() == len)
 }
 
 fn rewrite_headers(headers: &mut HeaderMap, hash: &str) -> Option<()> {
