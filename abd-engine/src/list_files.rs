@@ -181,7 +181,11 @@ pub(crate) fn read_lists(
             Ok(bytes) => bytes,
             Err(error) => return Some(Err(error)),
         };
-        let text = String::from_utf8(bytes).ok()?;
+        // Not left out here: a generation that lacks a list is not whole.
+        let Ok(text) = String::from_utf8(bytes) else {
+            let error = io::Error::new(io::ErrorKind::InvalidData, "a list is not UTF-8 text");
+            return Some(Err(error));
+        };
         remaining -= text.len();
         Some(Ok((path.as_path(), text)))
     })

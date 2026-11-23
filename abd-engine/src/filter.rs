@@ -1229,6 +1229,17 @@ mod tests {
     }
 
     #[test]
+    fn a_load_that_left_out_a_list_not_in_utf8_is_not_cached() {
+        let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        std::fs::write(dir.path().join("a.txt"), "||one.example^\n").unwrap();
+        std::fs::write(dir.path().join("b.txt"), [0xff, 0xfe, 0x00, 0x80]).unwrap();
+        let filters = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
+        assert!(filters.blocks_host("one.example"));
+        assert!(filters.generation.is_none());
+        assert!(!cache.path().join("key").exists());
+    }
+
+    #[test]
     fn lists_loaded_before_are_taken_from_the_cache_until_one_changes() {
         let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
         let list = dir.path().join("list.txt");
