@@ -71,39 +71,47 @@ impl<'a> Reconciler<'a> {
 
     pub(super) fn on_packages_changed(&mut self, v6: bool, changed: watch::Change) {
         // Keep a valid identity when Android only rewrites package state
-        // for an ordinary launch or another user.
-        android_changed(
-            self.ctx,
-            &mut self.rules,
-            &self.mounts,
-            self.paths,
-            v6,
-            changed,
-        );
+        // for an ordinary launch or another user. Off the worker: the
+        // package files read here can be megabytes.
+        tokio::task::block_in_place(|| {
+            android_changed(
+                self.ctx,
+                &mut self.rules,
+                &self.mounts,
+                self.paths,
+                v6,
+                changed,
+            );
+        });
     }
 
     pub(super) fn on_user_state(&mut self, v6: bool, changed: Option<(u32, u32)>) -> bool {
-        if let Some((id, state)) = changed.filter(|(id, _)| {
+        let Some((id, state)) = changed.filter(|(id, _)| {
             self.packages
                 .as_ref()
                 .is_ok_and(|p| p.includes_profile(*id))
-        }) {
-            if state >= 4 {
-                retire_apps(self.ctx, &mut self.rules, v6, |uid, _| {
-                    uid / PER_USER_RANGE != id
-                });
-                let profiles = android::profiles().unwrap_or_default();
-                self.ctx
-                    .selection
-                    .profile_tls
-                    .write()
-                    .unwrap()
-                    .retain(|serial, _| profiles.iter().any(|p| p.id != id && p.serial == *serial));
-                write_state(self.ctx, self.paths, v6);
-            }
-            return true;
+        }) else {
+            return false;
+        };
+        if state >= 4 {
+            // Off the worker, like the other reads of Android's files.
+            tokio::task::block_in_place(|| self.profile_stopped(v6, id));
         }
-        false
+        true
+    }
+
+    fn profile_stopped(&mut self, v6: bool, id: u32) {
+        retire_apps(self.ctx, &mut self.rules, v6, |uid, _| {
+            uid / PER_USER_RANGE != id
+        });
+        let profiles = android::profiles().unwrap_or_default();
+        self.ctx
+            .selection
+            .profile_tls
+            .write()
+            .unwrap()
+            .retain(|serial, _| profiles.iter().any(|p| p.id != id && p.serial == *serial));
+        write_state(self.ctx, self.paths, v6);
     }
 
     pub(super) fn remove_capture(&mut self) -> Result<()> {
