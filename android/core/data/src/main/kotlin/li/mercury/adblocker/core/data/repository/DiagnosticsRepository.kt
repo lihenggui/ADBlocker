@@ -24,12 +24,10 @@ import kotlinx.coroutines.withContext
 import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
 import li.mercury.adblocker.core.common.dispatchers.Dispatcher
 import li.mercury.adblocker.core.common.result.suspendRunCatching
-import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.root.ModulePaths.LOG
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.data.root.shellQuoted
 import java.io.File
-import java.io.OutputStream
 import javax.inject.Inject
 
 /** The daemon's log, for a bug report. It says what ran and how it ended, never what apps talk to. */
@@ -43,14 +41,15 @@ enum class LogExportResult { Complete, DaemonIncomplete }
 internal class RootDiagnosticsRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val rootShell: RootShell,
+    private val documents: DocumentWriter,
     @Dispatcher(IO) private val ioDispatcher: CoroutineDispatcher,
 ) : DiagnosticsRepository {
     override suspend fun exportLogs(destination: Uri): LogExportResult = withContext(ioDispatcher) {
-        exportLogFile(rootShell, context.filesDir.resolve("logs")) { context.contentResolver.openOutputStream(destination) }
+        exportLogFile(rootShell, context.filesDir.resolve("logs")) { documents.write(destination, it) }
     }
 }
 
-internal suspend fun exportLogFile(rootShell: RootShell, appLogs: File, openDestination: () -> OutputStream?): LogExportResult {
+internal suspend fun exportLogFile(rootShell: RootShell, appLogs: File, write: suspend (ByteArray) -> Unit): LogExportResult {
     val current = LOG.shellQuoted()
     val history = "$LOG.old".shellQuoted()
     val command = """
@@ -63,12 +62,14 @@ internal suspend fun exportLogFile(rootShell: RootShell, appLogs: File, openDest
     """.trimIndent()
     val daemon = suspendRunCatching { rootShell.run(command, label = "log export") }.getOrNull()
     val app = appLogs.listFiles().orEmpty().sortedBy { it.name }.joinToString("\n") { it.readText() }
-    val out = openDestination() ?: throw AbdException.CommandFailed("cannot write the file")
-    out.bufferedWriter().use {
-        it.appendLine("== abd.log")
-        it.appendLine(daemon?.output.orEmpty())
-        it.appendLine("== app")
-        it.appendLine(app)
+    // Both parts are already in memory, so the document is written whole, through
+    // the writer that truncates what the user chose to replace.
+    val text = buildString {
+        appendLine("== abd.log")
+        appendLine(daemon?.output.orEmpty())
+        appendLine("== app")
+        appendLine(app)
     }
+    write(text.toByteArray())
     return if (daemon?.isSuccess == true) LogExportResult.Complete else LogExportResult.DaemonIncomplete
 }

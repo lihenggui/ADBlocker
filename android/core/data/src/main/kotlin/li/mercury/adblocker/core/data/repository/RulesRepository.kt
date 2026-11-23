@@ -82,6 +82,7 @@ internal class AbdRulesRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val abd: AbdClient,
     private val changes: DataChanges,
+    private val documents: DocumentWriter,
     @Dispatcher(IO) private val ioDispatcher: CoroutineDispatcher,
 ) : RulesRepository {
     override suspend fun userRules(): String = abd.userRules()
@@ -107,11 +108,7 @@ internal class AbdRulesRepository @Inject constructor(
     }
 
     override suspend fun export(uri: Uri) {
-        val text = abd.userRules()
-        withContext(ioDispatcher) {
-            val output = context.contentResolver.openOutputStream(uri) ?: throw IOException("cannot write the file")
-            output.use { it.write(text.toByteArray()) }
-        }
+        documents.write(uri, abd.userRules().toByteArray())
     }
 
     override suspend fun trustedSites(): List<String> = abd.allowList()

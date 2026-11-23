@@ -50,7 +50,7 @@ class DiagnosticsRepositoryTest {
         val logs = temporary.newFolder("applogs")
         logs.resolve("current").writeText("app started")
         val output = ByteArrayOutputStream()
-        return exportLogFile(shell, logs) { output } to output.toString(Charsets.UTF_8)
+        return exportLogFile(shell, logs) { output.write(it) } to output.toString(Charsets.UTF_8)
     }
 
     @Test

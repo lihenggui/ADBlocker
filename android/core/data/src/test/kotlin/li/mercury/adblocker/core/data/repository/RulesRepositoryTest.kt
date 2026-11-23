@@ -16,15 +16,24 @@
 
 package li.mercury.adblocker.core.data.repository
 
+import android.net.Uri
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
+import li.mercury.adblocker.core.data.AbdClient
 import li.mercury.adblocker.core.model.RuleCheckResult
 import li.mercury.adblocker.core.testing.unexpected
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 import java.io.ByteArrayInputStream
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
 
+@RunWith(RobolectricTestRunner::class)
+@Config(manifest = Config.NONE)
 class RulesRepositoryTest {
     private val result = RuleCheckResult(blocked = false, rule = null, source = null)
     private val checks = mutableListOf<Triple<String, String?, String?>>()
@@ -48,6 +57,26 @@ class RulesRepositoryTest {
         rules.checkEnteredUrl(" http://ads.example/banner ", " news.example ", "script")
 
         assertEquals(Triple<String, String?, String?>("http://ads.example/banner", "news.example", "script"), checks.single())
+    }
+
+    @Test
+    fun givenUserRules_whenExported_thenTheyGoToTheDocumentWriter() = runTest {
+        val destination = Uri.parse("content://example.documents/rules")
+        val writes = mutableListOf<Pair<Uri, String>>()
+        val abd = object : AbdClient by unexpected() {
+            override suspend fun userRules(): String = "||ads.example^\n"
+        }
+        val repository = AbdRulesRepository(
+            RuntimeEnvironment.getApplication(),
+            abd,
+            DataChanges(),
+            DocumentWriter { uri, bytes -> writes += uri to bytes.decodeToString() },
+            StandardTestDispatcher(testScheduler),
+        )
+
+        repository.export(destination)
+
+        assertEquals(listOf(destination to "||ads.example^\n"), writes)
     }
 
     @Test
