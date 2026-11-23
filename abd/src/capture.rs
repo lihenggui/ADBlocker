@@ -127,14 +127,14 @@ pub fn admitted(dst: SocketAddr, mark: u32, uid: Option<u32>) -> Option<Origin> 
 /// The error is returned as the system gave it, so that the caller can
 /// tell "no way there" from the rest.
 pub async fn connect_as(dst: SocketAddr, app_mark: u32, uid: u32) -> std::io::Result<TcpStream> {
-    dial(dst, app_mark, Some(uid), CONNECT_TIME).await
+    dial(dst, app_mark, uid, CONNECT_TIME).await
 }
 
 /// Connects to `dst` to learn whether it can be reached at all: as the
 /// app that reached it before, since no connection to an address an app
 /// chose is made as anybody else, or by a way that is not the app's.
 pub async fn probe(dst: SocketAddr, app_mark: u32, uid: u32) -> std::io::Result<()> {
-    dial(dst, app_mark, Some(uid), PROBE_TIME).await.map(drop)
+    dial(dst, app_mark, uid, PROBE_TIME).await.map(drop)
 }
 
 /// A UDP socket of the app's own, connected to `dst`: what `connect_as`
@@ -187,17 +187,12 @@ fn as_app<T>(uid: u32, make: impl FnOnce() -> T) -> T {
     made
 }
 
-async fn dial(
-    dst: SocketAddr,
-    mark: u32,
-    uid: Option<u32>,
-    wait: Duration,
-) -> std::io::Result<TcpStream> {
-    let new = || Socket::new(Domain::for_address(dst), Type::STREAM, Some(Protocol::TCP));
-    let s = match uid {
-        Some(uid) => as_app(uid, new)?,
-        None => new()?,
-    };
+/// A socket of the app `uid`'s own, connected to `dst`: never one made
+/// any other way.
+async fn dial(dst: SocketAddr, mark: u32, uid: u32, wait: Duration) -> std::io::Result<TcpStream> {
+    let s = as_app(uid, || {
+        Socket::new(Domain::for_address(dst), Type::STREAM, Some(Protocol::TCP))
+    })?;
     s.set_nonblocking(true)?;
     s.set_mark((mark & MARK_NETD) | MARK_BYPASS)?;
     s.set_tcp_nodelay(true)?;
