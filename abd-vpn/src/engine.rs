@@ -332,7 +332,7 @@ impl Engine {
             // What was found out before the app was answered, if that was
             // done: whose the connection is, and a connection to its
             // server, for the engine to have when it connects.
-            let made = engine.made.lock().unwrap().remove(&(app, server));
+            let made = engine.made().remove(&(app, server));
             let engine = engine.clone();
             tokio::spawn(async move {
                 let (uid, number) = match made {
@@ -368,15 +368,16 @@ impl Engine {
         Arc::new(move |app, server| {
             let engine = engine.clone();
             Box::pin(async move {
+                let refused = || Err(std::io::ErrorKind::ConnectionRefused.into());
                 let uid = tcp_owner(&engine.platform, app, server).await;
-                if Origin::of(server, 0, uid).is_none() {
-                    return Err(std::io::ErrorKind::ConnectionRefused.into());
+                if Origin::of(server, 0, uid).is_none() || engine.made().len() >= MAX_MADE {
+                    return refused();
                 }
                 let connected = (engine.connect)(server).await?;
-                let mut made = engine.made.lock().unwrap();
-                made.retain(|_, made| made.at.elapsed() < MADE_TIME);
+                // Others may have made theirs meanwhile.
+                let mut made = engine.made();
                 if made.len() >= MAX_MADE {
-                    return Err(std::io::ErrorKind::ConnectionRefused.into());
+                    return refused();
                 }
                 made.insert(
                     (app, server),
@@ -389,6 +390,15 @@ impl Engine {
                 Ok(())
             })
         })
+    }
+
+    /// The connections made, without those kept longer than `MADE_TIME`:
+    /// one that old was left by an app that went away, and the same two
+    /// ends may now be another connection's, or another app's.
+    fn made(&self) -> std::sync::MutexGuard<'_, HashMap<(SocketAddr, SocketAddr), Made>> {
+        let mut made = self.made.lock().unwrap();
+        made.retain(|_, made| made.at.elapsed() < MADE_TIME);
+        made
     }
 
     pub fn udp_policy(self: &Arc<Self>) -> crate::udp::Policy {

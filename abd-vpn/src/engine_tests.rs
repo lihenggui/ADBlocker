@@ -431,6 +431,49 @@ async fn the_connection_made_to_find_the_server_there_is_the_one_handed_on() {
 }
 
 #[tokio::test]
+async fn no_server_is_connected_to_for_more_connections_than_are_kept() {
+    let rig = rig_with(CHOSEN, Way::Reached).await;
+    let reach = rig.engine.reach();
+    let server: SocketAddr = SERVER.parse().unwrap();
+    let app = |port| SocketAddr::from(([10, 0, 0, 2], port));
+    for port in 0..MAX_MADE as u16 {
+        reach(app(port), server).await.unwrap();
+    }
+    let over = reach(app(u16::MAX), server).await.unwrap_err();
+    assert_eq!(over.kind(), std::io::ErrorKind::ConnectionRefused);
+    assert_eq!(rig.connects.load(Relaxed), MAX_MADE);
+    // Those left too long make room again.
+    for made in rig.engine.made.lock().unwrap().values_mut() {
+        made.at -= MADE_TIME;
+    }
+    reach(app(u16::MAX), server).await.unwrap();
+    assert_eq!(rig.engine.made.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn a_connection_made_too_long_before_its_app_was_answered_is_not_handed_on() {
+    let mut rig = rig(CHOSEN).await;
+    let stale = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let made = Made {
+        server: TcpStream::connect(stale.local_addr().unwrap())
+            .await
+            .unwrap(),
+        uid: Some(UID),
+        at: Instant::now() - MADE_TIME,
+    };
+    // The address the app's next connection has.
+    let ends = (
+        SocketAddr::from(([10, 0, 0, 2], 40001)),
+        SERVER.parse().unwrap(),
+    );
+    rig.engine.made.lock().unwrap().insert(ends, made);
+    let sent = hello("allowed.test");
+    assert_eq!(answered(&mut rig, &sent).await, b"pong");
+    assert_eq!(*rig.received.lock().unwrap(), [sent]);
+    assert_eq!(rig.connects.load(Relaxed), 1);
+}
+
+#[tokio::test]
 async fn a_server_that_is_not_there_is_not_there_for_the_app_either() {
     let mut rig = rig_with(CHOSEN, Way::Refused).await;
     let handle = rig.app.connect(SERVER);
