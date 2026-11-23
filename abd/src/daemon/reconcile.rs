@@ -104,7 +104,11 @@ impl<'a> Reconciler<'a> {
         retire_apps(self.ctx, &mut self.rules, v6, |uid, _| {
             uid / PER_USER_RANGE != id
         });
-        let profiles = android::profiles().unwrap_or_default();
+        // A profile that cannot be confirmed running keeps no trust: its
+        // apps are not decrypted until the next reading.
+        let profiles = android::profiles()
+            .inspect_err(|error| eprintln!("profiles: {error:#}; no profile trust kept"))
+            .unwrap_or_default();
         self.ctx
             .selection
             .profile_tls

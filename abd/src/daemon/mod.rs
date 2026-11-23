@@ -171,6 +171,8 @@ impl Daemon<'_> {
         if let Err(error) = ctx.services.policy.write() {
             eprintln!("pins: could not save the table on shutdown: {error}");
         }
+        // Tidiness only: the next daemon removes a stale socket before it
+        // listens, and until then nothing answers on it.
         let _ = std::fs::remove_file(paths.watch());
         eprintln!("stopped");
         stopped.and(listener).and(removed)

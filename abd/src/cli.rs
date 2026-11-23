@@ -114,7 +114,10 @@ impl abd_engine::cli::Host for Daemon<'_> {
             .unwrap_or_default()
     }
     fn personal_app_identities(&self, exclusions: &BTreeSet<&str>) -> Vec<String> {
+        // An empty list is all the engine's commands can be given here; say
+        // that it is not what Android answered.
         android::personal_app_identities(exclusions)
+            .inspect_err(|error| eprintln!("apps: could not list personal apps: {error:#}"))
             .unwrap_or_default()
             .into_values()
             .collect()
@@ -164,6 +167,8 @@ pub fn run(paths: &Paths, args: &[&str]) -> Result<()> {
     }
 }
 
+/// Best effort, so that a listing does not show a removed profile's
+/// choices: the daemon prunes them too, and retries while it cannot.
 fn prune_if_listing(paths: &Paths, args: &[&str]) {
     if matches!(
         args,

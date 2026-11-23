@@ -212,6 +212,8 @@ pub fn daemon(paths: &Paths) -> Option<i32> {
 /// without one.
 pub fn reload(paths: &Paths) {
     if let Ok(Some((_, daemon))) = held(&paths.pid(), Program::Daemon) {
+        // It can fail only for a daemon that ended since it was found,
+        // and the next one reads everything as it starts.
         let _ = daemon.signal(libc::SIGHUP);
     }
 }
