@@ -62,6 +62,7 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           gh release create "$TAG" "out/adblocker-$TAG.apk.zip" \
+            "out/adblocker-$TAG.apk" \
             "out/adblocker-$TAG-source.tar.gz" \
             "out/adblocker-$TAG-SHA256SUMS" \
             "out/adblocker-$TAG-mapping.txt" \
