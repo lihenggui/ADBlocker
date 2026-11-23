@@ -91,6 +91,9 @@ class FlashableModuleConventionPlugin : Plugin<Project> {
 /** scripts/build.sh writes the daemon for each architecture as `out/abd-<arch>`. */
 private const val DAEMON_PREFIX = "abd-"
 
+/** What module/ holds for its contributors, beside the module's own files. */
+private const val CONTRIBUTOR_NOTES = "AGENTS.md"
+
 /** Collects the module files into one directory for packaging. */
 abstract class StageModule : DefaultTask() {
     @get:InputDirectory
@@ -122,7 +125,9 @@ abstract class StageModule : DefaultTask() {
             throw GradleException("No daemon in out/. Build it first: ./scripts/build.sh")
         }
         files.sync {
-            from(moduleFiles)
+            // The notes for those who work on the scripts are no part of
+            // the module.
+            from(moduleFiles) { exclude(CONTRIBUTOR_NOTES) }
             from(licenseFiles) { into("licenses") }
             for (binary in binaries) {
                 from(binary) {
