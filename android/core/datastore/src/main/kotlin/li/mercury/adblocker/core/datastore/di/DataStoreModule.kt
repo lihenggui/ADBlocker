@@ -18,8 +18,10 @@ package li.mercury.adblocker.core.datastore.di
 
 import android.content.Context
 import androidx.datastore.core.DataStore
+import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
 import androidx.datastore.preferences.core.PreferenceDataStoreFactory
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.preferencesDataStoreFile
 import dagger.Module
 import dagger.Provides
@@ -31,6 +33,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
 import li.mercury.adblocker.core.common.dispatchers.Dispatcher
+import timber.log.Timber
+import java.io.File
 import javax.inject.Singleton
 
 @Module
@@ -41,8 +45,22 @@ internal object DataStoreModule {
     fun providesUserPreferences(
         @ApplicationContext context: Context,
         @Dispatcher(IO) ioDispatcher: CoroutineDispatcher,
-    ): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+    ): DataStore<Preferences> = userPreferencesStore(
         scope = CoroutineScope(SupervisorJob() + ioDispatcher),
         produceFile = { context.preferencesDataStoreFile("user_preferences") },
     )
 }
+
+/**
+ * A store whose unreadable file is replaced by an empty one: left in place,
+ * it would fail every read and every write, and setup would run again at
+ * each launch.
+ */
+internal fun userPreferencesStore(scope: CoroutineScope, produceFile: () -> File): DataStore<Preferences> = PreferenceDataStoreFactory.create(
+    corruptionHandler = ReplaceFileCorruptionHandler { e ->
+        Timber.w("settings: replaced an unreadable file: %s", e.javaClass.simpleName)
+        emptyPreferences()
+    },
+    scope = scope,
+    produceFile = produceFile,
+)

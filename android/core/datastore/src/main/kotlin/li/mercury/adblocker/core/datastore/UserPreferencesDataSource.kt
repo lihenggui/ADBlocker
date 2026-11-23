@@ -33,6 +33,7 @@ import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.ThemeMode
 import li.mercury.adblocker.core.model.UpdateInterval
 import li.mercury.adblocker.core.model.UserData
+import timber.log.Timber
 import java.io.IOException
 import java.util.UUID
 import javax.inject.Inject
@@ -46,8 +47,13 @@ class UserPreferencesDataSource @Inject constructor(
 ) {
     val userData: Flow<UserData> = dataStore.data
         // A file that can't be read is treated as unset rather than failing
-        // every screen that follows the settings.
-        .catch { e -> if (e is IOException) emit(emptyPreferences()) else throw e }
+        // every screen that follows the settings. An unreadable (corrupt) file
+        // is replaced before it gets here (DataStoreModule); this is the disk.
+        .catch { e ->
+            if (e !is IOException) throw e
+            Timber.w("settings: not read: %s", e.javaClass.simpleName)
+            emit(emptyPreferences())
+        }
         .map { preferences ->
             val defaults = UserData()
             UserData(
