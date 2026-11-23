@@ -93,6 +93,9 @@ class EngineHost @Inject internal constructor(
     @Dispatcher(IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val opening = Mutex()
+
+    // Written under [opening]; stop() reads it without, on another thread.
+    @Volatile
     private var handle = 0L
 
     /** Set by the VPN service while it runs. */
@@ -181,7 +184,8 @@ class EngineHost @Inject internal constructor(
     suspend fun start(tunFd: Int, ipv6: Boolean, dnsServers: List<String>): Int = withContext(ioDispatcher) { api.start(handle(), tunFd, ipv6, dnsServers.toTypedArray()) }
 
     suspend fun stop() = withContext(ioDispatcher) {
-        if (handle != 0L) api.stop(handle)
+        val open = handle
+        if (open != 0L) api.stop(open)
     }
 
     private companion object {
