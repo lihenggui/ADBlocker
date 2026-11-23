@@ -297,11 +297,11 @@ impl Mount {
     ///
     /// # Safety
     /// Makes system calls only, on strings that outlive them.
-    unsafe fn mount(&self) -> bool {
+    unsafe fn mount(&self) -> io::Result<()> {
         // SAFETY: the three strings are NUL-terminated and owned by self.
         unsafe {
             if libc::access(self.mark.as_ptr(), libc::F_OK) == 0 {
-                return true;
+                return Ok(());
             }
             let null = std::ptr::null();
             if libc::mount(
@@ -312,14 +312,16 @@ impl Mount {
                 null.cast(),
             ) != 0
             {
-                return false;
+                return Err(io::Error::last_os_error());
             }
             if libc::mount(null, self.target.as_ptr(), null, READ_ONLY, null.cast()) != 0 {
+                // Taken before the unmount below can set another.
+                let failed = io::Error::last_os_error();
                 // A copy that could not be made read-only is not left mounted.
                 libc::umount2(self.target.as_ptr(), libc::MNT_DETACH);
-                return false;
+                return Err(failed);
             }
-            true
+            Ok(())
         }
     }
 
@@ -478,8 +480,7 @@ pub fn mount_in(paths: &Paths, pid: i32, uid: u32) -> Result<Mounting> {
     let had = mounts.iter().all(|mount| unsafe { mount.mounted() });
     for mount in &mounts {
         // SAFETY: system calls on strings owned by `mounts`.
-        if !unsafe { mount.mount() } {
-            let failed = std::io::Error::last_os_error();
+        if let Err(failed) = unsafe { mount.mount() } {
             // Both or neither: an app that trusted one root and not the
             // other would accept us in some of its connections only.
             for mount in &mounts {
