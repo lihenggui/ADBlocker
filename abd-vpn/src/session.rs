@@ -396,8 +396,16 @@ impl Session {
             let pauses = async {
                 let mut ends = engine.apply_at();
                 while wait_for_pause_end(&mut ends, clock::now).await {
-                    // Applying reads files and asks Android about the apps.
-                    tokio::task::block_in_place(|| engine.apply());
+                    // Applying reads files, asks Android about the apps and
+                    // waits for a reload: on a thread of its own, while this
+                    // task goes on with the packets.
+                    let engine = engine.clone();
+                    match tokio::task::spawn_blocking(move || engine.apply()).await {
+                        Ok(_) => {}
+                        Err(e) if e.is_panic() => std::panic::resume_unwind(e.into_panic()),
+                        // The runtime is shutting down, and this task with it.
+                        Err(_) => return,
+                    }
                 }
             };
             tokio::select! {

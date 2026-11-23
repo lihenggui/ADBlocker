@@ -500,6 +500,59 @@ fn a_pause_made_while_the_vpn_runs_arms_its_idle_timer() {
     drop(system);
 }
 
+/// Android, slow to answer once while the end of a pause is applied.
+struct Stalling {
+    stall: Mutex<Option<(mpsc::SyncSender<()>, mpsc::Receiver<()>)>>,
+}
+
+impl Platform for Stalling {
+    fn owner(&self, _: i32, _: SocketAddr, _: SocketAddr) -> Option<u32> {
+        Some(10001)
+    }
+    fn uid_of(&self, package: &str) -> Option<u32> {
+        let stall = self.stall.lock().unwrap().take();
+        if let Some((entered, release)) = stall {
+            entered.send(()).unwrap();
+            let _ = release.recv();
+        }
+        (package == "com.app").then_some(10001)
+    }
+    fn ca_installed(&self) -> bool {
+        false
+    }
+    fn protect(&self, _: RawFd) -> bool {
+        true
+    }
+}
+
+#[test]
+fn packets_keep_moving_while_the_end_of_a_pause_is_applied() {
+    let dir = tempfile::tempdir().unwrap();
+    let device = Arc::new(Stalling {
+        stall: Mutex::new(None),
+    });
+    let session = Session::open(dir.path(), &[a_root()], device.clone()).unwrap();
+    session.command(&["app", "add", "com.app"], b"");
+    let (system, ours) = UnixDatagram::pair().unwrap();
+    let soon = Duration::from_secs(5);
+    system.set_read_timeout(Some(soon)).unwrap();
+    session
+        .start(ours.into(), false, Vec::new(), Box::new(|_| {}))
+        .unwrap();
+
+    // A pause that ends in a second, read before Android is slow.
+    let pauses = session.engine.paths().pauses();
+    std::fs::write(pauses, format!("{} com.app\n", clock::now() + 1)).unwrap();
+    session.command(&["reload"], b"");
+    let (entered, inside) = mpsc::sync_channel(1);
+    let (release, released) = mpsc::channel();
+    *device.stall.lock().unwrap() = Some((entered, released));
+    inside.recv_timeout(soon).unwrap();
+
+    check_udp_round_trip(&system);
+    release.send(()).unwrap();
+}
+
 #[test]
 fn the_app_is_told_when_the_vpn_ends_by_itself() {
     let (session, _, _dir) = session();
