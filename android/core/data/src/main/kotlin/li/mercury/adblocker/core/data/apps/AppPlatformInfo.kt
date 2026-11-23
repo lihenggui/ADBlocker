@@ -27,9 +27,11 @@ import javax.inject.Inject
 
 /** Android metadata and capabilities shown in Settings. */
 interface AppPlatformInfo {
-    fun versionName(): String
+    /** Asks the package manager: off the main thread. */
+    suspend fun versionName(): String
 
-    fun notificationsAllowed(): Boolean
+    /** Asks the notification manager, a binder call: off the main thread. */
+    suspend fun notificationsAllowed(): Boolean
 
     /** Personal app labels, falling back to the package name if Android cannot resolve one. */
     suspend fun personalAppLabels(packages: Set<String>): Map<String, String>
@@ -39,9 +41,9 @@ internal class AndroidAppPlatformInfo @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(IO) private val io: CoroutineDispatcher,
 ) : AppPlatformInfo {
-    override fun versionName(): String = context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty()
+    override suspend fun versionName(): String = withContext(io) { context.packageManager.getPackageInfo(context.packageName, 0).versionName.orEmpty() }
 
-    override fun notificationsAllowed(): Boolean = NotificationManagerCompat.from(context).areNotificationsEnabled()
+    override suspend fun notificationsAllowed(): Boolean = withContext(io) { NotificationManagerCompat.from(context).areNotificationsEnabled() }
 
     override suspend fun personalAppLabels(packages: Set<String>): Map<String, String> = withContext(io) {
         val pm = context.packageManager

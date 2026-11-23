@@ -77,11 +77,15 @@ class SettingsViewModelTest {
     private val forgotten = mutableListOf<Pair<String, String?>>()
     private val labelRequests = mutableListOf<Set<String>>()
     private var notificationsAllowed = true
+    private var versionReads = 0
 
     private val platform = object : AppPlatformInfo {
-        override fun versionName() = "test version"
+        override suspend fun versionName(): String {
+            versionReads++
+            return "test version"
+        }
 
-        override fun notificationsAllowed() = notificationsAllowed
+        override suspend fun notificationsAllowed() = notificationsAllowed
 
         override suspend fun personalAppLabels(packages: Set<String>): Map<String, String> {
             labelRequests += packages
@@ -211,6 +215,19 @@ class SettingsViewModelTest {
         val pending = viewModel.pendingMessages.value.first()
         viewModel.onMessageShown(pending.id)
         return pending.message.text
+    }
+
+    @Test
+    fun givenTheScreenIsNotShown_whenTheViewModelIsMade_thenTheVersionIsNotRead() = runTest {
+        assertEquals("", viewModel.uiState.value.appVersion)
+        assertEquals(0, versionReads)
+
+        showSettings()
+        changes.notifyChanged()
+        runCurrent()
+
+        assertEquals("test version", viewModel.uiState.value.appVersion)
+        assertEquals(1, versionReads)
     }
 
     @Test

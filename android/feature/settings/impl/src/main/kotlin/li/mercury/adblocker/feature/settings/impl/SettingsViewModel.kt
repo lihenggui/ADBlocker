@@ -111,14 +111,16 @@ class SettingsViewModel @Inject constructor(
 
     fun onMessageShown(id: Long) = messages.onMessageShown(id)
     private val service = MutableStateFlow(ServiceInfo())
-    private val appVersion = platform.versionName()
+
+    // Read with the first load: asking the package manager does not belong in construction.
+    private val appVersion = MutableStateFlow("")
     private val changingHttps = mutableMapOf<KProperty1<DaemonStatus, Boolean?>, Boolean>()
     private var httpsRevision = 0L
 
     private val reload = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val uiState: StateFlow<SettingsUiState> = combine(userData.userData, service, vpn.status) { data, info, vpnStatus -> SettingsUiState(data, info, appVersion, vpnStatus) }
+    val uiState: StateFlow<SettingsUiState> = combine(userData.userData, service, vpn.status, appVersion) { data, info, vpnStatus, version -> SettingsUiState(data, info, version, vpnStatus) }
         .refreshWhileCollected(merge(changes.changes, reload), ::load)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState(appVersion = appVersion))
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun refresh() {
         reload.tryEmit(Unit)
@@ -126,6 +128,7 @@ class SettingsViewModel @Inject constructor(
 
     private suspend fun load() {
         val revision = httpsRevision
+        if (appVersion.value.isEmpty()) appVersion.value = suspendRunCatching { platform.versionName() }.getOrDefault("")
         if (userData.userData.first().method == FilterMethod.Vpn) {
             readVpn(revision)
             return
