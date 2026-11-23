@@ -31,6 +31,7 @@ use tokio::net::UdpSocket;
 use tokio::sync::{Semaphore, mpsc};
 
 pub use crate::datagram::{Datagram, packet, parse};
+use crate::log::log;
 pub use crate::platform::Protect;
 use crate::platform::{lookup_owner, protect_socket};
 
@@ -192,6 +193,8 @@ pub struct Forwarder {
     // One bucket per relay, shared by all sockets in that relay.
     refusal_tokens: u32,
     last_refill: Instant,
+    /// Whether a socket that could not be opened has been told of.
+    told_open_failure: bool,
 }
 
 impl Forwarder {
@@ -206,6 +209,7 @@ impl Forwarder {
             started: Instant::now(),
             refusal_tokens: 32,
             last_refill: Instant::now(),
+            told_open_failure: false,
         }
     }
 
@@ -341,26 +345,36 @@ impl Forwarder {
 
     async fn forward(&mut self, datagram: &Datagram<'_>, owner: Option<Owner>) {
         let now = self.started.elapsed().as_secs();
-        if let Ok(port) = self.open(datagram, owner).await {
-            port.used.store(now, Relaxed);
-            // Not waited for: a socket that cannot take it now drops it.
-            if owner.is_some() {
-                let _ = port.socket.send(datagram.payload);
-            } else if port
-                .socket
-                .send_to(datagram.payload, datagram.server)
-                .is_ok()
-            {
-                // Ordinary UDP can use one local port with several peers, as
-                // in ICE. Keep its external port stable and admit only replies
-                // from destinations the app has actually contacted.
-                if let Some(i) = port.peers.iter().position(|p| *p == datagram.server) {
-                    port.peers.remove(i);
-                } else if port.peers.len() == MAX_PEERS_PER_PORT {
-                    port.peers.pop_front();
+        let port = match self.open(datagram, owner).await {
+            Ok(port) => port,
+            // The datagram is dropped, as the network may drop it: the app
+            // sends again, and the next one tries a socket anew. Told of
+            // once, since every datagram may fail alike.
+            Err(error) => {
+                if !std::mem::replace(&mut self.told_open_failure, true) {
+                    log(&format!("udp: a socket could not be opened: {error}"));
                 }
-                port.peers.push_back(datagram.server);
+                return;
             }
+        };
+        port.used.store(now, Relaxed);
+        // Not waited for: a socket that cannot take it now drops it.
+        if owner.is_some() {
+            let _ = port.socket.send(datagram.payload);
+        } else if port
+            .socket
+            .send_to(datagram.payload, datagram.server)
+            .is_ok()
+        {
+            // Ordinary UDP can use one local port with several peers, as
+            // in ICE. Keep its external port stable and admit only replies
+            // from destinations the app has actually contacted.
+            if let Some(i) = port.peers.iter().position(|p| *p == datagram.server) {
+                port.peers.remove(i);
+            } else if port.peers.len() == MAX_PEERS_PER_PORT {
+                port.peers.pop_front();
+            }
+            port.peers.push_back(datagram.server);
         }
     }
 
@@ -664,6 +678,34 @@ mod tests {
             at,
             packets,
         )
+    }
+
+    #[tokio::test]
+    async fn a_datagram_without_a_socket_is_dropped_and_the_next_tries_again() {
+        let (_, server, _) = forwarder().await;
+        let protects = Arc::new(AtomicBool::new(false));
+        let protected = protects.clone();
+        let (back, mut packets) = mpsc::channel(64);
+        let protect: Protect = Arc::new(move |_| protected.load(Relaxed));
+        let mut forwarder = Forwarder::new(back, protect, Policy::test(Some(10001)), MTU);
+        let app: SocketAddr = "10.0.0.2:5353".parse().unwrap();
+        let datagram = Datagram {
+            app,
+            server,
+            payload: b"a question",
+        };
+        for _ in 0..2 {
+            assert!(!forwarder.send(&datagram).await);
+            assert!(forwarder.is_empty());
+            assert!(forwarder.told_open_failure);
+        }
+        protects.store(true, Relaxed);
+        forwarder.send(&datagram).await;
+        let bytes = forwarder
+            .deliver(packets.recv().await.unwrap())
+            .await
+            .unwrap();
+        assert_eq!(parse(&bytes).unwrap().payload, b"A QUESTION");
     }
 
     #[tokio::test]

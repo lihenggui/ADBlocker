@@ -41,6 +41,7 @@ use anyhow::{Context as _, Result};
 use tokio::net::TcpStream;
 use tokio::sync::watch;
 
+use crate::log::log;
 pub use crate::platform::{Connect, Platform};
 use crate::platform::{Protect, connect, protector, tcp_owner};
 use crate::tunnel::Handler;
@@ -154,7 +155,9 @@ impl Engine {
         let filters = filter::Filters::load_cached(&[&dirs[0], &dirs[1]], &paths.cache())?;
         let records = Records::open(&paths);
         if let Err(error) = pins::take_requests(&records.policy, &paths.forget()) {
-            eprintln!("pins: pending removals could not be applied: {error}");
+            log(&format!(
+                "pins: pending removals could not be applied: {error}"
+            ));
         }
         let tls = tls::Tls::new(authority, roots);
         let lists = Lists::open(filters, exclusions::Exclusions::load(&paths.exclusions()));
@@ -211,7 +214,7 @@ impl Engine {
             anyhow::bail!("the lists are changing")
         };
         if let Err(e) = reload() {
-            eprintln!("lists: kept as they were: {e}");
+            log(&format!("lists: kept as they were: {e}"));
         }
         self.ctx.reload_sources(&self.paths, pins::take_requests);
         self.apply_locked();
@@ -233,12 +236,12 @@ impl Engine {
     fn apply_locked(&self) -> Option<u64> {
         let now = clock::now();
         let text = abd_engine::files::read_text(&self.paths.apps(), apps::MAX_FILE)
-            .inspect_err(|error| eprintln!("app selection: {error}"))
+            .inspect_err(|error| log(&format!("app selection: {error}")))
             .ok();
         let (text, settings, pauses) = match self.ctx.reload_user_policy(&self.paths, now) {
             Ok((settings, pauses)) => (text, settings, pauses),
             Err(error) => {
-                eprintln!("user policy: {error:#}");
+                log(&format!("user policy: {error:#}"));
                 (None, Settings::UNSAID, pause::Pauses::default())
             }
         };
@@ -293,7 +296,7 @@ impl Engine {
             .ctx
             .snapshot(true, SnapshotSelection::Vpn(filtering_apps));
         if let Err(error) = state::write(&self.paths.state(), &state) {
-            eprintln!("state: could not publish snapshot: {error:#}");
+            log(&format!("state: could not publish snapshot: {error:#}"));
         }
         let ends = pauses.next_end();
         let apply_at = if text.is_some() {

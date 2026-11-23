@@ -37,6 +37,7 @@ use tokio::sync::{Semaphore, oneshot, watch};
 
 use crate::engine::Engine;
 use crate::fd::Fd;
+use crate::log::log;
 use crate::platform::Platform;
 use crate::tunnel;
 
@@ -346,7 +347,12 @@ impl Session {
                             }
                             0
                         }
-                        Err(_) => 1,
+                        Err(error) => {
+                            // Of the lists and the files here: nothing of
+                            // what the apps talk to.
+                            log(&format!("update: {error:#}"));
+                            1
+                        }
                     },
                     _ = cancelled => 0,
                 }
@@ -421,6 +427,11 @@ impl Session {
                     policy: engine.udp_policy(),
                     dns,
                 }) => {
+                    if let Err(error) = &ended {
+                        // Its kind only, which can name no host or app.
+                        let (kind, code) = (error.kind(), error.raw_os_error());
+                        log(&format!("the VPN ended: {kind:?}, os error {code:?}"));
+                    }
                     stopped(i32::from(ended.is_err()));
                 }
                 () = pauses => {}

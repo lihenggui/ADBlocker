@@ -24,6 +24,7 @@ pub mod engine;
 mod fake;
 pub mod fd;
 pub mod jni;
+mod log;
 mod platform;
 pub mod session;
 pub mod stack;

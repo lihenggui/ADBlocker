@@ -14,6 +14,7 @@
 
 use std::collections::{HashMap, hash_map::Entry};
 use std::net::SocketAddr;
+use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -23,6 +24,7 @@ use tokio::sync::{Mutex as AsyncMutex, oneshot};
 use tokio::task::JoinHandle;
 
 use super::{MAX_PENDING, Question};
+use crate::log::log;
 use crate::platform::{Protect, protect_socket};
 
 type Pending = Mutex<HashMap<[u8; 2], Reply>>;
@@ -32,6 +34,8 @@ type Pending = Mutex<HashMap<[u8; 2], Reply>>;
 pub(super) struct UdpResolver {
     pub(super) address: SocketAddr,
     connection: AsyncMutex<Option<Arc<Connected>>>,
+    /// Whether a socket that could not be opened has been told of.
+    told_open_failure: AtomicBool,
 }
 
 struct Connected {
@@ -70,6 +74,7 @@ impl UdpResolver {
         Self {
             address,
             connection: AsyncMutex::default(),
+            told_open_failure: AtomicBool::new(false),
         }
     }
 
@@ -97,16 +102,20 @@ impl UdpResolver {
         if let Some(connection) = current.as_ref().filter(|conn| !conn.receiver.is_finished()) {
             return Some(connection.clone());
         }
-        let bind = if self.address.is_ipv4() {
-            "0.0.0.0:0"
-        } else {
-            "[::]:0"
+        let socket = match self.open(protect).await {
+            Ok(socket) => Arc::new(socket),
+            // The question goes to the next resolver, or is asked again
+            // by the app, and the next one tries a socket anew. Told of
+            // once, since every question may fail alike.
+            Err(error) => {
+                if !self.told_open_failure.swap(true, Relaxed) {
+                    log(&format!(
+                        "dns: a resolver socket could not be opened: {error}"
+                    ));
+                }
+                return None;
+            }
         };
-        let socket = protect_socket(protect, UdpSocket::bind(bind).await.ok()?)
-            .await
-            .ok()?;
-        socket.connect(self.address).await.ok()?;
-        let socket = Arc::new(socket);
         let pending = Arc::new(Pending::default());
         let receiver = tokio::spawn(receive(socket.clone(), pending.clone(), mtu));
         let connected = Arc::new(Connected {
@@ -116,6 +125,17 @@ impl UdpResolver {
         });
         *current = Some(connected.clone());
         Some(connected)
+    }
+
+    async fn open(&self, protect: Protect) -> std::io::Result<UdpSocket> {
+        let bind = if self.address.is_ipv4() {
+            "0.0.0.0:0"
+        } else {
+            "[::]:0"
+        };
+        let socket = protect_socket(protect, UdpSocket::bind(bind).await?).await?;
+        socket.connect(self.address).await?;
+        Ok(socket)
     }
 }
 

@@ -33,34 +33,11 @@ use jni::objects::{Global, JByteArray, JObject, JObjectArray, JString, JValue};
 use jni::sys::{jint, jlong};
 use jni::{Env, EnvUnowned, JavaVM, jni_sig, jni_str};
 
+use crate::log::log;
 use crate::platform::Platform;
 use crate::session::{Session, Sink};
 
 const MAX_RESOLVERS: usize = 4;
-
-/// Says why something failed where the app's developer can read it, and
-/// nowhere else. Never anything of what the apps talk to.
-fn log(text: &str) {
-    #[cfg(target_os = "android")]
-    {
-        #[link(name = "log")]
-        unsafe extern "C" {
-            fn __android_log_write(
-                priority: std::ffi::c_int,
-                tag: *const std::ffi::c_char,
-                text: *const std::ffi::c_char,
-            ) -> std::ffi::c_int;
-        }
-        const ERROR: std::ffi::c_int = 6;
-        if let Ok(text) = std::ffi::CString::new(text) {
-            // SAFETY: both strings end in a zero byte and live through
-            // the call, which keeps neither.
-            unsafe { __android_log_write(ERROR, c"abd".as_ptr(), text.as_ptr()) };
-        }
-    }
-    #[cfg(not(target_os = "android"))]
-    eprintln!("abd: {text}");
-}
 
 /// The app's `Callbacks`, called from whatever thread asks.
 struct Android {
