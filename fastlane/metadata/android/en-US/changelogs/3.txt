@@ -1,0 +1,1 @@
+Package for F-Droid: the store listing is in the repository, and the APK no longer carries a dependency list only Google can read. The module no longer installs a contributors' notes file.
