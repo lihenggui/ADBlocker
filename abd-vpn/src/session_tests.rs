@@ -409,6 +409,36 @@ fn check_udp_round_trip(tun: &UnixDatagram) {
 }
 
 #[test]
+fn a_datagram_larger_than_an_ethernet_frame_passes_both_ways() {
+    let (session, _, _dir) = session();
+    let (system, ours) = UnixDatagram::pair().unwrap();
+    system
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    session
+        .start(ours.into(), false, Vec::new(), Box::new(|_| {}))
+        .unwrap();
+    let server = std::net::UdpSocket::bind("127.0.0.1:0").unwrap();
+    server
+        .set_read_timeout(Some(Duration::from_secs(5)))
+        .unwrap();
+    let (client, dst) = (
+        "10.0.0.2:40000".parse().unwrap(),
+        server.local_addr().unwrap(),
+    );
+    let large = vec![b'x'; 4000];
+    system
+        .send(&crate::datagram::packet(client, dst, &large, MTU).unwrap())
+        .unwrap();
+    let mut packet = vec![0u8; MTU];
+    let (n, peer) = server.recv_from(&mut packet).unwrap();
+    assert_eq!(&packet[..n], large);
+    server.send_to(&large, peer).unwrap();
+    let n = system.recv(&mut packet).unwrap();
+    assert_eq!(crate::datagram::parse(&packet[..n]).unwrap().payload, large);
+}
+
+#[test]
 fn a_fatal_udp_write_tells_the_app_that_the_vpn_failed() {
     let (session, _, _dir) = session();
     let (system, ours) = UnixDatagram::pair().unwrap();

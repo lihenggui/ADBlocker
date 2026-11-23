@@ -42,7 +42,9 @@ use crate::platform::Platform;
 use crate::tunnel;
 
 /// The longest packet the apps may send: what the VPN is set up with.
-pub const MTU: usize = 1500;
+/// Their connections end here, not on the path beyond, so a packet is
+/// as large as moves the most for each one passed.
+pub const MTU: usize = 9000;
 
 /// Bytes of watch output between the async feed and the app's callbacks.
 const WATCH_BUFFER: usize = 64 << 10;

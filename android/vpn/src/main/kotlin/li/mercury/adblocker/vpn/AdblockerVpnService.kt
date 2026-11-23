@@ -293,7 +293,7 @@ class AdblockerVpnService : VpnService() {
 
     internal companion object {
         private const val ACTION_START = "li.mercury.adblocker.vpn.START"
-        const val MTU = 1500
+        const val MTU = 9000
 
         // Private addresses for the interface: the engine answers in place
         // of every server, whatever these are.

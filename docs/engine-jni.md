@@ -110,7 +110,8 @@ certificate installer.
 
 What `VpnService.Builder` sets:
 
-- MTU 1500.
+- MTU 9000. The engine ends the apps' TCP connections itself, so the
+  MTU of the path beyond does not apply to them.
 - One IPv4 address, with the route `0.0.0.0/0`.
 - One IPv6 address, with the route `::/0`, only while the network beneath
   reaches the internet over IPv6: it has a global address and a default
