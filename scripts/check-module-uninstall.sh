@@ -19,7 +19,9 @@ cd "$(dirname "$0")/.."
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
 mkdir -p "$fixture/module/bin"
-sed 's|^DATA=/data/adb/adblocker$|DATA=$FIXTURE/data|' module/uninstall.sh >"$fixture/module/uninstall.sh"
+# The module the app may have installed is looked for under the fixture too.
+sed -e 's|^DATA=/data/adb/adblocker$|DATA=$FIXTURE/data|' -e 's|/data/adb/|$FIXTURE/adb/|g' \
+    module/uninstall.sh >"$fixture/module/uninstall.sh"
 export FIXTURE="$fixture"
 
 cat >"$fixture/module/bin/abd" <<'EOF'

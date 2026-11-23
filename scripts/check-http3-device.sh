@@ -31,7 +31,10 @@ adb wait-for-device
 [[ $(adb shell getprop ro.kernel.qemu | tr -d '\r') == 1 && $(adb shell id -u | tr -d '\r') == 0 ]]
 package=li.mercury.adblocker.check.http3
 control=$package.control
-abd=/data/adb/modules/adblocker/bin/abd
+# The module in a root manager once it has its daemon, or else the one
+# installed without a manager (module/direct.sh).
+abd=$(adb shell 'm=/data/adb/modules/adblocker; [ -e $m/bin/abd ] || m=/data/adb/adblocker_direct; echo $m/bin/abd' | tr -d '\r')
+[[ $abd == /data/adb/*/bin/abd ]] || fail "could not ask the device where the module is"
 for id in "$package" "$control"; do
     existing=$(adb shell pm list packages --user all -u "$id" | tr -d '\r') || fail "could not check existing fixture packages"
     if grep -Fqx "package:$id" <<<"$existing"; then fail "fixture package $id already exists"; fi

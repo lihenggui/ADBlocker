@@ -61,4 +61,11 @@ else
         esac
     done
 fi
+
+# A module the app had installed that this one never came to replace would
+# start again at the next boot, with nothing left of what it kept.
+DIRECT=/data/adb/adblocker_direct
+if [ "$MODDIR" != "$DIRECT" ] && ! rm -rf "$DIRECT" /data/adb/service.d/adblocker.sh; then
+    printf '%s\n' "uninstall: the module the app had installed could not be removed" >&2
+fi
 exit "$cleanup"
