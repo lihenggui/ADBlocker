@@ -136,7 +136,9 @@ impl System {
     }
 }
 
-fn device_command(tool: &str) -> Command {
+/// A tool of the system's, never one found first elsewhere in the path,
+/// and killed if it runs past its time: none may hold up its caller.
+pub(crate) fn device_command(tool: &str) -> Command {
     let mut command = Command::new(Path::new(TOOLS).join("timeout"));
     let seconds = if tool == "ip" { "2" } else { "8" };
     command

@@ -193,11 +193,7 @@ pub fn prepare(paths: &Paths) -> Result<()> {
             .mode(0o755)
             .create(&user.target)?;
         std::os::unix::fs::lchown(&user.target, Some(SYSTEM_UID), Some(SYSTEM_UID))?;
-        let _ = std::process::Command::new("restorecon")
-            .arg(&user.target)
-            .stdout(std::process::Stdio::null())
-            .stderr(std::process::Stdio::null())
-            .status();
+        restorecon(&user.target);
     }
     ensure!(
         std::fs::symlink_metadata(&user.target)?
@@ -209,6 +205,25 @@ pub fn prepare(paths: &Paths) -> Result<()> {
     let label = label_of(&user.target).unwrap_or_else(|| USER_STORE_LABEL.to_owned());
     let pem = std::fs::read(ca.join("user.pem"))?;
     build_copy(&user.target, &user.copy, &user.root, &pem, &label)
+}
+
+/// Labels a directory we made as the system labels it there, for the copy
+/// to take its label. Unlabelled, it keeps what it inherited, which is
+/// said and gone on with.
+fn restorecon(path: &Path) {
+    let labelled = crate::rules::device_command("restorecon")
+        .arg(path)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .status();
+    if !labelled
+        .as_ref()
+        .is_ok_and(std::process::ExitStatus::success)
+    {
+        let failure = labelled.map_or_else(|e| e.to_string(), |status| status.to_string());
+        eprintln!("trust: restorecon {}: {failure}", path.display());
+    }
 }
 
 /// A copy of `store` in `copy` with our root added.
