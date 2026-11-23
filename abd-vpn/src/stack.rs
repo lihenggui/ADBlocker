@@ -91,12 +91,15 @@ impl Packets {
         }
     }
 
-    fn copy(&mut self, packet: &[u8]) {
-        if self.ready.len() < MAX_QUEUE {
+    /// Whether there was room for it.
+    fn copy(&mut self, packet: &[u8]) -> bool {
+        let room = self.ready.len() < MAX_QUEUE;
+        if room {
             let mut buffer = self.buffer();
             buffer.extend_from_slice(packet);
             self.ready.push_back(buffer);
         }
+        room
     }
 }
 
@@ -184,6 +187,9 @@ pub struct Stack {
     sockets: SocketSet<'static>,
     flows: HashMap<Id, Flow>,
     by_ends: HashMap<Ends, Id>,
+    /// The beginnings taken and not yet seen by `poll`, which are to be
+    /// answered: no more than the packets waiting, and none after it.
+    beginning: HashSet<Ends>,
     opened: VecDeque<Opened>,
     /// At most MAX_FLOWS live IDs, plus removals until the next pump.
     changed: HashSet<Id>,
@@ -245,6 +251,7 @@ impl Stack {
             sockets: SocketSet::new(Vec::new()),
             flows: HashMap::new(),
             by_ends: HashMap::new(),
+            beginning: HashSet::new(),
             opened: VecDeque::new(),
             changed: HashSet::new(),
             all: false,
@@ -257,39 +264,50 @@ impl Stack {
     /// too many connections already it is answered with a reset, and the
     /// app fails at once instead of waiting.
     pub fn receive(&mut self, packet: &[u8]) {
-        let tcp = tcp_ends(packet);
-        if let Some((ends, true)) = tcp
-            && !self.by_ends.contains_key(&ends)
-            && self.flows.len() < MAX_FLOWS
+        let begins = self.begins(packet);
+        // Whoever answers is made when the packet is seen (`poll`), not
+        // here: only what is still waiting then is answered.
+        if self.queues.from_apps.copy(packet)
+            && let Some(ends) = begins
         {
-            let buffer = || tcp::SocketBuffer::new(vec![0; BUFFER]);
-            let mut socket = tcp::Socket::new(buffer(), buffer());
-            socket.set_timeout(Some(SILENCE.into()));
-            socket.set_keep_alive(Some(ASK_EVERY.into()));
-            // The app is on this device: nothing is gained by waiting to
-            // fill a packet or to acknowledge two at once.
-            socket.set_nagle_enabled(false);
-            socket.set_ack_delay(None);
-            let server = IpListenEndpoint {
-                addr: Some(ends.1.ip().into()),
-                port: ends.1.port(),
-            };
-            if socket.listen(server).is_ok() {
-                let id = Id(self.next);
-                self.next += 1;
-                let handle = self.sockets.add(socket);
-                self.by_ends.insert(ends, id);
-                self.flows.insert(
-                    id,
-                    Flow {
-                        handle,
-                        ends,
-                        told: false,
-                    },
-                );
-            }
+            self.beginning.insert(ends);
         }
-        self.queues.from_apps.copy(packet);
+    }
+
+    /// Makes somebody to answer the beginning of the connection `ends`, in
+    /// the place of its server.
+    ///
+    /// It listens for a beginning to that server from any port, so it is
+    /// made only as its own beginning is the next packet seen, and never
+    /// left listening after it (`poll`): of two that listened at once for
+    /// the same server, either could take the other's app for its own.
+    fn listen(&mut self, ends: Ends) {
+        let buffer = || tcp::SocketBuffer::new(vec![0; BUFFER]);
+        let mut socket = tcp::Socket::new(buffer(), buffer());
+        socket.set_timeout(Some(SILENCE.into()));
+        socket.set_keep_alive(Some(ASK_EVERY.into()));
+        // The app is on this device: nothing is gained by waiting to
+        // fill a packet or to acknowledge two at once.
+        socket.set_nagle_enabled(false);
+        socket.set_ack_delay(None);
+        let server = IpListenEndpoint {
+            addr: Some(ends.1.ip().into()),
+            port: ends.1.port(),
+        };
+        if socket.listen(server).is_ok() {
+            let id = Id(self.next);
+            self.next += 1;
+            let handle = self.sockets.add(socket);
+            self.by_ends.insert(ends, id);
+            self.flows.insert(
+                id,
+                Flow {
+                    handle,
+                    ends,
+                    told: false,
+                },
+            );
+        }
     }
 
     /// The app's end and the server's of the connection a packet begins,
@@ -297,13 +315,15 @@ impl Stack {
     /// that the server is there before the app is answered in its place.
     pub fn begins(&self, packet: &[u8]) -> Option<Ends> {
         let (ends, syn) = tcp_ends(packet)?;
-        (syn && !self.by_ends.contains_key(&ends)).then_some(ends)
+        let held = self.by_ends.contains_key(&ends) || self.beginning.contains(&ends);
+        (syn && !held).then_some(ends)
     }
 
     /// Takes the packet that begins a connection without anybody to
     /// answer it: the app is told at once that nothing is there, as it is
     /// by a server that refuses it, and goes on to wherever else it may.
     pub fn refuse(&mut self, packet: &[u8]) {
+        // Without room it is dropped, and the app sends it again.
         self.queues.from_apps.copy(packet);
     }
 
@@ -322,17 +342,25 @@ impl Stack {
     pub fn poll(&mut self) -> Option<Duration> {
         let now = Instant::from_micros(self.started.elapsed().as_micros() as i64);
         while let Some(packet) = self.queues.from_apps.ready.front() {
-            let ends = tcp_ends(packet).map(|(ends, _)| ends);
+            let tcp = tcp_ends(packet);
+            if let Some((ends, true)) = tcp
+                && self.beginning.remove(&ends)
+                && !self.by_ends.contains_key(&ends)
+                && self.flows.len() < MAX_FLOWS
+            {
+                self.listen(ends);
+            }
+            let ends = tcp.map(|(ends, _)| ends);
             let id = ends.and_then(|ends| self.by_ends.get(&ends).copied());
-            let was = id.map(|id| self.state(id));
             self.iface
                 .poll_ingress_single(now, &mut self.queues, &mut self.sockets);
             if let Some(id) = id {
-                // A reset before the connection opened takes it back to
-                // listening, for the next beginning to this server from
-                // any port, which may be the next packet: it would then
-                // be told of with this one's app.
-                if was != Some(tcp::State::Listen) && self.state(id) == tcp::State::Listen {
+                // Still listening, its beginning was not taken; listening
+                // again, the app reset it before it opened. Either way it
+                // would take the next beginning to this server, from any
+                // port, which may be the next packet, and tell of it with
+                // this one's app.
+                if self.state(id) == tcp::State::Listen {
                     self.forget(id);
                     continue;
                 }
@@ -345,6 +373,8 @@ impl Stack {
                 self.all = true;
             }
         }
+        // Every packet waiting has been seen, each beginning among them.
+        self.beginning.clear();
         self.iface.poll(now, &mut self.queues, &mut self.sockets);
         if std::mem::take(&mut self.all) {
             self.changed.extend(self.flows.keys().copied());
@@ -355,9 +385,8 @@ impl Stack {
                 continue;
             };
             let socket = self.sockets.get::<tcp::Socket>(flow.handle);
-            // Every packet taken has been seen: one still listening never
-            // had its beginning, which was lost, and the app sends it
-            // again. A listener has no timeout and would hold its place.
+            // None is left listening by the packets above; were one, it
+            // would have no timeout and hold its place for ever.
             if matches!(socket.state(), tcp::State::Closed | tcp::State::Listen) {
                 gone.push(id);
             } else {
@@ -839,7 +868,7 @@ mod tests {
         }
         let syn = segment(40001, TcpControl::Syn, 100, None);
         stack.receive(&syn);
-        assert_eq!(stack.len(), 1);
+        assert!(stack.is_empty());
         stack.poll();
         assert!(stack.is_empty());
         stack.receive(&syn);
@@ -848,6 +877,47 @@ mod tests {
         stack.receive(&segment(40001, TcpControl::None, 101, Some(theirs + 1)));
         stack.poll();
         assert_eq!(stack.opened().unwrap().app.port(), 40001);
+    }
+
+    #[test]
+    fn beginnings_to_one_server_taken_together_are_each_told_with_their_own_app() {
+        let mut stack = Stack::new(MTU);
+        let ports = [40003, 40001, 40002];
+        for (n, port) in ports.into_iter().enumerate() {
+            stack.receive(&segment(port, TcpControl::Syn, 100 * n as u32, None));
+        }
+        // None answers before its own beginning is seen.
+        assert!(stack.is_empty());
+        stack.poll();
+        assert_eq!(stack.len(), ports.len());
+        for (n, port) in ports.into_iter().enumerate() {
+            let packet = stack.transmit().unwrap();
+            let ip = Ipv4Packet::new_checked(packet.as_slice()).unwrap();
+            let tcp = TcpPacket::new_checked(ip.payload()).unwrap();
+            // Each is answered at its own port, for what it sent.
+            assert_eq!(tcp.dst_port(), port);
+            assert_eq!(tcp.ack_number().0 as u32, 100 * n as u32 + 1);
+            let theirs = tcp.seq_number().0 as u32;
+            let ack = segment(port, TcpControl::None, 100 * n as u32 + 1, Some(theirs + 1));
+            stack.receive(&ack);
+        }
+        stack.poll();
+        let mut told = Vec::new();
+        while let Some(opened) = stack.opened() {
+            told.push(opened.app.port());
+        }
+        assert_eq!(told, ports);
+    }
+
+    #[test]
+    fn a_beginning_refused_is_given_nobody_to_answer_it() {
+        let mut stack = Stack::new(MTU);
+        stack.refuse(&segment(40001, TcpControl::Syn, 100, None));
+        stack.poll();
+        assert!(stack.is_empty());
+        let packet = stack.transmit().unwrap();
+        let ip = Ipv4Packet::new_checked(packet.as_slice()).unwrap();
+        assert!(TcpPacket::new_checked(ip.payload()).unwrap().rst());
     }
 
     #[test]

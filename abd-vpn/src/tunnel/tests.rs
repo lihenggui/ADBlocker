@@ -60,8 +60,10 @@ async fn the_first_tcp_poll_takes_one_full_batch_of_ready_packets() {
             dns: None,
         },
         move |stack| {
+            // A connection is counted once its beginning has been seen.
+            let wait = stack.poll();
             let _ = seen.try_send(stack.len());
-            stack.poll()
+            wait
         },
     ));
     assert_eq!(
