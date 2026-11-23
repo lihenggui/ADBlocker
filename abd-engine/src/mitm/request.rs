@@ -12,6 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::Cow;
 use std::future::Future;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
@@ -163,7 +164,15 @@ pub fn evaluate_request<'a, B>(
     req: &'a Request<B>,
     url: &str,
 ) -> RequestDecision<'a> {
-    let kind = kind(req);
+    evaluate(filters, req, url, kind(req))
+}
+
+fn evaluate<'a, B>(
+    filters: &Filters,
+    req: &'a Request<B>,
+    url: &str,
+    kind: &'static str,
+) -> RequestDecision<'a> {
     let page = told_page(req);
     let blocked = filters
         .check_with_page(
@@ -235,10 +244,12 @@ pub(super) async fn serve<'a>(
     };
     let decision = if let Some((url, host)) = &target
         && selected
-        && !ctx.lists.allow.read().unwrap().covers(host)
+        // `guard_site` found a decrypted request's site untrusted, and it
+        // can name no other (`address`).
+        && (https.is_some() || !ctx.lists.allow.read().unwrap().covers(host))
     {
         if url_filtering {
-            let decision = evaluate_request(&filters, &req, url);
+            let decision = evaluate(&filters, &req, url, kind);
             if decision.blocked {
                 record_request(ctx, package, host, url, decision);
                 return Ok(empty(StatusCode::FORBIDDEN));
@@ -318,15 +329,17 @@ fn guard_site(
     None
 }
 
-fn target_of(
+/// The address a request is for and its host: for a decrypted one, the
+/// site's, borrowed from it.
+fn target_of<'s>(
     req: &Request<Incoming>,
-    site: Option<&InspectedSite>,
-) -> Result<Option<(String, String)>, StatusCode> {
+    site: Option<&'s InspectedSite>,
+) -> Result<Option<(String, Cow<'s, str>)>, StatusCode> {
     let target = if let Some(site) = site {
         let Some(url) = address(req, &site.name, site.port) else {
             return Err(StatusCode::MISDIRECTED_REQUEST);
         };
-        Some((url, site.name.clone()))
+        Some((url, Cow::Borrowed(site.name.as_str())))
     } else if req.uri().authority().is_none() && req.uri().scheme().is_none() {
         let mut hosts = req.headers().get_all(HOST).iter();
         let host = hosts.next().and_then(|h| h.to_str().ok());
@@ -334,6 +347,7 @@ fn target_of(
         if hosts.next().is_none() {
             path.zip(host)
                 .and_then(|(path, host)| clear_target(req.method(), path, host))
+                .map(|(url, host)| (url, Cow::Owned(host)))
         } else {
             None
         }
