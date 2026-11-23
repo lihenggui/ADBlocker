@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -131,6 +132,13 @@ class OverviewViewModel @Inject constructor(
      */
     private var installed: List<AppEntry>? = null
 
+    /**
+     * Set by every trigger that asks for the apps and cleared only once they
+     * were read: a tick that cancels a load in flight must not leave the
+     * replacement with the cache the change made stale.
+     */
+    private var appsStale = true
+
     /** Whether root is granted, asked once while the VPN is in use: asking can show the root manager's prompt. */
     private var rootAvailable = false
     private var rootProbeStarted = false
@@ -149,7 +157,8 @@ class OverviewViewModel @Inject constructor(
         reload.map { true },
         // The VPN started, stopped or was taken over: the engine's status changes with it.
         vpn.status.drop(1).map { false },
-    ).mapLatest { withApps -> load(withApps) }
+    ).onEach { withApps -> if (withApps) appsStale = true }
+        .mapLatest { load() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OverviewUiState.Loading)
 
     fun onStart() {
@@ -165,10 +174,13 @@ class OverviewViewModel @Inject constructor(
         }
     }
 
-    private suspend fun load(withApps: Boolean): OverviewUiState = suspendRunCatching("overview") {
+    private suspend fun load(): OverviewUiState = suspendRunCatching("overview") {
         val (status, summary, subscriptions) = overview.snapshot()
-        val entries = installed.takeUnless { withApps }
-            ?: withContext(defaultDispatcher) { apps.apps() }.also { installed = it }
+        val entries = installed.takeUnless { appsStale }
+            ?: withContext(defaultDispatcher) { apps.apps() }.also {
+                installed = it
+                appsStale = false
+            }
         val data = userData.userData.first()
         val dismissed = data.dismissedTips
         val vpnStatus = vpn.status.value

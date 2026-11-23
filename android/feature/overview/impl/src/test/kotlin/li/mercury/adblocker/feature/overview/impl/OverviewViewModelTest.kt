@@ -17,6 +17,7 @@
 package li.mercury.adblocker.feature.overview.impl
 
 import android.content.Intent
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -39,7 +40,10 @@ import li.mercury.adblocker.core.data.repository.OverviewSnapshot
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppEntry
 import li.mercury.adblocker.core.model.DaemonStatus
+import li.mercury.adblocker.core.model.FilterLevel
 import li.mercury.adblocker.core.model.FilterMethod
+import li.mercury.adblocker.core.model.FilteredApp
+import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.StatsSummary
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnState
@@ -64,6 +68,7 @@ class OverviewViewModelTest {
     private var rootAsked = 0
     private var snapshotsRead = 0
     private var appsRead = 0
+    private var appsAfter: suspend () -> List<AppEntry> = { emptyList() }
     private var filteringApps: Int? = null
     private val changes = DataChanges()
     private val userData = TestUserDataRepository(UserData(filterMethod = FilterMethod.Vpn))
@@ -118,7 +123,7 @@ class OverviewViewModelTest {
             apps = object : AppsRepository by unexpected() {
                 override suspend fun apps(): List<AppEntry> {
                     appsRead++
-                    return emptyList()
+                    return appsAfter()
                 }
             },
             overview = overview,
@@ -227,5 +232,25 @@ class OverviewViewModelTest {
         changes.notifyChanged()
         assertEquals(5, snapshotsRead)
         assertEquals(3, appsRead)
+    }
+
+    @Test
+    fun givenATickArrivesWhileAChangeReloadsTheApps_whenTheReplacementLoadRuns_thenItReadsTheApps() = runTest {
+        root = false
+        shown()
+        val news = InstalledApp("com.example.news", "News", null, isSystem = false)
+        val gate = CompletableDeferred<Unit>()
+        appsAfter = {
+            gate.await()
+            listOf(AppEntry(news, FilteredApp(news.packageName, FilterLevel.Hosts, pausedUntil = null)))
+        }
+
+        changes.notifyChanged()
+        assertEquals(2, appsRead)
+        vpnStatus.value = VpnStatus(state = VpnState.Revoked)
+        gate.complete(Unit)
+        runCurrent()
+
+        assertEquals(1, (viewModel.uiState.value as OverviewUiState.Ready).filteredApps)
     }
 }
