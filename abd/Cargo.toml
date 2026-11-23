@@ -10,7 +10,7 @@ publish.workspace = true
 abd-engine = { path = "../abd-engine" }
 anyhow = { workspace = true, default-features = true }
 libc = "0.2.191"
-md-5 = "0.10"
+md-5 = "0.11"
 roxmltree = "0.21.2"
 serde_json = "1.0.154"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12", "logging"] }
