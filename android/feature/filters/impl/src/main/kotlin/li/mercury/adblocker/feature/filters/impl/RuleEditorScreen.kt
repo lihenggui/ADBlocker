@@ -106,7 +106,8 @@ fun RuleEditorScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     LifecycleStartEffect(viewModel) {
         viewModel.startEditing()
-        onStopOrDispose {}
+        // The process can end while the screen is away, before typing paused.
+        onStopOrDispose { viewModel.flushDraft() }
     }
     MessageEffect(viewModel.pendingMessages, viewModel::onMessageShown)
     val done = state.done && !state.changed

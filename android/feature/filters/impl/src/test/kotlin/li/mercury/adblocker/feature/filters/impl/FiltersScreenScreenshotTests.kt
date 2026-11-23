@@ -202,6 +202,8 @@ class FiltersScreenScreenshotTests {
             editor.performTextInputSelection(selected)
             editor.performTextInput("cdn")
             editor.assertTextEquals(edited)
+            // Typing is checkpointed once it pauses; leaving the screen writes it at once.
+            composeTestRule.runOnIdle { viewModel.flushDraft() }
             composeTestRule.runOnIdle { assertEquals(edited, drafts.checkpoints.values.singleOrNull()) }
             val undo = composeTestRule.activity.getString(R.string.feature_filters_undo)
             val redo = composeTestRule.activity.getString(R.string.feature_filters_redo)

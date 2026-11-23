@@ -94,6 +94,12 @@ class RuleEditorViewModelTest {
         Snapshot.sendApplyNotifications()
     }
 
+    /** Lets typing pause, as the checkpoint waits for. */
+    private fun TestScope.pauseTyping() {
+        advanceTimeBy(CHECKPOINT_DELAY_MS)
+        runCurrent()
+    }
+
     private fun savedStateOf(handle: SavedStateHandle) = handle.keys().associateWith { handle.get<String>(it) }
 
     @Test
@@ -125,7 +131,7 @@ class RuleEditorViewModelTest {
         val edit = "||draft.example^"
         setText(editor, edit)
         composition.cancel()
-        runCurrent()
+        pauseTyping()
         assertEquals(edit, drafts.checkpoints.values.single())
 
         backgroundScope.launch { editor.uiState.collect {} }
@@ -210,7 +216,7 @@ class RuleEditorViewModelTest {
 
         editor.undo()
         Snapshot.sendApplyNotifications()
-        runCurrent()
+        pauseTyping()
         assertEquals(original, editor.uiState.value.text.text)
         assertEquals(original, drafts.checkpoints.values.singleOrNull())
 
@@ -238,7 +244,7 @@ class RuleEditorViewModelTest {
         runCurrent()
         editor.undo()
         Snapshot.sendApplyNotifications()
-        runCurrent()
+        pauseTyping()
 
         rules.finishSave!!.complete(Unit)
         runCurrent()
@@ -260,7 +266,7 @@ class RuleEditorViewModelTest {
         runCurrent()
         editor.undo()
         Snapshot.sendApplyNotifications()
-        runCurrent()
+        pauseTyping()
 
         rules.failRead = true
         rules.finishSave!!.complete(Unit)
@@ -273,12 +279,60 @@ class RuleEditorViewModelTest {
     }
 
     @Test
+    fun givenAnEditorIsTypedIn_whenKeysComeFasterThanThePause_thenTheDraftIsWrittenOnceAfterTheLastOne() = runTest {
+        val editor = editor()
+        drafts.writes.clear()
+
+        for (text in listOf("||a", "||ab", "||abc.example^")) {
+            setText(editor, text)
+            advanceTimeBy(CHECKPOINT_DELAY_MS - 1)
+            runCurrent()
+        }
+        assertEquals(emptyList(), drafts.writes)
+
+        advanceTimeBy(1)
+        runCurrent()
+        assertEquals(listOf<String?>("||abc.example^"), drafts.writes)
+        editor.viewModelScope.cancel()
+    }
+
+    @Test
+    fun givenAnEditIsPending_whenTheScreenFlushesTheDraft_thenItIsWrittenAtOnce() = runTest {
+        val editor = editor()
+        setText(editor, "||pending.example^")
+        runCurrent()
+        assertEquals(emptyList(), drafts.writes)
+
+        editor.flushDraft()
+        runCurrent()
+        assertEquals("||pending.example^", drafts.checkpoints.values.single())
+
+        pauseTyping()
+        assertEquals(1, drafts.writes.size)
+        editor.viewModelScope.cancel()
+    }
+
+    @Test
+    fun givenAnEditIsPending_whenItIsSaved_thenTheDraftIsWrittenBeforeTheRules() = runTest {
+        val editor = editor()
+        rules.finishSave = CompletableDeferred()
+        setText(editor, "||pending.example^")
+        runCurrent()
+
+        editor.save()
+        runCurrent()
+        assertEquals("||pending.example^", drafts.checkpoints.values.single())
+        assertEquals(listOf("||pending.example^"), rules.submitted)
+        editor.viewModelScope.cancel()
+    }
+
+    @Test
     fun aLargeDraftRestoresOnlyForItsSavedEntryAndDiscardRemovesIt() = runTest {
         val handle = SavedStateHandle()
         val editor = editor(handle)
         val large = "x".repeat(MAX_RULES_BYTES)
         setText(editor, large)
-        runCurrent()
+        pauseTyping()
         assertEquals(MAX_RULES_BYTES, drafts.checkpoints.values.singleOrNull()?.length)
         editor.viewModelScope.cancel()
 
@@ -325,7 +379,7 @@ class RuleEditorViewModelTest {
         val editor = editor()
         val text = "||draft.example^"
         setText(editor, text)
-        runCurrent()
+        pauseTyping()
         drafts.failRemoval = true
 
         editor.discard()
@@ -371,13 +425,18 @@ class RuleEditorViewModelTest {
     }
 }
 
+/** The most the view model waits after the last edit before writing the draft. */
+private const val CHECKPOINT_DELAY_MS = 600L
+
 internal class TestRuleDraftStore : RuleDraftStore {
     val checkpoints = mutableMapOf<UUID, String>()
+    val writes = mutableListOf<String?>()
     var failRemoval = false
 
     override suspend fun read(id: UUID) = checkpoints[id]
 
     override suspend fun write(id: UUID, text: String?) {
+        writes += text
         if (text == null) {
             if (failRemoval) throw IOException("could not remove checkpoint")
             checkpoints.remove(id)

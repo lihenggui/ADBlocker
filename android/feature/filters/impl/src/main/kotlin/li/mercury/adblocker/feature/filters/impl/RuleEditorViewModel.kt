@@ -24,15 +24,19 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -67,7 +71,10 @@ data class RuleEditorUiState(
     val urlCheck: RuleCheckResult? = null,
 ) {
     val currentDiagnostics: RuleEditorDiagnostics? get() = diagnostics?.takeIf { text.text.contentEquals(it.checkedText) }
-    val changed: Boolean get() = savedStateUnknown || text.text.toString() != saved
+    val changed: Boolean get() = changed(text.text.toString())
+
+    /** [changed] for [current], a copy of the text already at hand: it can be 16 MiB. */
+    fun changed(current: String): Boolean = savedStateUnknown || current != saved
     val canUndo: Boolean get() = text.undoState.canUndo
     val canRedo: Boolean get() = text.undoState.canRedo
 }
@@ -78,10 +85,11 @@ data class RuleEditorDiagnostics(
     val issues: Map<Int, RuleIssue>?,
 )
 
-/** How long typing must stop before the rules are checked. */
+/** How long typing must stop before the rules are checked and the draft is written. */
 private const val CHECK_DELAY_MS = 600L
 private const val DRAFT_ID = "rule_editor_draft_id"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class RuleEditorViewModel @Inject internal constructor(
     private val rules: RulesRepository,
@@ -113,14 +121,20 @@ class RuleEditorViewModel @Inject internal constructor(
         // Keep checkpoints active for the navigation entry, including while its composition is away.
         if (editingStarted) return
         editingStarted = true
+        // One copy of the text per edit for both readers below.
+        val texts = snapshotFlow { field.text.toString() }.shareIn(viewModelScope, SharingStarted.Eagerly, replay = 1)
         viewModelScope.launch {
             state.filter { !it.loading && it.failure == null }
-                .combine(snapshotFlow { field.text.toString() }) { current, _ -> draftText(current) }
+                .combine(texts) { current, text -> draftText(current, text) }
                 .distinctUntilChanged()
+                // A write replaces a file of up to 16 MiB: once typing pauses,
+                // not at every key. What is pending is written by save() and
+                // flushDraft(), and the write reads the text as it is then.
+                .mapLatest { delay(CHECK_DELAY_MS) }
                 .collect { checkpointDraft() }
         }
         viewModelScope.launch {
-            snapshotFlow { field.text.toString() }.collect { text ->
+            texts.collect { text ->
                 val current = state.value
                 if (!current.loading && current.failure == null && text != lastCheckedText && !(current.done && !current.changed)) {
                     state.update { it.copy(done = false) }
@@ -150,6 +164,13 @@ class RuleEditorViewModel @Inject internal constructor(
                 state.update { it.copy(loading = false, failure = e.toLoadFailure()) }
             }
         }
+    }
+
+    /** Writes the draft now, without waiting for typing to pause: the screen is going away. */
+    fun flushDraft() {
+        val current = state.value
+        if (!editingStarted || current.loading || current.failure != null) return
+        viewModelScope.launch { checkpointDraft() }
     }
 
     fun undo() = field.undoState.undo()
@@ -206,7 +227,7 @@ class RuleEditorViewModel @Inject internal constructor(
     }
 
     // An undo can match the old rules while the daemon is about to replace them.
-    private fun draftText(current: RuleEditorUiState): String? = field.text.toString().takeIf { current.changed || current.saving }
+    private fun draftText(current: RuleEditorUiState, text: String = field.text.toString()): String? = text.takeIf { current.changed(text) || current.saving }
 
     private suspend fun checkpointDraft() {
         draftLock.withLock {
