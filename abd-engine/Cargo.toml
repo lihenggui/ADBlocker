@@ -10,7 +10,7 @@ publish.workspace = true
 addr = { version = "0.15", default-features = false, features = ["psl", "std"] }
 adblock = { version = "0.13.6", default-features = false, features = ["css-validation", "embedded-domain-resolver", "full-regex-handling"] }
 anyhow = { workspace = true, default-features = true }
-base64 = "0.22.1"
+base64 = "0.23.1"
 bytes = "1.12.2"
 encoding_rs = { version = "0.8.44", default-features = false }
 http-body-util = "0.1.5"
