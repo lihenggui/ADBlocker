@@ -18,7 +18,7 @@ use abd_engine::apps::Identity;
 use anyhow::{Context as _, Result, bail, ensure};
 
 use super::classification::{Resolution, ResolvedPackages, query_resolved_packages};
-use super::profiles::{Profile, profiles};
+use super::profiles::{Profile, profiles, queried_unchanged};
 
 pub fn validate_selection(tokens: &[&str]) -> Result<()> {
     validate_new_apps(tokens, profiles, query_resolved_packages)
@@ -152,24 +152,10 @@ pub(super) fn canonicalize(
         by_scope.insert(None, query(0));
     }
     if !serials.is_empty() {
-        let before = mode.roster(roster())?;
-        let mut rows = Vec::new();
-        for profile in before
-            .into_iter()
-            .filter(|profile| serials.contains(&profile.serial))
+        for (profile, resolved) in
+            queried_unchanged(|| mode.roster(roster()), &serials, &mut query)?
         {
-            rows.push((profile, query(profile.id)));
-        }
-        if !rows.is_empty() {
-            let current = mode.roster(roster())?;
-            for (profile, resolved) in rows {
-                if current
-                    .iter()
-                    .any(|p| p.id == profile.id && p.serial == profile.serial)
-                {
-                    by_scope.insert(Some(profile.serial), resolved);
-                }
-            }
+            by_scope.insert(Some(profile.serial), resolved);
         }
     }
     tokens

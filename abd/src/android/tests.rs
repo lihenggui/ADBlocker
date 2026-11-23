@@ -23,7 +23,7 @@ use super::classification::{Installed, Resolution, ResolvedPackages, resolved_pa
 use super::eligibility::{personal_eligibility, report_eligibility};
 use super::groups::retained_groups;
 use super::package_inventory::{SharedUsers, package_owners, shared_users};
-use super::profiles::{Profile, profile_inventory, user, user_list};
+use super::profiles::{Profile, profile_inventory, queried_unchanged, user, user_list};
 use super::selection::{all_personal, prune_orphans_in, resolve};
 use super::validate::{CanonicalMode, canonicalize, validate_new_apps};
 use crate::paths::Paths;
@@ -733,4 +733,38 @@ fn quiet_and_recreated_profiles_do_not_resolve_a_saved_choice() {
             .0
             .is_empty()
     );
+}
+
+#[test]
+fn a_profile_answer_is_kept_only_if_the_profile_is_unchanged_after_the_query() {
+    let profile = |id, serial| Profile {
+        id,
+        serial,
+        quiet: false,
+    };
+    let (kept, recycled, removed) = (profile(10, 31), profile(11, 32), profile(12, 33));
+    let mut rosters = [
+        vec![kept, recycled, removed, profile(13, 34)],
+        vec![kept, profile(11, 35)],
+    ]
+    .into_iter();
+    let answers = queried_unchanged(
+        || Ok(rosters.next().unwrap()),
+        &BTreeSet::from([31, 32, 33]),
+        |id| id * 2,
+    )
+    .unwrap();
+    assert_eq!(answers, [(kept, 20)]);
+    // Nothing asked: the roster is not read again.
+    let mut reads = 0;
+    let none = queried_unchanged(
+        || {
+            reads += 1;
+            Ok(vec![kept])
+        },
+        &BTreeSet::from([99]),
+        |id| id,
+    );
+    assert!(none.unwrap().is_empty());
+    assert_eq!(reads, 1);
 }

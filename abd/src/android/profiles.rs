@@ -135,6 +135,34 @@ pub fn profiles() -> Result<Vec<Profile>> {
     Ok(Roster::read(Path::new(USERS))?.profiles)
 }
 
+/// Asks `query` of each profile in the roster with a serial in `serials`,
+/// then keeps the answers of those that the roster, read again, still has
+/// under the same number and serial: Android can give a number to another
+/// profile meanwhile.
+pub(super) fn queried_unchanged<T>(
+    mut roster: impl FnMut() -> Result<Vec<Profile>>,
+    serials: &BTreeSet<u32>,
+    mut query: impl FnMut(u32) -> T,
+) -> Result<Vec<(Profile, T)>> {
+    let rows: Vec<_> = roster()?
+        .into_iter()
+        .filter(|profile| serials.contains(&profile.serial))
+        .map(|profile| (profile, query(profile.id)))
+        .collect();
+    if rows.is_empty() {
+        return Ok(rows);
+    }
+    let current = roster()?;
+    Ok(rows
+        .into_iter()
+        .filter(|(profile, _)| {
+            current
+                .iter()
+                .any(|p| p.id == profile.id && p.serial == profile.serial)
+        })
+        .collect())
+}
+
 pub(super) fn user_list(bytes: &[u8]) -> Option<(BTreeSet<u32>, Option<u32>)> {
     fn unique(ids: impl Iterator<Item = Option<u32>>) -> Option<BTreeSet<u32>> {
         let mut unique = BTreeSet::new();

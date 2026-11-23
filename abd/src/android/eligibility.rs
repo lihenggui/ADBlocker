@@ -19,7 +19,7 @@ use abd_engine::protocol::{App, AppEligibility, PersonalEligibility};
 use anyhow::{Result, ensure};
 
 use super::classification::{ResolvedPackages, query_resolved_packages};
-use super::profiles::{Profile, profiles};
+use super::profiles::{Profile, profiles, queried_unchanged};
 
 pub(super) fn personal_eligibility(resolved: ResolvedPackages) -> PersonalEligibility {
     let groups = resolved.inventory_groups();
@@ -58,19 +58,17 @@ pub(super) fn report_eligibility(
     let work: BTreeSet<_> = apps.iter().filter_map(|app| app.profile_serial).collect();
     let mut work_apps = BTreeMap::new();
     if !work.is_empty() {
-        let before = roster().unwrap_or_default();
-        for profile in before.iter().filter(|p| work.contains(&p.serial)) {
-            if let Ok(packages) = query(profile.id) {
-                work_apps.insert(profile.serial, (profile.id, packages));
+        // An unreadable roster leaves the work apps unavailable.
+        let rows = queried_unchanged(|| Ok(roster().unwrap_or_default()), &work, &mut query);
+        for (profile, packages) in rows.into_iter().flatten() {
+            if let Ok(packages) = packages {
+                work_apps.insert(profile.serial, packages);
             }
         }
-        let current = roster().unwrap_or_default();
-        work_apps
-            .retain(|serial, (id, _)| current.iter().any(|p| p.id == *id && p.serial == *serial));
     }
     for app in apps {
         let packages = match app.profile_serial {
-            Some(serial) => work_apps.get(&serial).map(|(_, packages)| packages),
+            Some(serial) => work_apps.get(&serial),
             None => personal.as_ref(),
         };
         let eligibility = packages.map_or(AppEligibility::Unavailable, |packages| {
