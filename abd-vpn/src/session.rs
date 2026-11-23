@@ -87,8 +87,7 @@ struct InApp<'a>(&'a Session);
 
 impl Host for InApp<'_> {
     fn running(&self) -> Option<i32> {
-        let filtering = self.0.tunnel.lock().unwrap().is_some();
-        filtering.then(|| std::process::id() as i32)
+        self.0.running(|_| std::process::id() as i32)
     }
     fn reload(&self) {
         self.0.reload();
@@ -107,12 +106,7 @@ impl Host for InApp<'_> {
         None
     }
     fn vpn_ipv6(&self) -> Option<bool> {
-        self.0
-            .tunnel
-            .lock()
-            .unwrap()
-            .as_ref()
-            .map(|tunnel| tunnel.ipv6)
+        self.0.running(|tunnel| tunnel.ipv6)
     }
     fn personal_app_identities(
         &self,
@@ -210,6 +204,16 @@ impl Session {
 
     fn runtime(&self) -> &tokio::runtime::Runtime {
         self.runtime.as_ref().expect("live session has a runtime")
+    }
+
+    /// What `read` says of the VPN while it is filtered. Not after its task
+    /// ended by itself, which `stop` has not cleared yet.
+    fn running<T>(&self, read: impl FnOnce(&RunningTunnel) -> T) -> Option<T> {
+        let tunnel = self.tunnel.lock().unwrap();
+        tunnel
+            .as_ref()
+            .filter(|tunnel| !tunnel.task.is_finished())
+            .map(read)
     }
 
     fn reload(&self) {

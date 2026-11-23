@@ -565,8 +565,19 @@ fn the_app_is_told_when_the_vpn_ends_by_itself() {
     let stopped = Box::new(move |code| {
         let _ = tell.send(code);
     });
-    session.start(ours, false, Vec::new(), stopped).unwrap();
+    session.start(ours, true, Vec::new(), stopped).unwrap();
+    assert_eq!(InApp(&session).vpn_ipv6(), Some(true));
     // The system takes the VPN down: no more packets, ever.
     drop(system);
     assert_eq!(told.recv_timeout(Duration::from_secs(5)).unwrap(), 0);
+    // Not said to run once it has ended, before the app stops it.
+    let status = || said(&session.command(&["status", "--json"], b"")).to_owned();
+    for _ in 0..500 {
+        if status().contains("\"running\":false") {
+            break;
+        }
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    assert!(status().contains("\"running\":false"));
+    assert_eq!(InApp(&session).vpn_ipv6(), None);
 }
