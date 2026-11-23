@@ -545,3 +545,55 @@ fn a_reused_uid_cannot_receive_packets_from_an_earlier_selection() {
     selection.replace(&[(uid, "com.example.new")]);
     assert_ne!(selection.owners[&uid].1, second);
 }
+
+/// Says whether the selection was being changed when it was asked about
+/// the authority.
+#[derive(Default)]
+struct Asked {
+    engine: std::sync::OnceLock<std::sync::Weak<Engine>>,
+    while_selection_held: std::sync::atomic::AtomicBool,
+}
+
+impl Platform for Asked {
+    fn owner(&self, _: i32, _: SocketAddr, _: SocketAddr) -> Option<u32> {
+        None
+    }
+    fn uid_of(&self, package: &str) -> Option<u32> {
+        (package == "com.app").then_some(UID)
+    }
+    fn ca_installed(&self) -> bool {
+        if let Some(engine) = self.engine.get().and_then(std::sync::Weak::upgrade)
+            && engine.selected.try_read().is_err()
+        {
+            self.while_selection_held.store(true, Relaxed);
+        }
+        true
+    }
+    fn protect(&self, _: RawFd) -> bool {
+        true
+    }
+}
+
+#[tokio::test]
+async fn android_is_not_asked_about_the_authority_while_the_selection_is_held() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(Paths::new(dir.path()).apps(), "com.app\n").unwrap();
+    let platform = Arc::new(Asked::default());
+    let engine = Engine::open_with(
+        dir.path(),
+        rustls::RootCertStore::empty(),
+        platform.clone(),
+        Arc::new(|_| Box::pin(async { Err(std::io::ErrorKind::Other.into()) })),
+    )
+    .unwrap();
+    platform.engine.set(Arc::downgrade(&engine)).unwrap();
+    engine.apply();
+    assert!(
+        engine
+            .ctx
+            .selection
+            .https_inspection_available
+            .load(Relaxed)
+    );
+    assert!(!platform.while_selection_held.load(Relaxed));
+}

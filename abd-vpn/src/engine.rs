@@ -260,6 +260,11 @@ impl Engine {
                 .filter_map(|&package| Some((self.platform.uid_of(package)?, package)))
                 .collect()
         };
+        // Asked for or not, nothing is decrypted for an app that would
+        // not have our certificate: it would refuse us for every host.
+        // Android is asked before the selection is held, which the UDP
+        // relays wait for on the runtime's workers.
+        let inspectable = settings.url_filtering && self.platform.ca_installed();
         let mut admission = self.selected.write().unwrap();
         admission.replace(&selected);
         let filtered: BTreeMap<u32, String> = selected
@@ -267,12 +272,10 @@ impl Engine {
             .filter(|(_, package)| !pauses.is_paused(package))
             .map(|&(uid, package)| (uid, package.to_owned()))
             .collect();
-        // Asked for or not, nothing is decrypted for an app that would
-        // not have our certificate: it would refuse us for every host.
-        self.ctx.selection.https_inspection_available.store(
-            settings.url_filtering && self.platform.ca_installed(),
-            Relaxed,
-        );
+        self.ctx
+            .selection
+            .https_inspection_available
+            .store(inspectable, Relaxed);
         let chosen: BTreeSet<_> = if settings.scope == abd_engine::settings::Scope::All {
             selected.iter().map(|(_, package)| *package).collect()
         } else {
