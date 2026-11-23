@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
                     if (done) {
                         ADBlockerApp(listPaneWide = settings.listPaneWide, onListPaneWide = viewModel::setListPaneWide)
                     } else {
-                        OnboardingScreen(onDone = {}, viewModel = hiltViewModel())
+                        OnboardingScreen(viewModel = hiltViewModel())
                     }
                 }
             }

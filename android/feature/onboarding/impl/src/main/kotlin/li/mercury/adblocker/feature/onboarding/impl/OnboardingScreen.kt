@@ -85,7 +85,7 @@ import li.mercury.adblocker.feature.onboarding.impl.steps.Lists
 import li.mercury.adblocker.feature.onboarding.impl.steps.StartVpn
 
 @Composable
-fun OnboardingScreen(onDone: () -> Unit, viewModel: OnboardingViewModel, modifier: Modifier = Modifier) {
+fun OnboardingScreen(viewModel: OnboardingViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
     // The system asks for each grant in its own dialog: notifications first,
@@ -110,10 +110,7 @@ fun OnboardingScreen(onDone: () -> Unit, viewModel: OnboardingViewModel, modifie
         onFilteringScope = viewModel::setFilteringScope,
         onToggleList = viewModel::toggleList,
         onRetryInstall = viewModel::install,
-        onFinish = {
-            viewModel.finish()
-            onDone()
-        },
+        onFinish = viewModel::finish,
         modifier = modifier,
         onRestart = viewModel::restartDevice,
         onStartVpn = {
