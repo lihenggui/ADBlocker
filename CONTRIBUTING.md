@@ -233,9 +233,3 @@ It reads `SIGNING_KEYSTORE_BASE64`, `SIGNING_STORE_PASSWORD`,
 `SIGNING_KEY_ALIAS`, and `SIGNING_KEY_PASSWORD` from repository secrets.
 Set the first secret to the base64-encoded keystore. Ordinary CI builds
 use a debug certificate so contributors can install and test them.
-
-`module.yaml` is what [KernelSU Modules](https://modules.kernelsu.org)
-shows of the module; its `id` equals the one in `module/module.prop`. That
-repository takes a release only if it is immutable, so the repository has
-release immutability enabled: a published tag and its files can no longer
-be changed, and a mistake is corrected by the next version.
