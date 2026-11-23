@@ -833,7 +833,8 @@ mod tests {
         buf.extend(event(b"x", 4)[..EVENT_HEADER + 1].iter());
         let len = buf.len();
         buf[len - 5] = 200;
-        assert!(names(&buf).count() <= 2);
+        // The whole event before it is read, and nothing of the cut one.
+        assert_eq!(names(&buf).collect::<Vec<_>>(), [b"packages.list"]);
         assert_eq!(names(&buf[..7]).count(), 0);
         let huge = {
             let mut e = vec![0u8; EVENT_HEADER];
