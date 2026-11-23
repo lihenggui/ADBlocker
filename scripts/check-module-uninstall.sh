@@ -46,7 +46,7 @@ check_uninstall() {
     touch "$fixture/data/ca/user.key" "$fixture/data/store/system.0" \
         "$fixture/data/user-store/user.0" "$fixture/data/apps" "$fixture/data/.private"
     : >"$fixture/calls"
-    sh "$fixture/module/uninstall.sh"
+    sh "$fixture/module/uninstall.sh" 2>"$fixture/said"
     test ! -e "$fixture/wrong-keep"
     printf '%s\n' module-stop unhook 'trust remove' | cmp - "$fixture/calls"
     test ! -e "$fixture/data/ca"
@@ -58,9 +58,20 @@ check_uninstall() {
     else
         test ! -e "$fixture/data"
     fi
+    # One line for the root manager's log for each step that did not finish.
+    lines=0
+    for said in $5; do
+        case "$said" in
+        unhook) grep -q 'abd unhook failed' "$fixture/said" ;;
+        kept) grep -q 'store copies are kept' "$fixture/said" ;;
+        failed) grep -q 'abd trust remove failed' "$fixture/said" ;;
+        esac
+        lines=$((lines + 1))
+    done
+    test "$(($(wc -l <"$fixture/said")))" -eq "$lines"
 }
 
-check_uninstall 0 0 0 remove
-check_uninstall 0 1 3 keep
-check_uninstall 1 1 1 keep
-check_uninstall 1 0 0 keep
+check_uninstall 0 0 0 remove ''
+check_uninstall 0 1 3 keep 'unhook kept'
+check_uninstall 1 1 1 keep 'unhook failed'
+check_uninstall 1 0 0 keep 'kept'

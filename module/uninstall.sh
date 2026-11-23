@@ -26,7 +26,9 @@ DATA=/data/adb/adblocker
 
 stopped=0
 "$ABD" module-stop || stopped=$?
-"$ABD" unhook
+if ! "$ABD" unhook; then
+    printf '%s\n' "uninstall: abd unhook failed; capture rules may remain until the next boot" >&2
+fi
 
 # A daemon we could not stop could still mount a copy after the scan.
 if [ "$stopped" -eq 0 ]; then
@@ -34,10 +36,19 @@ if [ "$stopped" -eq 0 ]; then
     removed=$?
 else
     ABD_KEEP_TRUST_STORES=1 "$ABD" trust remove
-    removed=3
+    removed=$?
+    # Kept, whatever it says.
+    [ "$removed" -ne 0 ] || removed=3
 fi
+case "$removed" in
+0) ;;
+3) printf '%s\n' "uninstall: the store copies are kept while apps may still use them" >&2 ;;
+*) printf '%s\n' "uninstall: abd trust remove failed ($removed); apps may trust the authority until they restart" >&2 ;;
+esac
 
-# Destroy the key even if trust cleanup could not be verified.
+# Destroy the key even if trust cleanup could not be verified. The status
+# is that of removing the data: what else did not finish is said above,
+# for the root manager's log.
 cleanup=0
 rm -rf "$DATA/ca" || cleanup=1
 if [ "$removed" -eq 0 ]; then
