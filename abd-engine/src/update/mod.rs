@@ -135,7 +135,8 @@ fn configured_sources(sources: &Path, default: &str) -> Result<String> {
 /// not there) into `dir` with `get`, and removes from `dir` the lists no
 /// longer named. With `info`, what is known of each list is kept there
 /// (`sources::Info`). `report` is told what happens as it does.
-pub async fn fetch_all<G, F>(
+#[cfg(test)]
+pub(crate) async fn fetch_all<G, F>(
     sources: &Path,
     default: &str,
     dir: &Path,

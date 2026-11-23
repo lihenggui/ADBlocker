@@ -66,16 +66,6 @@ pub(super) fn kind<B>(req: &Request<B>) -> &'static str {
     }
 }
 
-/// A top-level navigation is its own first party. For other requests,
-/// absence of a usable source is represented by an empty URL.
-#[cfg(test)]
-pub(super) fn page<'a, B>(req: &'a Request<B>, url: &'a str) -> &'a str {
-    if is_document(req) {
-        return url;
-    }
-    told_page(req).map_or("", |(value, _)| value)
-}
-
 fn is_document<B>(req: &Request<B>) -> bool {
     req.headers().get("sec-fetch-dest").map(|v| v.as_bytes()) == Some(b"document")
 }

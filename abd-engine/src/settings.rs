@@ -62,10 +62,6 @@ impl Settings {
     /// What the file says, and `unsaid` for what it does not: the program
     /// that runs the engine knows what its user agreed to by installing
     /// it.
-    pub fn read(file: &Path, unsaid: Settings) -> Self {
-        Self::try_read(file, unsaid).unwrap_or(unsaid)
-    }
-
     pub fn try_read(file: &Path, unsaid: Settings) -> std::io::Result<Self> {
         let text = crate::files::read_text(file, MAX_SIZE)?;
         let mut settings = unsaid;
@@ -112,27 +108,31 @@ mod tests {
         cosmetic: false,
     };
 
+    fn read(file: &Path, unsaid: Settings) -> Settings {
+        Settings::try_read(file, unsaid).unwrap()
+    }
+
     #[test]
     fn what_the_file_does_not_say_is_as_the_program_has_it() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("settings");
-        assert_eq!(Settings::read(&file, ON), ON);
-        assert_eq!(Settings::read(&file, OFF), OFF);
+        assert_eq!(read(&file, ON), ON);
+        assert_eq!(read(&file, OFF), OFF);
         std::fs::write(&file, "later on\n").unwrap();
-        assert_eq!(Settings::read(&file, ON), ON);
+        assert_eq!(read(&file, ON), ON);
     }
 
     #[test]
     fn url_filtering_is_on_until_the_user_turns_it_off() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("settings");
-        assert_eq!(Settings::read(&file, Settings::UNSAID), ON);
+        assert_eq!(read(&file, Settings::UNSAID), ON);
         Settings::set(&file, SCOPE, "chosen").unwrap();
-        assert_eq!(Settings::read(&file, Settings::UNSAID), ON);
+        assert_eq!(read(&file, Settings::UNSAID), ON);
         Settings::set(&file, URL_FILTERING, "off").unwrap();
-        assert_eq!(Settings::read(&file, Settings::UNSAID), OFF);
+        assert_eq!(read(&file, Settings::UNSAID), OFF);
         Settings::set(&file, URL_FILTERING, "on").unwrap();
-        assert_eq!(Settings::read(&file, Settings::UNSAID), ON);
+        assert_eq!(read(&file, Settings::UNSAID), ON);
     }
 
     #[test]
@@ -145,21 +145,21 @@ mod tests {
             "url-filtering ON\n",
         ] {
             std::fs::write(&file, text).unwrap();
-            assert_eq!(Settings::read(&file, ON), OFF, "{text:?}");
+            assert_eq!(read(&file, ON), OFF, "{text:?}");
         }
         std::fs::write(&file, "url-filtering on\n").unwrap();
-        assert_eq!(Settings::read(&file, OFF), ON);
+        assert_eq!(read(&file, OFF), ON);
     }
 
     #[test]
     fn scope_defaults_to_chosen_and_survives_reopening() {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("settings");
-        assert_eq!(Settings::read(&file, OFF).scope, Scope::Chosen);
+        assert_eq!(read(&file, OFF).scope, Scope::Chosen);
         Settings::set(&file, SCOPE, "all").unwrap();
-        assert_eq!(Settings::read(&file, OFF).scope, Scope::All);
+        assert_eq!(read(&file, OFF).scope, Scope::All);
         Settings::set(&file, SCOPE, "chosen").unwrap();
-        assert_eq!(Settings::read(&file, OFF).scope, Scope::Chosen);
+        assert_eq!(read(&file, OFF).scope, Scope::Chosen);
     }
 
     #[test]
@@ -167,13 +167,13 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let file = dir.path().join("settings");
         std::fs::write(&file, "decrypt on\nlater on\n").unwrap();
-        assert_eq!(Settings::read(&file, OFF), OFF);
+        assert_eq!(read(&file, OFF), OFF);
         Settings::set(&file, URL_FILTERING, "off").unwrap();
         assert_eq!(
             std::fs::read_to_string(&file).unwrap(),
             "decrypt on\nlater on\nurl-filtering off\n"
         );
-        assert_eq!(Settings::read(&file, ON), OFF);
+        assert_eq!(read(&file, ON), OFF);
     }
 
     #[test]

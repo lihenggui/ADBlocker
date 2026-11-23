@@ -27,7 +27,7 @@ use tokio::sync::mpsc;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 use super::plaintext::HTTP_LOOK;
-use super::request::{address, kind, page};
+use super::request::{address, kind};
 use super::upstream::{HANDSHAKE_TIME, LINGER_TIME, no_way};
 
 use http_body_util::Empty;
@@ -2285,23 +2285,32 @@ fn a_request_is_of_the_kind_the_browser_says_or_its_name_suggests() {
 
 #[test]
 fn a_page_gone_to_is_its_own_first_party_whatever_led_there() {
-    let url = "https://ads.example/";
-    let req = |dest: Option<&str>, referer: Option<&str>| {
-        let mut req = Request::get("/");
+    let dir = tempfile::tempdir().unwrap();
+    let rules = "||ads.example/own$document,script,first-party\n\
+                 ||ads.example/other$document,script,third-party\n";
+    std::fs::write(dir.path().join("list.txt"), rules).unwrap();
+    let filters = Filters::load(&[dir.path()], false).unwrap();
+    let blocked = |path: &str, dest: Option<&str>, referer: Option<&str>| {
+        let mut req = Request::get(path);
         if let Some(dest) = dest {
             req = req.header("sec-fetch-dest", dest);
         }
         if let Some(referer) = referer {
             req = req.header(REFERER, referer);
         }
-        req.body(()).unwrap()
+        let url = format!("https://ads.example{path}");
+        evaluate_request(&filters, &req.body(()).unwrap(), &url).blocked
     };
-    let news = "https://news.example/";
-    assert_eq!(page(&req(Some("document"), None), url), url);
-    assert_eq!(page(&req(Some("document"), Some(news)), url), url);
-    assert_eq!(page(&req(Some("script"), Some(news)), url), news);
-    assert_eq!(page(&req(Some("script"), None), url), "");
-    assert_eq!(page(&req(None, None), url), "");
+    let news = Some("https://news.example/");
+    for referer in [None, news] {
+        assert!(blocked("/own", Some("document"), referer), "{referer:?}");
+        assert!(!blocked("/other", Some("document"), referer), "{referer:?}");
+    }
+    assert!(blocked("/other", Some("script"), news));
+    assert!(!blocked("/own", Some("script"), news));
+    // Made by no page it names: neither first party nor third.
+    assert!(!blocked("/own", Some("script"), None));
+    assert!(!blocked("/other", Some("script"), None));
 }
 
 #[test]
