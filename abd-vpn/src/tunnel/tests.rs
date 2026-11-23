@@ -376,6 +376,38 @@ async fn datagrams_pass_both_ways_without_polling_tcp() {
     assert_eq!(polls.load(Relaxed), 0);
 }
 
+/// Keeps what it is given, and has nothing to give.
+#[derive(Default)]
+struct Kept(Vec<Vec<u8>>);
+
+impl Tun for Kept {
+    async fn recv(&mut self, _: &mut [u8]) -> io::Result<usize> {
+        std::future::pending().await
+    }
+
+    fn send(&mut self, packet: &[u8]) -> io::Result<()> {
+        self.0.push(packet.to_vec());
+        Ok(())
+    }
+}
+
+#[test]
+fn ready_udp_answers_are_sent_together_up_to_a_batch() {
+    let (answered, mut answers) = mpsc::channel(2 * PACKET_BATCH);
+    for n in 0..2 * PACKET_BATCH {
+        answered.try_send(vec![n as u8]).unwrap();
+    }
+    for turn in 0..2 {
+        let first = answers.try_recv().unwrap();
+        let mut tun = Kept::default();
+        send_answers(&mut tun, &first, &mut answers).unwrap();
+        let sent: Vec<usize> = tun.0.iter().map(|packet| packet[0].into()).collect();
+        let batch = turn * PACKET_BATCH..(turn + 1) * PACKET_BATCH;
+        assert_eq!(sent, batch.collect::<Vec<_>>());
+    }
+    assert!(answers.is_empty());
+}
+
 struct BrokenTun(crate::fake::Channels);
 
 impl Tun for BrokenTun {

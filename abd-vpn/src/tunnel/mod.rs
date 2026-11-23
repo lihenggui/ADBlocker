@@ -38,10 +38,11 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::time::{Instant, Sleep};
 
 use self::flow::Flows;
-use self::ingress::{Ingress, Turn};
+use self::ingress::{Ingress, PACKET_BATCH, Turn};
 use crate::dns::Resolver;
 use crate::platform::Protect;
 use crate::stack::Stack;
@@ -140,7 +141,7 @@ async fn drive(
                 Turn::Tcp
             }
             Some(packet) = answers.recv() => {
-                send_packet(&mut tun, &packet)?;
+                send_answers(&mut tun, &packet, &mut answers)?;
                 Turn::UdpOnly
             }
             () = &mut timer, if tcp.deadline.is_some() => Turn::Tcp,
@@ -206,6 +207,23 @@ fn send_packet(tun: &mut impl Tun, packet: &[u8]) -> io::Result<()> {
             Err(error)
         }
     })
+}
+
+/// Sends a UDP answer and those ready after it, a batch at most, so that
+/// a burst takes one turn and still leaves TCP its turn.
+fn send_answers(
+    tun: &mut impl Tun,
+    first: &[u8],
+    answers: &mut mpsc::Receiver<Vec<u8>>,
+) -> io::Result<()> {
+    send_packet(tun, first)?;
+    for _ in 1..PACKET_BATCH {
+        let Ok(packet) = answers.try_recv() else {
+            break;
+        };
+        send_packet(tun, &packet)?;
+    }
+    Ok(())
 }
 
 fn is_transient_write_error(error: &io::Error) -> bool {

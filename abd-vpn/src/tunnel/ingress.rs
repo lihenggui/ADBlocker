@@ -34,7 +34,7 @@ use crate::udp::{self, Policy};
 const MAX_ASKED: usize = 256;
 const REACH_TIME: Duration = Duration::from_secs(12);
 
-const PACKET_BATCH: usize = 32;
+pub(super) const PACKET_BATCH: usize = 32;
 
 type Ends = (SocketAddr, SocketAddr);
 pub(super) type ReachResult = (Ends, io::Result<()>);
