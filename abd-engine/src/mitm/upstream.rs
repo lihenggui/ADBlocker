@@ -112,11 +112,17 @@ pub(super) fn no_way(e: &std::io::Error) -> bool {
 pub(super) async fn connect(ctx: &Ctx, app: &TcpStream, origin: Origin) -> Result<TcpStream> {
     let r = dial(ctx, origin).await;
     if r.is_err() {
-        socket2::SockRef::from(app)
-            .set_linger(Some(Duration::ZERO))
-            .ok();
+        reset(app);
     }
     r.context("connect")
+}
+
+/// Has the connection end with a reset when it is closed: the app fails at
+/// once instead of waiting.
+pub(super) fn reset(app: &TcpStream) {
+    // Without it the connection still ends when it is dropped, with an
+    // orderly close the app fails on all the same: nothing to do about it.
+    let _ = socket2::SockRef::from(app).set_linger(Some(Duration::ZERO));
 }
 
 pub(super) async fn dial(ctx: &Ctx, origin: Origin) -> std::io::Result<TcpStream> {

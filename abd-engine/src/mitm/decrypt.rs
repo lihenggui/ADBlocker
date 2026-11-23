@@ -328,13 +328,17 @@ async fn start_upstream(
     if h2 {
         let (tx, conn) = hyper::client::conn::http2::handshake(TokioExecutor::new(), up_io).await?;
         let task = tokio::spawn(async move {
-            conn.await.ok();
+            // How the server's side ended is of no use here: a request on
+            // it is told by its own send, and the app's side ends with it
+            // (`carry`).
+            let _ = conn.await;
         });
         Ok((Upstream::H2(tx), task))
     } else {
         let (tx, conn) = hyper::client::conn::http1::handshake(up_io).await?;
         let task = tokio::spawn(async move {
-            conn.with_upgrades().await.ok();
+            // As above.
+            let _ = conn.with_upgrades().await;
         });
         Ok((Upstream::H1(Mutex::new(tx)), task))
     }

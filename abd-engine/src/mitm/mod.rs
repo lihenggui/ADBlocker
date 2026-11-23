@@ -34,7 +34,6 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
 
 use anyhow::{Context as _, Result};
 use tokio::net::TcpStream;
@@ -56,7 +55,7 @@ use crate::tls::Tls;
 
 use decrypt::{Peer, mitm};
 use plaintext::{HTTP_LOOK_TIME, plaintext_http, serve_plaintext};
-use upstream::splice;
+use upstream::{reset, splice};
 
 pub use request::{RequestDecision, evaluate_request};
 pub use upstream::{Event, Ipv6Health};
@@ -430,9 +429,7 @@ impl Ctx {
 /// once instead of waiting.
 fn refuse(ctx: &Ctx, app: &TcpStream) {
     ctx.services.stats.count(None, Counter::Refused);
-    socket2::SockRef::from(app)
-        .set_linger(Some(Duration::ZERO))
-        .ok();
+    reset(app);
 }
 
 /// Takes an accepted connection, with what it is if it is one to carry
@@ -530,8 +527,7 @@ async fn inspect_tls(
                 .stats
                 .count(Some(&package), Counter::HostsBlocked);
             ctx.services.live.host_blocked(&package, &host);
-            // A reset, so the app fails at once instead of waiting.
-            socket2::SockRef::from(&app).set_linger(Some(Duration::ZERO))?;
+            reset(&app);
             Ok(())
         }
         // A pinned host is decrypted only as its one try, given at its app's

@@ -13,6 +13,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use std::sync::atomic::AtomicUsize;
+use std::time::Duration;
 
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full};

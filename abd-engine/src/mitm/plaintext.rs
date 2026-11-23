@@ -171,9 +171,7 @@ pub(super) async fn serve_plaintext(
     .await;
     if reset.load(Relaxed) {
         if let Some(parts) = conn.into_parts() {
-            socket2::SockRef::from(parts.io.inner())
-                .set_linger(Some(Duration::ZERO))
-                .ok();
+            super::upstream::reset(parts.io.inner());
         }
     } else {
         drop(conn);

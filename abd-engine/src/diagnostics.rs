@@ -178,6 +178,8 @@ fn load(dirs: &[&Path], cache: &Path) -> Result<(Vec<PathBuf>, Diagnostics)> {
         let new = Diagnostics::build(&files.paths, read_lists(&files.paths))?;
         let current = ListFiles::read(dirs)?;
         if current.generation == files.generation {
+            // The cache is optional: this check has its whole result,
+            // and the next one builds the cache again.
             let _ = new.write(cache, files.generation);
             return Ok((files.paths, new));
         }

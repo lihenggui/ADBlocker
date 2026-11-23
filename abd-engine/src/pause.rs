@@ -95,6 +95,8 @@ impl Pauses {
         let text = files::read_text(file, MAX_FILE)?;
         let (pauses, over) = Self::parse(&text, now);
         if over && lock.is_ok() {
+            // What is over is left out of what was read all the same, and
+            // is removed from the file the next time.
             let _ = pauses.write(file);
         }
         Ok(pauses)
