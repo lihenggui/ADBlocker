@@ -39,12 +39,17 @@ pub fn read(paths: &Paths) -> Result<rustls::RootCertStore> {
 fn read_in(dir: &Path, removed: &Path, ours: &CertificateDer<'_>) -> Result<rustls::RootCertStore> {
     // Those the user turned off in the settings are no more ours to
     // believe than the app's.
-    let removed: std::collections::HashSet<_> = std::fs::read_dir(removed)
-        .into_iter()
-        .flatten()
-        .flatten()
-        .map(|e| e.file_name())
-        .collect();
+    // Unless it is told which those are, none can be believed: a list
+    // that is there and cannot be read is an error, not an empty one.
+    let removed: std::collections::HashSet<_> = match std::fs::read_dir(removed) {
+        Ok(entries) => entries
+            .map(|entry| entry.map(|e| e.file_name()))
+            .collect::<std::io::Result<_>>(),
+        // None was ever turned off.
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Default::default()),
+        Err(e) => Err(e),
+    }
+    .with_context(|| format!("the roots turned off, {}", removed.display()))?;
     let mut store = rustls::RootCertStore::empty();
     // A root that cannot be read or taken is left out: a server that has
     // only it to chain to is not verified, and is handed on undecrypted.
@@ -98,6 +103,14 @@ mod tests {
         std::fs::write(store.join("494499dc.0"), &pem).unwrap();
         std::fs::write(store.join("6187b673.0"), ROOT).unwrap();
         assert_eq!(read_in(&store, &removed, &ours).unwrap().len(), 1);
+
+        // Where none was ever turned off there is no such directory.
+        let none = dir.path().join("none");
+        assert_eq!(read_in(&store, &none, &ours).unwrap().len(), 1);
+        // One that cannot be read says nothing of which were.
+        let unreadable = dir.path().join("unreadable");
+        std::fs::write(&unreadable, "not a directory").unwrap();
+        assert!(read_in(&store, &unreadable, &ours).is_err());
 
         // A root the user turned off is no root, and no root is a failure.
         std::fs::write(removed.join("6187b673.0"), ROOT).unwrap();
