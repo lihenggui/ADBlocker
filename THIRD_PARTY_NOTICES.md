@@ -19,9 +19,10 @@ preserved with the source.
 - `abd-engine/resources/psl/rules.txt` is the [Public Suffix List][psl]
   as [psl 2.1.258][psl-crate] carries it in `data/rules.txt`, SHA-256
   `bccd6532fab180e2a7f8de6329ae6b1aec74c5b9ec0e18e301f289c1fdbba295`.
-  The list is under the [Mozilla Public License 2.0][mpl]. Copy it again
-  from the `psl` that Cargo.lock takes when that changes: the tests of
-  `abd-engine/src/public_suffix.rs` compare the two.
+  The list is under the [Mozilla Public License 2.0][mpl], whose text is
+  in `licenses/MPL-2.0.txt`. Copy it again from the `psl` that Cargo.lock
+  takes when that changes: a test of `abd-engine/src/public_suffix.rs`
+  fails until then.
 - Android dependencies are listed with exact coordinates in
   `android/app/dependencies/`. The corresponding source archive includes
   the license and upstream repository report at
@@ -61,7 +62,7 @@ preserved with the source.
 [libsu]: https://github.com/topjohnwu/libsu/tree/6.0.0
 [psl]: https://publicsuffix.org/
 [psl-crate]: https://github.com/addr-rs/psl/blob/v2.1.258/data/rules.txt
-[mpl]: https://mozilla.org/MPL/2.0/
+[mpl]: licenses/MPL-2.0.txt
 [graphics-path]: https://android.googlesource.com/platform/frameworks/support/+/1c44f0be720ff16cd30357ad2375239bf97a1da8/graphics/graphics-path/
 [datastore-core]: https://android.googlesource.com/platform/frameworks/support/+/de4cda56f812357e582b3e1aa32bc737636614a2/datastore/datastore-core/
 [ubo]: https://github.com/gorhill/uBlock/tree/b9833670211d83e72c3a855984a3d544945de1e3

@@ -31,6 +31,10 @@ use rustc_hash::FxHashMap;
 /// compare with this. A newer `psl` is a newer list to copy here.
 const RULES: &str = include_str!("../resources/psl/rules.txt");
 
+/// The version of `psl` whose rules [`RULES`] are.
+#[cfg(test)]
+const RULES_OF_PSL: &str = "2.1.258";
+
 /// A name that is itself a rule: `co.uk`.
 const SUFFIX: u8 = 1;
 /// A name under which every label is a suffix: `*.ck`.
@@ -251,6 +255,24 @@ mod tests {
         names.push(format!("{}.com", "a.".repeat(130)));
         names.push(format!("{}.com", "abcdefghi.".repeat(25)));
         names
+    }
+
+    /// The tests only try names around the rules this list has: one that
+    /// only a newer `psl` has would never be tried.
+    #[test]
+    fn the_list_is_that_of_the_psl_in_cargo_lock() {
+        let lock = include_str!("../../Cargo.lock");
+        let locked = lock
+            .split("[[package]]")
+            .find(|p| p.contains("\nname = \"psl\"\n"))
+            .and_then(|p| p.lines().find_map(|l| l.strip_prefix("version = ")))
+            .map(|v| v.trim_matches('"'));
+        assert_eq!(
+            locked,
+            Some(super::RULES_OF_PSL),
+            "copy data/rules.txt of the psl in Cargo.lock to resources/psl/rules.txt \
+             and set RULES_OF_PSL to its version",
+        );
     }
 
     #[test]
