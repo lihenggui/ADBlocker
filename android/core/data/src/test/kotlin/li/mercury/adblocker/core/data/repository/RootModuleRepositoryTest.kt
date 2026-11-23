@@ -50,6 +50,8 @@ class RootModuleRepositoryTest {
     private var moduleProbe = CommandResult(false, 1, "", "")
     private var rootGranted = true
     private var pending = false
+    private var rootManagerAnswer = "Magisk"
+    private var rootManagerAsked = 0
     private val module = RootModuleRepository(
         context = object : ContextWrapper(null) {
             override fun getApplicationInfo() = ApplicationInfo().apply { sourceDir = "/app.apk" }
@@ -60,6 +62,8 @@ class RootModuleRepositoryTest {
                     if (!rootGranted) throw AbdException.NoRoot()
                     if (pending) CommandResult(true, 0, "restart", "") else moduleProbe
                 }
+
+                "root manager" -> CommandResult(true, 0, rootManagerAnswer, "").also { rootManagerAsked++ }
 
                 "module install" -> CommandResult(true, 0, "", "")
 
@@ -162,5 +166,21 @@ class RootModuleRepositoryTest {
         assertFalse(module.startDaemon())
         assertEquals(0, starts)
         assertEquals(0, checks)
+    }
+
+    @Test
+    fun givenARootManagerWasFound_whenAskedAgain_thenItIsNotAskedForAgain() = runTest {
+        assertEquals("Magisk", module.rootManager())
+        assertEquals("Magisk", module.rootManager())
+        assertEquals(1, rootManagerAsked)
+    }
+
+    @Test
+    fun givenNoRootManagerWasFound_whenAskedAgain_thenItIsAskedForAgain() = runTest {
+        rootManagerAnswer = ""
+        assertNull(module.rootManager())
+        rootManagerAnswer = "KernelSU"
+        assertEquals("KernelSU", module.rootManager())
+        assertEquals(2, rootManagerAsked)
     }
 }

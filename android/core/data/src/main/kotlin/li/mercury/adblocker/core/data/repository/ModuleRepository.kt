@@ -83,7 +83,8 @@ interface ModuleRepository {
     suspend fun restartDevice()
 }
 
-// A singleton, so that the bundled daemon is hashed once.
+// A singleton, so that the bundled daemon is hashed once, and the installed one
+// again only when its file changes.
 @Singleton
 internal class RootModuleRepository(
     private val context: Context,
@@ -108,6 +109,10 @@ internal class RootModuleRepository(
     )
 
     @Volatile private var bundledHash: String? = null
+    private val installedDaemon = InstalledDaemonHash(rootShell)
+
+    /** Which root manager answers does not change while the app runs; a missing one may be granted later, so it is asked again. */
+    @Volatile private var rootManagerFound: String? = null
 
     override suspend fun state(): ModuleState = suspendRunCatching { verifyState() }.getOrElse {
         if (it is AbdException.NoRoot) ModuleState.NoRoot else ModuleState.Unavailable
@@ -123,19 +128,20 @@ internal class RootModuleRepository(
             elif [ ! -e $MODULE_DIR ] && [ ! -L $MODULE_DIR ]; then
                 echo absent
             else
-                [ -x $ABD ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP
+                [ -x $ABD ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP && { stat -c "$STAT_PREFIX$STAT_FORMAT" $ABD 2>/dev/null || true; }
             fi
             """.trimIndent(),
             label = "module state",
         )
         if (!result.isSuccess) return ModuleState.Unavailable
-        val code = when (val output = result.output.trim()) {
+        val lines = result.output.trim().lines()
+        val code = when (val output = lines.first().trim()) {
             "restart" -> return ModuleState.NeedsRestart
             "absent" -> return ModuleState.NotInstalled
             else -> output.removePrefix("version ").toLongOrNull() ?: return ModuleState.Unavailable
         }
         if (code != bundledVersionCode()) return ModuleState.Mismatched
-        return verifyDaemon()
+        return verifyDaemon(daemonFileKey(lines))
     }
 
     override suspend fun installedVersion(): String? = try {
@@ -144,12 +150,12 @@ internal class RootModuleRepository(
         null
     }
 
-    override suspend fun rootManager(): String? = try {
+    override suspend fun rootManager(): String? = rootManagerFound ?: try {
         rootShell.run(
             "if magisk -V >/dev/null 2>&1; then echo Magisk; elif [ -x /data/adb/ksud ]; then echo KernelSU; " +
                 "elif [ -x /data/adb/apd ]; then echo APatch; fi",
             label = "root manager",
-        ).output.trim().ifEmpty { null }
+        ).output.trim().ifEmpty { null }?.also { rootManagerFound = it }
     } catch (_: AbdException.NoRoot) {
         null
     }
@@ -195,22 +201,48 @@ internal class RootModuleRepository(
     private fun bundledVersionCode(): Long = context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
 
     /** A development build can carry different daemon bytes under the same version. */
-    private suspend fun verifyDaemon(): ModuleState {
+    private suspend fun verifyDaemon(fileKey: String?): ModuleState {
         val bundled = bundledHash ?: withContext(ioDispatcher) {
             bundledDaemonHash(context.applicationInfo.sourceDir, Build.SUPPORTED_ABIS)
         }?.also { bundledHash = it } ?: return ModuleState.Ready
-        val result = rootShell.run("sha256sum $ABD")
-        val installed = result.output.substringBefore(' ').trim()
-        if (!result.isSuccess || !SHA256.matches(installed)) return ModuleState.Unavailable
+        val installed = installedDaemon.hash(fileKey) ?: return ModuleState.Unavailable
         return if (installed.equals(bundled, ignoreCase = true)) ModuleState.Ready else ModuleState.Mismatched
     }
 
     private companion object {
-        val SHA256 = Regex("[0-9a-fA-F]{64}")
-
         /** Flashing unpacks and checks the whole module. */
         const val INSTALL_TIMEOUT_SECONDS = 300
         const val REBOOT_TIMEOUT_SECONDS = 30
+    }
+}
+
+/**
+ * What `stat` prints, in the same shell call as the module's version, to tell
+ * whether the installed daemon is the file that was hashed: its inode, size
+ * and times change when a module update replaces it.
+ */
+private const val STAT_PREFIX = "daemon-file "
+private const val STAT_FORMAT = "%i %s %y %z"
+
+/** What `stat` said of the installed daemon after the version line of the module probe, if it said. */
+internal fun daemonFileKey(probe: List<String>): String? = probe.drop(1).firstOrNull { it.startsWith(STAT_PREFIX) }?.removePrefix(STAT_PREFIX)
+
+/** The SHA-256 of the installed daemon, read again only when its file's [key] is not the one hashed. */
+internal class InstalledDaemonHash(private val rootShell: RootShell) {
+    @Volatile private var known: Pair<String, String>? = null
+
+    /** Null if it cannot be read. Without a [key] nothing is kept: the file is hashed every time. */
+    suspend fun hash(key: String?): String? {
+        known?.takeIf { key != null && it.first == key }?.let { return it.second }
+        val result = rootShell.run("sha256sum $ABD")
+        val hash = result.output.substringBefore(' ').trim()
+        if (!result.isSuccess || !SHA256.matches(hash)) return null
+        known = key?.let { it to hash }
+        return hash
+    }
+
+    private companion object {
+        val SHA256 = Regex("[0-9a-fA-F]{64}")
     }
 }
 
