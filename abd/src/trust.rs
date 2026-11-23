@@ -34,7 +34,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::ffi::CString;
-use std::io::{self, Read as _};
+use std::io;
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
 use std::os::unix::ffi::OsStrExt;
 use std::os::unix::fs::{MetadataExt as _, PermissionsExt as _};
@@ -361,32 +361,77 @@ fn open_below(dir: &OwnedFd, name: &std::ffi::CStr, flags: i32) -> std::io::Resu
     Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
+/// A process of an app, held by its directory in /proc and its mount
+/// namespace: its number may be given to another once it ends, and
+/// everything after is asked of this one.
+struct Pinned {
+    dir: OwnedFd,
+    ns: OwnedFd,
+}
+
+/// Holds process `pid`, which must be one of the personal app `uid`;
+/// `None` once it has ended.
+fn pin(pid: i32, uid: u32) -> Result<Option<Pinned>> {
+    ensure!(
+        (*PERSONAL_APP_UIDS.start()..PER_USER_RANGE).contains(&uid),
+        "{uid} is not a personal app's"
+    );
+    let Some(dir) = present(std::fs::File::open(format!("/proc/{pid}")))? else {
+        return Ok(None);
+    };
+    let Some(metadata) = present(dir.metadata())? else {
+        return Ok(None);
+    };
+    ensure!(metadata.uid() == uid, "process {pid} is not of {uid}");
+    let dir = OwnedFd::from(dir);
+    let Some(ns) = present(open_below(&dir, c"ns/mnt", libc::O_RDONLY))? else {
+        return Ok(None);
+    };
+    Ok(Some(Pinned { dir, ns }))
+}
+
+/// The mounts of the namespace `ns`, as the process held by `dir` reads
+/// them; `None` once it has ended. Fails if the process is in another
+/// namespace by then.
+fn mountinfo_of(dir: &OwnedFd, ns: &OwnedFd) -> Result<Option<String>> {
+    let info = present(open_below(dir, c"mountinfo", libc::O_RDONLY))?
+        .map(|file| abd_engine::files::read_limited(std::fs::File::from(file), 1 << 20))
+        .transpose()?;
+    let Some(current) = present(open_below(dir, c"ns/mnt", libc::O_RDONLY))? else {
+        return Ok(None);
+    };
+    let pinned = std::fs::File::from(ns.try_clone()?).metadata()?;
+    let current = std::fs::File::from(current).metadata()?;
+    ensure!(
+        (pinned.dev(), pinned.ino()) == (current.dev(), current.ino()),
+        "mount namespace changed during inspection"
+    );
+    info.context("live namespace has no mount information")
+        .map(Some)
+}
+
+/// What mounting in a process came to.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Mounting {
+    Mounted,
+    /// It had them all already.
+    Had,
+    /// It ended before it could be looked at.
+    Gone,
+}
+
 /// Mounts the copies over the stores in the mount namespace of process
 /// `pid`, which must be a process of the app `uid`.
 ///
 /// What `abd trust mount` does. Must be called in a process with a single
 /// thread, which is in another mount namespace when this returns: the
 /// process ends after it.
-///
-/// Returns whether anything was mounted: not if the process had it all.
-pub fn mount_in(paths: &Paths, pid: i32, uid: u32) -> Result<bool> {
-    ensure!(
-        (*PERSONAL_APP_UIDS.start()..PER_USER_RANGE).contains(&uid),
-        "{uid} is not a personal app's"
-    );
+pub fn mount_in(paths: &Paths, pid: i32, uid: u32) -> Result<Mounting> {
+    let Some(Pinned { dir, ns }) = pin(pid, uid)? else {
+        return Ok(Mounting::Gone);
+    };
     let stores = stores(paths)?;
     let mounts: Vec<Mount> = stores.iter().map(Mount::of).collect::<Result<_>>()?;
-
-    // The process is held by its directory from here on: its number may
-    // be given to another once it ends, and everything below is asked of
-    // this one.
-    let dir = std::fs::File::open(format!("/proc/{pid}"))?;
-    ensure!(
-        dir.metadata()?.uid() == uid,
-        "process {pid} is not of {uid}"
-    );
-    let dir = OwnedFd::from(dir);
-    let ns = open_below(&dir, c"ns/mnt", libc::O_RDONLY)?;
 
     // Never the namespace every process descends from.
     let first = std::fs::metadata("/proc/1/ns/mnt")?;
@@ -395,10 +440,9 @@ pub fn mount_in(paths: &Paths, pid: i32, uid: u32) -> Result<bool> {
         (this.dev(), this.ino()) != (first.dev(), first.ino()),
         "process {pid} is in the first mount namespace"
     );
-    let mut mountinfo = String::new();
-    std::fs::File::from(open_below(&dir, c"mountinfo", libc::O_RDONLY)?)
-        .take(1 << 20)
-        .read_to_string(&mut mountinfo)?;
+    let Some(mountinfo) = mountinfo_of(&dir, &ns)? else {
+        return Ok(Mounting::Gone);
+    };
     for store in &stores {
         ensure!(
             !spreads(&mountinfo, &store.target),
@@ -430,7 +474,11 @@ pub fn mount_in(paths: &Paths, pid: i32, uid: u32) -> Result<bool> {
             bail!("mounting: {failed}");
         }
     }
-    Ok(!had)
+    Ok(if had {
+        Mounting::Had
+    } else {
+        Mounting::Mounted
+    })
 }
 
 /// A copy can remain mounted after its public root or its PEM has been removed.
@@ -517,19 +565,7 @@ pub enum Unmounted {
 /// no longer to be decrypted. Hold its proc directory across the UID and
 /// namespace checks so a reused PID cannot redirect the cleanup.
 pub fn unmount_from(paths: &Paths, pid: i32, uid: u32) -> Result<Unmounted> {
-    ensure!(
-        (*PERSONAL_APP_UIDS.start()..PER_USER_RANGE).contains(&uid),
-        "{uid} is not a personal app's"
-    );
-    let Some(dir) = present(std::fs::File::open(format!("/proc/{pid}")))? else {
-        return Ok(Unmounted::Gone);
-    };
-    let Some(metadata) = present(dir.metadata())? else {
-        return Ok(Unmounted::Gone);
-    };
-    ensure!(metadata.uid() == uid, "process {pid} is not of {uid}");
-    let dir = OwnedFd::from(dir);
-    let Some(ns) = present(open_below(&dir, c"ns/mnt", libc::O_RDONLY))? else {
+    let Some(Pinned { dir, ns }) = pin(pid, uid)? else {
         return Ok(Unmounted::Gone);
     };
     let targets = copy_targets(paths)?;
@@ -542,22 +578,10 @@ fn inspect_namespace(
     targets: &[CopyTarget],
     detach: bool,
 ) -> Result<Unmounted> {
-    let info = present(open_below(dir, c"mountinfo", libc::O_RDONLY))?
-        .map(|file| abd_engine::files::read_limited(std::fs::File::from(file), 1 << 20))
-        .transpose()?;
-    let Some(current) = present(open_below(dir, c"ns/mnt", libc::O_RDONLY))? else {
+    let Some(info) = mountinfo_of(dir, ns)? else {
         return Ok(Unmounted::Gone);
     };
-    let pinned = std::fs::File::from(ns.try_clone()?).metadata()?;
-    let current = std::fs::File::from(current).metadata()?;
-    ensure!(
-        (pinned.dev(), pinned.ino()) == (current.dev(), current.ino()),
-        "mount namespace changed during inspection"
-    );
-    let remaining = candidates(
-        &info.context("live namespace has no mount information")?,
-        targets,
-    )?;
+    let remaining = candidates(&info, targets)?;
     if remaining.is_empty() {
         return Ok(Unmounted::Absent);
     }
@@ -1010,6 +1034,18 @@ mod tests {
             let err = mount_in(&paths, std::process::id() as i32, uid).unwrap_err();
             assert!(err.to_string().contains("not a personal app's"), "{err}");
         }
+    }
+
+    #[test]
+    fn a_process_that_has_ended_is_gone_to_mounting_as_to_unmounting() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        let uid = *PERSONAL_APP_UIDS.start();
+        assert_eq!(mount_in(&paths, i32::MAX, uid).unwrap(), Mounting::Gone);
+        assert_eq!(
+            unmount_from(&paths, i32::MAX, uid).unwrap(),
+            Unmounted::Gone
+        );
     }
 
     #[test]

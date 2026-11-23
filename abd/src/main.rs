@@ -85,14 +85,12 @@ fn main() -> Result<()> {
         // Before any thread is started: see trust.rs.
         ["trust", "mount", pid, uid] => {
             let pid: i32 = pid.parse().context("pid")?;
-            // Gone before it could be looked at: no failure.
-            if !Path::new(&format!("/proc/{pid}")).exists() {
-                std::process::exit(trust::EXIT_GONE);
+            match trust::mount_in(&paths, pid, uid.parse().context("uid")?)? {
+                trust::Mounting::Mounted => Ok(()),
+                trust::Mounting::Had => std::process::exit(trust::EXIT_HAD),
+                // Gone before it could be looked at: no failure.
+                trust::Mounting::Gone => std::process::exit(trust::EXIT_GONE),
             }
-            if !trust::mount_in(&paths, pid, uid.parse().context("uid")?)? {
-                std::process::exit(trust::EXIT_HAD);
-            }
-            Ok(())
         }
         // As above: before any thread is started.
         ["trust", "unmount", pid, uid] => {
