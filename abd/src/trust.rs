@@ -169,13 +169,9 @@ pub fn prepare(paths: &Paths) -> Result<()> {
     let ca = paths.ca();
     let [system, user] = stores(paths)?;
     let pem = std::fs::read(ca.join("system.pem"))?;
-    build_copy(
-        &system.target,
-        &system.copy,
-        &system.root,
-        &pem,
-        STORE_LABEL,
-    )?;
+    build_copy(&system.target, &system.copy, &system.root, &pem, &|path| {
+        set_label(path, STORE_LABEL)
+    })?;
     // Where an empty store would be mounted over the real one, the device
     // would trust nothing.
     ensure!(
@@ -204,7 +200,9 @@ pub fn prepare(paths: &Paths) -> Result<()> {
     );
     let label = label_of(&user.target).unwrap_or_else(|| USER_STORE_LABEL.to_owned());
     let pem = std::fs::read(ca.join("user.pem"))?;
-    build_copy(&user.target, &user.copy, &user.root, &pem, &label)
+    build_copy(&user.target, &user.copy, &user.root, &pem, &|path| {
+        set_label(path, &label)
+    })
 }
 
 /// Labels a directory we made as the system labels it there, for the copy
@@ -230,15 +228,22 @@ fn restorecon(path: &Path) {
 ///
 /// Made in place, a file at a time and each in one step: the directory may
 /// be mounted as the store of a running app, and must at no moment be
-/// empty or hold half a certificate.
-fn build_copy(store: &Path, copy: &Path, name: &str, pem: &[u8], label: &str) -> Result<()> {
+/// empty or hold half a certificate. Each file and the directory are
+/// given the store's label by `label`.
+fn build_copy(
+    store: &Path,
+    copy: &Path,
+    name: &str,
+    pem: &[u8],
+    label: &dyn Fn(&Path) -> Result<()>,
+) -> Result<()> {
     std::fs::create_dir_all(copy)?;
     let put =
         |name: &std::ffi::OsStr, write: &dyn Fn(&Path) -> std::io::Result<()>| -> Result<()> {
             let tmp = copy.join(".new");
             write(&tmp)?;
             std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o644))?;
-            set_label(&tmp, label)?;
+            label(&tmp)?;
             std::fs::rename(&tmp, copy.join(name))?;
             Ok(())
         };
@@ -265,7 +270,7 @@ fn build_copy(store: &Path, copy: &Path, name: &str, pem: &[u8], label: &str) ->
         }
     }
     std::fs::set_permissions(copy, std::fs::Permissions::from_mode(0o755))?;
-    set_label(copy, label)
+    label(copy)
 }
 
 /// Nothing can be run from a copy, and nothing written to it through the
@@ -1015,13 +1020,34 @@ mod tests {
     #[test]
     fn a_copy_is_the_store_with_our_root_and_follows_it_when_built_again() {
         let (store, copy) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
-        let label = label_of(store.path());
-        // Without a label to copy (no SELinux here), nothing can be built.
-        let Some(label) = label else { return };
+        // What was labelled, and what of it the copy held at the time.
+        let labelled = std::cell::RefCell::new(Vec::new());
+        let label = |path: &Path| -> Result<()> {
+            let held = if path.is_dir() {
+                None
+            } else {
+                Some(std::fs::read(path)?)
+            };
+            labelled.borrow_mut().push((path.to_owned(), held));
+            Ok(())
+        };
         std::fs::write(store.path().join("aaaa.0"), "a").unwrap();
         std::fs::write(store.path().join("bbbb.0"), "b").unwrap();
         std::os::unix::fs::symlink("/etc/passwd", store.path().join("link.0")).unwrap();
         build_copy(store.path(), copy.path(), "ours.0", b"ours", &label).unwrap();
+        // Each file before it is put in place, then the directory.
+        let mut labels = labelled.take();
+        assert_eq!(labels.pop(), Some((copy.path().to_owned(), None)));
+        let mut held: Vec<_> = labels
+            .into_iter()
+            .map(|(path, held)| {
+                assert_eq!(path, copy.path().join(".new"));
+                held.unwrap()
+            })
+            .collect();
+        held.sort();
+        assert_eq!(held, [b"a".to_vec(), b"b".to_vec(), b"ours".to_vec()]);
+        assert_eq!(std::fs::read(copy.path().join("ours.0")).unwrap(), b"ours");
         let names = |dir: &Path| -> BTreeSet<String> {
             std::fs::read_dir(dir)
                 .unwrap()
@@ -1035,6 +1061,7 @@ mod tests {
         // A root the system no longer trusts.
         std::fs::remove_file(store.path().join("aaaa.0")).unwrap();
         build_copy(store.path(), copy.path(), "ours.0", b"ours", &label).unwrap();
+        assert!(!copy.path().join(".new").exists());
         assert_eq!(
             names(copy.path()),
             BTreeSet::from(["bbbb.0".into(), "ours.0".into()])
