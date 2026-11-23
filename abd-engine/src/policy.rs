@@ -118,9 +118,17 @@ pub(crate) fn try_read_pinned(file: &Path, now: u64) -> io::Result<HashMap<Pinne
             let mut f = l.split(' ');
             let when: u64 = f.next()?.parse().ok()?;
             let key = (f.next()?.to_owned(), f.next()?.to_owned());
-            (when + KEEP > now).then_some((key, when))
+            fresh(when, now).then_some((key, when))
         })
         .collect())
+}
+
+/// Whether a host found pinned at `when` is still taken as pinned at `now`.
+/// The time is read from a file, so the sum saturates rather than aborts.
+/// One dated ahead of the clock is kept: a clock not yet set at boot must
+/// not cost the apps what was found of them.
+fn fresh(when: u64, now: u64) -> bool {
+    when.saturating_add(KEEP) > now
 }
 
 /// The saved table, with the time, package and host on each line.
@@ -246,7 +254,7 @@ impl Policy {
             .lock()
             .unwrap()
             .get(key)
-            .is_some_and(|when| when + KEEP > now())
+            .is_some_and(|&when| fresh(when, now()))
     }
 
     /// Takes the try of a pinned host given at its app's start, for a
@@ -268,13 +276,13 @@ impl Policy {
         let pinned = self.pinned.lock().unwrap();
         let hosts: Vec<String> = pinned
             .iter()
-            .filter(|((p, _), when)| p == package && *when + KEEP > now)
+            .filter(|((p, _), when)| p == package && fresh(**when, now))
             .map(|((_, host), _)| host.clone())
             .collect();
         let mut retries = self.retries.lock().unwrap();
         // What was tried of hosts no longer pinned, gone old or pushed out
         // by others of their app, is of no use.
-        retries.retain(|key| pinned.get(key).is_some_and(|when| *when + KEEP > now));
+        retries.retain(|key| pinned.get(key).is_some_and(|&when| fresh(when, now)));
         // Full only with as many hosts pinned as the table holds: those left
         // out stay pinned, and are tried again after their 30 days.
         if retries.grant(package, &hosts, now) && !self.retries_full.swap(true, Relaxed) {
@@ -401,7 +409,7 @@ impl Policy {
         let now = now();
         let new = pinned
             .insert((package.to_owned(), host.to_owned()), now)
-            .is_none_or(|when| when + KEEP <= now);
+            .is_none_or(|when| !fresh(when, now));
         let mut own: Vec<(u64, String)> = pinned
             .iter()
             .filter(|((p, _), _)| p == package)
@@ -809,6 +817,27 @@ mod tests {
             decide("com.other", "a.example"),
             Verdict::Passthrough(Reason::Pinned)
         );
+    }
+
+    #[test]
+    fn a_pin_dated_at_the_end_of_time_is_read_without_overflow() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("pinned");
+        let now = now();
+        let old = now - KEEP;
+        std::fs::write(
+            &file,
+            format!(
+                "{} com.bank max.example\n{old} com.bank old.example\n",
+                u64::MAX
+            ),
+        )
+        .unwrap();
+        let policy = Policy::open(file);
+        let pinned = policy.pinned.lock().unwrap();
+        let hosts: Vec<&str> = pinned.keys().map(|(_, host)| host.as_str()).collect();
+        assert_eq!(hosts, ["max.example"]);
+        assert!(fresh(u64::MAX, now) && !fresh(0, KEEP));
     }
 
     #[test]
