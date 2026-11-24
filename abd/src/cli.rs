@@ -68,7 +68,7 @@ usage: abd <command>, as root
   rules set                           replace them with standard input
   rules append [--unique]             append input, or one rule only if new
   rules check [--json]                the rules on standard input that are not applied
-  check [--json] <url> [<page> [<kind>]]   what the lists say of a request
+  check [--json] [--app <app>] <url> [<page> [<kind>]]   what the lists say of a request
   pinned [--json [<app>]]             the hosts apps would not let us read
   pinned forget <app> [<host>]        have them read again
   watch [--json] [--app <app>]        what happens, as it happens, until standard input ends
