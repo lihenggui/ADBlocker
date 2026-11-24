@@ -68,6 +68,9 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   know is known (`abd-engine/src/filter.rs`). A request that names no page
   is judged as AdGuard judges one without a referrer: it is first-party
   and of none of the pages a rule names.
+  A host that a rule blocks whole is refused before its requests are read
+  unless an exception names it. An exception that names no host, or a
+  host that no rule blocks whole, is not one to such a block.
 - Choosing a named shared UID in Root mode chooses its current and future
   members in that Android profile. In All apps, a personal group is included
   or excluded together. They share one selection, pause and record

@@ -25,7 +25,7 @@
 //! process of the app accepts us for the host after all ([`retry`]), after
 //! [`KEEP`], and when its app is no longer filtered.
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeSet, HashMap, HashSet};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering::Relaxed};
@@ -38,7 +38,8 @@ use crate::allow::Allow;
 use crate::clienthello::Hello;
 use crate::clock::now;
 use crate::exclusions::Exclusions;
-use crate::filter::Filters;
+use crate::filter::AppFilters;
+use crate::limits::MAX_APPS_WITH_PAGES;
 pub use crate::protocol_types::Reason;
 
 mod retry;
@@ -74,6 +75,9 @@ const SILENT_LIMIT: u32 = 3;
 const MAX_SILENT: usize = 1024;
 
 pub struct Policy {
+    /// The apps that have made a request showing a page, since the start.
+    /// Kept in memory only: an app is known again by its next page.
+    apps_with_pages: Mutex<HashSet<String>>,
     /// When each was found, in seconds since the epoch.
     pinned: Mutex<HashMap<Pinned, u64>>,
     /// Connections in a row that completed the handshake and then closed
@@ -162,6 +166,7 @@ impl Policy {
             }
         };
         Self {
+            apps_with_pages: Mutex::default(),
             pinned: Mutex::new(pinned),
             silent: Mutex::default(),
             retries: Mutex::default(),
@@ -174,13 +179,28 @@ impl Policy {
         }
     }
 
+    /// A request of `package` showed a page.
+    pub(crate) fn note_page(&self, package: &str) {
+        let mut apps = self.apps_with_pages.lock().unwrap();
+        if apps.len() < MAX_APPS_WITH_PAGES && !apps.contains(package) {
+            apps.insert(package.to_owned());
+        }
+    }
+
+    /// Whether `package` has, or may have: once no more apps can be kept,
+    /// any app may be one that was left out.
+    pub(crate) fn has_shown_page(&self, package: &str) -> bool {
+        let apps = self.apps_with_pages.lock().unwrap();
+        apps.len() >= MAX_APPS_WITH_PAGES || apps.contains(package)
+    }
+
     /// `domain_only`: only the app's hosts are judged and nothing of it is
     /// decrypted when URL filtering is off.
     pub fn decide(
         &self,
         package: &str,
         hello: &Hello,
-        filters: &Filters,
+        filters: AppFilters<'_>,
         exclusions: &Exclusions,
         allow: &Allow,
         domain_only: bool,
@@ -205,7 +225,7 @@ impl Policy {
         &self,
         package: &str,
         host: &str,
-        filters: &Filters,
+        filters: AppFilters<'_>,
         exclusions: &Exclusions,
         allow: &Allow,
         domain_only: bool,
@@ -213,7 +233,6 @@ impl Policy {
         if allow.covers(host) {
             return Verdict::Passthrough(Reason::Trusted);
         }
-        let filters = filters.for_app(package);
         if domain_only {
             return if filters.blocks_domain(host) {
                 Verdict::Block
@@ -484,6 +503,7 @@ impl Policy {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::filter::Filters;
 
     fn hello(host: Option<&str>) -> Hello {
         Hello {
@@ -504,6 +524,25 @@ mod tests {
     }
 
     #[test]
+    fn app_page_history_is_bounded_and_kept_by_identity() {
+        let (policy, _dir) = policy();
+        policy.note_page("12:com.app");
+        policy.note_page("@shared.name");
+        assert!(policy.has_shown_page("12:com.app"));
+        assert!(policy.has_shown_page("@shared.name"));
+        assert!(!policy.has_shown_page("com.app"));
+
+        for n in 2..MAX_APPS_WITH_PAGES {
+            policy.note_page(&format!("com.app{n}"));
+        }
+        policy.note_page("com.extra");
+        assert!(policy.has_shown_page("com.app"));
+        let kept = policy.apps_with_pages.lock().unwrap();
+        assert_eq!(kept.len(), MAX_APPS_WITH_PAGES);
+        assert!(!kept.contains("com.extra"));
+    }
+
+    #[test]
     fn decrypts_unless_the_host_is_blocked_whole_or_has_no_name() {
         let (policy, _dir) = policy();
         let filters = filters("||ads.example^\n||shop.example^$third-party\n");
@@ -511,7 +550,7 @@ mod tests {
             policy.decide(
                 "com.app",
                 &hello(host),
-                &filters,
+                filters.for_app("com.app"),
                 &Exclusions::default().assume_ready(),
                 &Allow::default(),
                 false,
@@ -535,7 +574,7 @@ mod tests {
             policy.decide(
                 package,
                 &hello(Some(host)),
-                &filters,
+                filters.for_app(package),
                 &Exclusions::default().assume_ready(),
                 &Allow::default(),
                 false,
@@ -588,7 +627,7 @@ mod tests {
         let verdict = next.decide(
             "com.bank",
             &hello(Some("api.bank.example")),
-            &filters(""),
+            filters("").for_app("com.bank"),
             &Exclusions::default().assume_ready(),
             &Allow::default(),
             false,
@@ -615,7 +654,7 @@ mod tests {
             policy.decide(
                 "com.bank",
                 &hello(Some(host)),
-                &filters,
+                filters.for_app("com.bank"),
                 &Exclusions::default().assume_ready(),
                 &Allow::default(),
                 false,
@@ -662,7 +701,7 @@ mod tests {
             policy.decide(
                 "com.app",
                 &hello(Some(host)),
-                &filters,
+                filters.for_app("com.app"),
                 &exclusions,
                 &allow,
                 false,
@@ -684,13 +723,21 @@ mod tests {
     #[test]
     fn a_host_kept_encrypted_is_judged_by_its_domain_rules_in_full_mode() {
         let (policy, _dir) = policy();
-        // The image exception can apply to any host: no host is blocked
-        // early while its requests can still be seen.
-        let filters =
-            filters("||ads.example^\n||pass.example^\n@@||pass.example^\n@@/downloads/$image\n");
+        // The image exception leaves ads.example open only while its
+        // requests can still be seen.
+        let filters = filters(
+            "||ads.example^\n||pass.example^\n@@||pass.example^\n@@||ads.example/downloads/$image\n",
+        );
         let decide = |host, exclusions: &Exclusions| {
             let allow = Allow::default();
-            policy.decide_named("com.app", host, &filters, exclusions, &allow, false)
+            policy.decide_named(
+                "com.app",
+                host,
+                filters.for_app("com.app"),
+                exclusions,
+                &allow,
+                false,
+            )
         };
         let ready = Exclusions::default().assume_ready();
         assert_eq!(decide("ads.example", &ready), Verdict::Mitm);
@@ -705,7 +752,7 @@ mod tests {
         let other = policy.decide_named(
             "com.other",
             "ads.example",
-            &filters,
+            filters.for_app("com.other"),
             &ready,
             &Allow::default(),
             false,
@@ -720,7 +767,7 @@ mod tests {
             policy.decide_named(
                 "com.other",
                 "news.example",
-                &filters,
+                filters.for_app("com.other"),
                 &pending,
                 &Allow::default(),
                 false
@@ -737,7 +784,7 @@ mod tests {
         let verdict = policy.decide(
             "com.app",
             &hello(Some("ads.bank.example")),
-            &filters("||ads.bank.example^\n"),
+            filters("||ads.bank.example^\n").for_app("com.app"),
             &Exclusions::load(dir.path()).assume_ready(),
             &Allow::default(),
             false,
@@ -761,7 +808,7 @@ mod tests {
             policy.decide(
                 "com.app",
                 &hello,
-                &filters,
+                filters.for_app("com.app"),
                 &Exclusions::default().assume_ready(),
                 &allow,
                 domain_only,
@@ -779,7 +826,14 @@ mod tests {
         let filters = filters("||ads.example^\n");
         let decide = |host| {
             let (hello, none) = (hello(Some(host)), Exclusions::default().assume_ready());
-            policy.decide("com.app", &hello, &filters, &none, &Allow::default(), true)
+            policy.decide(
+                "com.app",
+                &hello,
+                filters.for_app("com.app"),
+                &none,
+                &Allow::default(),
+                true,
+            )
         };
         assert_eq!(decide("ads.example"), Verdict::Block);
         assert_eq!(
@@ -799,7 +853,7 @@ mod tests {
             policy.decide(
                 package,
                 &hello,
-                &filters(""),
+                filters("").for_app(package),
                 &none,
                 &Allow::default(),
                 false,

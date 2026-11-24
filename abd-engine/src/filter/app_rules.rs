@@ -30,7 +30,7 @@ use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
-use super::host_rules::{host_only, project_guard};
+use super::host_rules::{GuardCoverage, guards_exception, project_guard, whole_rule};
 use super::{Check, network, source_option};
 use crate::apps::{Identity, valid_package};
 
@@ -39,7 +39,7 @@ use crate::apps::{Identity, valid_package};
 const ANY_HOST: &str = "@@|https://";
 
 /// The option that the apps of a rule are written as for adblock-rust.
-const SOURCE: &str = "domain=";
+pub(super) const SOURCE: &str = "domain=";
 
 pub(crate) struct AppRules {
     pub(super) blocks: Engine,
@@ -52,6 +52,16 @@ pub(crate) struct AppRules {
 
 /// One app among the app rules, as the source of its requests.
 pub(crate) struct Scope(u64);
+
+impl Scope {
+    /// Whether none of `guards`, which are for apps, names the host of
+    /// `req` for this app.
+    pub(super) fn unguarded(&self, req: &mut Request, guards: &Engine) -> bool {
+        swap_source(req, &mut Some(vec![self.0]), |req| {
+            super::unguarded(guards, req)
+        })
+    }
+}
 
 struct Scoped<'a> {
     pattern: &'a str,
@@ -117,18 +127,26 @@ impl Scoped<'_> {
         self.for_apps(&self.unscoped())
     }
 
-    fn whole_host(&self) -> Option<String> {
+    fn whole_host(&self) -> Option<(String, &str)> {
         self.options
             .is_empty()
-            .then(|| host_only(self.pattern))
+            .then(|| whole_rule(self.pattern))
             .flatten()
-            .map(|rule| self.for_apps(&rule))
+            .map(|(rule, host)| (self.for_apps(&rule), host))
     }
 
     fn guards(&self, out: &mut String) {
         let mut found = String::new();
         // A rule taken back with `$badfilter` is left out before this.
-        let any_host = project_guard(&self.unscoped(), &HashSet::new(), &mut found);
+        let line = self.unscoped();
+        let any_host = network(&line)
+            .filter(|rule| guards_exception(&line, rule))
+            .is_some_and(|rule| {
+                matches!(
+                    project_guard(&line, &rule, &mut found),
+                    GuardCoverage::Unbounded
+                )
+            });
         for guard in found.lines().chain(any_host.then_some(ANY_HOST)) {
             out.push_str(&self.for_apps(guard));
             out.push('\n');
@@ -182,6 +200,16 @@ fn swap_source<T>(
 impl AppRules {
     /// The app rules of `lists`, if they have any.
     pub(crate) fn project<'a>(lists: impl Iterator<Item = &'a str>, debug: bool) -> Option<Self> {
+        Self::project_with_hosts(lists, debug, |_, _| {})
+    }
+
+    /// As [`AppRules::project`], telling `visit_host` each host that a rule
+    /// blocks whole and the apps of that rule.
+    pub(super) fn project_with_hosts<'a>(
+        lists: impl Iterator<Item = &'a str>,
+        debug: bool,
+        mut visit_host: impl FnMut(&str, &str),
+    ) -> Option<Self> {
         let rules: Vec<_> = lists
             .flat_map(str::lines)
             .filter_map(scoped)
@@ -207,8 +235,9 @@ impl AppRules {
                 rule.guards(&mut guards);
                 &mut exceptions
             } else {
-                if let Some(host) = rule.whole_host() {
-                    hosts.push_str(&host);
+                if let Some((line, host)) = rule.whole_host() {
+                    visit_host(host, &rule.apps);
+                    hosts.push_str(&line);
                     hosts.push('\n');
                 }
                 &mut blocks
@@ -314,12 +343,10 @@ impl AppRules {
 
     /// Whether no exception of the app could apply to a request of `req`'s
     /// host.
-    pub(super) fn unguarded(&self, req: &mut Request, scope: &Scope) -> bool {
+    pub(super) fn unguarded(&self, req: &mut Request, scope: &Scope, web: Option<&Engine>) -> bool {
         swap_source(req, &mut Some(vec![scope.0]), |req| {
-            self.guards
-                .check_network_request_subset(req, false, true)
-                .exception
-                .is_none()
+            super::unguarded(&self.guards, req)
+                && web.is_none_or(|guards| super::unguarded(guards, req))
         })
     }
 }

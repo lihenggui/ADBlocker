@@ -70,6 +70,11 @@ static TABLE: LazyLock<FxHashMap<Box<str>, u8>> = LazyLock::new(|| {
     table
 });
 
+/// A listed top-level label, without the implicit rule for unlisted ones.
+pub(crate) fn is_known_top_level(label: &str) -> bool {
+    TABLE.get(label).is_some_and(|flags| flags & NODE != 0)
+}
+
 /// The length of the public suffix `name` ends with, without a final dot:
 /// the longest rule that matches, an exception before any, and a label
 /// the list does not know taken for one, walked from the last label as
