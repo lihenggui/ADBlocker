@@ -84,11 +84,20 @@ pub(crate) fn text_of(file: &Path) -> Result<Option<String>> {
 /// Every reader of the file comes through `text_of`, so a saved choice
 /// follows the list, and the next update prunes the copy of the old address
 /// with its information like that of any list no longer subscribed.
-const MOVED: [(&str, &str); 1] = [(
-    // AdGuard leaves out of its uBlock build the rules that name apps.
-    "https://filters.adtidy.org/extension/ublock/filters/11.txt",
-    "https://filters.adtidy.org/android/filters/11.txt",
-)];
+const MOVED: &[(&str, &str)] = &[
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+        "https://filters.adtidy.org/android/filters/11.txt",
+    ),
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+        "https://filters.adtidy.org/android/filters/224.txt",
+    ),
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
+        "https://filters.adtidy.org/android/filters/2.txt",
+    ),
+];
 
 fn moved(text: String) -> String {
     let has = |url: &str| text.lines().any(|line| address(line) == url);
@@ -810,10 +819,15 @@ pub(crate) mod tests {
 
     #[test]
     fn a_saved_choice_of_a_moved_list_is_read_as_its_new_address() {
-        let (old, new) = MOVED[0];
+        for &(old, new) in MOVED {
+            moved_selection(old, new);
+        }
+    }
+
+    fn moved_selection(old: &str, new: &str) {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
-        let off = defaults_off(&[MOVED[0].1]);
+        let off = defaults_off(&[new]);
         std::fs::write(paths.sources(), format!("# Lists\n{A}\n#{old}\n{off}")).unwrap();
         assert_eq!(
             read(&paths)[..2],
@@ -846,12 +860,18 @@ pub(crate) mod tests {
 
     #[test]
     fn the_copy_of_a_moved_list_is_pruned_with_what_is_known_of_it() {
-        let (old, new) = MOVED[0];
+        for &(old, new) in MOVED {
+            moved_copy(old, new);
+        }
+    }
+
+    fn moved_copy(old: &str, new: &str) {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
         std::fs::create_dir_all(paths.lists()).unwrap();
         std::fs::write(paths.sources(), format!("{old}\n")).unwrap();
         let copy = paths.lists().join(file_name(old));
+        assert_ne!(file_name(new), file_name(old));
         std::fs::write(&copy, "||ads.example^\n").unwrap();
         write_info(
             &paths.list_info(),

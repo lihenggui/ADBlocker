@@ -116,8 +116,10 @@ languages of the device, such as EasyList China, AdGuard Chinese and
 AWAvenue Ads Rule for Chinese.
 
 ADBlocker saves the selected subscriptions, downloads the lists, and
-updates them in the background at the configured interval. To download
-lists from a root shell, run `abd update`.
+updates them in the background at the configured interval. AdGuard Base,
+AdGuard Chinese and AdGuard Mobile Ads use their Android builds. AdGuard
+Base includes EasyList. AdGuard Tracking Protection uses its uBlock Origin
+build. To download lists from a root shell, run `abd update`.
 
 ### Installing as a module
 
@@ -297,7 +299,8 @@ Turn off **URL filtering** to keep HTTPS encrypted.
 - Blocking a banner can leave an empty space. Turn on **Hide page
   elements** in Settings (`abd cosmetic on` in a root shell) to hide
   elements named by your lists on decrypted pages. This also runs supported
-  uBlock Origin scriptlets and procedural rules such as `:has-text()`.
+  uBlock Origin and AdGuard scriptlets, AdGuard CSS injection rules, and
+  procedural rules such as `:has-text()`.
   Procedural rules also match elements a page adds later; generic CSS rules
   based only on a class or ID can miss them. See
   [how this changes a page](SECURITY.md#hiding-page-elements).

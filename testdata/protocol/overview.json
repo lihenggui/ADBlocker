@@ -27,7 +27,8 @@
   "lists": [
     { "url": "https://easylist.to/easylist/easylist.txt", "enabled": true, "title": "EasyList", "rules": 72410, "updated": 1763531000, "error": null },
     { "url": "https://easylist-downloads.adblockplus.org/easylistchina.txt", "enabled": true, "title": "EasyList China", "rules": 21544, "updated": 1763444600, "error": "connection timed out" },
-    { "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
+    { "url": "https://filters.adtidy.org/android/filters/224.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
+    { "url": "https://filters.adtidy.org/android/filters/2.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
     { "url": "https://filters.adtidy.org/android/filters/11.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
     { "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
     { "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },

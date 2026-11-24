@@ -352,8 +352,12 @@ protocols pass through unchanged.
 
 The shared engine applies optional cosmetic rules to decrypted HTML in both
 root and VPN modes. It puts site CSS and a single script right after the
-page's `<head>` tag. The script runs the matched uBlock Origin scriptlets
-and hands the matched procedural actions to a throttled DOM observer.
+page's `<head>` tag. The script runs matched uBlock Origin scriptlets
+and hands matched procedural actions to a throttled DOM observer.
+The rule reader maps compatible AdGuard `#%#//scriptlet(...)` calls and
+their exceptions to the bundled scriptlets. It maps single CSS rule sets
+with `#$#` or `#$?#` and their exceptions to style and removal actions.
+AdGuard JavaScript injection and `$$` HTML filtering are unsupported.
 Selectors such as `:has()` stay in native CSS where the parser represents
 them as CSS. Rules based on generic classes and IDs can still use a second
 style at the end of the document. The compiled lists keep each source's

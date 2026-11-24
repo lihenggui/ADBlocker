@@ -104,14 +104,30 @@ mod lists {
             "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt";
         let name = crate::list_url::file_name(stock);
         let custom = crate::list_url::file_name(&format!("{stock}?custom"));
+        let mobile = "https://filters.adtidy.org/android/filters/11.txt";
+        let base = "https://filters.adtidy.org/android/filters/2.txt";
+        let chinese = "https://filters.adtidy.org/android/filters/224.txt";
+        let tracking = "https://filters.adtidy.org/extension/ublock/filters/3.txt";
+        let downloaded = |url| lists.join(crate::list_url::file_name(url));
         for (path, host) in [
             (lists.join(custom), "custom.test"),
             (rules.join(&name), "user.test"),
             (lists.join(name), "catalog.test"),
+            (downloaded(mobile), "mobile.test"),
+            (downloaded(base), "base.test"),
+            (downloaded(chinese), "chinese.test"),
+            (downloaded(tracking), "tracking.test"),
+            (
+                lists.join(crate::list_url::base_file_name(mobile)),
+                "old-mobile.test",
+            ),
         ] {
             std::fs::write(
                 path,
-                format!("{host}##+js(trusted-set, abdTrusted, json:42)\n"),
+                format!(
+                    "{host}##+js(trusted-set, abdTrusted, json:42)\n\
+                     {host}#%#//scriptlet('trusted-set-constant', 'adgTrusted', '42')\n"
+                ),
             )
             .unwrap();
         }
@@ -119,14 +135,46 @@ mod lists {
         let built = Filters::load_cached(&dirs, &cache).unwrap();
         let kept = Filters::read_cache(&cache, built.generation.unwrap()).unwrap();
         for filters in [built, kept] {
-            for host in ["custom.test", "user.test"] {
+            for host in [
+                "custom.test",
+                "user.test",
+                "tracking.test",
+                "old-mobile.test",
+            ] {
                 assert!(
                     filters.hiding(&format!("https://{host}/")).script.is_none(),
                     "{host}"
                 );
             }
-            let script = filters.hiding("https://catalog.test/").script.unwrap();
-            assert!(script.contains(r#"trustedSetConstant("abdTrusted", "json:42")"#));
+            for host in ["catalog.test", "mobile.test", "base.test", "chinese.test"] {
+                let script = filters.hiding(&format!("https://{host}/")).script.unwrap();
+                assert!(
+                    script.contains(r#"trustedSetConstant("abdTrusted", "json:42")"#),
+                    "{host}"
+                );
+                assert!(
+                    script.contains(r#"trustedSetConstant("adgTrusted", "json:42")"#),
+                    "{host}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn adguard_cosmetic_exceptions_and_negated_domains_match_in_the_engine() {
+        let rules = "example.org,~skip.example.org#%#//scriptlet('set-constant', 'fixture', '42')\n\
+                     example.org,~skip.example.org#$#.ad { display: none; }\n\
+                     except.example.org#@%#//scriptlet('set-constant', 'fixture', '42')\n\
+                     except.example.org#@$#.ad { display: none; }\n";
+        let filters = filters(rules);
+        let script = filters.hiding("https://example.org/").script.unwrap();
+        assert!(script.contains(r#"setConstant("fixture", "42")"#));
+        assert!(script.contains(r#"{"type":"style","arg":"display: none;"}"#));
+        for host in ["skip.example.org", "except.example.org", "example.net"] {
+            assert!(
+                filters.hiding(&format!("https://{host}/")).script.is_none(),
+                "{host}"
+            );
         }
     }
 

@@ -51,6 +51,9 @@ preserved with the source.
   at the same commit, upstream SHA-256
   `df8e3afcc6eed42ace647ad83c9d24abfdc391c59fdc0ad9dc66bba0b3acc1df`.
   It retains Raymond Hill's GPL-3.0-or-later notice.
+- The AdGuard scriptlet name mappings use the compatibility table and
+  scriptlet aliases from [AdGuard Scriptlets][adguard-scriptlets].
+  Copyright AdGuard. GPL-3.0-only.
 - The filter catalog references lists that their maintainers serve. The
   license applied to the catalog does not change the licenses of those
   lists.
@@ -67,3 +70,4 @@ preserved with the source.
 [datastore-core]: https://android.googlesource.com/platform/frameworks/support/+/de4cda56f812357e582b3e1aa32bc737636614a2/datastore/datastore-core/
 [ubo]: https://github.com/gorhill/uBlock/tree/b9833670211d83e72c3a855984a3d544945de1e3
 [ubo-procedural]: https://github.com/gorhill/uBlock/blob/b9833670211d83e72c3a855984a3d544945de1e3/src/js/contentscript-extra.js
+[adguard-scriptlets]: https://github.com/AdguardTeam/Scriptlets/tree/420ffa66c6e713ffa95c80e4bfa356b1a796c3a3

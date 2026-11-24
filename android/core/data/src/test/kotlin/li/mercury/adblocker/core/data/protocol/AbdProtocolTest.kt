@@ -17,6 +17,7 @@
 package li.mercury.adblocker.core.data.protocol
 
 import li.mercury.adblocker.core.data.AbdException
+import li.mercury.adblocker.core.data.FilterCatalog
 import li.mercury.adblocker.core.model.AppUnavailableReason
 import li.mercury.adblocker.core.model.BlockedCount
 import li.mercury.adblocker.core.model.FilterLevel
@@ -260,11 +261,14 @@ class AbdProtocolTest {
     @Test
     fun listsSayWhetherTheyAreOnAndHowTheLastUpdateWent() {
         val lists = parseLists(case("lists.json"))
-        assertEquals(7, lists.size)
+        assertEquals(8, lists.size)
         assertEquals(72410, lists[0].rules)
         assertEquals("connection timed out", lists[1].error)
         assertFalse(lists[2].enabled)
         assertNull(lists[2].title)
+        assertEquals("adguard_chinese", FilterCatalog.byUrl(lists[2].url)?.id)
+        assertFalse(lists[3].enabled)
+        assertEquals("adguard_base", FilterCatalog.byUrl(lists[3].url)?.id)
     }
 
     @Test

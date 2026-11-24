@@ -403,7 +403,9 @@ mod tests {
     };
     const EASYLIST: &str = "https://easylist.to/easylist/easylist.txt";
     const CHINA: &str = "https://easylist-downloads.adblockplus.org/easylistchina.txt";
-    const ADTIDY: &str = "https://filters.adtidy.org/extension/ublock/filters/224.txt";
+    const OLD_ADGUARD_CHINESE: &str = "https://filters.adtidy.org/extension/ublock/filters/224.txt";
+    const OLD_ADGUARD_BASE: &str =
+        "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt";
 
     fn sample(name: &str) -> String {
         let file = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -856,7 +858,7 @@ mod tests {
         std::fs::write(
             paths.sources(),
             format!(
-                "# The filter lists\n{EASYLIST}\n{CHINA}\n#{ADTIDY}\n{}",
+                "# The filter lists\n{EASYLIST}\n{CHINA}\n#{OLD_ADGUARD_CHINESE}\n#{OLD_ADGUARD_BASE}\n{}",
                 crate::sources::tests::defaults_off(&[EASYLIST])
             ),
         )

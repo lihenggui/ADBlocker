@@ -24,6 +24,7 @@ use self::modifiers::{Kind as ModifierKind, PageModifier, lookup, may_have_owned
 use self::options::{OptionToken, Options, Quoting, unescaped};
 
 pub(crate) mod action;
+mod adguard;
 mod comment;
 mod modifiers;
 pub(crate) mod options;
@@ -38,6 +39,7 @@ pub(crate) struct Rule<'a> {
     pub(crate) kind: Kind<'a>,
     literal: Option<Options<'a>>,
     hosts_file: Option<&'a str>,
+    translated: Option<adguard::Translation>,
 }
 
 pub(crate) enum Kind<'a> {
@@ -54,6 +56,7 @@ pub(crate) enum Kind<'a> {
 pub(crate) enum Reason {
     Modifier(&'static str),
     HtmlFiltering,
+    AdGuard(adguard::Unsupported),
 }
 
 pub(crate) struct AppRule<'a> {
@@ -89,9 +92,20 @@ pub(crate) fn read(line: &str) -> Rule<'_> {
         kind: Kind::Matcher,
         literal: None,
         hosts_file: hosts_rule(line),
+        translated: None,
     };
     if is_comment(line) {
         rule.kind = Kind::Comment;
+        return rule;
+    }
+    if let Some(translated) = adguard::translate(line) {
+        match translated {
+            Ok(translated) => {
+                rule.translated = Some(translated);
+                rule.kind = Kind::Cosmetic;
+            }
+            Err(reason) => rule.kind = Kind::NotApplied(Reason::AdGuard(reason)),
+        }
         return rule;
     }
     // Only engine-owned modifiers need their values scanned past escaped
@@ -160,14 +174,20 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn is_scriptlet(&self) -> bool {
+        if let Some(translated) = &self.translated {
+            return translated.scriptlet;
+        }
         self.line
             .split_once('#')
             .is_some_and(|(_, suffix)| suffix.starts_with("#+js(") || suffix.starts_with("?#+js("))
     }
 
-    pub(crate) fn matcher_input(&self) -> Option<Cow<'a, str>> {
+    pub(crate) fn matcher_input(&self) -> Option<Cow<'_, str>> {
+        if let Some(translated) = &self.translated {
+            return Some(Cow::Borrowed(&translated.line));
+        }
         match self.kind {
-            Kind::App(_) | Kind::Response(_) => None,
+            Kind::App(_) | Kind::Response(_) | Kind::NotApplied(Reason::AdGuard(_)) => None,
             _ => Some(self.normalized()),
         }
     }
@@ -218,7 +238,12 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn network(&self) -> Option<NetworkFilter<'a>> {
-        if matches!(self.kind, Kind::App(_) | Kind::Response(_)) {
+        if self.translated.is_some()
+            || matches!(
+                self.kind,
+                Kind::App(_) | Kind::Response(_) | Kind::NotApplied(Reason::AdGuard(_))
+            )
+        {
             return None;
         }
         parse_network(self.line)
@@ -227,6 +252,13 @@ impl<'a> Rule<'a> {
     /// Even a page modifier or a known unsupported modifier can occur
     /// on a line the matcher accepts. The CLI keeps its existing verdict.
     pub(crate) fn matcher_check(&self) -> MatcherCheck {
+        if let Some(translated) = &self.translated {
+            return if translated.trusted {
+                MatcherCheck::Cosmetic
+            } else {
+                MatcherCheck::AppliedCosmetic
+            };
+        }
         if matches!(
             self.kind,
             Kind::Cosmetic | Kind::NotApplied(Reason::HtmlFiltering)
@@ -286,6 +318,7 @@ fn host_token(pattern: &str) -> &str {
 
 pub(crate) enum MatcherCheck {
     Network,
+    AppliedCosmetic,
     Cosmetic,
     Invalid,
 }

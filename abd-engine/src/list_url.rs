@@ -94,9 +94,12 @@ pub(crate) fn trusted_download(url: &str) -> bool {
 }
 
 /// Copies made before response-rule trust stay usable for ordinary filtering
-/// until fetched again from the trusted address.
+/// until fetched again from the trusted address. Mobile Ads already has
+/// copies under this name when its Android feed gains scriptlet trust.
 pub(crate) fn untrusted_file_name(url: &str) -> Option<String> {
-    (Trust::ResponseRules.urls().contains(&url) && !Trust::Scriptlets.urls().contains(&url))
+    (Trust::ResponseRules.urls().contains(&url)
+        && (!Trust::Scriptlets.urls().contains(&url)
+            || url == "https://filters.adtidy.org/android/filters/11.txt"))
         .then(|| base_file_name(url))
 }
 

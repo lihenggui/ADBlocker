@@ -14,9 +14,7 @@
 
 //! Rules as the engine reads them: which it applies, and which not.
 //!
-//! Network rules are applied. Element hiding is applied only while the
-//! user has pages changed for it (`cosmetic.rs`), and scriptlets never:
-//! the check names both, whatever the setting is at the moment.
+//! The check runs without the permissions of a trusted catalog list.
 
 use crate::filter::{Patterns, valid_app_rule, valid_response_rule};
 use crate::rule::{self, Kind, MatcherCheck};
@@ -43,7 +41,7 @@ pub fn check(text: &str) -> RulesCheck {
             Kind::App(_) | Kind::Response(_) => IssueKind::Invalid,
             Kind::Matcher | Kind::Cosmetic | Kind::PageException(_) | Kind::NotApplied(_) => {
                 match rule.matcher_check() {
-                    MatcherCheck::Network => continue,
+                    MatcherCheck::Network | MatcherCheck::AppliedCosmetic => continue,
                     MatcherCheck::Cosmetic => IssueKind::Cosmetic,
                     MatcherCheck::Invalid => IssueKind::Invalid,
                 }
@@ -98,6 +96,24 @@ mod tests {
             ]
         );
         assert_eq!(check(text).rules, 11);
+    }
+
+    #[test]
+    fn supported_adguard_cosmetics_drop_out_of_the_issue_count() {
+        let text = "example.org#%#//scriptlet('set-constant', 'x', 'true')\n\
+                    example.org#$#.ad { display: none; }\n\
+                    example.org#%#//scriptlet('trusted-set-constant', 'x', 'true')\n\
+                    example.org#%#window.close()\n\
+                    example.org$$script";
+        assert_eq!(check(text).rules, 5);
+        assert_eq!(
+            kinds(text),
+            [
+                (3, IssueKind::Cosmetic),
+                (4, IssueKind::Cosmetic),
+                (5, IssueKind::Cosmetic),
+            ]
+        );
     }
 
     #[test]

@@ -1891,6 +1891,33 @@ async fn a_host_a_list_excludes_is_handed_on_without_asking_the_server() {
 const HIDING: &str = "site.test##.ad\nother.test##.banner\n";
 
 #[tokio::test]
+async fn adguard_scriptlet_and_style_reach_the_page_like_their_matcher_forms() {
+    let adguard = "site.test#%#//scriptlet('set-constant', 'fixture', '42')\n\
+                   site.test#$?#div:contains(Advert) { opacity: 0; }\n";
+    let ublock = "site.test##+js(set-constant, fixture, 42)\n\
+                  site.test#?#div:contains(Advert):style(opacity: 0;)\n";
+    let mut pages = Vec::new();
+    for rules in [adguard, ublock] {
+        let rig = rig(Setup {
+            rules,
+            cosmetic: true,
+            ..Setup::default()
+        })
+        .await;
+        let (_, status, page, _) = rig
+            .get_response(Trust::System, H1, "/page", None)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(page.contains(r#"setConstant("fixture", "42")"#));
+        assert!(page.contains(r#"{"type":"style","arg":"opacity: 0;"}"#));
+        assert!(page.contains("<head><script>"));
+        pages.push(page);
+    }
+    assert_eq!(pages[0], pages[1]);
+}
+
+#[tokio::test]
 async fn what_the_lists_name_is_hidden_on_a_page_where_the_user_has_it_so() {
     for alpn in [H1, BOTH] {
         let rig = rig(Setup {

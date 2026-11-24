@@ -12,6 +12,7 @@
     {
       "id": "adguard_mobile",
       "trustedResponseRules": true,
+      "trustedScriptlets": true,
       "url": "https://filters.adtidy.org/android/filters/11.txt",
       "title": "AdGuard Mobile Ads",
       "descriptions": {"en": "Ads in mobile apps", "zh": "移动应用中的广告"},
@@ -56,9 +57,10 @@
     {
       "id": "adguard_base",
       "trustedResponseRules": true,
-      "url": "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
+      "trustedScriptlets": true,
+      "url": "https://filters.adtidy.org/android/filters/2.txt",
       "title": "AdGuard Base",
-      "descriptions": {"en": "AdGuard ad rules in addition to EasyList", "zh": "EasyList 之外的 AdGuard 广告规则"},
+      "descriptions": {"en": "AdGuard ad rules and EasyList", "zh": "AdGuard 广告规则和 EasyList"},
       "category": "Ads"
     },
     {
@@ -104,7 +106,8 @@
     {
       "id": "adguard_chinese",
       "trustedResponseRules": true,
-      "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+      "trustedScriptlets": true,
+      "url": "https://filters.adtidy.org/android/filters/224.txt",
       "title": "AdGuard Chinese",
       "descriptions": {"en": "Ads on Chinese sites, by AdGuard", "zh": "AdGuard 的中文网站广告规则"},
       "category": "Regional",

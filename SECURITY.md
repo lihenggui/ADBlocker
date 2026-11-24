@@ -124,11 +124,14 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
 
 - ADBlocker injects selectors as CSS and runs matching functions from a
   bundled uBlock Origin scriptlet library in the page's JavaScript context.
-  It passes rule arguments as data. A page can detect the additions and
+  Compatible AdGuard scriptlet rules use the same library and permissions.
+  ADBlocker passes rule arguments as data. A page can detect the additions and
   observe the effects of scriptlets. Scriptlets have the page's privileges
   and follow its policies for network requests and dynamic code evaluation.
 - For procedural filters, a bundled script applies selectors and actions
   such as text matching, removing elements and setting CSS properties.
+  Supported AdGuard CSS injection rules use these same style and removal
+  actions.
   It rechecks DOM changes at most once per 100 ms, caps work and tracked
   elements, and stops observing on `pagehide`. It may skip expensive
   selectors and patterns, and leaves out styles that can refer to external
@@ -154,9 +157,10 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
   document type and the `<html>` tag.
 - Privileged resources, including trusted aliases and dependencies, require
   a direct HTTPS download from an exact catalog URL marked
-  `trustedScriptlets`. The set follows uBlock Origin's stable default and
-  includes only uBlock Origin's own filter lists. Custom subscriptions and
-  user rules can use ordinary scriptlets. Redirected downloads never receive
+  `trustedScriptlets`. The catalog grants this permission to uBlock
+  Origin's own filter lists and the Android builds of AdGuard Base,
+  AdGuard Chinese and AdGuard Mobile Ads. Custom subscriptions and user
+  rules can use ordinary scriptlets. Redirected downloads never receive
   trusted permissions.
 - The engine requests uncompressed documents and reads at most 16 KiB
   ahead for up to 250 ms to inspect the explicit head before sending its
