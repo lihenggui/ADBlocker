@@ -25,7 +25,7 @@ if [ "$#" -eq 0 ]; then
         boot-app-gone boot-disabled boot-yields boot-pending-module remove remove-fails remove-refused \
         remove-leftover remove-leftover-reinstall remove-leftover-module started-by-another-name \
         remove-not-stopped boot-app-gone-not-stopped remove-incomplete boot-app-gone-incomplete \
-        reinstall-incomplete \
+        reinstall-incomplete install-own-package install-pushed-package \
         takeover update-module update-module-removal update-module-pending install-pending-module \
         module-uninstall; do
         sh "$0" "$scenario" || result=1
@@ -55,7 +55,7 @@ printf '%s\n' 'li.mercury.adblocker 10200 0 /data/user/0/li.mercury.adblocker' >
 # The archive the app carries: the scripts, with the device's paths under
 # the fixture, and a daemon for one architecture.
 for script in customize direct service supervise stop uninstall action; do
-    sed -e "s|/data/adb|$adb|g" -e "s|/data/system|$fixture/data/system|g" \
+    sed -e "s|/data/adb|$adb|g" -e "s|/data/system|$fixture/data/system|g" -e "s|/data/app/|$fixture/data/app/|g" \
         -e "s|/system/bin/|$fixture/system/bin/|g" "module/$script.sh" >"$archive/$script.sh"
 done
 sed 's/^versionCode=.*/versionCode=999/' module/module.prop >"$archive/module.prop"
@@ -76,6 +76,10 @@ case "$SCENARIO:$*" in
 esac
 EOF
 (cd "$archive" && zip -q -r "$fixture/module.zip" .)
+# The same archive as the app's package: with a manifest.
+cp "$fixture/module.zip" "$fixture/package.zip"
+: >"$fixture/AndroidManifest.xml"
+(cd "$fixture" && zip -q package.zip AndroidManifest.xml)
 
 for tool in timeout ip iptables iptables-restore ip6tables ip6tables-restore; do
     : >"$fixture/system/bin/$tool"
@@ -92,6 +96,13 @@ EOF
 printf '%s\n' '#!/bin/sh' >"$fixture/tools/chown"
 # No kernel configuration to read: the installer then leaves it to the daemon.
 printf '%s\n' '#!/bin/sh' 'exit 1' >"$fixture/tools/zcat"
+# The package manager knows of no app for the first user, as when the app is
+# installed for another user or in a work profile only.
+cat >"$fixture/tools/pm" <<'EOF'
+#!/bin/sh
+printf '%s\n' "$*" >>"$FIXTURE/pm"
+if [ "$1" = install ]; then cat >/dev/null; fi
+EOF
 cat >"$fixture/tools/rm" <<'EOF'
 #!/bin/sh
 if [ "$SCENARIO:$*" = "remove-fails:-rf $FIXTURE/data/adb/adblocker" ]; then exit 1; fi
@@ -217,6 +228,21 @@ case "$SCENARIO" in
         test ! -e "$direct" && test ! -e "$launcher" || fail "something was installed"
         test ! -s "$fixture/calls" || fail "something was stopped or started"
         staged_nothing
+        ;;
+    install-own-package)
+        # From the app: the archive is the app's package, where the package manager keeps it.
+        mkdir -p "$fixture/data/app/~~one==/li.mercury.adblocker-two=="
+        cp "$fixture/package.zip" "$fixture/data/app/~~one==/li.mercury.adblocker-two==/base.apk"
+        direct_sh install "$fixture/data/app/~~one==/li.mercury.adblocker-two==/base.apk" || fail "the installation failed"
+        starts direct
+        test ! -e "$fixture/pm" || fail "the app was installed over itself while it ran the installer"
+        grep -qx -e '- App is already installed' "$fixture/output" || fail "the installer did not say the app is installed"
+        ;;
+    install-pushed-package)
+        # From a computer: the archive brings the app with it.
+        direct_sh install "$fixture/package.zip" || fail "the installation failed"
+        starts direct
+        grep -q '^install -r -S ' "$fixture/pm" || fail "the app was not installed from the archive"
         ;;
     reinstall)
         installed_by_app
