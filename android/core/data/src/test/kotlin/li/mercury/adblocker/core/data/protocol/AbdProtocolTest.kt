@@ -260,7 +260,7 @@ class AbdProtocolTest {
     @Test
     fun listsSayWhetherTheyAreOnAndHowTheLastUpdateWent() {
         val lists = parseLists(case("lists.json"))
-        assertEquals(6, lists.size)
+        assertEquals(7, lists.size)
         assertEquals(72410, lists[0].rules)
         assertEquals("connection timed out", lists[1].error)
         assertFalse(lists[2].enabled)
