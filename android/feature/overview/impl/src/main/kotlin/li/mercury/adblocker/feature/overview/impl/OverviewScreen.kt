@@ -63,8 +63,8 @@ import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.pageMargin
-import li.mercury.adblocker.core.ui.R as CoreUiR
 import li.mercury.adblocker.core.ui.rememberAppListAccess
+import li.mercury.adblocker.core.ui.R as CoreUiR
 
 @Composable
 fun OverviewScreen(
