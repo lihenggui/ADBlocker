@@ -65,9 +65,9 @@ class UpdateListsWorker @AssistedInject constructor(
  * Runs one update and says how it went, for WorkManager. Retried, with
  * backoff, is only what another try can fix: lists that could not be
  * fetched, or a command that failed or ran too long. No root, no module, a
- * rejected command, a build without the engine or an output it
- * cannot read stay so until the user acts: retrying them would run `su`
- * again and again for nothing.
+ * rejected command (an older module's among them), a build without the
+ * engine or an output it cannot read stay so until the user acts: retrying
+ * them would run `su` again and again for nothing.
  */
 internal suspend fun updateLists(lists: ListsRepository, rootOnly: Boolean = false, prepare: suspend () -> Unit = {}): ListenableWorker.Result = try {
     prepare()

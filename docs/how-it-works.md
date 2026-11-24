@@ -374,6 +374,10 @@ it, and it can be in either of two places.
   stops the daemon of a module the app had installed and removes that
   module. Installing from the app then brings the manager's module up to
   date where it is, without a restart.
+- An update of the app carries a new module. When the app is next opened
+  in root mode it replaces an older module with its own, wherever that one
+  is, unless the module is turned off, marked for removal or waiting in a
+  root manager for a restart. A newer module is left alone.
 - Both keep their data in `/data/adb/adblocker`, so the selection, the
   lists and the authority carry over from one to the other.
 - The app removes a module it installed: the daemon stops, apps stop

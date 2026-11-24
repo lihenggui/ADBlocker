@@ -59,6 +59,18 @@ interface ModuleRepository {
      */
     suspend fun state(): ModuleState
 
+    /**
+     * Whether the module in use is to be replaced with this app's without
+     * the user asking: it is older than this app's, or the same version
+     * built differently, and it is on. Installing turns a module on, so one
+     * that is turned off or marked for removal is left as it is. So is one
+     * newer than this app's, whose data this app's daemon may not read, and
+     * one a root manager replaces at the next restart.
+     *
+     * @throws AbdException if root is refused.
+     */
+    suspend fun needsUpdate(): Boolean
+
     /** The installed module's version name, or null if it is not installed or root is missing. */
     suspend fun installedVersion(): String?
 
@@ -161,12 +173,21 @@ internal class RootModuleRepository(
 
     override suspend fun state(): ModuleState = suspendRunCatching {
         // Whose a module that is ready is, is remembered for the next boot.
-        verifyState().also { if (it == ModuleState.Ready) ownedByApp() }
+        probe().state.also { if (it == ModuleState.Ready) ownedByApp() }
     }.getOrElse {
         if (it is AbdException.NoRoot) ModuleState.NoRoot else ModuleState.Unavailable
     }
 
-    private suspend fun verifyState(): ModuleState {
+    override suspend fun needsUpdate(): Boolean {
+        val found = probe()
+        // Mismatched says, too, that no module waits in a root manager for a restart.
+        return found.state == ModuleState.Mismatched && found.versionCode != null && found.versionCode <= bundledVersionCode() && !disabledOrRemoved()
+    }
+
+    /** The state of the module in use, and its version where it has one that can be read. */
+    private class Found(val state: ModuleState, val versionCode: Long? = null)
+
+    private suspend fun probe(): Found {
         val result = rootShell.run(
             """
             $LOCATE
@@ -183,7 +204,7 @@ internal class RootModuleRepository(
             """.trimIndent(),
             label = "module state",
         )
-        if (!result.isSuccess) return ModuleState.Unavailable
+        if (!result.isSuccess) return Found(ModuleState.Unavailable)
         val probe = result.output.trim().lines().map(String::trim)
         val pending = probe.first() == PENDING
         val inUse = if (pending) probe.drop(1) else probe
@@ -193,14 +214,14 @@ internal class RootModuleRepository(
         // before anything else is installed.
         fun orRestart(state: ModuleState) = if (pending) ModuleState.NeedsRestart else state
         val code = when (val output = inUse.firstOrNull()) {
-            null -> return ModuleState.Unavailable
-            ABSENT -> return orRestart(ModuleState.NotInstalled)
-            else -> output.removePrefix("version ").toLongOrNull() ?: return ModuleState.Unavailable
+            null -> return Found(ModuleState.Unavailable)
+            ABSENT -> return Found(orRestart(ModuleState.NotInstalled))
+            else -> output.removePrefix("version ").toLongOrNull() ?: return Found(ModuleState.Unavailable)
         }
-        if (code != bundledVersionCode()) return orRestart(ModuleState.Mismatched)
+        if (code != bundledVersionCode()) return Found(orRestart(ModuleState.Mismatched), code)
         return when (val verified = verifyDaemon(daemonFileKey(inUse))) {
-            ModuleState.Mismatched -> orRestart(verified)
-            else -> verified
+            ModuleState.Mismatched -> Found(orRestart(verified), code)
+            else -> Found(verified, code)
         }
     }
 

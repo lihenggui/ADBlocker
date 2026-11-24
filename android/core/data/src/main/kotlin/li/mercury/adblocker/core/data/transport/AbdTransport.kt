@@ -99,7 +99,8 @@ class EngineTransport @Inject constructor(private val engine: EngineHost) : AbdT
         emitAll(engine.stream(args).catch { e -> throw if (e is EngineExit) engineFailure(e) else e })
     }
 
-    private fun engineFailure(e: EngineExit) = exitFailure(e.exit, e.stderr)
+    // The engine is this app's own: a command it does not know is not a module to bring up to date.
+    private fun engineFailure(e: EngineExit) = exitFailure(e.exit, e.stderr).let { if (it is AbdException.ModuleOutdated) AbdException.CommandRejected() else it }
 }
 
 /** Where commands go. */
