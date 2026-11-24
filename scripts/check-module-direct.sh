@@ -23,7 +23,7 @@ if [ "$#" -eq 0 ]; then
     result=0
     for scenario in install install-unsupported reinstall boot boot-implausible-list boot-unreadable-list \
         boot-app-gone boot-disabled boot-yields boot-pending-module remove remove-fails remove-refused \
-        remove-leftover remove-leftover-reinstall remove-leftover-module \
+        remove-leftover remove-leftover-reinstall remove-leftover-module started-by-another-name \
         takeover update-module update-module-removal update-module-pending install-pending-module \
         module-uninstall; do
         sh "$0" "$scenario" || result=1
@@ -316,6 +316,21 @@ case "$SCENARIO" in
         sh "$launcher" || fail "the cleanup failed"
         test -f "$data/apps" || fail "the data of the module in the manager was removed"
         test ! -e "$launcher" || fail "the cleanup stays for another boot"
+        ;;
+    started-by-another-name)
+        installed_by_app
+        (cd "$direct" && sh ./service.sh) >"$fixture/output" 2>&1 || fail "the service script failed from its own directory"
+        await_start "its own directory"
+        test -f "$direct/direct.sh" && test -x "$launcher" || fail "the app's module removed itself"
+        forget_calls
+        ln -s "$direct" "$adb/elsewhere"
+        sh "$adb/elsewhere/service.sh" >"$fixture/output" 2>&1 || fail "the service script failed by a link"
+        await_start "a link"
+        test -f "$direct/direct.sh" && test -x "$launcher" || fail "the app's module removed itself"
+        # Its uninstaller removes what the module kept, and no module.
+        (cd "$direct" && sh ./uninstall.sh) >"$fixture/output" 2>&1 || fail "the uninstall script failed"
+        test ! -e "$data" || fail "the data was not removed"
+        test -f "$direct/direct.sh" && test -x "$launcher" || fail "the uninstaller removed the module it ran from"
         ;;
     takeover)
         installed_by_app

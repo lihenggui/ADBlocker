@@ -33,12 +33,17 @@ log() {
 
 # Flashed in a root manager over the module the app had installed: this one
 # takes over. stop.sh has stopped that one's daemon, by the pid files every
-# installation shares.
-DIRECT=/data/adb/adblocker_direct
-if [ "$MODDIR" != "$DIRECT" ] && [ -e "$DIRECT" ]; then
-    rm -rf "$DIRECT" /data/adb/service.d/adblocker.sh ||
-        log "could not remove the module the app had installed"
-fi
+# installation shares. Only run from a manager's own directory is this a
+# flashed module: the app's, started by another name for where it is, would
+# otherwise remove itself.
+case "$MODDIR" in
+/data/adb/modules/* | /data/adb/modules_update/*)
+    if [ -e /data/adb/adblocker_direct ]; then
+        rm -rf /data/adb/adblocker_direct /data/adb/service.d/adblocker.sh ||
+            log "could not remove the module the app had installed"
+    fi
+    ;;
+esac
 
 # Boot guard. A marker is left while the system boots and removed once it has
 # finished; it holds how many boots in a row started the module and never
