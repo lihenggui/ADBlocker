@@ -2,11 +2,11 @@
 
 <p>It filters in one of two ways:</p>
 <ul>
-<li><b>Root mode</b> (KernelSU, Magisk or APatch; Android 12 or later with a GKI kernel): ADBlocker sets up its root module. Android's VPN slot stays free for another VPN, and each connection is still attributed to the app that made it.</li>
+<li><b>Root mode</b> (root access, such as KernelSU, Magisk or APatch; Android 12 or later with a GKI kernel): ADBlocker sets it up with root access, without a restart. Android's VPN slot stays free for another VPN, and each connection is still attributed to the app that made it.</li>
 <li><b>VPN mode</b> (no root; Android 10 or later): the filtered apps' traffic passes through ADBlocker's local VPN.</li>
 </ul>
 
-<p>With URL filtering on, ADBlocker applies URL and resource rules inside HTTPS through a local certificate authority whose key stays on the device. In root mode the module makes it available to filtered personal apps; in VPN mode you install it yourself, and only apps that trust user certificates accept it. Until then, and for any app that rejects it, HTTPS stays encrypted and only domain rules apply. You can turn URL filtering off to filter by domain only.</p>
+<p>With URL filtering on, ADBlocker applies URL and resource rules inside HTTPS through a local certificate authority whose key stays on the device. In root mode ADBlocker makes it available to filtered personal apps; in VPN mode you install it yourself, and only apps that trust user certificates accept it. Until then, and for any app that rejects it, HTTPS stays encrypted and only domain rules apply. You can turn URL filtering off to filter by domain only.</p>
 
 <p>Features:</p>
 <ul>

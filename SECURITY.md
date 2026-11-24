@@ -255,8 +255,11 @@ connection falls back to TCP.
 ## What protects the device
 
 - In root mode, the authority's key is created on the device, stays in
-  `/data/adb/adblocker` (readable by root only) and is destroyed on
-  uninstall. In the personal profile, only the processes of filtered apps
+  `/data/adb/adblocker` (readable by root only) and is destroyed when root
+  mode is removed. Where the app set up root mode and is uninstalled
+  without removing it first, the key is destroyed at the next restart if
+  KernelSU, Magisk or APatch is installed, and stays with root from
+  another source. In the personal profile, only the processes of filtered apps
   see the local CA. Work apps use the certificates provisioned in their
   profile.
 - The LSPosed module recognizes the local CA by its key, as found in the
