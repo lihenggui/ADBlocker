@@ -59,6 +59,10 @@ class VpnSessionTest {
         }
 
         var inventories = 0
+        var listAccess = false
+
+        override fun appListAccess() = listAccess
+
         val closed = mutableListOf<Int>()
         val shown = mutableListOf<Shown?>()
         val finished = mutableListOf<Int>()
@@ -273,6 +277,25 @@ class VpnSessionTest {
 
         changed(vpn)
         assertEquals(2, vpn.host.inventories)
+    }
+
+    @Test
+    fun givenAllPersonalAppsWithTheAppListWithheld_whenTheListIsAllowed_thenTheNextRefreshRoutesTheAppsItShows() = runTest {
+        val vpn = Vpn(this)
+        vpn.apps.selections = AppSelections(FilteringScope.All)
+        vpn.session.start(1)
+        // Nothing to route while the system shows no personal app: no VPN, never one for every app.
+        assertEquals(emptyList(), vpn.host.built)
+        changed(vpn)
+        assertEquals(1, vpn.host.inventories)
+
+        vpn.host.installed += mapOf(NEWS to 10_001, SHOP to 10_002)
+        vpn.host.listAccess = true
+        changed(vpn)
+
+        assertEquals(2, vpn.host.inventories)
+        assertEquals(1, vpn.reloads)
+        assertEquals(listOf(setOf(NEWS, SHOP)), vpn.host.built)
     }
 
     @Test

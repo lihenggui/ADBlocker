@@ -62,6 +62,7 @@
     <string name="feature_onboarding_check_after_root">授予 root 权限后检查</string>
     <string name="feature_onboarding_apps_none">没有可过滤的应用</string>
     <string name="feature_onboarding_apps_none_text">已安装的联网应用会显示在这里。</string>
+    <string name="feature_onboarding_all_apps_withheld">系统未允许 ADBlocker 读取应用列表。允许前，大部分应用不会被过滤。</string>
     <string name="feature_onboarding_check_root_granted">%1$s · 已授权</string>
     <string name="feature_onboarding_check_root_granted_plain">已授权</string>
     <string name="feature_onboarding_check_kernel_ok">支持过滤所需的功能</string>

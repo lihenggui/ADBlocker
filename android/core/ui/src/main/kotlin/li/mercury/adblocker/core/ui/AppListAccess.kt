@@ -44,13 +44,13 @@ import li.mercury.adblocker.core.model.APP_LIST_PERMISSION
 
 /**
  * Asking for the installed app list where the system withholds it. While
- * [withheld], the system's request is shown once, and the list is read again
+ * [withheld], the system's request is shown once if [askAtOnce], and the list is read again
  * on a grant and whenever the app comes back to the front, such as from its
  * settings. The returned action asks again while the system still would, and
  * opens this app's settings once it would not.
  */
 @Composable
-fun rememberAppListAccess(withheld: Boolean, onRecheck: () -> Unit): () -> Unit {
+fun rememberAppListAccess(withheld: Boolean, onRecheck: () -> Unit, askAtOnce: Boolean = true): () -> Unit {
     val context = LocalContext.current
     val activity = LocalActivity.current
     val recheck by rememberUpdatedState(onRecheck)
@@ -60,7 +60,7 @@ fun rememberAppListAccess(withheld: Boolean, onRecheck: () -> Unit): () -> Unit 
         if (granted) recheck()
     }
     LaunchedEffect(withheld) {
-        if (withheld && !asked) request.launch(APP_LIST_PERMISSION)
+        if (withheld && askAtOnce && !asked) request.launch(APP_LIST_PERMISSION)
     }
     // Settings and other apps stop this one; the system's request only pauses it.
     val shown by rememberUpdatedState(withheld)

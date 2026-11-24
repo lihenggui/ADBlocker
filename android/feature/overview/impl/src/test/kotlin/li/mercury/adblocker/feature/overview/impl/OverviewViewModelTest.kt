@@ -43,11 +43,13 @@ import li.mercury.adblocker.core.data.repository.OverviewRepository
 import li.mercury.adblocker.core.data.repository.OverviewSnapshot
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppEntry
+import li.mercury.adblocker.core.model.AppInventory
 import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterLevel
 import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteredApp
+import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ModuleState
@@ -80,6 +82,8 @@ class OverviewViewModelTest {
     private var appsRead = 0
     private var appsAfter: suspend () -> List<AppEntry> = { emptyList() }
     private var filteringApps: Int? = null
+    private var scope = FilteringScope.Chosen
+    private var listWithheld = false
     private val changes = DataChanges()
     private val userData = TestUserDataRepository(UserData(filterMethod = FilterMethod.Vpn))
     private val vpnStatus = MutableStateFlow(VpnStatus(state = VpnState.On))
@@ -142,7 +146,7 @@ class OverviewViewModelTest {
         override suspend fun snapshot(): OverviewSnapshot {
             snapshotsRead++
             snapshotFailure?.let { throw it }
-            val current = filteringApps?.let { status.copy(apps = 5, filteringApps = it) } ?: status
+            val current = (filteringApps?.let { status.copy(apps = 5, filteringApps = it) } ?: status).copy(filteringScope = scope)
             return OverviewSnapshot(current, StatsSummary.Empty, subscriptions)
         }
     }
@@ -178,6 +182,8 @@ class OverviewViewModelTest {
                     appsRead++
                     return appsAfter()
                 }
+
+                override suspend fun inventory() = AppInventory(apps(), listWithheld = listWithheld)
             },
             overview = overview,
             module = module,
@@ -366,6 +372,42 @@ class OverviewViewModelTest {
         runCurrent()
 
         assertEquals(1, (viewModel.uiState.value as OverviewUiState.Ready).filteredApps)
+    }
+
+    @Test
+    fun givenAllAppsWithTheVpnAndTheAppListWithheld_whenShown_thenSaysMostAppsAreNotFilteredBeforeTheLists() = runTest {
+        root = false
+        scope = FilteringScope.All
+        listWithheld = true
+        subscriptions = listOf(list("ads"))
+        assertEquals(OverviewNotice.AppListWithheld, shown().notice)
+    }
+
+    @Test
+    fun givenChosenAppsWithTheAppListWithheld_whenShown_thenNoAppListNoticeIsShown() = runTest {
+        root = false
+        listWithheld = true
+        assertNull(shown().notice)
+    }
+
+    @Test
+    fun givenAllAppsUnderRootWithTheAppListWithheld_whenShown_thenNoAppListNoticeIsShown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        scope = FilteringScope.All
+        listWithheld = true
+        assertNull(shown().notice)
+    }
+
+    @Test
+    fun givenTheAppListWithheld_whenItIsAllowedAndTheOverviewReadsAgain_thenTheNoticeGoes() = runTest {
+        root = false
+        scope = FilteringScope.All
+        listWithheld = true
+        assertEquals(OverviewNotice.AppListWithheld, shown().notice)
+
+        listWithheld = false
+        viewModel.refresh()
+        assertNull((viewModel.uiState.value as OverviewUiState.Ready).notice)
     }
 
     private fun list(name: String, enabled: Boolean = true, updated: Instant? = null, error: String? = null) = FilterList("https://lists.example/$name.txt", enabled, title = null, rules = updated?.let { 10 }, updated = updated, error = error)

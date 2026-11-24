@@ -105,7 +105,9 @@ permission.
 
 Some systems, such as MIUI and HyperOS, show ADBlocker the installed apps
 only after it is allowed to read them. Setup and **Apps** ask for this
-permission and can open ADBlocker's system settings.
+permission and can open ADBlocker's system settings. Without root, **All
+apps** filters only the apps the system shows, so until it is allowed
+**Overview** says that most apps are not filtered.
 
 Setup suggests the general lists and the regional lists for the
 languages of the device, such as EasyList China, AdGuard Chinese and

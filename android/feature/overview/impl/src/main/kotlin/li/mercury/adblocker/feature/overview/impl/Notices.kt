@@ -38,6 +38,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
+import li.mercury.adblocker.core.ui.R as UiR
 
 /** What a notice's buttons do. */
 internal class NoticeActions(
@@ -46,20 +47,23 @@ internal class NoticeActions(
     val batteryExemption: () -> Unit,
     val downloadLists: () -> Unit = {},
     val openLists: () -> Unit = {},
+    val allowAppList: () -> Unit = {},
 )
 
 /**
  * What to know about now: what it is, what it means, and what can be done.
- * Tips are in the secondary container. Lists that do not filter are a state
- * that needs attention: in the tertiary container while waiting for a
- * download, in the error container once one failed.
+ * Tips are in the secondary container. Apps or lists that are not filtered
+ * are a state that needs attention: in the tertiary container while waiting
+ * for a download or for the app list, in the error container once a
+ * download failed.
  */
 @Composable
 internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: NoticeActions) {
     val failed = notice == OverviewNotice.ListsMissing && missing?.failed == true
+    val state = notice == OverviewNotice.ListsMissing || notice == OverviewNotice.AppListWithheld
     val scheme = MaterialTheme.colorScheme
     val (container, content, accent) = when {
-        notice != OverviewNotice.ListsMissing -> Triple(scheme.secondaryContainer, scheme.onSecondaryContainer, scheme.secondary to scheme.onSecondary)
+        !state -> Triple(scheme.secondaryContainer, scheme.onSecondaryContainer, scheme.secondary to scheme.onSecondary)
         failed -> Triple(scheme.errorContainer, scheme.onErrorContainer, scheme.error to scheme.onError)
         else -> Triple(scheme.tertiaryContainer, scheme.onTertiaryContainer, scheme.tertiary to scheme.onTertiary)
     }
@@ -72,7 +76,8 @@ internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: Not
                 Icon(
                     when {
                         notice == OverviewNotice.Lockdown -> AdbIcons.Warning
-                        notice != OverviewNotice.ListsMissing -> AdbIcons.Security
+                        notice == OverviewNotice.AppListWithheld -> AdbIcons.Apps
+                        !state -> AdbIcons.Security
                         failed -> AdbIcons.Error
                         else -> AdbIcons.Download
                     },
@@ -97,6 +102,8 @@ private fun noticeTitle(notice: OverviewNotice, missing: MissingLists?): String 
         pluralStringResource(title, count, count)
     }
 
+    OverviewNotice.AppListWithheld -> stringResource(R.string.feature_overview_app_list_withheld_title)
+
     OverviewNotice.Lockdown -> stringResource(R.string.feature_overview_lockdown_title)
 
     OverviewNotice.RootAvailable -> stringResource(R.string.feature_overview_root_title)
@@ -110,6 +117,8 @@ private fun noticeText(notice: OverviewNotice, missing: MissingLists?): String =
         if (missing?.failed == true) R.plurals.feature_overview_lists_missing_failed else R.plurals.feature_overview_lists_missing_pending,
         missing?.count ?: 0,
     )
+
+    OverviewNotice.AppListWithheld -> stringResource(R.string.feature_overview_app_list_withheld_text)
 
     OverviewNotice.Lockdown -> stringResource(R.string.feature_overview_lockdown_text)
 
@@ -128,6 +137,11 @@ private fun NoticeButtons(notice: OverviewNotice, actions: NoticeActions, textCo
         OverviewNotice.ListsMissing -> {
             TextButton(onClick = actions.openLists, colors = textColors) { Text(stringResource(R.string.feature_overview_lists_missing_open)) }
             Button(onClick = actions.downloadLists, colors = filledColors) { Text(stringResource(R.string.feature_overview_lists_missing_download)) }
+        }
+
+        // Not dismissible either: it goes once the system shows the apps.
+        OverviewNotice.AppListWithheld -> Button(onClick = actions.allowAppList, colors = filledColors) {
+            Text(stringResource(UiR.string.core_ui_app_list_allow))
         }
 
         OverviewNotice.Lockdown -> TextButton(onClick = { actions.dismiss(notice) }, colors = textColors) {

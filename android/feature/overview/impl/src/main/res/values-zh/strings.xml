@@ -122,4 +122,6 @@
     <string name="feature_overview_lists_missing_download">立即下载</string>
     <string name="feature_overview_lists_missing_open">查看订阅</string>
     <string name="feature_overview_lists_download_failed">下载失败</string>
+    <string name="feature_overview_app_list_withheld_title">大部分应用未被过滤</string>
+    <string name="feature_overview_app_list_withheld_text">系统未允许 ADBlocker 读取应用列表。允许后即可过滤这些应用。</string>
 </resources>

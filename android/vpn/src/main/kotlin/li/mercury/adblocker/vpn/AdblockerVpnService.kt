@@ -46,6 +46,7 @@ import li.mercury.adblocker.core.data.repository.UserDataRepository
 import li.mercury.adblocker.core.data.repository.VpnAppRepository
 import li.mercury.adblocker.core.engine.exclusiveAppUid
 import li.mercury.adblocker.core.engine.personalAppIdentities
+import li.mercury.adblocker.core.model.APP_LIST_PERMISSION
 import li.mercury.adblocker.core.model.VpnState
 import timber.log.Timber
 import java.io.IOException
@@ -90,6 +91,8 @@ class AdblockerVpnService : VpnService() {
         override val dnsServers: List<String> get() = underlay.dnsServers
 
         override fun personalAppIdentities() = packageManager.personalAppIdentities(applicationInfo.uid)
+
+        override fun appListAccess() = ContextCompat.checkSelfPermission(this@AdblockerVpnService, APP_LIST_PERMISSION) == PackageManager.PERMISSION_GRANTED
 
         override fun establish(apps: Set<String>, ipv6: Boolean, virtualDns: Boolean): Int? {
             val builder = Builder()
