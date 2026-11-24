@@ -76,9 +76,19 @@ done
 set_perm_recursive "$MODPATH" 0 0 0755 0644
 set_perm "$MODPATH/bin/abd" 0 0 0755
 
-# Flashed from a root manager, the archive installs the app as well; flashed
-# from the app, the app is this archive already.
-if unzip -l "$ZIPFILE" AndroidManifest.xml >/dev/null 2>&1; then
+# Flashed from a root manager, the archive installs the app as well.
+# Installed by the app, the archive is the app's own package where the
+# package manager keeps it, and is not installed over itself: that ends the
+# app in the middle of this. `pm path` would not always say so. It asks for
+# the first user, and knows nothing of an app installed for another user or
+# in a work profile only.
+own_package=false
+case "$DIRECT_INSTALL:$ZIPFILE" in
+true:/data/app/* | true:/mnt/expand/*/app/*) own_package=true ;;
+esac
+if [ "$own_package" = true ]; then
+    ui_print "- App is already installed"
+elif unzip -l "$ZIPFILE" AndroidManifest.xml >/dev/null 2>&1; then
     installed="$(pm path "$APP_PACKAGE" 2>/dev/null | head -n 1)"
     installed="${installed#package:}"
     if [ -n "$installed" ] && cmp -s "$ZIPFILE" "$installed"; then
