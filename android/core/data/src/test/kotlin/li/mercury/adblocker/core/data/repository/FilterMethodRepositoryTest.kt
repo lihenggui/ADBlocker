@@ -27,6 +27,7 @@ import li.mercury.adblocker.core.data.repository.FilterMethodRepositoryFixture.F
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.ModuleState
+import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.testing.unexpected
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -144,6 +145,44 @@ class FilterMethodRepositoryTest {
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.method)
         assertEquals(setOf("com.example.shop"), engine.apps)
         assertEquals(emptyList(), engine.ran)
+    }
+
+    @Test
+    fun givenNoMethodChosenAndNoRoot_whenChoosingVpn_thenTheSwitchIsComplete() = runTest {
+        for (absent in listOf(AbdException.NoRoot(), AbdException.ModuleMissing())) {
+            fixture.userData.userData.value = UserData()
+            val root = FakeAbd().apply { unreachable = absent }
+            val engine = FakeAbd(apps = setOf("com.example.shop"))
+
+            assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+            assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+            assertEquals(setOf("com.example.shop"), engine.apps)
+            assertEquals(emptyList(), engine.ran)
+        }
+    }
+
+    @Test
+    fun givenNoMethodChosenAndTheModuleTimesOut_whenChoosingVpn_thenTheTransferIsIncomplete() = runTest {
+        fixture.userData.userData.value = UserData()
+        val root = FakeAbd(apps = setOf("com.example.news")).apply { unreachable = AbdException.TimedOut() }
+        val engine = FakeAbd()
+
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+    }
+
+    @Test
+    fun givenNoMethodChosenAndARunningModule_whenChoosingVpn_thenItsSettingsAreCarried() = runTest {
+        fixture.userData.userData.value = UserData()
+        val root = FakeAbd(apps = setOf("com.example.news"), lists = mapOf(EASYLIST to true))
+        val engine = FakeAbd()
+
+        assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertEquals(setOf("com.example.news"), engine.apps)
+        assertEquals(mapOf(EASYLIST to true), engine.lists)
     }
 
     @Test

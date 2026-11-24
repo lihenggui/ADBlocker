@@ -107,7 +107,7 @@ internal class DefaultFilterMethodRepository(
             userData.setFilterMethod(method)
             return FilterMethodSwitch.Complete
         }
-        val transfer = writes.mutex.withLock { switchToVpn() }
+        val transfer = writes.mutex.withLock { switchToVpn(firstChoice = settings.filterMethod == null) }
         if (transfer.listsAdded) scheduleUpdates()
         if (transfer.failed == 0) FilterMethodSwitch.Complete else FilterMethodSwitch.VpnTransferIncomplete
     }
@@ -274,12 +274,15 @@ internal class DefaultFilterMethodRepository(
         }
     }
 
-    private suspend fun switchToVpn(): Written = changes.changing {
+    private suspend fun switchToVpn(firstChoice: Boolean): Written = changes.changing {
         val from = transportOf(FilterMethod.Root).fixedAbdClient()
-        val carried = read(from)
-        if (carried == null) {
+        val carried = suspendRunCatching { read(from) }.getOrElse { e ->
+            Timber.w("method switch: read apps: %s", e.javaClass.simpleName)
             userData.setFilterMethod(FilterMethod.Vpn)
-            return@changing Written(failed = 1)
+            // Before any method was chosen, a device without root or without
+            // the module has no root settings: there is nothing to carry.
+            val nothingToCarry = firstChoice && (e is AbdException.NoRoot || e is AbdException.ModuleMissing)
+            return@changing Written(failed = if (nothingToCarry) 0 else 1)
         }
 
         val to = transportOf(FilterMethod.Vpn).fixedAbdClient()
@@ -354,12 +357,9 @@ internal class DefaultFilterMethodRepository(
 
     private class Written(var done: Int = 0, var failed: Int = 0, var listsAdded: Boolean = false)
 
-    /** What [from] has, each part on its own; null if it cannot be reached at all. */
-    private suspend fun read(from: AbdClient): Carried? {
-        val apps = suspendRunCatching { from.appSelections() }.getOrElse {
-            Timber.w("method switch: read apps: %s", it.javaClass.simpleName)
-            return null
-        }
+    /** What [from] has, each part on its own; throws if its apps cannot be read at all. */
+    private suspend fun read(from: AbdClient): Carried {
+        val apps = from.appSelections()
         val status = suspendRunCatching { from.status() }.getOrNull()
         return Carried(
             apps = apps,
