@@ -31,7 +31,11 @@ pub(crate) enum ListKind {
 impl ListKind {
     pub(super) fn start_sources(self, file: &Path, bundled: &str) -> Result<String> {
         let Some(mut configured) = sources::text_of(file)? else {
-            files::replace(file, bundled.as_bytes())?;
+            // Filter defaults stay unsaved so that they follow the catalog
+            // and the device's languages until the user chooses.
+            if matches!(self, Self::HttpsExclusion) {
+                files::replace(file, bundled.as_bytes())?;
+            }
             return Ok(bundled.to_owned());
         };
         if matches!(self, Self::Filter) {

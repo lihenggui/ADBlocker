@@ -28,7 +28,8 @@ data class CatalogEntry(
     val title: String,
     val category: ListCategory,
     val cosmetic: Boolean = false,
-    val regions: Set<String> = emptySet(),
+    /** Primary language subtags, lowercase, of the devices the list is a default for. */
+    val defaultLanguages: Set<String> = emptySet(),
     val defaultEnabled: Boolean = false,
     val offerInSetup: Boolean = false,
     val descriptions: Map<String, String> = emptyMap(),
@@ -46,11 +47,18 @@ object FilterCatalog {
         resource.bufferedReader().use { json.decodeFromString<CatalogDocument>(it.readText()).lists }
     }
 
-    /** Initial suggestions only. The confirmed choices are stored by the engine. */
-    fun setupLists(regionCode: String?): Map<String, Boolean> = entries.mapNotNull { entry ->
-        val enabled = entry.defaultEnabled || regionCode in entry.regions
-        if (enabled || entry.offerInSetup) entry.url to enabled else null
-    }.toMap()
+    /**
+     * Initial suggestions only. The confirmed choices are stored by the
+     * engine. Enabled are the engine's defaults for [languageTags]: the
+     * general lists, and those for a primary language subtag among them.
+     */
+    fun setupLists(languageTags: List<String>): Map<String, Boolean> {
+        val languages = languageTags.mapTo(mutableSetOf()) { it.trim().split('-', '_').first().lowercase() }
+        return entries.mapNotNull { entry ->
+            val enabled = entry.defaultEnabled || entry.defaultLanguages.any { it in languages }
+            if (enabled || entry.offerInSetup) entry.url to enabled else null
+        }.toMap()
+    }
 
     fun byUrl(url: String): CatalogEntry? = entries.firstOrNull { it.url == url }
 }

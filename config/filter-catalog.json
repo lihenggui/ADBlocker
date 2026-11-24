@@ -41,7 +41,7 @@
       "descriptions": {"en": "Ads on Chinese sites", "zh": "中文网站的广告"},
       "category": "Regional",
       "offerInSetup": true,
-      "regions": ["CN"]
+      "defaultLanguages": ["zh"]
     },
     {
       "id": "adguard_base",
@@ -92,77 +92,79 @@
       "url": "https://filters.adtidy.org/extension/ublock/filters/224.txt",
       "title": "AdGuard Chinese",
       "descriptions": {"en": "Ads on Chinese sites, by AdGuard", "zh": "AdGuard 的中文网站广告规则"},
-      "category": "Regional"
+      "category": "Regional",
+      "defaultLanguages": ["zh"]
     },
     {
       "id": "awavenue",
       "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt",
       "title": "AWAvenue Ads Rule",
       "descriptions": {"en": "Ad SDKs in Chinese apps", "zh": "中文应用中的广告 SDK"},
-      "category": "Regional"
+      "category": "Regional",
+      "defaultLanguages": ["zh"]
     },
     {
       "id": "easylist_dutch",
       "url": "https://easylist-downloads.adblockplus.org/easylistdutch.txt",
       "title": "EasyList Dutch",
       "category": "Regional",
-      "regions": ["NL"]
+      "defaultLanguages": ["nl"]
     },
     {
       "id": "easylist_germany",
       "url": "https://easylist-downloads.adblockplus.org/easylistgermany.txt",
       "title": "EasyList Germany",
       "category": "Regional",
-      "regions": ["DE", "AT"]
+      "defaultLanguages": ["de"]
     },
     {
       "id": "easylist_italy",
       "url": "https://easylist-downloads.adblockplus.org/easylistitaly.txt",
       "title": "EasyList Italy",
       "category": "Regional",
-      "regions": ["IT"]
+      "defaultLanguages": ["it"]
     },
     {
       "id": "easylist_polish",
       "url": "https://easylist-downloads.adblockplus.org/easylistpolish.txt",
       "title": "EasyList Polish",
       "category": "Regional",
-      "regions": ["PL"]
+      "defaultLanguages": ["pl"]
     },
     {
       "id": "easylist_portuguese",
       "url": "https://easylist-downloads.adblockplus.org/easylistportuguese.txt",
       "title": "EasyList Portuguese",
       "category": "Regional",
-      "regions": ["PT", "BR"]
+      "defaultLanguages": ["pt"]
     },
     {
       "id": "easylist_spanish",
       "url": "https://easylist-downloads.adblockplus.org/easylistspanish.txt",
       "title": "EasyList Spanish",
       "category": "Regional",
-      "regions": ["ES", "AR", "BO", "CL", "CO", "CR", "CU", "DO", "EC", "GT", "HN", "MX", "NI", "PA", "PE", "PR", "PY", "SV", "UY", "VE"]
+      "defaultLanguages": ["es"]
     },
     {
       "id": "liste_fr",
       "url": "https://easylist-downloads.adblockplus.org/liste_fr.txt",
       "title": "Liste FR",
       "category": "Regional",
-      "regions": ["FR"]
+      "defaultLanguages": ["fr"]
     },
     {
       "id": "japanese_filters",
       "url": "https://easylist-downloads.adblockplus.org/japanese-filters.txt",
       "title": "Japanese Filters",
       "category": "Regional",
-      "regions": ["JP"]
+      "defaultLanguages": ["ja"]
     },
     {
       "id": "koreanlist",
       "url": "https://easylist-downloads.adblockplus.org/koreanlist.txt",
       "title": "KoreanList",
       "category": "Regional",
-      "regions": ["KR"]
+      "defaultLanguages": ["ko"]
     },
     {
       "id": "easylist_cookie",

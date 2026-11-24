@@ -102,6 +102,10 @@ yourself, see the [build instructions](CONTRIBUTING.md#building).
 - **Without root**, install the `.apk`. Open ADBlocker, choose your apps
   and lists, and grant VPN permission.
 
+Setup suggests the general lists and the regional lists for the
+languages of the device, such as EasyList China, AdGuard Chinese and
+AWAvenue Ads Rule for Chinese.
+
 KernelSU applies the module immediately. Magisk and APatch require a
 restart. ADBlocker saves the selected subscriptions, downloads the lists,
 and updates them in the background at the configured interval. To download
@@ -183,7 +187,9 @@ Run `abd` without arguments for the full command list.
 
 In `/data/adb/adblocker`, `sources` holds the addresses of the filter lists
 and `exclusion-sources` those of the lists of hosts that are never
-decrypted, one a line. Updates add missing bundled exclusion sources to
+decrypted, one a line. Until the filter lists are chosen, there is no
+`sources`, and the lists are the general ones and the regional lists for
+the system language (`persist.sys.locale`). Updates add missing bundled exclusion sources to
 an existing selection. An empty exclusion selection keeps decryption off.
 Custom rules go in `rules/*.txt`, in the syntax of the filter lists. A
 rule ending in `$app=` and a package name, such as
