@@ -17,7 +17,6 @@
 package li.mercury.adblocker.feature.onboarding.impl.steps
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -48,12 +47,10 @@ import li.mercury.adblocker.core.designsystem.component.StatusMark
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.ui.FadeThrough
-import li.mercury.adblocker.core.ui.Reveal
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.StepAction
-import li.mercury.adblocker.core.ui.StepOutlinedAction
 import li.mercury.adblocker.core.ui.StepPage
 import li.mercury.adblocker.core.ui.failureText
 import li.mercury.adblocker.feature.onboarding.impl.InstallStage
@@ -61,28 +58,22 @@ import li.mercury.adblocker.feature.onboarding.impl.InstallState
 import li.mercury.adblocker.feature.onboarding.impl.OnboardingUiState
 import li.mercury.adblocker.feature.onboarding.impl.R
 
-/** Where each part of the installation is. */
+/** Where each part of setting up is. */
 internal enum class StepState { Waiting, Running, Done, Skipped }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun ColumnScope.Install(state: OnboardingUiState, onRetry: () -> Unit, onFinish: () -> Unit, onRestart: () -> Unit) {
+internal fun ColumnScope.Install(state: OnboardingUiState, onRetry: () -> Unit, onFinish: () -> Unit) {
     val install = state.install
     val lists = state.lists.count { it.value }
     StepPage(
         title = when (install) {
-            is InstallState.Done -> if (install.active) {
-                pluralStringResource(R.plurals.feature_onboarding_done_title, install.apps, install.apps)
-            } else {
-                stringResource(R.string.feature_onboarding_restart_title)
-            }
-
+            is InstallState.Done -> pluralStringResource(R.plurals.feature_onboarding_done_title, install.apps, install.apps)
             is InstallState.Failed -> stringResource(R.string.feature_onboarding_failed_title)
-
             else -> stringResource(R.string.feature_onboarding_installing_title)
         },
         text = when (install) {
-            is InstallState.Done -> stringResource(if (install.active) R.string.feature_onboarding_done_text else R.string.feature_onboarding_restart_text)
+            is InstallState.Done -> stringResource(R.string.feature_onboarding_done_text)
 
             // The app's own words for what went wrong; the installer's below them.
             is InstallState.Failed -> if (install.failure == LoadFailure.Failed) stringResource(R.string.feature_onboarding_failed_text) else failureText(install.failure)
@@ -90,19 +81,12 @@ internal fun ColumnScope.Install(state: OnboardingUiState, onRetry: () -> Unit, 
             else -> null
         },
         // The barrier is up while setting up, and drops once filtering starts.
-        art = { StatusMark(MarkState.Filtering, size = 200.dp, colors = MarkDefaults.featuredColors(), armDown = install is InstallState.Done && install.active) },
+        art = { StatusMark(MarkState.Filtering, size = 200.dp, colors = MarkDefaults.featuredColors(), armDown = install is InstallState.Done) },
         action = {
             FadeThrough(install, ::installActions, label = "install action") { install ->
                 when {
-                    install is InstallState.Done && !install.active -> Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        StepAction(stringResource(R.string.feature_onboarding_restart_now), onRestart)
-                        StepOutlinedAction(stringResource(R.string.feature_onboarding_later), onFinish)
-                    }
-
                     install is InstallState.Done -> StepAction(stringResource(R.string.feature_onboarding_finish), onFinish)
-
                     install is InstallState.Failed -> StepAction(stringResource(R.string.feature_onboarding_try_again), onRetry)
-
                     else -> StepAction(stringResource(R.string.feature_onboarding_finish), onFinish, enabled = false)
                 }
             }
@@ -128,11 +112,10 @@ internal fun ColumnScope.Install(state: OnboardingUiState, onRetry: () -> Unit, 
     }
 }
 
-/** The buttons the install step shows. Finish turning on keeps its place; other buttons fade through. */
-private enum class InstallActions { Finish, RestartOrLater, TryAgain }
+/** The buttons the install step shows. Finish turning on keeps its place; Try again fades through. */
+private enum class InstallActions { Finish, TryAgain }
 
 private fun installActions(install: InstallState): InstallActions = when {
-    install is InstallState.Done && !install.active -> InstallActions.RestartOrLater
     install is InstallState.Failed -> InstallActions.TryAgain
     else -> InstallActions.Finish
 }
@@ -147,12 +130,11 @@ private fun InstallParts(install: InstallState, lists: Int) {
             pluralStringResource(R.plurals.feature_onboarding_step_lists, lists, lists),
             if ((install as? InstallState.Done)?.listsFailed == true) StepState.Skipped else stepState(install, InstallStage.Lists, stage),
         ),
-        Progress(stringResource(R.string.feature_onboarding_step_start), if (install is InstallState.Done && install.active) StepState.Done else StepState.Waiting),
+        Progress(stringResource(R.string.feature_onboarding_step_start), if (install is InstallState.Done) StepState.Done else StepState.Waiting),
     )
     Column {
         ProgressRows(steps)
         RevealNotNull(install as? InstallState.Running) { InstallProgress(it.progress) }
-        Reveal(install !is InstallState.Done) { Hint(stringResource(R.string.feature_onboarding_restart_note), centered = true) }
     }
 }
 
@@ -202,13 +184,9 @@ internal fun InstallProgress(progress: Float) {
     )
 }
 
-/**
- * A part of the installation against where it is: those before the running
- * one are done; after a restart is asked for, only the module is, the rest
- * waiting for the next boot.
- */
+/** A part of setting up against where it is: those before the running one are done. */
 private fun stepState(install: InstallState, part: InstallStage, running: InstallStage?): StepState = when (install) {
-    is InstallState.Done -> if (install.active || part == InstallStage.Module) StepState.Done else StepState.Waiting
+    is InstallState.Done -> StepState.Done
 
     is InstallState.Running -> when {
         running == null -> StepState.Waiting

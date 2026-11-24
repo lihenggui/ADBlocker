@@ -61,7 +61,7 @@ import javax.inject.Inject
 /**
  * The steps, the same six for either method. [About] says what the method
  * costs: the certificate under root, the VPN without. [Install] sets up and
- * starts filtering: installs the module, or starts the VPN.
+ * starts filtering: sets up root mode, or starts the VPN.
  */
 enum class OnboardingStep { Welcome, Check, About, Apps, Lists, Install }
 
@@ -72,22 +72,22 @@ sealed interface InstallState {
     data class Running(val stage: InstallStage, val progress: Float) : InstallState
 
     /**
-     * Done; [active] when filtering runs already (the VPN, or the module with
-     * KernelSU), false when the device must restart. With the VPN, [rules]
-     * is how many the downloaded lists hold, and [listsFailed] whether the
-     * download failed, to be retried in the background.
+     * Done; [active] when filtering runs, false when the VPN was set up with
+     * no app to filter yet. With the VPN, [rules] is how many the downloaded
+     * lists hold. [listsFailed] says whether the download failed, to be
+     * retried in the background.
      */
     data class Done(val active: Boolean, val apps: Int, val rules: Int? = null, val listsFailed: Boolean = false) : InstallState
 
     /**
-     * Not done, for [failure]. [detail] is what the root manager's installer
-     * printed when it was the one to fail, for a line under the app's own
-     * message; null otherwise.
+     * Not done, for [failure]. [detail] is what the installer said was wrong
+     * when it was the one to fail, for a line under the app's own message;
+     * null otherwise.
      */
     data class Failed(val failure: LoadFailure, val detail: String? = null) : InstallState
 }
 
-/** The module's install, or the VPN's start, which only the VPN has. */
+/** Setting up root mode, or the VPN's start, which only the VPN has. */
 enum class InstallStage { Module, Apps, Vpn, Lists }
 
 data class OnboardingUiState(
@@ -110,7 +110,7 @@ data class OnboardingUiState(
     /** With the VPN: the system's consent was refused the last time it was asked. */
     val consentRefused: Boolean = false,
     val vpnTransferIncomplete: Boolean = false,
-    /** The method setup goes on with, set when the check is left: the root module where it can run, the VPN otherwise. */
+    /** The method setup goes on with, set when the check is left: root mode where it can run, the VPN otherwise. */
     val method: FilterMethod = FilterMethod.Root,
 ) {
     val previousStep: OnboardingStep?
@@ -133,7 +133,7 @@ data class OnboardingUiState(
     val checksPassed: Boolean get() = checks.size == DeviceCheckKind.entries.size && checks.values.all { it.passed }
     val checking: Boolean get() = checks.size < DeviceCheckKind.entries.size
 
-    /** Root is granted; whether the module can run is [checksPassed]. */
+    /** Root is granted; whether root mode can run is [checksPassed]. */
     val rootGranted: Boolean get() = checks[DeviceCheckKind.Root]?.passed == true
 
     /**
@@ -166,10 +166,7 @@ class OnboardingViewModel @Inject constructor(
     private val rememberedPicks = mutableSetOf<String>()
     private var vpnSetup: Job? = null
 
-    /**
-     * Whether the lists still have to be downloaded once onboarding is left:
-     * the download failed, or waits for the restart a new module needs.
-     */
+    /** Whether the lists still have to be downloaded once onboarding is left: the download failed. */
     private var downloadPending = true
 
     fun next() {
@@ -258,7 +255,12 @@ class OnboardingViewModel @Inject constructor(
         it.copy(lists = it.lists + (url to !enabled))
     }
 
-    /** Installs the module if needed, then chooses the apps and downloads the lists, or keeps them for after the restart. */
+    /**
+     * Sets up root mode where it is not ready, then chooses the apps and
+     * downloads the lists. A module flashed in Magisk or APatch that waits for
+     * a restart is set up the same way: the app's own filters now, and the
+     * manager's takes over at the restart, with the same settings.
+     */
     fun install() {
         val choice = state.value
         if (choice.install is InstallState.Running) return
@@ -268,23 +270,7 @@ class OnboardingViewModel @Inject constructor(
                 state.update { it.copy(install = InstallState.Running(InstallStage.Module, 0.1f)) }
                 // Only after a VPN setup that did not finish, before root was granted.
                 val rootSelected = userData.userData.first().method == FilterMethod.Root || methods.switchTo(FilterMethod.Root) == FilterMethodSwitch.Complete
-                val active = when (module.state()) {
-                    ModuleState.Ready -> true
-                    ModuleState.NeedsRestart -> false
-                    else -> installModule() ?: return@suspendRunCatching
-                }
-                val disabled = choice.lists.filterValues { !it }.keys
-                if (!active) {
-                    userData.setPending(
-                        choice.picks,
-                        disabledLists = disabled,
-                        enabledLists = choice.lists.filterValues { it }.keys,
-                        preserveWorkApps = choice.workInventoryUnavailable,
-                        filteringScope = choice.filteringScope,
-                    )
-                    state.update { it.copy(install = InstallState.Done(active = false, apps = choice.setupAppCount)) }
-                    return@suspendRunCatching
-                }
+                if (module.state() != ModuleState.Ready && !setUpRootMode()) return@suspendRunCatching
                 if (!rootSelected && !methods.retryRootSwitch() && userData.userData.first().method != FilterMethod.Root) {
                     throw AbdException.CommandFailed("Root setup is waiting for the module")
                 }
@@ -381,31 +367,15 @@ class OnboardingViewModel @Inject constructor(
     }
 
     /**
-     * Flashes the module and returns whether it is active at once; null when
-     * the installer failed, which is then the state, with what it printed.
+     * Sets up root mode and returns whether it runs; false when the installer
+     * failed, which is then the state, with what it said was wrong.
      */
-    private suspend fun installModule(): Boolean? = try {
+    private suspend fun setUpRootMode(): Boolean = try {
         module.installBundled()
     } catch (e: AbdException.CommandFailed) {
         Timber.w("install: installer failed")
         state.update { it.copy(install = InstallState.Failed(LoadFailure.Failed, detail = e.message?.trim()?.ifEmpty { null })) }
-        null
-    }
-
-    /** Restarts the device, for a module that runs from the next boot. */
-    fun restartDevice() {
-        viewModelScope.launch {
-            val choice = state.value
-            val install = choice.install as? InstallState.Done ?: return@launch
-            if (choice.method != FilterMethod.Root || install.active) return@launch
-            suspendRunCatching {
-                // The next launch can now apply the confirmed choices after reboot.
-                userData.setOnboardingDone(true)
-                suspendRunCatching { scheduler.updateRootSoon() }
-                    .onFailure { Timber.w("restart: schedule update: %s", it.javaClass.simpleName) }
-                module.restartDevice()
-            }.onFailure { Timber.w("restart: %s", it.javaClass.simpleName) }
-        }
+        false
     }
 
     /** Leaves onboarding for the app. */
@@ -416,8 +386,8 @@ class OnboardingViewModel @Inject constructor(
             if (choice.method == FilterMethod.Vpn && installed.active && vpn.status.value.state != VpnState.On) return@launch
             userData.setOnboardingDone(true)
             vpnSetup?.cancel()
-            // A download that failed, or one waiting for the restart, is done
-            // in the background; one that went well is not done again.
+            // A download that failed is done in the background; one that went
+            // well is not done again.
             if (downloadPending) scheduler.updateSoon()
         }
     }

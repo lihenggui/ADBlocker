@@ -49,7 +49,7 @@ internal fun ColumnScope.Lists(state: OnboardingUiState, onToggle: (String) -> U
         // The module is installed next; the VPN asks for its grants first.
         action = {
             StepAction(
-                stringResource(if (state.method == FilterMethod.Vpn) R.string.feature_onboarding_continue else R.string.feature_onboarding_install),
+                stringResource(if (state.method == FilterMethod.Vpn) R.string.feature_onboarding_continue else R.string.feature_onboarding_step_start),
                 onNext,
             )
         },

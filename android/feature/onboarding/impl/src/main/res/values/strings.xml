@@ -21,7 +21,7 @@
     <string name="feature_onboarding_welcome_text">Filters the network requests of chosen apps with the filter lists of browser ad blockers.</string>
     <string name="feature_onboarding_start">Start</string>
     <string name="feature_onboarding_fact_private">No data leaves the device. The app connects only in VPN mode, to the chosen apps’ destinations and the list sources.</string>
-    <string name="feature_onboarding_fact_methods">Works through a root module or a VPN.</string>
+    <string name="feature_onboarding_fact_methods">Works in root mode or VPN mode.</string>
     <string name="feature_onboarding_fact_chosen">Only chosen apps are filtered. Connections of other apps are not read.</string>
     <string name="feature_onboarding_check_title">Device check</string>
     <string name="feature_onboarding_check_text">Checks whether this device can run ADBlocker.</string>
@@ -39,7 +39,7 @@
     <string name="feature_onboarding_continue">Continue</string>
     <string name="feature_onboarding_cert_title">URL filtering</string>
     <string name="feature_onboarding_cert_text">URL rules apply to the filtered apps where supported, including inside HTTPS. To block whole domains only, turn off URL filtering in Settings.</string>
-    <string name="feature_onboarding_cert_key">The private key is created and kept on this device, readable only by root, and deleted on uninstall.</string>
+    <string name="feature_onboarding_cert_key">The private key is created and kept on this device, readable only by root, and deleted when root mode is removed.</string>
     <string name="feature_onboarding_cert_notice">Each server is verified against the system’s trusted certificates first. Nothing is signed for a server that fails.</string>
     <string name="feature_onboarding_cert_browsers">Filtered browsers skip some certificate checks, such as Certificate Transparency.</string>
     <string name="feature_onboarding_cert_ack">I understand</string>
@@ -51,17 +51,14 @@
     </plurals>
     <string name="feature_onboarding_lists_title">Filter lists</string>
     <string name="feature_onboarding_lists_text">Regional lists are selected using the system region. You can change the selection.</string>
-    <string name="feature_onboarding_install">Install</string>
-    <string name="feature_onboarding_installing_title">Installing</string>
+    <string name="feature_onboarding_installing_title">Setting up</string>
     <plurals name="feature_onboarding_done_title">
         <item quantity="one">Filtering %1$d app</item>
         <item quantity="other">Filtering %1$d apps</item>
     </plurals>
     <string name="feature_onboarding_done_text">The chosen apps are now filtered. If an app stops working, pause filtering on the Overview page.</string>
-    <string name="feature_onboarding_restart_title">Restart required</string>
-    <string name="feature_onboarding_restart_text">The root manager starts the module at the next boot. Filtering of the chosen apps begins then.</string>
-    <string name="feature_onboarding_failed_title">Installation failed</string>
-    <string name="feature_onboarding_failed_text">The module could not be installed. Network access of apps is not affected.</string>
+    <string name="feature_onboarding_failed_title">Setup failed</string>
+    <string name="feature_onboarding_failed_text">Root mode could not be set up. Network access of apps is not affected.</string>
     <string name="feature_onboarding_try_again">Try again</string>
     <string name="feature_onboarding_finish">Done</string>
     <string name="feature_onboarding_check_after_root">Checked after root access is granted</string>
@@ -71,26 +68,23 @@
     <string name="feature_onboarding_check_kernel_ok">Required filtering features supported</string>
     <string name="feature_onboarding_check_kernel_unverified">Checked when filtering starts</string>
     <string name="feature_onboarding_lists_hint">More lists are available in Filters.</string>
-    <string name="feature_onboarding_step_module">Install the module</string>
+    <string name="feature_onboarding_step_module">Set up root mode</string>
     <string name="feature_onboarding_step_apps">Add the chosen apps</string>
     <plurals name="feature_onboarding_step_lists">
         <item quantity="one">Download %1$d list</item>
         <item quantity="other">Download %1$d lists</item>
     </plurals>
     <string name="feature_onboarding_step_start">Start filtering</string>
-    <string name="feature_onboarding_install_progress">Installation progress</string>
-    <string name="feature_onboarding_restart_note">KernelSU applies the module without a restart. Magisk and APatch require one.</string>
-    <string name="feature_onboarding_restart_now">Restart now</string>
-    <string name="feature_onboarding_later">Later</string>
+    <string name="feature_onboarding_install_progress">Setup progress</string>
     <string name="feature_onboarding_check_no_root_text">Root access not detected. Filtering can use VPN mode, or root mode once root access is granted.</string>
-    <string name="feature_onboarding_check_unsupported_text">This device cannot run the root module. Filtering can use VPN mode.</string>
+    <string name="feature_onboarding_check_unsupported_text">Root mode is not supported on this device. Filtering can use VPN mode.</string>
     <string name="feature_onboarding_check_root_not_detected">Not detected</string>
     <string name="feature_onboarding_check_root_again">Check root again</string>
     <string name="feature_onboarding_method">Filtering method</string>
     <string name="feature_onboarding_method_vpn">VPN mode</string>
     <string name="feature_onboarding_method_vpn_text">No root needed. Filters the chosen apps by domain, and takes the system’s VPN.</string>
     <string name="feature_onboarding_method_root">Root mode</string>
-    <string name="feature_onboarding_method_root_no_root">Filters encrypted sites by URL. Requires KernelSU, Magisk or APatch.</string>
+    <string name="feature_onboarding_method_root_no_root">Filters encrypted sites by URL. Requires root access.</string>
     <string name="feature_onboarding_method_root_unsupported">Filters encrypted sites by URL. Not supported on this device.</string>
     <string name="feature_onboarding_vpn_title">VPN mode</string>
     <string name="feature_onboarding_vpn_text">ADBlocker sets up a VPN on this device. Only the connections of the chosen apps go through it.</string>

@@ -236,9 +236,10 @@ class OnboardingScreenScreenshotTests {
     }
 
     @Test
-    fun givenInstalledOnMagisk_whenShown_thenAsksForARestart() {
-        capturePhone("OnboardingRestart") {
-            Onboarding(OnboardingUiState(step = OnboardingStep.Install, install = InstallState.Done(active = false, apps = 5)))
+    @Config(qualifiers = "zh-rCN")
+    fun givenSettingUpRootMode_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OnboardingInstalling") {
+            Onboarding(OnboardingUiState(step = OnboardingStep.Install, install = InstallState.Running(InstallStage.Module, 0.1f)))
         }
     }
 
@@ -249,19 +250,19 @@ class OnboardingScreenScreenshotTests {
     }
 
     @Test
-    fun givenInstalledOnKernelSu_whenShown_thenSaysFilteringStarted() {
+    fun givenRootModeSetUp_whenShown_thenSaysFilteringStarted() {
         capturePhone("OnboardingDone") {
             Onboarding(OnboardingUiState(step = OnboardingStep.Install, install = InstallState.Done(active = true, apps = 5)))
         }
     }
 
     @Test
-    fun givenTheInstallerFailed_whenShown_thenSaysSoWithWhatItPrinted() {
+    fun givenTheInstallerFailed_whenShown_thenSaysSoWithWhatItSaidWasWrong() {
         capturePhone("OnboardingInstallFailed") {
             Onboarding(
                 OnboardingUiState(
                     step = OnboardingStep.Install,
-                    install = InstallState.Failed(LoadFailure.Failed, detail = "! Unable to extract zip file"),
+                    install = InstallState.Failed(LoadFailure.Failed, detail = "Unable to extract zip file"),
                 ),
             )
         }
