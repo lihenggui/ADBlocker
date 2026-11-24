@@ -140,9 +140,11 @@ With URL filtering on, the daemon also checks the HTTPS exclusions,
 whether the app can trust the local certificate, and whether the app has
 previously rejected it for this host. Only then does it attempt
 decryption. A connection that stays encrypted because its host is on an
-exclusion list, has an Extended Validation certificate, or was rejected by
-the app is judged by the domain rules, as with URL filtering off: none of
-its requests will be seen, so no web exception can apply to them. Until
+exclusion list, has an Extended Validation certificate, could not be
+verified, or was rejected by the app, or because the app does not trust
+the local certificate, is judged by the domain rules, as with URL
+filtering off: none of its requests will be seen, so no web exception can
+apply to them. Until
 the exclusion lists have been read for the first time, every connection
 stays encrypted and is judged the same way.
 
