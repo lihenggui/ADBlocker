@@ -381,8 +381,10 @@ it, and it can be in either of two places.
 - Both keep their data in `/data/adb/adblocker`, so the selection, the
   lists and the authority carry over from one to the other.
 - The app removes a module it installed: the daemon stops, apps stop
-  trusting the authority, its key is destroyed and the data is deleted. A
-  module in a root manager is removed there.
+  trusting the authority, its key is destroyed and the data is deleted.
+  Copies of the certificate stores that running apps still have mounted
+  are deleted at the next boot, where a root manager runs
+  `/data/adb/service.d`. A module in a root manager is removed there.
 - With the app uninstalled, nothing is left to control a module it
   installed. Its daemon reads Android's package list when the list changes
   and ends, removing its rules, once the app has been absent for 30

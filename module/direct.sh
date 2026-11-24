@@ -34,6 +34,7 @@ DIRECT=/data/adb/adblocker_direct
 MODULE=/data/adb/modules/adblocker
 UPDATE=/data/adb/modules_update/adblocker
 LAUNCHER=/data/adb/service.d/adblocker.sh
+DATA=/data/adb/adblocker
 PACKAGES=/data/system/packages.list
 
 # The app's root shell, an adb shell and a root manager each come with a
@@ -64,18 +65,36 @@ stop_installed() {
     return "$stopped"
 }
 
-write_launcher() {
+# Puts what it reads into service.d, as the one script of ours there.
+# Written elsewhere first: a manager runs whatever it finds in service.d, a
+# half-written file included.
+into_service_d() {
     # As the managers make it, where none has.
     [ -d "${LAUNCHER%/*}" ] || mkdir -m 755 "${LAUNCHER%/*}" || return 1
-    # Written beside the module first: a manager runs whatever it finds in
-    # service.d, a half-written file included.
-    cat >"$DIRECT/launcher" <<EOF || return 1
+    cat >/data/adb/.adblocker-launcher || return 1
+    chmod 700 /data/adb/.adblocker-launcher && mv -f /data/adb/.adblocker-launcher "$LAUNCHER"
+}
+
+write_launcher() {
+    into_service_d <<EOF
 #!/system/bin/sh
 # Starts ADBlocker at boot where the app installed its module. Written by direct.sh.
 [ -f $DIRECT/direct.sh ] && exec sh $DIRECT/direct.sh boot
 rm -f "\$0"
 EOF
-    chmod 700 "$DIRECT/launcher" && mv -f "$DIRECT/launcher" "$LAUNCHER"
+}
+
+# The copies of the certificate stores stay while apps that have them
+# mounted run, and with the module gone nothing of it is left to remove them
+# later. At the next boot no app has them. A module installed by then has
+# the data for its own, and this script's place if the app installed it.
+leave_cleanup() {
+    into_service_d <<EOF
+#!/system/bin/sh
+# Removes what was left of ADBlocker's data while apps used it. Written by direct.sh.
+[ -e $DIRECT ] || [ -e $MODULE/bin/abd ] || rm -rf $DATA
+rm -f "\$0"
+EOF
 }
 
 # Replaces the module the app installed before, or installs the first.
@@ -160,7 +179,10 @@ remove() {
         return 1
     fi
     sh "$DIRECT/uninstall.sh" || return 1
-    rm -rf "$DIRECT" "$LAUNCHER"
+    rm -rf "$DIRECT" "$LAUNCHER" || return 1
+    if [ -e "$DATA" ]; then
+        leave_cleanup || echo "! What apps still use of the data stays in $DATA"
+    fi
 }
 
 boot() {
