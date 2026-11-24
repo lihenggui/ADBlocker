@@ -49,6 +49,7 @@ import li.mercury.adblocker.core.data.repository.DiagnosticsRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
+import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.LogExportResult
 import li.mercury.adblocker.core.data.repository.ModuleRepository
 import li.mercury.adblocker.core.data.repository.ModuleUpdate
@@ -122,6 +123,7 @@ class SettingsViewModel @Inject constructor(
     private val methods: FilterMethodRepository,
     private val https: HttpsRepository,
     private val vpn: VpnController,
+    private val scheduler: ListUpdateScheduler,
     @Dispatcher(IO) private val io: CoroutineDispatcher,
     changes: DataChanges,
 ) : ViewModel() {
@@ -375,6 +377,10 @@ class SettingsViewModel @Inject constructor(
     /** Sets up root mode with the app's own copy, which runs at once. */
     fun setUpRootMode() = rootTask({ copy(setup = it) }) {
         module.installBundled()
+        // Removing root mode took its lists with it, and nothing else
+        // downloads them before the next scheduled update. A request that
+        // could not be made leaves root mode set up all the same.
+        suspendRunCatching("list update request") { scheduler.updateRootSoon() }
         messages.show(UiMessage(R.string.feature_settings_module_installed))
     }
 

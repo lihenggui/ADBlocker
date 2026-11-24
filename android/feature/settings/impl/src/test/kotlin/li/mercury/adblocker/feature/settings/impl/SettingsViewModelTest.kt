@@ -38,6 +38,7 @@ import li.mercury.adblocker.core.data.repository.DiagnosticsRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
+import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.LogExportResult
 import li.mercury.adblocker.core.data.repository.ModuleRepository
 import li.mercury.adblocker.core.data.repository.ModuleUpdate
@@ -123,6 +124,7 @@ class SettingsViewModelTest {
     private var installedByApp = true
     private var staged = false
     private var installerFailure: String? = null
+    private var listRequestFailure: Exception? = null
     private var removalFailure: String? = null
     private var rootManager: String? = null
     private var rootGranted = false
@@ -240,6 +242,12 @@ class SettingsViewModelTest {
                 }
             },
             vpn = vpn,
+            scheduler = object : ListUpdateScheduler by unexpected() {
+                override suspend fun updateRootSoon() {
+                    done += "update root lists"
+                    listRequestFailure?.let { throw it }
+                }
+            },
             io = main.testDispatcher,
             changes = changes,
         )
@@ -458,7 +466,8 @@ class SettingsViewModelTest {
 
         viewModel.setUpRootMode()
 
-        assertEquals(listOf("install"), done)
+        // With the lists, which a removal before took with it.
+        assertEquals(listOf("install", "update root lists"), done)
         assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
         assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
         assertFalse(viewModel.uiState.value.service.vpnAvailable)
@@ -481,7 +490,20 @@ class SettingsViewModelTest {
         installerFailure = null
         viewModel.setUpRootMode()
         assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
-        assertEquals(listOf("install", "install"), done)
+        assertEquals(listOf("install", "install", "update root lists"), done)
+    }
+
+    @Test
+    fun givenTheListUpdateCannotBeRequested_whenSettingUp_thenRootModeIsSetUpAllTheSame() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        listRequestFailure = IllegalStateException("no scheduler")
+        showSettings()
+
+        viewModel.setUpRootMode()
+
+        assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
+        assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
+        assertEquals(R.string.feature_settings_module_installed, takeMessageText())
     }
 
     @Test
