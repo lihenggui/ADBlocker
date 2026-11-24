@@ -58,6 +58,10 @@ android {
     defaultConfig {
         applicationId = "li.mercury.adblocker"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        // The ABIs scripts/build.sh builds the engine and the daemon for.
+        // Libraries of others would come only from dependencies, and make an
+        // APK a 32-bit device installs without the engine.
+        ndk.abiFilters += listOf("arm64-v8a", "x86_64")
     }
 
     buildTypes {
