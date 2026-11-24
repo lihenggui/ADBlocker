@@ -17,6 +17,7 @@
 package li.mercury.adblocker.core.data.apps
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.content.pm.PermissionInfo
 import androidx.core.app.NotificationManagerCompat
@@ -43,7 +44,8 @@ interface AppPlatformInfo {
     /**
      * Whether this system shows the installed apps only to an app granted
      * [APP_LIST_PERMISSION], and has not granted it. False where the
-     * permission is not defined.
+     * permission is not defined, or defined by an app that is not part of
+     * the system.
      */
     suspend fun appListWithheld(): Boolean
 }
@@ -64,13 +66,23 @@ internal class AndroidAppPlatformInfo @Inject constructor(
     }
 
     override suspend fun appListWithheld(): Boolean = withContext(io) {
+        val pm = context.packageManager
         val permission = try {
-            context.packageManager.getPermissionInfo(APP_LIST_PERMISSION, 0)
+            pm.getPermissionInfo(APP_LIST_PERMISSION, 0)
         } catch (_: PackageManager.NameNotFoundException) {
             // Not defined: the system lists apps for QUERY_ALL_PACKAGES alone.
             return@withContext false
         }
-        (permission.protectionLevel and PermissionInfo.PROTECTION_MASK_BASE) == PermissionInfo.PROTECTION_DANGEROUS &&
+        // Any app can define a permission of that name; only the system's
+        // gates the list, as com.lbe.security.miui's does on MIUI and HyperOS.
+        definedBySystem(pm, permission) &&
+            (permission.protectionLevel and PermissionInfo.PROTECTION_MASK_BASE) == PermissionInfo.PROTECTION_DANGEROUS &&
             ContextCompat.checkSelfPermission(context, APP_LIST_PERMISSION) != PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun definedBySystem(pm: PackageManager, permission: PermissionInfo): Boolean = try {
+        pm.getApplicationInfo(permission.packageName, 0).flags and ApplicationInfo.FLAG_SYSTEM != 0
+    } catch (_: PackageManager.NameNotFoundException) {
+        false
     }
 }

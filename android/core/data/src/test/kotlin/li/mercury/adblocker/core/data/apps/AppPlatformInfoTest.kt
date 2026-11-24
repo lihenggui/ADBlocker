@@ -16,6 +16,8 @@
 
 package li.mercury.adblocker.core.data.apps
 
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageInfo
 import android.content.pm.PermissionInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
@@ -35,11 +37,21 @@ class AppPlatformInfoTest {
     private val application get() = RuntimeEnvironment.getApplication()
     private val platform get() = AndroidAppPlatformInfo(application, Dispatchers.Unconfined)
 
-    private fun define(protection: Int) {
+    private fun define(protection: Int, bySystem: Boolean = true) {
+        val definer = "com.example.security"
+        shadowOf(application.packageManager).installPackage(
+            PackageInfo().apply {
+                packageName = definer
+                applicationInfo = ApplicationInfo().apply {
+                    packageName = definer
+                    flags = if (bySystem) ApplicationInfo.FLAG_SYSTEM else 0
+                }
+            },
+        )
         shadowOf(application.packageManager).addPermissionInfo(
             PermissionInfo().apply {
                 name = APP_LIST_PERMISSION
-                packageName = "com.example.security"
+                packageName = definer
                 protectionLevel = protection
             },
         )
@@ -51,10 +63,17 @@ class AppPlatformInfoTest {
     }
 
     @Test
-    fun givenADangerousAppListPermissionNotGranted_whenChecked_thenTheListIsWithheld() = runTest {
+    fun givenADangerousAppListPermissionOfTheSystemNotGranted_whenChecked_thenTheListIsWithheld() = runTest {
         define(PermissionInfo.PROTECTION_DANGEROUS)
 
         assertTrue(platform.appListWithheld())
+    }
+
+    @Test
+    fun givenTheAppListPermissionDefinedByAnAppThatIsNotPartOfTheSystem_whenChecked_thenTheListIsNotWithheld() = runTest {
+        define(PermissionInfo.PROTECTION_DANGEROUS, bySystem = false)
+
+        assertFalse(platform.appListWithheld())
     }
 
     @Test
