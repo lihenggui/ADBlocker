@@ -64,7 +64,8 @@ data class RequestEvent(
     val reason: PassReason?,
     val profileSerial: Long? = null,
 ) {
-    val appKey: String get() = AppIdentity(packageName, profileSerial).key
+    val identity: AppIdentity get() = AppIdentity(packageName, profileSerial)
+    val appKey: String get() = identity.key
     val blocked: Boolean get() = verdict == Verdict.Blocked || verdict == Verdict.HostBlocked
 }
 

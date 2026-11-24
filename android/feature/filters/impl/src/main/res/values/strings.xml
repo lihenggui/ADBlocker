@@ -141,6 +141,7 @@
     <string name="feature_filters_syntax_text">One rule per line, in EasyList, uBlock Origin or AdGuard syntax.</string>
     <string name="feature_filters_syntax_host">Blocks a domain and its subdomains.</string>
     <string name="feature_filters_syntax_option">Options after $ restrict a rule. Here, only requests from other sites are blocked.</string>
+    <string name="feature_filters_syntax_app">$app= limits a rule to the named app.</string>
     <string name="feature_filters_syntax_path">Blocks matching URLs. * matches any text, and $image limits the rule to images.</string>
     <string name="feature_filters_syntax_exception">@@ allows requests that other rules would block.</string>
     <string name="feature_filters_syntax_cosmetic">Hides page elements. Applies only when Hide page elements is on in Settings.</string>

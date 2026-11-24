@@ -33,6 +33,13 @@ data class AppIdentity(val packageName: String, val profileSerial: Long? = null)
     val key: String get() = profileSerial?.let { "$it:$packageName" } ?: packageName
     val isSharedGroup: Boolean get() = packageName.hasSharedGroupPrefix
 
+    /**
+     * The package that a rule's `$app=` names for this app, in every profile;
+     * null for a shared UID group, whose members a block cannot tell apart.
+     */
+    val rulePackage: String?
+        get() = packageName.takeIf { name -> name.length <= MAX_PACKAGE_LENGTH && name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' || it == '.' || it == '_' } }
+
     companion object {
         fun fromKey(key: String): AppIdentity = SavedAppKey(key).toIdentity()
     }
@@ -60,6 +67,9 @@ value class SavedAppKey(private val key: String) {
 }
 
 private val String.hasSharedGroupPrefix: Boolean get() = startsWith('@')
+
+/** The longest package name the engine reads in a rule. */
+private const val MAX_PACKAGE_LENGTH = 255
 
 /** An installed app, as the package manager describes it. */
 @Immutable

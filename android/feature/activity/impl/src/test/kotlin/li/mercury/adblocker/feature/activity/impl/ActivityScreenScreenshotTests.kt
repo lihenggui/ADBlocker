@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ReadState
 import li.mercury.adblocker.core.model.RuleCheckResult
@@ -98,15 +99,33 @@ class ActivityScreenScreenshotTests {
         val event = DemoData.requests.first()
         val rule = RuleCheckResult(blocked = true, rule = "||adnet.example^\$third-party", source = RuleSource.List(DemoData.EASYLIST))
         capturePhone("Request") {
-            RequestContent(event.copy(reason = null), RequestUiState(request = event, app = DemoApp.News.installedApp, rule = rule), onTrust = {}, onBlock = {}, onForget = {})
+            RequestContent(event.copy(reason = null), RequestUiState(request = event, app = DemoApp.News.installedApp, rule = rule), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
         }
+    }
+
+    @Test
+    fun givenAllowedRequest_whenOpened_thenOffersToBlockItInItsAppOrInAllApps() {
+        capturePhone("RequestAllowed") { AllowedRequest() }
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_activity_block_in_all_apps)).assertHasClickAction()
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAllowedRequestInChinese_whenOpened_thenBothBlockActionsFit() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "RequestAllowed") { AllowedRequest() }
+    }
+
+    @Composable
+    private fun AllowedRequest() {
+        val event = DemoData.requests.first { it.verdict == Verdict.Allowed && it.packageName == DemoApp.News.packageName }
+        RequestContent(event, RequestUiState(request = event, app = DemoApp.News.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
     }
 
     @Test
     fun givenBankRequest_whenOpened_thenSaysWhyItWasNotDecrypted() {
         val event = DemoData.requests.first { it.packageName == DemoApp.Bank.packageName }
         capturePhone("RequestPassed") {
-            RequestContent(event, RequestUiState(request = event, app = DemoApp.Bank.installedApp), onTrust = {}, onBlock = {}, onForget = {})
+            RequestContent(event, RequestUiState(request = event, app = DemoApp.Bank.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
         }
     }
 
@@ -114,7 +133,7 @@ class ActivityScreenScreenshotTests {
     fun givenHostBlocked_whenOpened_thenSaysTheConnectionWasRefusedWhole() {
         val event = DemoData.requests.first { it.verdict == Verdict.HostBlocked }
         capturePhone("RequestHostBlocked") {
-            RequestContent(event, RequestUiState(request = event, app = DemoApp.Puzzle.installedApp), onTrust = {}, onBlock = {}, onForget = {})
+            RequestContent(event, RequestUiState(request = event, app = DemoApp.Puzzle.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
         }
     }
 

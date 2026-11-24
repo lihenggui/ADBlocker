@@ -132,6 +132,7 @@
     <string name="feature_filters_syntax_text">每行一条规则，使用 EasyList、uBlock Origin 或 AdGuard 语法。</string>
     <string name="feature_filters_syntax_host">拦截域名及其子域名。</string>
     <string name="feature_filters_syntax_option">$ 后面的选项用于限定规则。此处只拦截来自其他网站的请求。</string>
+    <string name="feature_filters_syntax_app">$app= 将规则限定为指定的应用。</string>
     <string name="feature_filters_syntax_path">拦截匹配的网址。* 匹配任意文字，$image 将规则限定为图片。</string>
     <string name="feature_filters_syntax_exception">@@ 放行其他规则会拦截的请求。</string>
     <string name="feature_filters_syntax_cosmetic">隐藏页面元素。仅在“设置”中开启“隐藏页面元素”后生效。</string>

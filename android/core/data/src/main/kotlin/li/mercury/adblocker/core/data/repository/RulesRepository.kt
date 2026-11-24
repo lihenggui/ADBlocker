@@ -50,8 +50,8 @@ interface RulesRepository {
     /** What the lists say about a request to [url], made by [app] when it is known. */
     suspend fun checkUrl(url: String, page: String?, kind: String?, app: String? = null): RuleCheckResult
 
-    /** Adds a rule that blocks [domain] and every name below it. */
-    suspend fun blockDomain(domain: String)
+    /** Adds a rule that blocks [domain] and every name below it, in the package [app] only when it is given. */
+    suspend fun blockDomain(domain: String, app: String? = null)
 
     /**
      * Adds the rules in [uri], a file the user picked, to the user's own, and
@@ -93,8 +93,8 @@ internal class AbdRulesRepository @Inject constructor(
 
     override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult = abd.check(url, page, kind, app)
 
-    override suspend fun blockDomain(domain: String) {
-        changes.changing { abd.appendUserRules("${blockRule(domain)}\n", unique = true) }
+    override suspend fun blockDomain(domain: String, app: String?) {
+        changes.changing { abd.appendUserRules("${blockRule(domain, app)}\n", unique = true) }
     }
 
     override suspend fun import(uri: Uri): Int {
@@ -135,8 +135,15 @@ internal fun readLimited(input: InputStream, max: Int): ByteArray {
 
 private const val READ_BUFFER = 64 * 1024
 
-/** The rule that blocks [domain] and every name below it, whatever the request. */
-fun blockRule(domain: String): String = "||${domain.trim().trimStart('.').lowercase()}^"
+/**
+ * The rule that blocks [domain] and every name below it, whatever the
+ * request: in every app, or in the package [app] only, in lower case as the
+ * engine names it.
+ */
+fun blockRule(domain: String, app: String? = null): String {
+    val host = "||${domain.trim().trimStart('.').lowercase()}^"
+    return if (app == null) host else "$host\$app=${app.lowercase()}"
+}
 
 enum class HostInput { Site, RulePreview }
 

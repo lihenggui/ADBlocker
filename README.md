@@ -131,9 +131,11 @@ private key and the app's data. Android stores the certificate separately.
   Supported lists include EasyList, uBlock Origin lists, and AdGuard lists.
 - **Activity** records requests when you start a recording. Switch to
   the filtered app, repeat the action you want to check, and stop the
-  recording to see how the current rules treat each request. The latest
-  500 requests stay in memory until the next recording or until
-  ADBlocker exits.
+  recording to see how the current rules treat each request. Open an
+  allowed request to block its domain in that app only or in all apps;
+  the rule is added to **My rules** in **Filters**. A shared UID group's requests can be
+  blocked only in all apps. The latest 500 requests stay in memory until
+  the next recording or until ADBlocker exits.
 
 The Quick Settings tile pauses and resumes filtering, and in VPN mode
 starts the VPN. Settings links to Android's Always-on VPN setting and

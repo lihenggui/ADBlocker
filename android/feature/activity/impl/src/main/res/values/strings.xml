@@ -65,10 +65,13 @@
     <string name="feature_activity_reason_other">Passed to the app unread.</string>
     <string name="feature_activity_trust_site">Trust %1$s</string>
     <string name="feature_activity_block_host">Block this domain</string>
+    <string name="feature_activity_block_in_app">Block in %1$s</string>
+    <string name="feature_activity_block_in_all_apps">Block in all apps</string>
     <string name="feature_activity_forget">Retry decryption</string>
     <string name="feature_activity_copy">Copy</string>
     <string name="feature_activity_trusted">Added %1$s to trusted sites</string>
-    <string name="feature_activity_blocked_host">Blocked %1$s</string>
+    <string name="feature_activity_blocked_host_everywhere">Blocked %1$s in all apps</string>
+    <string name="feature_activity_blocked_host_in_app">Blocked %1$s in %2$s</string>
     <string name="feature_activity_forgotten">Decryption is retried at the next connection</string>
     <string name="feature_activity_failed">Action failed. Check the filtering service in Settings.</string>
     <string name="feature_activity_select">Select a request</string>
