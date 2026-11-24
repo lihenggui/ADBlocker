@@ -104,6 +104,17 @@ interface ModuleRepository {
     suspend fun startDaemon(): Boolean
 
     /**
+     * Starts the daemon of a module this app installed without the user
+     * having asked, where nothing started it when the device did: no root
+     * manager ran the module's launcher. Unlike [startDaemon] it turns
+     * nothing on. Returns false, having started nothing, for a module in a
+     * root manager, one that turned itself off, and a daemon that runs.
+     *
+     * @throws AbdException if root is refused or the daemon does not start.
+     */
+    suspend fun startUnasked(): Boolean
+
+    /**
      * Turns the module on again after its boot guard turned it off, as the
      * root manager's switch would, and starts the daemon. Returns false when
      * the module is marked for removal in a root manager.
@@ -122,6 +133,7 @@ internal class RootModuleRepository(
     private val rootShell: RootShell,
     private val abd: AbdClient,
     private val changes: DataChanges,
+    private val userData: UserDataRepository,
     private val ioDispatcher: CoroutineDispatcher,
 ) : ModuleRepository {
     @Inject
@@ -130,12 +142,14 @@ internal class RootModuleRepository(
         rootShell: RootShell,
         root: RootTransport,
         changes: DataChanges,
+        userData: UserDataRepository,
         @Dispatcher(IO) ioDispatcher: CoroutineDispatcher,
     ) : this(
         context,
         rootShell,
         root.fixedAbdClient(),
         changes,
+        userData,
         ioDispatcher,
     )
 
@@ -145,7 +159,10 @@ internal class RootModuleRepository(
     /** Which root manager answers does not change while the app runs; a missing one may be granted later, so it is asked again. */
     @Volatile private var rootManagerFound: String? = null
 
-    override suspend fun state(): ModuleState = suspendRunCatching { verifyState() }.getOrElse {
+    override suspend fun state(): ModuleState = suspendRunCatching {
+        // Whose a module that is ready is, is remembered for the next boot.
+        verifyState().also { if (it == ModuleState.Ready) ownedByApp() }
+    }.getOrElse {
         if (it is AbdException.NoRoot) ModuleState.NoRoot else ModuleState.Unavailable
     }
 
@@ -214,9 +231,16 @@ internal class RootModuleRepository(
     }
 
     override suspend fun isInstalledByApp(): Boolean = try {
-        rootShell.run("$LOCATE; [ $MODULE_DIR = $DIRECT_DIR ] && [ -f $DIRECT_DIR/direct.sh ]", label = "module owner").isSuccess
+        ownedByApp()
     } catch (_: AbdException.NoRoot) {
         false
+    }
+
+    /** Asks root whose the module in use is, and remembers the answer for where root is not to be asked. */
+    private suspend fun ownedByApp(): Boolean {
+        val owned = rootShell.run("$LOCATE; [ $MODULE_DIR = $DIRECT_DIR ] && [ -f $DIRECT_DIR/direct.sh ]", label = "module owner").isSuccess
+        userData.setModuleInstalledByApp(owned)
+        return owned
     }
 
     override suspend fun remove() = changes.changing {
@@ -227,6 +251,7 @@ internal class RootModuleRepository(
             timeoutSeconds = REMOVE_TIMEOUT_SECONDS,
         )
         if (!result.isSuccess) throw AbdException.CommandFailed(result.output.ifBlank { "The module was not removed" })
+        userData.setModuleInstalledByApp(false)
     }
 
     override suspend fun startDaemon(): Boolean = changes.changing {
@@ -234,7 +259,20 @@ internal class RootModuleRepository(
         // no root manager has a switch for it. A switch that could not be
         // cleared is found by the check that follows.
         rootShell.run("$LOCATE; [ $MODULE_DIR != $DIRECT_DIR ] || rm -f $DIRECT_DIR/disable", label = "module enable")
-        if (disabledOrRemoved()) return@changing false
+        start()
+    }
+
+    override suspend fun startUnasked(): Boolean {
+        // A module in a root manager is the manager's to start, and a daemon
+        // that runs was started by the launcher a manager ran.
+        if (!ownedByApp() || abd.status().running) return false
+        // Not turned on again here: its boot guard turned it off for the user to see.
+        return changes.changing { start() }
+    }
+
+    /** Runs the service script of a module that is on, and waits for its daemon. */
+    private suspend fun start(): Boolean {
+        if (disabledOrRemoved()) return false
         // The script leaves the supervisor running in the background; with
         // its output detached, the shell returns once it has been started.
         val script = "$MODULE_DIR/service.sh"
@@ -243,8 +281,8 @@ internal class RootModuleRepository(
             label = "daemon start",
         )
         if (!result.isSuccess) throw AbdException.CommandFailed(result.output)
-        if (awaitRunning(abd)) return@changing true
-        if (disabledOrRemoved()) return@changing false
+        if (awaitRunning(abd)) return true
+        if (disabledOrRemoved()) return false
         throw AbdException.TimedOut()
     }
 

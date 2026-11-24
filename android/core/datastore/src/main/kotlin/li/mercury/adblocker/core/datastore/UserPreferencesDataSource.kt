@@ -74,6 +74,7 @@ class UserPreferencesDataSource @Inject constructor(
                 rootSwitchPending = preferences[ROOT_SWITCH_PENDING] ?: defaults.rootSwitchPending,
                 rootSwitchCancelling = preferences[ROOT_SWITCH_CANCELLING] ?: defaults.rootSwitchCancelling,
                 rootHandoffCleanupPending = preferences[ROOT_HANDOFF_TO_FINISH] != null,
+                moduleInstalledByApp = preferences[MODULE_INSTALLED_BY_APP] ?: defaults.moduleInstalledByApp,
             )
         }
 
@@ -96,6 +97,8 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun setRootSwitchPending() = dataStore.edit { it[ROOT_SWITCH_PENDING] = true }
 
     suspend fun setRootSwitchCancelling() = dataStore.edit { it[ROOT_SWITCH_CANCELLING] = true }
+
+    suspend fun setModuleInstalledByApp(installed: Boolean) = dataStore.edit { it[MODULE_INSTALLED_BY_APP] = installed }
 
     suspend fun startRootHandoff(): String = checkNotNull(
         dataStore.edit {
@@ -170,6 +173,7 @@ class UserPreferencesDataSource @Inject constructor(
         val ROOT_APPS_BEFORE_SWITCH = stringSetPreferencesKey("root_apps_before_switch")
         val ROOT_HANDOFF_ATTEMPT = stringPreferencesKey("root_handoff_attempt")
         val ROOT_HANDOFF_TO_FINISH = stringPreferencesKey("root_handoff_to_finish")
+        val MODULE_INSTALLED_BY_APP = booleanPreferencesKey("module_installed_by_app")
     }
 }
 

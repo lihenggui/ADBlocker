@@ -58,6 +58,12 @@ data class UserData(
     val rootSwitchCancelling: Boolean = false,
     /** Root mode was published and its rollback files still need to be removed. */
     val rootHandoffCleanupPending: Boolean = false,
+    /**
+     * This app installed the root module in use, as it last saw. What can be
+     * known of the module without asking for root: at boot, root is asked
+     * for only where there may be a daemon of this app's to start.
+     */
+    val moduleInstalledByApp: Boolean = false,
 ) {
     val hasPendingLists: Boolean get() = pendingDisabledLists.isNotEmpty() || pendingEnabledLists.isNotEmpty()
 

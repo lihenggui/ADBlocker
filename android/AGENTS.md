@@ -13,8 +13,8 @@ archive, where root managers look for them.
 
 - `app/`: the application, the navigation bar or rail and the list-detail
   layout (`ui/ADBlockerApp.kt`), its pane and navigation composables
-  (`ui/ShellNavigation.kt`), the launcher and splash icons, and the Quick
-  Settings tile (`tile/`).
+  (`ui/ShellNavigation.kt`), the launcher and splash icons, the Quick
+  Settings tile (`tile/`), and the receiver of the boot broadcast (`boot/`).
 - `benchmarks/`: the startup Baseline Profile and cold-start Macrobenchmarks.
   Generate the release profile with `./gradlew :app:generateReleaseBaselineProfile`
   on an API 33+ test device. Run `./gradlew :benchmarks:connectedBenchmarkReleaseAndroidTest`
@@ -93,6 +93,13 @@ Assembling `:app` needs the daemons in `../out/` (`../scripts/build.sh`).
   names the module's files begins with `ModulePaths.LOCATE` and names them
   through `MODULE_DIR`; `ModulePaths.ABD` does so for `abd`. The app
   installs with the `direct.sh` in its own APK (`ModuleRepository`).
+- A root command can show the root manager's notice or prompt. Nothing
+  runs one unasked except `AutoStart`, once after a boot (`BootReceiver`
+  in `app/`), and only in root mode with a module the app installed, as
+  the settings remember it (`UserData.moduleInstalledByApp`): root is not
+  asked whose the module is in order to find out. It starts a stopped
+  daemon where no root manager ran the module's launcher, never turns a
+  module on again, and is not tried a second time.
 - Screens ask `Capabilities` what the method in use can do, never the
   method itself. Without the engine in the build, the VPN method's commands
   throw `AbdException.EngineMissing`.
