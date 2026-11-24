@@ -24,7 +24,8 @@ if [ "$#" -eq 0 ]; then
     for scenario in install install-unsupported reinstall boot boot-implausible-list boot-unreadable-list \
         boot-app-gone boot-disabled boot-yields boot-pending-module remove remove-fails remove-refused \
         remove-leftover remove-leftover-reinstall remove-leftover-module started-by-another-name \
-        remove-not-stopped boot-app-gone-not-stopped \
+        remove-not-stopped boot-app-gone-not-stopped remove-incomplete boot-app-gone-incomplete \
+        reinstall-incomplete \
         takeover update-module update-module-removal update-module-pending install-pending-module \
         module-uninstall; do
         sh "$0" "$scenario" || result=1
@@ -220,12 +221,41 @@ case "$SCENARIO" in
     reinstall)
         installed_by_app
         touch "$direct/disable"
+        # What a deletion cut short left beside the module.
+        mkdir -p "$direct.gone/bin"
         direct_sh install "$fixture/module.zip" || fail "the installation failed"
         starts direct
         stopped_first
         test ! -e "$direct/disable" || fail "installing again left the module turned off"
+        test ! -e "$direct.gone" || fail "the module that was replaced is still there"
         test -x "$launcher" || fail "nothing starts the module at boot"
         staged_nothing
+        ;;
+    reinstall-incomplete)
+        # As after a power loss in the middle of a removal by other hands.
+        installed_by_app
+        rm -r "$direct/bin" "$direct/uninstall.sh" "$direct/module.prop"
+        direct_sh install "$fixture/module.zip" || fail "the installation failed"
+        starts direct
+        stopped_first
+        test -x "$direct/bin/abd" && test -f "$direct/uninstall.sh" || fail "the module is still incomplete"
+        ;;
+    remove-incomplete)
+        installed_by_app
+        mkdir -p "$data/ca"
+        rm "$direct/uninstall.sh"
+        if direct_sh remove; then fail "part of a module was removed with its daemon unaccounted for"; fi
+        grep -q '^! The module is incomplete' "$fixture/output" || fail "the removal did not say why"
+        test ! -s "$fixture/calls" && test -d "$data/ca" && test -x "$launcher" || fail "something was removed all the same"
+        ;;
+    boot-app-gone-incomplete)
+        installed_by_app
+        mkdir -p "$data/ca" "$data/store"
+        rm -r "$direct/bin" "$direct/uninstall.sh"
+        printf '%s\n' 'com.android.shell 2000 0 /data/user/0/com.android.shell' >"$packages"
+        sh "$launcher" || fail "the launcher failed"
+        test ! -e "$data" || fail "the key or the data outlived the app"
+        test ! -e "$direct" && test ! -e "$direct.gone" && test ! -e "$launcher" || fail "something of the module is left"
         ;;
     boot)
         installed_by_app

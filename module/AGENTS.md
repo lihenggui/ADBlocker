@@ -39,7 +39,11 @@ and pid files in `/data/adb/adblocker`.
   removes nothing, since the module's `abd` is what stops it. `boot`
   uninstalls once the app is gone from `/data/system/packages.list`, with
   nothing running to stop;
-  a list that lacks what every device has says nothing. Where
+  a list that lacks what every device has says nothing. The app's module
+  is moved out of its place before it is deleted, so that a deletion cut
+  short leaves no part of one. Part of a module, however it came about, is
+  replaced by `install` and refused by `remove`; at boot with the app gone
+  it is removed with all of the data, the key first. Where
   `uninstall.sh` had to leave the copies of the stores to the apps that use
   them, `remove` leaves a script in the launcher's place that deletes them
   at the next boot unless a module is installed by then. The daemon of such

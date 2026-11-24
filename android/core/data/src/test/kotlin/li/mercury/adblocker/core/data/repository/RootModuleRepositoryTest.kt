@@ -130,9 +130,31 @@ class RootModuleRepositoryTest {
     private fun rememberedAsTheApps() = settings.userData.value.moduleInstalledByApp
 
     @Test
-    fun givenAnUnreadableModule_whenCheckingReadiness_thenTheModuleIsUnverified() = runTest {
-        installed(direct).resolve("bin/abd").setExecutable(false)
+    fun givenAnUnreadableModuleInTheManager_whenCheckingReadiness_thenTheModuleIsUnverified() = runTest {
+        installed(flashed).resolve("bin/abd").setExecutable(false)
         assertEquals(ModuleState.Unavailable, module.state())
+        flashed.resolve("bin/abd").setExecutable(true)
+        flashed.resolve("module.prop").writeText("id=adblocker\n")
+        assertEquals(ModuleState.Unavailable, module.state())
+    }
+
+    @Test
+    fun givenPartOfAModuleTheAppInstalled_whenCheckingReadiness_thenItCountsAsNoneAndSettingUpReplacesIt() = runTest {
+        installed(direct).resolve("bin/abd").setExecutable(false)
+        assertEquals(ModuleState.NotInstalled, module.state())
+        installed(direct).resolve("bin").deleteRecursively()
+        assertEquals(ModuleState.NotInstalled, module.state())
+        installed(direct).resolve("module.prop").writeText("id=adblocker\n")
+        assertEquals(ModuleState.NotInstalled, module.state())
+        assertFalse(module.needsUpdate())
+
+        installer = {
+            installed(direct)
+            CommandResult(true, 0, "", "")
+        }
+        readyAt = 1
+        assertTrue(module.installBundled())
+        assertEquals(ModuleState.Ready, module.state())
     }
 
     @Test
