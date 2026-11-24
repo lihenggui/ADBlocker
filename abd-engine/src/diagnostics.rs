@@ -71,7 +71,8 @@ impl Diagnostics {
                     .map(filter::network_line)
                     .filter(|s| !s.is_empty())
                 {
-                    if index.len() == MAX_INDEX {
+                    // A rule for apps takes two entries.
+                    if index.len() + 2 > MAX_INDEX {
                         index = Vec::new();
                         indexing = false;
                         break;
@@ -275,6 +276,21 @@ mod tests {
 
         std::fs::remove_file(list).unwrap();
         assert!(diagnostic().unwrap().blocked);
+    }
+
+    #[test]
+    fn the_index_of_rules_stays_within_its_limit_where_a_rule_for_an_app_fills_it() {
+        let dir = tempfile::tempdir().unwrap();
+        let list = dir.path().join("list.txt");
+        let mut text = String::new();
+        for n in 0..MAX_INDEX - 1 {
+            text.push_str(&format!("||{n}.example^\n"));
+        }
+        text.push_str("||last.example^$app=com.reader\n||more.example^\n");
+        let paths = [list.clone()];
+        let built =
+            Diagnostics::build(&paths, std::iter::once(Ok((list.as_path(), text)))).unwrap();
+        assert!(built.index.len() <= MAX_INDEX);
     }
 
     #[test]

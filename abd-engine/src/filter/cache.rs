@@ -52,6 +52,23 @@ impl Filters {
         // those of its lists were not compiled.
         let has_apps: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
+        let apps = if has_apps {
+            let mut kept = APPS.map(|name| {
+                let kept = files::read_bytes(&cache.join(name), remaining).ok()?;
+                remaining -= kept.len();
+                Some(kept)
+            });
+            let [blocks, exceptions, hosts, guards, excepted] = kept.each_mut().map(Option::take);
+            Some(AppRules::compiled([
+                &blocks?,
+                &exceptions?,
+                &hosts?,
+                &guards?,
+                &excepted?,
+            ])?)
+        } else {
+            None
+        };
         let mut engine = |name: &str| {
             let compiled = files::read_bytes(&cache.join(name), remaining).ok()?;
             remaining -= compiled.len();
@@ -96,24 +113,7 @@ impl Filters {
             } else {
                 None
             },
-            apps: if has_apps {
-                let kept = APPS.map(|name| files::read_bytes(&cache.join(name), MAX_COMPILED));
-                let [
-                    Ok(blocks),
-                    Ok(exceptions),
-                    Ok(hosts),
-                    Ok(guards),
-                    Ok(excepted),
-                ] = &kept
-                else {
-                    return None;
-                };
-                Some(AppRules::compiled([
-                    blocks, exceptions, hosts, guards, excepted,
-                ])?)
-            } else {
-                None
-            },
+            apps,
             rules,
             host_rules,
         })
