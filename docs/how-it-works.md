@@ -360,7 +360,8 @@ overlay, SELinux rules or `post-fs-data` script, so root alone can install
 it, and it can be in either of two places.
 
 - The app installs it with `module/direct.sh` into
-  `/data/adb/adblocker_direct` and starts it at once. No root manager lists
+  `/data/adb/adblocker_direct` and starts it at once, when onboarding or
+  **Settings › Set up root mode** sets root mode up. No root manager lists
   it. A launcher in `/data/adb/service.d`, which KernelSU, Magisk and APatch
   run at late_start, starts it at boot. Where nothing runs that directory,
   the app starts the daemon when the device has finished booting, which
@@ -377,14 +378,22 @@ it, and it can be in either of two places.
 - An update of the app carries a new module. When the app is next opened
   in root mode it replaces an older module with its own, wherever that one
   is, unless the module is turned off, marked for removal or waiting in a
-  root manager for a restart. A newer module is left alone.
+  root manager for a restart. A newer module is left alone. Meanwhile the
+  overview says that root mode is updating. A module left older, as after a
+  failed update, is offered for update in Settings.
+- A module flashed in Magisk or APatch waits for a restart. Opened before
+  it, the app sets up its own copy, which filters until the manager's takes
+  over at the restart.
 - Both keep their data in `/data/adb/adblocker`, so the selection, the
   lists and the authority carry over from one to the other.
-- The app removes a module it installed: the daemon stops, apps stop
+- The app removes a module it installed, from **Settings › Remove root
+  mode**: the daemon stops, apps stop
   trusting the authority, its key is destroyed and the data is deleted.
   Copies of the certificate stores that running apps still have mounted
   are deleted at the next boot, where a root manager runs
-  `/data/adb/service.d`. A module in a root manager is removed there.
+  `/data/adb/service.d`. A module in a root manager is removed there, as
+  Settings says in its place. With root mode removed, Settings offers to
+  set it up again or to filter in VPN mode instead.
 - With the app uninstalled, nothing is left to control a module it
   installed. Its daemon reads Android's package list when the list changes
   and ends, removing its rules, once the app has been absent for 30
@@ -451,6 +460,12 @@ the switch restores those settings and removes downloaded copies of lists
 that are no longer enabled. The app schedules an update for restored
 subscriptions that need to be downloaded again. Completing the switch
 discards the checkpoint.
+
+Settings switches in one action: where no module of the app's version is
+in use, it sets root mode up first, then hands over. A switch that does
+not finish stays pending, and trying it again in Settings does the same.
+Canceling it leaves root mode set up; Settings shows it under the method,
+with its removal, while the VPN is in use.
 
 ## Cost
 
