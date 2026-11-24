@@ -1,0 +1,1 @@
+A smaller download: the APK is 17.7 MB instead of 29.3 MB. The native libraries are compressed, and the public suffix list is read as data instead of compiled into code, with the same answers. Releases also carry the package under an .apk name for installing without root.

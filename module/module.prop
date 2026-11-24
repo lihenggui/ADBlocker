@@ -1,6 +1,6 @@
 id=adblocker
 name=ADBlocker
-version=v0.1.2
-versionCode=3
+version=v0.1.3
+versionCode=4
 author=Mercury Li
 description=Filters Android app traffic with browser ad-blocking lists (EasyList, uBlock Origin, AdGuard), including HTTPS.
