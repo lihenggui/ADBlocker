@@ -51,6 +51,7 @@ import androidx.core.net.toUri
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.model.FilteringScope
+import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.ThemeMode
 import li.mercury.adblocker.core.model.UpdateInterval
 import li.mercury.adblocker.core.ui.AppSnackbarHost
@@ -80,13 +81,20 @@ fun SettingsScreen(onBack: () -> Unit, onOpenHttps: () -> Unit, viewModel: Setti
         onShowSystemApps = viewModel::setShowSystemApps,
         onFilteringScope = viewModel::setFilteringScope,
         onUrlFiltering = viewModel::setUrlFiltering,
-        onRestart = viewModel::restartService,
-        onInstallModule = viewModel::installModule,
         onForgetAllPins = viewModel::forgetAllPinned,
         onExportLogs = { logs.launch("adblocker-log.txt") },
         modifier = modifier,
         onCosmetic = viewModel::setCosmetic,
         onForgetPin = viewModel::forgetPinned,
+        rootActions = RootActions(
+            onRestart = viewModel::restartService,
+            onTurnOnAgain = viewModel::turnOnAgain,
+            onSetUp = viewModel::setUpRootMode,
+            onUpdate = viewModel::updateRootMode,
+            onRemove = viewModel::removeRootMode,
+            onCheckAgain = viewModel::refresh,
+            onSwitchToVpn = viewModel::switchToVpn,
+        ),
         vpnActions = VpnActions(
             onCheckRoot = { viewModel.checkRoot() },
             onSwitchToRoot = viewModel::switchToRoot,
@@ -108,14 +116,13 @@ internal fun SettingsScreen(
     onWifiOnly: (Boolean) -> Unit,
     onShowSystemApps: (Boolean) -> Unit,
     onUrlFiltering: (Boolean) -> Unit,
-    onRestart: () -> Unit,
-    onInstallModule: () -> Unit,
     onForgetAllPins: () -> Unit,
     onExportLogs: () -> Unit,
     modifier: Modifier = Modifier,
     onFilteringScope: (FilteringScope) -> Unit = {},
     onCosmetic: (Boolean) -> Unit = {},
     onForgetPin: (packageName: String, host: String?) -> Unit = { _, _ -> },
+    rootActions: RootActions = RootActions(),
     vpnActions: VpnActions = VpnActions(),
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -141,11 +148,14 @@ internal fun SettingsScreen(
                 VpnSettings(
                     state = state,
                     actions = vpnActions,
-                    onInstallModule = onInstallModule,
+                    onRemoveRootMode = rootActions.onRemove,
                     onUrlFiltering = onUrlFiltering,
                     onCosmetic = { on -> if (on) explainingCosmetic = true else onCosmetic(false) },
                     onShowPins = { showingPinned = true },
                 )
+            } else if (service.module == ModuleState.NotInstalled && service.vpnAvailable) {
+                // Nothing filters until root mode is set up: VPN mode can be chosen instead.
+                RootMethodRows(service.busy, rootActions.onSwitchToVpn)
             }
 
             AppearanceRows(data.themeMode, data.useDynamicColor, onThemeMode, onDynamicColor)
@@ -162,7 +172,7 @@ internal fun SettingsScreen(
 
             if (!usesVpn) {
                 RootHttpsRows(service, onUrlFiltering) { on -> if (on) explainingCosmetic = true else onCosmetic(false) }
-                ModuleService(state, onRestart, onInstallModule) { showingPinned = true }
+                ModuleService(state, rootActions) { showingPinned = true }
             }
 
             DataAndAboutRows(state.appVersion, onExportLogs, onOpenSource = { context.startActivity(Intent(Intent.ACTION_VIEW, SOURCE_URL.toUri())) })

@@ -61,24 +61,25 @@ class VpnActions(
 )
 
 /**
- * The settings of filtering without root: the method, with the root module
- * to change to once root is granted; the VPN, whose start at boot and
+ * The settings of filtering without root: the method, with root mode to
+ * change to once root is granted; the VPN, whose start at boot and
  * lockdown the system holds; and HTTPS, which the user sets up and undoes.
  */
 @Composable
 internal fun VpnSettings(
     state: SettingsUiState,
     actions: VpnActions,
-    onInstallModule: () -> Unit,
+    onRemoveRootMode: () -> Unit,
     onUrlFiltering: (Boolean) -> Unit,
     onCosmetic: (Boolean) -> Unit,
     onShowPins: () -> Unit,
 ) {
     var confirmingRoot by rememberSaveable { mutableStateOf(false) }
     var removingCertificate by rememberSaveable { mutableStateOf(false) }
+    var removingRootMode by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
     val service = state.service
-    MethodRows(state, actions, onInstallModule) { confirmingRoot = true }
+    MethodRows(state, actions, onRemoveRootMode = { removingRootMode = true }) { confirmingRoot = true }
     VpnSystemRows(state, context)
     VpnHttpsRows(service, actions.onOpenHttps, onUrlFiltering, onCosmetic, onShowPins) { removingCertificate = true }
 
@@ -96,6 +97,14 @@ internal fun VpnSettings(
             dismissButton = { TextButton(onClick = { confirmingRoot = false }) { Text(stringResource(R.string.feature_settings_cancel)) } },
         )
     }
+    if (removingRootMode) {
+        RemoveRootModeDialog(
+            onRemove = {
+                removingRootMode = false
+                onRemoveRootMode()
+            },
+        ) { removingRootMode = false }
+    }
     if (removingCertificate) {
         RemoveCertificateSheet(
             onRemove = {
@@ -108,11 +117,13 @@ internal fun VpnSettings(
 }
 
 @Composable
-private fun MethodRows(state: SettingsUiState, actions: VpnActions, onInstallModule: () -> Unit, onConfirmRoot: () -> Unit) {
+private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRootMode: () -> Unit, onConfirmRoot: () -> Unit) {
     val service = state.service
     val pending = state.userData.rootSwitchPending
     val cancelling = state.userData.rootSwitchCancelling
-    val methodRows = if (pending) 3 else 2
+    // An installation of root mode, left by a cancelled switch for example, is removed here.
+    val installation = if (pending || service.rootAvailable != true) null else installationRow(service, onRemoveRootMode)
+    val methodRows = 2 + (if (pending) 1 else 0) + (if (installation != null) 1 else 0)
 
     SectionHeader(stringResource(R.string.feature_settings_method))
     SegmentedGroup(methodRows) { index ->
@@ -138,13 +149,12 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onInstallMod
 
                                 cancelling -> R.string.feature_settings_cancel_root_pending
 
+                                service.switchingToRoot -> R.string.feature_settings_root_setting_up
+
                                 pending -> when (service.module) {
-                                    ModuleState.NotInstalled -> R.string.feature_settings_module_install
-                                    ModuleState.Mismatched -> R.string.feature_settings_module_reinstall
-                                    ModuleState.NeedsRestart -> R.string.feature_settings_module_needs_restart
                                     ModuleState.NoRoot -> R.string.feature_settings_method_root_missing
-                                    ModuleState.Ready -> R.string.feature_settings_finish_root_switch
                                     ModuleState.Unavailable, null -> R.string.feature_settings_module_check_again
+                                    ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> R.string.feature_settings_switch_root_retry
                                 }
 
                                 service.rootAvailable == true -> R.string.feature_settings_method_root_available
@@ -159,10 +169,9 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onInstallMod
                 onClick = when {
                     service.checkingRoot || service.busy || cancelling -> null
 
+                    // Trying again sets up root mode where it has to.
                     pending -> when (service.module) {
-                        ModuleState.NotInstalled, ModuleState.Mismatched -> onInstallModule
-                        ModuleState.NeedsRestart -> null
-                        ModuleState.Ready -> actions.onSwitchToRoot
+                        ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> actions.onSwitchToRoot
                         ModuleState.NoRoot, ModuleState.Unavailable, null -> actions.onCheckRoot
                     }
 
@@ -174,13 +183,17 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onInstallMod
                 },
             )
 
-            else -> SegmentedItem(
-                index = 2,
-                count = methodRows,
-                headline = stringResource(if (cancelling) R.string.feature_settings_retry_root_cancel else R.string.feature_settings_cancel_root_switch),
-                leading = { Icon(AdbIcons.Close, contentDescription = null, Modifier.size(20.dp)) },
-                onClick = actions.onCancelRootSwitch.takeUnless { service.busy },
-            )
+            else -> if (installation != null) {
+                RootRowItem(installation, index = 2, count = methodRows)
+            } else {
+                SegmentedItem(
+                    index = 2,
+                    count = methodRows,
+                    headline = stringResource(if (cancelling) R.string.feature_settings_retry_root_cancel else R.string.feature_settings_cancel_root_switch),
+                    leading = { Icon(AdbIcons.Close, contentDescription = null, Modifier.size(20.dp)) },
+                    onClick = actions.onCancelRootSwitch.takeUnless { service.busy },
+                )
+            }
         }
     }
 }

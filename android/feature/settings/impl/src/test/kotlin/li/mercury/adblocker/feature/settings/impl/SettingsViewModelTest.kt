@@ -40,6 +40,8 @@ import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
 import li.mercury.adblocker.core.data.repository.LogExportResult
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.ModuleUpdate
+import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterMethod
@@ -117,12 +119,19 @@ class SettingsViewModelTest {
 
     private var moduleReadFailure: AbdException? = null
     private var moduleInstalled = false
+    private var moduleOutdated = false
+    private var installedByApp = true
+    private var staged = false
+    private var installerFailure: String? = null
+    private var removalFailure: String? = null
+    private var rootManager: String? = null
+    private var rootGranted = false
     private var shouldDefer = false
     private var startResult = Result.success(false)
     private val methods = object : FilterMethodRepository by unexpected() {
         override suspend fun rootAvailable(): Boolean {
             rootAsked++
-            return false
+            return rootGranted
         }
 
         override suspend fun switchTo(method: FilterMethod): FilterMethodSwitch {
@@ -162,25 +171,53 @@ class SettingsViewModelTest {
         }
     }
 
+    private val module = object : ModuleRepository by unexpected() {
+        override suspend fun state(): ModuleState {
+            moduleReadFailure?.let { throw it }
+            return when {
+                !moduleInstalled -> ModuleState.NotInstalled
+                moduleOutdated -> ModuleState.Mismatched
+                else -> ModuleState.Ready
+            }
+        }
+
+        override suspend fun installBundled(): Boolean {
+            done += "install"
+            installerFailure?.let { throw AbdException.CommandFailed(it) }
+            moduleInstalled = true
+            moduleOutdated = false
+            return true
+        }
+
+        override suspend fun isInstalledByApp() = moduleInstalled && installedByApp
+
+        override suspend fun isStagedInManager() = staged
+
+        override suspend fun rootManager() = rootManager
+
+        override suspend fun remove() {
+            done += "remove"
+            removalFailure?.let { throw AbdException.CommandFailed(it) }
+            moduleInstalled = false
+        }
+
+        override suspend fun startDaemon() = startResult.getOrThrow()
+
+        override suspend fun turnOnAgain(): Boolean {
+            done += "turn on again"
+            return startResult.getOrThrow()
+        }
+    }
+
+    private val updater = ModuleUpdater(userData, module)
+
     private val viewModel by lazy {
         SettingsViewModel(
             platform = platform,
             userData = userData,
             daemon = daemon,
-            module = object : ModuleRepository by unexpected() {
-                override suspend fun state(): ModuleState {
-                    moduleReadFailure?.let { throw it }
-                    return if (moduleInstalled) ModuleState.Ready else ModuleState.NotInstalled
-                }
-
-                override suspend fun installBundled(): Boolean {
-                    done += "install"
-                    moduleInstalled = true
-                    return true
-                }
-
-                override suspend fun startDaemon() = startResult.getOrThrow()
-            },
+            module = module,
+            updater = updater,
             apps = object : AppsRepository by unexpected() {
                 override suspend fun pinned(packageName: String?): List<PinnedHost> {
                     pinsFailure?.let { throw it }
@@ -352,18 +389,210 @@ class SettingsViewModelTest {
     }
 
     @Test
-    fun aDeferredSwitchKeepsTheVpnAndRetriesWhenSettingsInstallsTheModule() = runTest {
+    fun givenRootModeNotSetUp_whenSwitchingToRoot_thenItIsSetUpAndTakesOverInOneGo() = runTest {
         shouldDefer = true
         showSettings()
         viewModel.switchToRoot()
-        assertEquals(FilterMethod.Vpn, userData.userData.value.method)
-        assertTrue(userData.userData.value.rootSwitchPending)
-        assertEquals(R.string.feature_settings_switch_root_pending, takeMessageText())
 
-        viewModel.installModule()
         assertEquals(listOf("method Root", "install", "retry root"), done)
         assertEquals(FilterMethod.Root, userData.userData.value.method)
         assertEquals(R.string.feature_settings_switched_to_root, takeMessageText())
+        assertFalse(viewModel.uiState.value.service.switchingToRoot)
+    }
+
+    @Test
+    fun givenTheInstallerFails_whenSwitchingToRoot_thenTheVpnStaysAndTheSwitchIsLeftToTryAgain() = runTest {
+        shouldDefer = true
+        installerFailure = "Not enough free space"
+        showSettings()
+        viewModel.switchToRoot()
+
+        assertEquals(listOf("method Root", "install"), done)
+        assertEquals(FilterMethod.Vpn, userData.userData.value.method)
+        assertTrue(userData.userData.value.rootSwitchPending)
+        assertEquals(R.string.feature_settings_switch_root_pending, takeMessageText())
+        assertFalse(viewModel.uiState.value.service.busy)
+    }
+
+    @Test
+    fun givenRootModeInstalled_whenSwitchingToRoot_thenNothingIsInstalled() = runTest {
+        shouldDefer = true
+        moduleInstalled = true
+        showSettings()
+        viewModel.switchToRoot()
+
+        assertEquals(listOf("method Root"), done)
+        assertEquals(R.string.feature_settings_switch_root_pending, takeMessageText())
+    }
+
+    @Test
+    fun givenRootGrantedAndAnInstallationLeftByTheApp_whenTheVpnIsInUse_thenItCanBeRemovedFromThere() = runTest {
+        rootGranted = true
+        moduleInstalled = true
+        showSettings()
+        assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
+        assertEquals(true, viewModel.uiState.value.service.installedByApp)
+
+        viewModel.removeRootMode()
+
+        assertEquals(listOf("remove"), done)
+        assertEquals(ModuleState.NotInstalled, viewModel.uiState.value.service.module)
+        assertEquals(FilterMethod.Vpn, userData.userData.value.method)
+        assertEquals(R.string.feature_settings_root_removed, takeMessageText())
+    }
+
+    @Test
+    fun givenRootNotGranted_whenTheVpnIsInUse_thenNoInstallationIsRead() = runTest {
+        moduleInstalled = true
+        showSettings()
+        assertEquals(null, viewModel.uiState.value.service.module)
+        assertEquals(null, viewModel.uiState.value.service.installedByApp)
+    }
+
+    @Test
+    fun givenRootModeNotSetUp_whenSetUp_thenItRunsAndTheRowNoLongerOffersIt() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        showSettings()
+        assertEquals(ModuleState.NotInstalled, viewModel.uiState.value.service.module)
+        assertTrue(viewModel.uiState.value.service.vpnAvailable)
+
+        viewModel.setUpRootMode()
+
+        assertEquals(listOf("install"), done)
+        assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
+        assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
+        assertFalse(viewModel.uiState.value.service.vpnAvailable)
+        assertEquals(R.string.feature_settings_module_installed, takeMessageText())
+    }
+
+    @Test
+    fun givenTheInstallerFails_whenSettingUp_thenTheRowKeepsTheFailureUntilTriedAgain() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        installerFailure = "Not enough free space"
+        showSettings()
+
+        viewModel.setUpRootMode()
+        assertEquals(RootTask.Failed, viewModel.uiState.value.service.setup)
+        assertEquals(ModuleState.NotInstalled, viewModel.uiState.value.service.module)
+        viewModel.refresh()
+        runCurrent()
+        assertEquals(RootTask.Failed, viewModel.uiState.value.service.setup)
+
+        installerFailure = null
+        viewModel.setUpRootMode()
+        assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
+        assertEquals(listOf("install", "install"), done)
+    }
+
+    @Test
+    fun givenAnInstallationTheAppMade_whenRemovalFails_thenItIsStillShownAsInstalledWithTheFailure() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        removalFailure = "The module was not removed"
+        showSettings()
+
+        viewModel.removeRootMode()
+
+        assertEquals(RootTask.Failed, viewModel.uiState.value.service.removal)
+        assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
+        assertEquals(true, viewModel.uiState.value.service.installedByApp)
+        assertTrue(viewModel.pendingMessages.value.isEmpty())
+    }
+
+    @Test
+    fun givenAnInstallationTheAppMade_whenRemoved_thenRootModeIsNotSetUpAndVpnModeIsOffered() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        showSettings()
+
+        viewModel.removeRootMode()
+
+        val service = viewModel.uiState.value.service
+        assertEquals(ModuleState.NotInstalled, service.module)
+        assertEquals(null, service.installedByApp)
+        assertEquals(RootTask.Idle, service.removal)
+        assertTrue(service.vpnAvailable)
+        assertEquals(FilterMethod.Root, userData.userData.value.method)
+        assertEquals(R.string.feature_settings_root_removed, takeMessageText())
+
+        viewModel.switchToVpn()
+        assertEquals(listOf("remove", "method Vpn"), done)
+        assertEquals(R.string.feature_settings_switched_to_vpn, takeMessageText())
+    }
+
+    @Test
+    fun givenAModuleFlashedInAManager_whenShown_thenItsOriginAndManagerAreKnown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        installedByApp = false
+        rootManager = "Magisk"
+        showSettings()
+
+        val service = viewModel.uiState.value.service
+        assertEquals(false, service.installedByApp)
+        assertFalse(service.stagedInManager)
+        assertEquals("Magisk", service.rootManager)
+    }
+
+    @Test
+    fun givenTheAppsInstallationRunsAndAModuleWaitsInTheManager_whenShown_thenTheWaitingModuleIsKnown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        staged = true
+        showSettings()
+
+        assertTrue(viewModel.uiState.value.service.stagedInManager)
+        assertEquals(true, viewModel.uiState.value.service.installedByApp)
+    }
+
+    @Test
+    fun givenAnOlderRootMode_whenUpdated_thenItSaysSoAndReadsItAgain() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        moduleOutdated = true
+        showSettings()
+        assertEquals(ModuleState.Mismatched, viewModel.uiState.value.service.module)
+
+        viewModel.updateRootMode()
+
+        assertEquals(listOf("install"), done)
+        assertEquals(ModuleUpdate.Idle, viewModel.uiState.value.update)
+        assertEquals(ModuleState.Ready, viewModel.uiState.value.service.module)
+        assertEquals(R.string.feature_settings_root_updated, takeMessageText())
+    }
+
+    @Test
+    fun givenTheUpdateFails_whenUpdated_thenTheFailureStaysForTheRow() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        moduleOutdated = true
+        installerFailure = "Not enough free space"
+        showSettings()
+
+        viewModel.updateRootMode()
+
+        assertEquals(ModuleUpdate.Failed(LoadFailure.Failed), viewModel.uiState.value.update)
+        assertEquals(ModuleState.Mismatched, viewModel.uiState.value.service.module)
+        assertTrue(viewModel.pendingMessages.value.isEmpty())
+    }
+
+    @Test
+    fun givenRootModeTurnedOffAfterFailedStartups_whenTurnedOnAgain_thenAModuleKeptOffInItsManagerIsNamed() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        rootManager = "APatch"
+        showSettings()
+
+        viewModel.turnOnAgain()
+        assertEquals(listOf("turn on again"), done)
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(R.string.feature_settings_module_disabled_in, message.text)
+        assertEquals(listOf<Any>("APatch"), message.args)
+
+        viewModel.onMessageShown(viewModel.pendingMessages.value.single().id)
+        startResult = Result.success(true)
+        viewModel.turnOnAgain()
+        assertTrue(viewModel.pendingMessages.value.isEmpty())
     }
 
     @Test

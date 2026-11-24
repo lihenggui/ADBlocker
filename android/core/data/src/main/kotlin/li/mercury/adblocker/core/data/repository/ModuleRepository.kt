@@ -71,9 +71,6 @@ interface ModuleRepository {
      */
     suspend fun needsUpdate(): Boolean
 
-    /** The installed module's version name, or null if it is not installed or root is missing. */
-    suspend fun installedVersion(): String?
-
     /** Which root manager is installed: "KernelSU", "Magisk", "APatch", or null. */
     suspend fun rootManager(): String?
 
@@ -96,6 +93,12 @@ interface ModuleRepository {
      * it. One flashed in a root manager is removed there. False without root.
      */
     suspend fun isInstalledByApp(): Boolean
+
+    /**
+     * Whether a module flashed in a root manager waits for the next restart
+     * to take over, whatever is in use until then. False without root.
+     */
+    suspend fun isStagedInManager(): Boolean
 
     /**
      * Removes a module this app installed: stops the daemon, has the apps
@@ -224,13 +227,6 @@ internal class RootModuleRepository(
         }
     }
 
-    override suspend fun installedVersion(): String? = try {
-        rootShell.run("$LOCATE; sed -n 's/^version=//p' $MODULE_PROP", label = "module version")
-            .output.lineSequence().firstOrNull()?.trim()?.ifEmpty { null }
-    } catch (_: AbdException.NoRoot) {
-        null
-    }
-
     override suspend fun rootManager(): String? = rootManagerFound ?: try {
         rootShell.run(
             "if magisk -V >/dev/null 2>&1; then echo Magisk; elif [ -x /data/adb/ksud ]; then echo KernelSU; " +
@@ -252,6 +248,12 @@ internal class RootModuleRepository(
 
     override suspend fun isInstalledByApp(): Boolean = try {
         ownedByApp()
+    } catch (_: AbdException.NoRoot) {
+        false
+    }
+
+    override suspend fun isStagedInManager(): Boolean = try {
+        rootShell.run("[ -d $PENDING_UPDATE_DIR ]", label = "module staged").isSuccess
     } catch (_: AbdException.NoRoot) {
         false
     }
