@@ -1,1 +1,1 @@
-Four new public suffixes from the Public Suffix List. The app's code now builds the same on any machine, so that F-Droid can verify it.
+Rules can name the apps they are for ($app=), and a host seen in Activity can be blocked in one app only. HaGeZi Multi Light is a default list, for the ad and analytics hosts that apps call, and regional lists such as EasyList China, AdGuard Chinese and AWAvenue Ads Rule are defaults for the device's language. AdGuard Mobile Ads now includes its rules for single apps.
