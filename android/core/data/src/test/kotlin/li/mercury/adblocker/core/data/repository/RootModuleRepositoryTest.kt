@@ -155,7 +155,6 @@ class RootModuleRepositoryTest {
     fun givenAModuleInstalledByTheApp_whenCheckingReadiness_thenItIsReady() = runTest {
         installed(direct)
         assertEquals(ModuleState.Ready, module.state())
-        assertEquals("v$bundledCode.0", module.installedVersion())
         // Remembered with the state, for the boot that follows.
         assertTrue(rememberedAsTheApps())
         assertTrue(module.isInstalledByApp())
@@ -166,7 +165,6 @@ class RootModuleRepositoryTest {
         installed(direct)
         installed(flashed, versionCode = bundledCode + 1)
         assertEquals(ModuleState.Mismatched, module.state())
-        assertEquals("v${bundledCode + 1}.0", module.installedVersion())
         settings.setModuleInstalledByApp(true)
         assertFalse(module.isInstalledByApp())
         assertFalse(rememberedAsTheApps())
@@ -188,6 +186,16 @@ class RootModuleRepositoryTest {
         pending.mkdirs()
         assertEquals(ModuleState.Ready, module.state())
         assertTrue(module.isInstalledByApp())
+        assertTrue(module.isStagedInManager())
+    }
+
+    @Test
+    fun givenNothingWaitsInTheManager_whenAskedWhetherAModuleIsStaged_thenItIsNot() = runTest {
+        installed(flashed)
+        assertFalse(module.isStagedInManager())
+        rootGranted = false
+        pending.mkdirs()
+        assertFalse(module.isStagedInManager())
     }
 
     @Test

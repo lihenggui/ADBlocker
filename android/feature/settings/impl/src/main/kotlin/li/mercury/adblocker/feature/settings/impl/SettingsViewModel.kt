@@ -26,7 +26,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -49,6 +51,8 @@ import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
 import li.mercury.adblocker.core.data.repository.LogExportResult
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.ModuleUpdate
+import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.repository.UserDataRepository
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.DaemonStatus
@@ -66,17 +70,29 @@ import li.mercury.adblocker.core.ui.UiMessage
 import javax.inject.Inject
 import kotlin.reflect.KProperty1
 
-/** What the settings page shows of the daemon and the module. */
+/** Work the page does on root mode: under way, or failed the last time it was tried, until it is tried again. */
+enum class RootTask { Idle, Running, Failed }
+
+/** What the settings page shows of the daemon and of root mode. */
 data class ServiceInfo(
     val status: ReadState<DaemonStatus> = ReadState.Pending,
     val module: ModuleState? = null,
-    val moduleVersion: String? = null,
+    /** Whether the app made the installation in use, which it can then remove; null when unknown or none is in use. */
+    val installedByApp: Boolean? = null,
+    /** A module flashed in a root manager waits for the next restart to take over. */
+    val stagedInManager: Boolean = false,
     val rootManager: String? = null,
+    val setup: RootTask = RootTask.Idle,
+    val removal: RootTask = RootTask.Idle,
+    /** Switching from the VPN to root mode, which sets root mode up where it has to. */
+    val switchingToRoot: Boolean = false,
+    /** Under root, with root mode not set up: whether this build can filter with the VPN instead. */
+    val vpnAvailable: Boolean = false,
     val pinned: ReadState<List<PinnedHost>> = ReadState.Pending,
     val busy: Boolean = false,
     /** Without root: whether the certificate is in the user store. */
     val certificateInstalled: Boolean = false,
-    /** Without root: whether root is granted, so that the root module can be chosen; null until asked. */
+    /** Without root: whether root is granted, so that root mode can be chosen; null until asked. */
     val rootAvailable: Boolean? = null,
     val checkingRoot: Boolean = false,
     /** Whether the app may show notifications: the VPN's, with its pause action. */
@@ -90,6 +106,8 @@ data class SettingsUiState(
     val appVersion: String = "",
     /** Without root: the VPN's state and the system's settings for it. */
     val vpn: VpnStatus = VpnStatus(),
+    /** Bringing root mode up to date with this app, asked for here or done when the app was opened. */
+    val update: ModuleUpdate = ModuleUpdate.Idle,
 )
 
 @HiltViewModel
@@ -98,6 +116,7 @@ class SettingsViewModel @Inject constructor(
     private val userData: UserDataRepository,
     private val daemon: DaemonRepository,
     private val module: ModuleRepository,
+    private val updater: ModuleUpdater,
     private val apps: AppsRepository,
     private val diagnostics: DiagnosticsRepository,
     private val methods: FilterMethodRepository,
@@ -118,8 +137,11 @@ class SettingsViewModel @Inject constructor(
     private var httpsRevision = 0L
 
     private val reload = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
-    val uiState: StateFlow<SettingsUiState> = combine(userData.userData, service, vpn.status, appVersion) { data, info, vpnStatus, version -> SettingsUiState(data, info, version, vpnStatus) }
-        .refreshWhileCollected(merge(changes.changes, reload), ::load)
+    val uiState: StateFlow<SettingsUiState> = combine(userData.userData, service, vpn.status, appVersion, updater.state) { data, info, vpnStatus, version, update ->
+        SettingsUiState(data, info, version, vpnStatus, update)
+    }
+        // An update, asked for here or not, changes what is installed.
+        .refreshWhileCollected(merge(changes.changes, reload, updater.state.drop(1).map {}), ::load)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SettingsUiState())
 
     fun refresh() {
@@ -133,22 +155,35 @@ class SettingsViewModel @Inject constructor(
             readVpn(revision)
             return
         }
-        val moduleState = readModule()
+        val installation = readInstallation()
         val status = readSection { daemon.status() }
-        val moduleVersion = suspendRunCatching { module.installedVersion() }.getOrNull()
         val rootManager = suspendRunCatching { module.rootManager() }.getOrNull()
+        val vpnAvailable = installation.module == ModuleState.NotInstalled && suspendRunCatching { vpn.engineAvailable() }.getOrDefault(false)
         val pinned = readSection { apps.pinned() }
         val labels = pinned.valueOrNull?.let { pinnedLabels(it) }.orEmpty()
         service.update {
-            it.copy(
-                module = moduleState,
+            installation.applyTo(it).copy(
                 status = statusAfterRead(it.status, status, revision),
-                moduleVersion = moduleVersion,
                 rootManager = rootManager,
+                vpnAvailable = vpnAvailable,
                 pinned = pinned,
                 pinnedLabels = labels,
             )
         }
+    }
+
+    /** Root mode's state, whose installation is in use, and whether a module waits in a root manager. */
+    private class Installation(val module: ModuleState, val installedByApp: Boolean?, val staged: Boolean) {
+        fun applyTo(info: ServiceInfo) = info.copy(module = module, installedByApp = installedByApp, stagedInManager = staged)
+    }
+
+    private suspend fun readInstallation(): Installation {
+        val state = readModule()
+        // Only an installation in use has an origin.
+        val inUse = state == ModuleState.Ready || state == ModuleState.Mismatched
+        val byApp = if (inUse) suspendRunCatching { module.isInstalledByApp() }.getOrNull() else null
+        val staged = state == ModuleState.NeedsRestart || (byApp == true && suspendRunCatching { module.isStagedInManager() }.getOrDefault(false))
+        return Installation(state, byApp, staged)
     }
 
     /**
@@ -157,23 +192,26 @@ class SettingsViewModel @Inject constructor(
      * root manager's prompt; root is asked for once, and when asked again.
      */
     private suspend fun readVpn(revision: Long) {
+        // Asked first, so that where root is granted an installation is read with the rest.
+        if (service.value.rootAvailable == null) readRoot(reportMissing = false)
         val status = readSection { daemon.status() }
         val pinned = readSection { apps.pinned() }
         val labels = pinned.valueOrNull?.let { pinnedLabels(it) }.orEmpty()
         val installed = withContext(io) { https.certificateInstalled() }
         val notifications = platform.notificationsAllowed()
-        val moduleState = if (userData.userData.first().rootSwitchPending) readModule() else null
+        // An installation left by a cancelled switch is removed from here.
+        val installation = if (userData.userData.first().rootSwitchPending || service.value.rootAvailable == true) readInstallation() else null
+        val rootManager = if (installation?.installedByApp == false) suspendRunCatching { module.rootManager() }.getOrNull() else null
         service.update {
-            it.copy(
+            (installation?.applyTo(it) ?: it.copy(module = null, installedByApp = null, stagedInManager = false)).copy(
                 status = statusAfterRead(it.status, status, revision),
-                module = moduleState,
+                rootManager = rootManager,
                 pinned = pinned,
                 certificateInstalled = installed,
                 notificationsAllowed = notifications,
                 pinnedLabels = labels,
             )
         }
-        if (service.value.rootAvailable == null) readRoot(reportMissing = false)
     }
 
     private fun statusAfterRead(before: ReadState<DaemonStatus>, read: ReadState<DaemonStatus>, revision: Long): ReadState<DaemonStatus> = if (changingHttps.isNotEmpty() || httpsRevision != revision) before else read
@@ -210,12 +248,35 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Requests root filtering. The module takes over once it is ready
-     * and has the VPN's settings.
+     * Switches from the VPN to root mode in one go: sets root mode up where
+     * nothing usable is installed, then has it take over with the VPN's
+     * settings. The VPN filters until it has.
      */
-    fun switchToRoot() = busy {
-        val switched = methods.switchTo(FilterMethod.Root) == FilterMethodSwitch.Complete
-        messages.show(UiMessage(if (switched) R.string.feature_settings_switched_to_root else R.string.feature_settings_switch_root_pending))
+    fun switchToRoot() {
+        if (service.value.busy) return
+        viewModelScope.launch {
+            service.update { it.copy(busy = true, switchingToRoot = true) }
+            try {
+                val switched = suspendRunCatching("root switch") { setUpAndSwitch() }.getOrDefault(false)
+                messages.show(UiMessage(if (switched) R.string.feature_settings_switched_to_root else R.string.feature_settings_switch_root_pending))
+            } finally {
+                service.update { it.copy(busy = false, switchingToRoot = false) }
+                refresh()
+            }
+        }
+    }
+
+    private suspend fun setUpAndSwitch(): Boolean {
+        if (methods.switchTo(FilterMethod.Root) == FilterMethodSwitch.Complete) return true
+        if (readModule() !in NEEDS_SETUP) return false
+        module.installBundled()
+        return methods.retryRootSwitch()
+    }
+
+    /** With root mode not set up: filtering moves to the VPN, which the overview then connects. */
+    fun switchToVpn() = busy {
+        methods.switchTo(FilterMethod.Vpn)
+        messages.show(UiMessage(R.string.feature_settings_switched_to_vpn))
     }
 
     fun cancelRootSwitch() = busy {
@@ -293,19 +354,67 @@ class SettingsViewModel @Inject constructor(
 
     /** Restarts the daemon through the module's service script, which stops the running one first. */
     fun restartService() = busy {
-        if (module.startDaemon()) messages.show(UiMessage(R.string.feature_settings_restarted)) else messages.show(UiMessage(R.string.feature_settings_module_disabled))
+        if (module.startDaemon()) messages.show(UiMessage(R.string.feature_settings_restarted)) else showTurnedOffInManager()
     }
 
-    /** Installs or updates the module this app carries. */
-    fun installModule() = busy {
-        val active = module.installBundled()
-        val pending = userData.userData.first().rootSwitchPending
-        val message = when {
-            !active -> R.string.feature_settings_module_restart
-            pending -> if (methods.retryRootSwitch()) R.string.feature_settings_switched_to_root else R.string.feature_settings_switch_root_pending
-            else -> R.string.feature_settings_module_installed
+    /** Turns root mode on again after two startups in a row did not finish, and starts it. */
+    fun turnOnAgain() = busy {
+        if (!module.turnOnAgain()) showTurnedOffInManager()
+    }
+
+    /** Only a module in a root manager stays off: the app turns its own installation on again. */
+    private suspend fun showTurnedOffInManager() {
+        val manager = service.value.rootManager ?: suspendRunCatching { module.rootManager() }.getOrNull()
+        messages.show(
+            if (manager == null) UiMessage(R.string.feature_settings_module_disabled) else UiMessage(R.string.feature_settings_module_disabled_in, listOf(manager)),
+        )
+    }
+
+    /** Sets up root mode with the app's own copy, which runs at once. */
+    fun setUpRootMode() = rootTask({ copy(setup = it) }) {
+        module.installBundled()
+        messages.show(UiMessage(R.string.feature_settings_module_installed))
+    }
+
+    /** Replaces the installed root mode with this app's; [SettingsUiState.update] says how it goes. */
+    fun updateRootMode() {
+        if (service.value.busy) return
+        viewModelScope.launch {
+            service.update { it.copy(busy = true) }
+            try {
+                updater.update()
+                if (updater.state.value == ModuleUpdate.Idle) messages.show(UiMessage(R.string.feature_settings_root_updated))
+            } finally {
+                service.update { it.copy(busy = false) }
+                refresh()
+            }
         }
-        messages.show(UiMessage(message))
+    }
+
+    /** Removes the installation the app made, with what it kept. */
+    fun removeRootMode() = rootTask({ copy(removal = it) }) {
+        module.remove()
+        messages.show(UiMessage(R.string.feature_settings_root_removed))
+    }
+
+    /**
+     * Runs [work] on root mode, its row saying that it runs and then whether
+     * it failed. Root mode is read back before the row says how it went, so
+     * that the row and the installation it describes agree.
+     */
+    private fun rootTask(mark: ServiceInfo.(RootTask) -> ServiceInfo, work: suspend () -> Unit) {
+        if (service.value.busy) return
+        viewModelScope.launch {
+            service.update { it.copy(busy = true).mark(RootTask.Running) }
+            try {
+                val outcome = if (suspendRunCatching("root mode") { work() }.isSuccess) RootTask.Idle else RootTask.Failed
+                val installation = readInstallation()
+                service.update { installation.applyTo(it).mark(outcome) }
+            } finally {
+                service.update { it.copy(busy = false) }
+                refresh()
+            }
+        }
     }
 
     /** Has an app try our certificate again for [host], or for every host it pinned if null. */
@@ -352,5 +461,10 @@ class SettingsViewModel @Inject constructor(
 
     private fun showWriteFailure(e: Throwable) {
         messages.show(UiMessage(if (e is AbdException.TimedOut) R.string.feature_settings_service_timeout else R.string.feature_settings_failed))
+    }
+
+    private companion object {
+        /** What a switch to root mode sets up first: nothing usable of this app's is in use. */
+        val NEEDS_SETUP = setOf(ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart)
     }
 }
