@@ -144,11 +144,6 @@ starts() {
     if grep -v "^$1 " "$fixture/calls" | grep -q ' run$'; then fail "another daemon ran"; fi
 }
 
-no_start() {
-    sleep 1
-    if grep -q ' run$' "$fixture/calls"; then fail "the daemon started"; fi
-}
-
 forget_calls() {
     : >"$fixture/calls"
     rm -f "$data/abd.log"
