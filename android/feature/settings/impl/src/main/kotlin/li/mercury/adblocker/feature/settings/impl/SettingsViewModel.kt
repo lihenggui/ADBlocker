@@ -192,8 +192,9 @@ class SettingsViewModel @Inject constructor(
 
     /**
      * Without root: the engine's state, the certificate and the
-     * notifications. Nothing here runs a root command, which would show the
-     * root manager's prompt; root is asked for once, and when asked again.
+     * notifications. Root is asked for once here, and again only when the
+     * user asks: a root command can show the root manager's prompt. Where
+     * root is granted, an installation of root mode is read with the rest.
      */
     private suspend fun readVpn(revision: Long) {
         // Asked first, so that where root is granted an installation is read with the rest.
