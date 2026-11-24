@@ -21,6 +21,7 @@ import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import li.mercury.adblocker.core.data.FilterCatalog
@@ -240,6 +241,21 @@ class OnboardingScreenScreenshotTests {
     }
 
     private val appsWithheld get() = vpn(OnboardingStep.Apps).copy(picks = emptySet(), appListWithheld = true)
+
+    @Test
+    fun givenAllAppsWithTheVpnAndTheAppListWithheld_whenShown_thenSaysMostAppsAreNotFilteredAndLetsSetupContinue() {
+        capturePhone("OnboardingScopeAllWithheld") { Onboarding(allAppsWithheld) }
+        composeTestRule.onNodeWithText("Allow").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Continue").assertIsEnabled()
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAllAppsWithTheVpnAndTheAppListWithheld_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OnboardingScopeAllWithheld") { Onboarding(allAppsWithheld) }
+    }
+
+    private val allAppsWithheld get() = appsWithheld.copy(apps = emptyList(), filteringScope = FilteringScope.All)
 
     @Test
     fun givenNoAppsToFilter_whenTheAppsStepIsShown_thenItSaysSo() {

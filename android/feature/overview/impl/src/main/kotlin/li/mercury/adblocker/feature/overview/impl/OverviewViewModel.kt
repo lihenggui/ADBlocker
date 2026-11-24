@@ -58,10 +58,12 @@ import li.mercury.adblocker.core.data.repository.UserDataRepository
 import li.mercury.adblocker.core.data.toLoadFailure
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppEntry
+import li.mercury.adblocker.core.model.AppInventory
 import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterLevel
 import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.FilterMethod
+import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.StatsSummary
@@ -116,6 +118,13 @@ data class HttpsSetup(val certificateInstalled: Boolean, val urlFiltering: Boole
 
 enum class OverviewNotice {
     /**
+     * With the VPN in All apps, the system withholds the installed app list:
+     * the VPN routes only the few apps it shows. A state, as [ListsMissing]
+     * is; it goes once the list is allowed.
+     */
+    AppListWithheld,
+
+    /**
      * Lists that are on were never downloaded, so less is filtered than the
      * switches say. A state rather than a tip: it cannot be dismissed, and
      * goes once they have rules.
@@ -162,7 +171,7 @@ class OverviewViewModel @Inject constructor(
      * manager about every app, with its name: done on start, on request and
      * after a change, not at every tick.
      */
-    private var installed: List<AppEntry>? = null
+    private var installed: AppInventory<AppEntry>? = null
 
     /**
      * Set by every trigger that asks for the apps and cleared only once they
@@ -230,17 +239,20 @@ class OverviewViewModel @Inject constructor(
 
     private suspend fun read(updating: Boolean): Result<OverviewUiState> = suspendRunCatching("overview") {
         val (status, summary, subscriptions) = overview.snapshot()
-        val entries = installed.takeUnless { appsStale }
-            ?: withContext(defaultDispatcher) { apps.apps() }.also {
+        val inventory = installed.takeUnless { appsStale }
+            ?: withContext(defaultDispatcher) { apps.inventory() }.also {
                 installed = it
                 appsStale = false
             }
+        val entries = inventory.apps
         val data = userData.userData.first()
         val dismissed = data.dismissedTips
         val vpnStatus = vpn.status.value
         val missing = missingLists(subscriptions, data)
-        // Missing lists come first: they mean less is filtered than shown, where the others are tips.
+        // States come before tips: they mean less is filtered than shown. Apps
+        // the VPN cannot see come first, unfiltered by any list.
         val notice = when {
+            appsUnseen(data, status, inventory) -> OverviewNotice.AppListWithheld
             missing != null && !lists.updating.value -> OverviewNotice.ListsMissing
             !data.capabilities.usesVpn -> null
             vpnStatus.lockdown && LOCKDOWN_TIP !in dismissed -> OverviewNotice.Lockdown
@@ -384,6 +396,9 @@ class OverviewViewModel @Inject constructor(
     private companion object {
         const val TOP_APPS = 3
 
+        /** In All apps, the VPN routes the apps the system lists: where it withholds the list, most go unfiltered. */
+        fun appsUnseen(data: UserData, status: DaemonStatus, inventory: AppInventory<*>): Boolean = data.capabilities.usesVpn && status.filteringScope == FilteringScope.All && inventory.listWithheld
+
         /**
          * The enabled lists never downloaded, unless root setup still holds the
          * list choices: an update is refused until they are saved.
@@ -402,7 +417,7 @@ class OverviewViewModel @Inject constructor(
             OverviewNotice.Lockdown -> LOCKDOWN_TIP
             OverviewNotice.RootAvailable -> ROOT_TIP
             OverviewNotice.BatteryExemption -> error("Battery notice follows the observed VPN stop")
-            OverviewNotice.ListsMissing -> error("Missing lists are a state, not a tip")
+            OverviewNotice.ListsMissing, OverviewNotice.AppListWithheld -> error("$this is a state, not a tip")
         }
     }
 }

@@ -118,7 +118,8 @@ Assembling `:app` needs the daemons in `../out/` (`../scripts/build.sh`).
   throw `AbdException.EngineMissing`.
 - The VPN routes the chosen apps or the attributable personal apps in
   All apps, depending on scope. Android applies the allowlist by UID.
-  Rebuild after package changes and exclusions. Never establish an empty
+  Rebuild after package changes, exclusions and a grant of the app list
+  permission (`APP_LIST_PERMISSION`). Never establish an empty
   allowlist, which Android interprets as a VPN for everyone. Pausing never builds it
   again. Whatever stops the engine stops the service, and the apps are on
   the network unfiltered.

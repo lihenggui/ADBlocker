@@ -69,6 +69,13 @@ internal interface VpnHost {
     /** All attributable personal app identities except ADBlocker. */
     fun personalAppIdentities(): List<PersonalAppIdentity>
 
+    /**
+     * Whether ADBlocker holds the permission that some systems require
+     * before they list the installed apps. Granting it shows more apps
+     * without any package changing.
+     */
+    fun appListAccess(): Boolean = false
+
     /** Closes a descriptor from [establish] that the engine never took. */
     fun close(fd: Int)
 
@@ -151,10 +158,14 @@ internal class VpnSession(
      * The personal apps as last read, in All apps. Reading them asks the
      * package manager about every package, which the other causes of a
      * refresh (a pause ending, the network, a setting) do not change: it is
-     * read again after a package change, and not otherwise.
+     * read again after a package change or a change of [VpnHost.appListAccess],
+     * and not otherwise.
      */
     private var personalApps: List<PersonalAppIdentity>? = null
     private val personalAppsStale = AtomicBoolean()
+
+    /** [VpnHost.appListAccess] at the last refresh, null before the first. */
+    private var appListAccess: Boolean? = null
 
     private val binding = object : VpnBinding {
         override fun protect(fd: Int): Boolean = host.protect(fd)
@@ -237,6 +248,7 @@ internal class VpnSession(
     /** Reads the chosen apps and builds the VPN again if their set changed; false once it ended. */
     private suspend fun refreshLocked(starting: Boolean): Boolean {
         if (!active) return false
+        noteAppListAccess()
         val selection = suspendRunCatching { vpnApps.appSelections() }
         val config = selection.getOrNull()
         if (config?.scope == FilteringScope.All) {
@@ -266,6 +278,20 @@ internal class VpnSession(
         }
         val wanted = allowedApps(chosen, ownPackage, host::uidOf)
         return refreshRoutes(wanted, wanted.size)
+    }
+
+    /**
+     * A grant of [VpnHost.appListAccess] shows more apps without a package
+     * change: the engine and the personal apps are read again, as after one.
+     */
+    private fun noteAppListAccess() {
+        val access = host.appListAccess()
+        val previous = appListAccess
+        appListAccess = access
+        if (previous != null && previous != access) {
+            reloadAsked.set(true)
+            personalAppsStale.set(true)
+        }
     }
 
     private fun personalAppInventory(): List<PersonalAppIdentity> {

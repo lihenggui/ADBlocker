@@ -64,6 +64,7 @@ import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.pageMargin
 import li.mercury.adblocker.core.ui.R as CoreUiR
+import li.mercury.adblocker.core.ui.rememberAppListAccess
 
 @Composable
 fun OverviewScreen(
@@ -81,6 +82,8 @@ fun OverviewScreen(
         if (result.resultCode == Activity.RESULT_OK) viewModel.reconnect() else viewModel.consentRefused()
     }
     val batteryExemption = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { viewModel.refresh() }
+    // Asked for from the notice only: the Overview does not raise the system's request by itself.
+    val allowAppList = rememberAppListAccess((state as? OverviewUiState.Ready)?.notice == OverviewNotice.AppListWithheld, viewModel::refresh, askAtOnce = false)
     // Back from elsewhere, at once rather than at the next tick.
     LifecycleStartEffect(viewModel) {
         viewModel.onStart()
@@ -110,6 +113,7 @@ fun OverviewScreen(
         onSwitchToRoot = viewModel::switchToRoot,
         onOpenHttps = onOpenHttps,
         onDownloadLists = viewModel::downloadLists,
+        onAllowAppList = allowAppList,
     )
 }
 
@@ -132,6 +136,7 @@ internal fun OverviewScreen(
     onBatteryExemption: () -> Unit = {},
     onOpenHttps: () -> Unit = {},
     onDownloadLists: () -> Unit = {},
+    onAllowAppList: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -181,7 +186,7 @@ internal fun OverviewScreen(
                 is OverviewUiState.Ready -> OverviewContent(
                     state = shown,
                     actions = HeroActions(onPause, onResume, onStartService, onTurnOnAgain, onReconnect),
-                    notices = NoticeActions(onDismissNotice, onSwitchToRoot, onBatteryExemption, onDownloadLists, onOpenFilters),
+                    notices = NoticeActions(onDismissNotice, onSwitchToRoot, onBatteryExemption, onDownloadLists, onOpenFilters, onAllowAppList),
                     onOpenApp = onOpenApp,
                     onOpenFilters = onOpenFilters,
                     onOpenSettings = onOpenSettings,

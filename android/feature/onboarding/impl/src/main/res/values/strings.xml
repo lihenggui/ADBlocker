@@ -65,6 +65,7 @@
     <string name="feature_onboarding_check_after_root">Checked after root access is granted</string>
     <string name="feature_onboarding_apps_none">No apps to filter</string>
     <string name="feature_onboarding_apps_none_text">Installed apps that can use the network appear here.</string>
+    <string name="feature_onboarding_all_apps_withheld">The system hasn’t allowed ADBlocker to read the list of installed apps. Until it is allowed, most apps aren’t filtered.</string>
     <string name="feature_onboarding_check_root_granted">%1$s · granted</string>
     <string name="feature_onboarding_check_root_granted_plain">Granted</string>
     <string name="feature_onboarding_check_kernel_ok">Required filtering features supported</string>

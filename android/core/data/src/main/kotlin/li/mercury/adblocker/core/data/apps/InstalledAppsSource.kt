@@ -38,14 +38,17 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.runningFold
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.sync.Mutex
@@ -59,6 +62,7 @@ import li.mercury.adblocker.core.common.dispatchers.Dispatcher
 import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.protocol.WorkProfile
 import li.mercury.adblocker.core.engine.personalAppIdentities
+import li.mercury.adblocker.core.model.APP_LIST_PERMISSION
 import li.mercury.adblocker.core.model.AppIconSource
 import li.mercury.adblocker.core.model.AppInventory
 import li.mercury.adblocker.core.model.AppUnavailableReason
@@ -80,7 +84,13 @@ class InstalledAppsSource @Inject constructor(
 
     @Volatile private var watchingPackages = false
 
-    private val generations = callbackFlow {
+    /** Whether the app list permission was granted at the last read, null before one. */
+    @Volatile private var listAccess: Boolean? = null
+
+    // No broadcast tells of a grant: a read that finds one tells of it here.
+    private val accessChanges = MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    private val packageEvents = callbackFlow {
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(context: Context, intent: Intent) {
                 trySend(Unit)
@@ -125,7 +135,11 @@ class InstalledAppsSource @Inject constructor(
             if (registered) launcher?.unregisterCallback(callback)
             context.unregisterReceiver(receiver)
         }
-    }.conflate().runningFold(0L) { generation, _: Unit -> generation + 1 }
+    }
+
+    private val generations = merge(packageEvents, accessChanges)
+        .conflate()
+        .runningFold(0L) { generation, _: Unit -> generation + 1 }
         .stateIn(scope, SharingStarted.Lazily, 0L)
 
     val changes: Flow<Unit> = generations.drop(1).map { }
@@ -136,7 +150,7 @@ class InstalledAppsSource @Inject constructor(
         val visibleSharedUid: Boolean,
     )
 
-    private val inventory = InventoryCache<List<Personal>>()
+    private val inventory = InventoryCache<Pair<Long, Boolean>, List<Personal>>()
 
     /** Every other installed app that can make connections of its own. */
     suspend fun apps(checkVisibleSharedUids: Boolean = false): List<InstalledApp> = personalInventory()
@@ -155,7 +169,21 @@ class InstalledAppsSource @Inject constructor(
 
     private suspend fun personalInventory(): List<Personal> = withContext(ioDispatcher) {
         val observing = withTimeoutOrNull(1_000) { generations.first { it > 0 } }
-        if (observing == null || !watchingPackages) loadPersonal() else inventory.read({ generations.value }, ::loadPersonal)
+        // Systems that withhold the list show more of it once allowed, with no package change.
+        val access = appListAccess()
+        if (observing == null || !watchingPackages) loadPersonal() else inventory.read({ generations.value to access }, ::loadPersonal)
+    }
+
+    /**
+     * Whether the app list permission is granted. A change tells every
+     * observer of [changes], the VPN included, that more apps can be seen.
+     */
+    private fun appListAccess(): Boolean {
+        val granted = ContextCompat.checkSelfPermission(context, APP_LIST_PERMISSION) == PackageManager.PERMISSION_GRANTED
+        val previous = listAccess
+        listAccess = granted
+        if (previous != null && previous != granted) accessChanges.tryEmit(Unit)
+        return granted
     }
 
     private fun loadPersonal(): List<Personal> {
@@ -273,11 +301,11 @@ class InstalledAppsSource @Inject constructor(
 }
 
 /** Only the current package generation is held, shared by every caller. */
-internal class InventoryCache<T : Any> {
+internal class InventoryCache<K : Any, T : Any> {
     private val mutex = Mutex()
-    private var cached: Pair<Long, T>? = null
+    private var cached: Pair<K, T>? = null
 
-    suspend fun read(generation: () -> Long, load: () -> T): T = mutex.withLock {
+    suspend fun read(generation: () -> K, load: () -> T): T = mutex.withLock {
         val now = generation()
         cached?.takeIf { it.first == now }?.second ?: load().also { cached = now to it }
     }

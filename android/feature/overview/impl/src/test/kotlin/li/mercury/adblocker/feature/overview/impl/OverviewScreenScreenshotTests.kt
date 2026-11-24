@@ -234,6 +234,21 @@ class OverviewScreenScreenshotTests {
         composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewListsFailed") { Overview(listsMissing(failed = true)) }
     }
 
+    @Test
+    fun givenAllAppsWithTheAppListWithheld_whenShown_thenSaysMostAppsAreNotFilteredAndOffersToAllowIt() {
+        capturePhone("OverviewAppListWithheld") { Overview(vpn().copy(notice = OverviewNotice.AppListWithheld)) }
+        composeTestRule.onNodeWithText("Most apps aren’t filtered").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Allow").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAllAppsWithTheAppListWithheld_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewAppListWithheld") {
+            Overview(vpn().copy(notice = OverviewNotice.AppListWithheld))
+        }
+    }
+
     private fun listsMissing(failed: Boolean) = ready().copy(
         missingLists = MissingLists(count = if (failed) 2 else 1, failed = failed),
         notice = OverviewNotice.ListsMissing,

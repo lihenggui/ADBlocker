@@ -25,7 +25,7 @@ import kotlin.test.assertSame
 class InventoryCacheTest {
     @Test
     fun givenSeveralReaders_whenThePackageGenerationChanges_thenTheyShareOneFreshInventory() = runTest {
-        val cache = InventoryCache<List<String>>()
+        val cache = InventoryCache<Long, List<String>>()
         var generation = 1L
         var loads = 0
         suspend fun read(): List<String> = cache.read({ generation }) { listOf("load ${++loads}") }
@@ -42,7 +42,7 @@ class InventoryCacheTest {
 
     @Test
     fun givenAFailedRead_whenAnotherCallerRetries_thenTheFailedResultIsNotCached() = runTest {
-        val cache = InventoryCache<String>()
+        val cache = InventoryCache<Int, String>()
         kotlin.test.assertFailsWith<IllegalStateException> { cache.read({ 1 }) { error("package manager unavailable") } }
         assertEquals("fresh", cache.read({ 1 }) { "fresh" })
     }

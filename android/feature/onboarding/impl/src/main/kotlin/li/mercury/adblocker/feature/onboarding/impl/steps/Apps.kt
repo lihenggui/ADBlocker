@@ -28,6 +28,7 @@ import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -40,6 +41,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
+import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.ui.AppIcon
@@ -114,6 +116,8 @@ internal fun ColumnScope.Apps(
                 }
 
                 else -> Column {
+                    // The VPN routes only the apps the system lists: say so where it withholds them.
+                    if (all && state.appListWithheld && state.method == FilterMethod.Vpn) AllAppsWithheld(onAllowAppList)
                     if (canSearchGroups) {
                         OutlinedTextField(
                             value = query,
@@ -128,6 +132,18 @@ internal fun ColumnScope.Apps(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AllAppsWithheld(onAllow: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp)) {
+        Text(
+            stringResource(R.string.feature_onboarding_all_apps_withheld),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onAllow, modifier = Modifier.align(Alignment.End)) { Text(stringResource(UiR.string.core_ui_app_list_allow)) }
     }
 }
 

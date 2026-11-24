@@ -141,4 +141,6 @@
     <string name="feature_overview_lists_missing_download">Download now</string>
     <string name="feature_overview_lists_missing_open">Open lists</string>
     <string name="feature_overview_lists_download_failed">Download failed</string>
+    <string name="feature_overview_app_list_withheld_title">Most apps aren’t filtered</string>
+    <string name="feature_overview_app_list_withheld_text">The system hasn’t allowed ADBlocker to read the list of installed apps. They are filtered once it is allowed.</string>
 </resources>
