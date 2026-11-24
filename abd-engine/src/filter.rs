@@ -304,10 +304,10 @@ impl RequestRules {
         let Ok(mut req) = Request::new(url, source, kind, method) else {
             return Check::default();
         };
-        match apps {
-            Some((rules, app)) => {
+        match apps.and_then(|(rules, app)| Some((rules, AppRules::scope(app)?))) {
+            Some((rules, scope)) => {
                 let web = self.engine(&mut req, known);
-                rules.check(web, &rules.blocks, &mut req, &rules.scope(app))
+                rules.check(web, &rules.blocks, &mut req, &scope)
             }
             None => self.check_request(req, known),
         }
@@ -457,7 +457,7 @@ impl Filters {
     pub fn for_app(&self, app: &str) -> AppFilters<'_> {
         AppFilters {
             filters: self,
-            app: self.apps.as_ref().map(|rules| (rules, rules.scope(app))),
+            app: self.apps.as_ref().zip(AppRules::scope(app)),
         }
     }
 
