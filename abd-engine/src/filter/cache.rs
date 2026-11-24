@@ -37,7 +37,7 @@ impl Filters {
             return None;
         }
         let (rules, host_rules) = (f.next()?.parse().ok()?, f.next()?.parse().ok()?);
-        let has_host_guards = f.next()?.parse().ok()?;
+        let any_host_guard = f.next()?.parse().ok()?;
         let has_no_cosmetic: bool = f.next()?.parse().ok()?;
         let has_no_elements: bool = f.next()?.parse().ok()?;
         let has_specific: bool = f.next()?.parse().ok()?;
@@ -93,11 +93,8 @@ impl Filters {
                 },
             },
             hosts: engine("hosts")?,
-            host_guards: if has_host_guards {
-                Some(engine("host-guards")?)
-            } else {
-                None
-            },
+            host_guards: engine("host-guards")?,
+            any_host_guard,
             apps,
             rules,
             host_rules,
@@ -110,7 +107,7 @@ impl Filters {
             std::fs::create_dir_all(cache)?;
             let full = self.requests.full.serialize();
             let hosts = self.hosts.serialize();
-            let host_guards = self.host_guards.as_ref().map(Engine::serialize);
+            let host_guards = Some(self.host_guards.serialize());
             let exceptions = &self.page_exceptions;
             let apps = self.apps.as_ref();
             let kept = apps.map(|rules| rules.serialized().map(Some));
@@ -171,7 +168,7 @@ impl Filters {
                 "{key} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
-                self.host_guards.is_some(),
+                self.any_host_guard,
                 exceptions.all.is_some(),
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),

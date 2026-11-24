@@ -102,8 +102,10 @@ fn exception_host<'a>(line: &'a str, rule: &'a NetworkFilter<'_>) -> Option<(&'a
 
 pub(super) struct HostRules {
     pub(super) whole: FilterSet,
-    /// Absent when an exception can apply to any host.
-    pub(super) guards: Option<FilterSet>,
+    /// The hosts that exceptions name.
+    pub(super) guards: FilterSet,
+    /// Whether an exception names no host, and so can apply to any.
+    pub(super) any_host: bool,
     pub(super) count: usize,
 }
 
@@ -117,6 +119,7 @@ impl HostRules {
         let mut host_rules = 0;
         let mut guard_bytes = 0;
         let mut any_host_exception = false;
+        let mut over_budget = false;
         for text in lists {
             let mut only = String::new();
             let mut scope_rules = String::new();
@@ -130,23 +133,27 @@ impl HostRules {
                     only.push('\n');
                     host_rules += 1;
                 }
-                if any_host_exception || !line.starts_with("@@") {
+                if over_budget || !line.starts_with("@@") {
                     continue;
                 }
-                any_host_exception = project_guard(line, disabled, &mut scope_rules);
+                any_host_exception |= project_guard(line, disabled, &mut scope_rules);
             }
             hosts.add_filter_list(only, ParseOptions::default());
             guard_bytes += scope_rules.len();
             // A projection larger than the source budget is already too
-            // broad to justify optimizing the hostname decision.
-            any_host_exception |= guard_bytes > MAX_LISTS;
-            if !any_host_exception {
+            // broad to justify optimizing the hostname decision: what is
+            // over it is left out, and any host may be excepted.
+            over_budget |= guard_bytes > MAX_LISTS;
+            if over_budget {
+                any_host_exception = true;
+            } else {
                 guards.add_filter_list(scope_rules, ParseOptions::default());
             }
         }
         Self {
             whole: hosts,
-            guards: (!any_host_exception).then_some(guards),
+            guards,
+            any_host: any_host_exception,
             count: host_rules,
         }
     }

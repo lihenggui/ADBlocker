@@ -140,11 +140,12 @@ With URL filtering on, the daemon also checks the HTTPS exclusions,
 whether the app can trust the local certificate, and whether the app has
 previously rejected it for this host. Only then does it attempt
 decryption. A connection that stays encrypted because its host is on an
-exclusion list, has an Extended Validation certificate, could not be
-verified, or was rejected by the app, or because the app does not trust
-the local certificate, is judged by the domain rules, as with URL
-filtering off: none of its requests will be seen, so no web exception can
-apply to them. Until
+exclusion list, has an Extended Validation certificate, or was rejected by
+the app is judged by the domain rules, as with URL filtering off: none of
+its requests will be seen, so no web exception can apply to them. Where
+the app does not trust the local certificate, or the server cannot be
+verified, a host that a rule blocks is refused unless an exception names
+that host. Until
 the exclusion lists have been read for the first time, every connection
 stays encrypted and is judged the same way.
 
@@ -297,8 +298,9 @@ A request that names neither, as most requests of an app outside a page
 do, is judged as AdGuard judges one without a referrer: a rule for named
 pages (`$domain=news.example`) does not apply to it, whether it blocks or
 allows, a rule for every page but some does, and the request counts as
-first-party. The HTTP method, URL and available resource type still inform
-the decision.
+first-party. A browser that withholds its page still says whether the
+request is to another site, and that decides the party. The HTTP method,
+URL and available resource type still inform the decision.
 
 A rule can name the apps it is for with AdGuard's `$app=` option:
 `||ads.example^$app=com.reader` blocks the host in that app only, and

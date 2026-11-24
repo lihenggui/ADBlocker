@@ -27,7 +27,7 @@ use hyper_util::rt::TokioIo;
 
 use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
-use crate::filter::{AppFilters, Filters, Hiding};
+use crate::filter::{AppFilters, Filters, Hiding, Page};
 use crate::relay;
 use crate::stats::Counter;
 use crate::tls::Tls;
@@ -67,8 +67,33 @@ pub(super) fn kind<B>(req: &Request<B>) -> &'static str {
     }
 }
 
+fn header<'a, B>(req: &'a Request<B>, name: &str) -> Option<&'a [u8]> {
+    req.headers().get(name).map(|value| value.as_bytes())
+}
+
+/// Whether the request is for a page of its own. A browser says so with
+/// `Sec-Fetch-Dest`, which it sends over HTTPS only: over HTTP it asks for
+/// an upgrade when it goes to a page, and names no page that led there
+/// when the user did.
 fn is_document<B>(req: &Request<B>) -> bool {
-    req.headers().get("sec-fetch-dest").map(|v| v.as_bytes()) == Some(b"document")
+    match header(req, "sec-fetch-dest") {
+        Some(dest) => dest == b"document",
+        None => header(req, "upgrade-insecure-requests") == Some(b"1") && told_page(req).is_none(),
+    }
+}
+
+/// What the request says of the page that made it.
+fn page_of<'a, B>(req: &Request<B>, told: Option<&'a adblock::url_parser::RequestUrl>) -> Page<'a> {
+    if is_document(req) {
+        return Page::Itself;
+    }
+    match told {
+        Some(page) => Page::Named(page),
+        // A browser that withholds the page still says whose it is.
+        None => Page::Unnamed {
+            cross_site: header(req, "sec-fetch-site") == Some(b"cross-site"),
+        },
+    }
 }
 
 /// The page a request says it was made by, if it says.
@@ -178,8 +203,7 @@ fn evaluate<'a, B>(
     let blocked = filters
         .check_with_page(
             url,
-            page.as_ref().map(|(_, page)| page),
-            is_document(req),
+            page_of(req, page.as_ref().map(|(_, page)| page)),
             kind,
             req.method().as_str(),
         )
