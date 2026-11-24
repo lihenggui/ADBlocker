@@ -22,6 +22,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +49,7 @@ import li.mercury.adblocker.core.data.repository.DataChanges
 import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
+import li.mercury.adblocker.core.data.repository.ListsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
 import li.mercury.adblocker.core.data.repository.ModuleUpdate
 import li.mercury.adblocker.core.data.repository.ModuleUpdater
@@ -58,10 +60,12 @@ import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppEntry
 import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterLevel
+import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.StatsSummary
+import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnStatus
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
@@ -95,17 +99,29 @@ sealed interface OverviewUiState {
         val vpn: VpnStatus = VpnStatus(),
         /** With the VPN: how far HTTPS inspection is set up. */
         val https: HttpsSetup? = null,
-        /** Something to know once, shown until dismissed. */
+        /** Lists that are on and have no rules yet, or null when every one has a copy. */
+        val missingLists: MissingLists? = null,
+        /** What to know about now: a state shown while it holds, or a tip shown until dismissed. */
         val notice: OverviewNotice? = null,
         /** Root mode is being brought up to date with this app; the old one filters meanwhile. */
         val updating: Boolean = false,
     ) : OverviewUiState
 }
 
+/** How many enabled lists were never downloaded, and whether the last attempt failed for any of them. */
+data class MissingLists(val count: Int, val failed: Boolean)
+
 /** HTTPS without root: the installed certificate, the URL filtering setting, and the apps using HTTPS inspection. */
 data class HttpsSetup(val certificateInstalled: Boolean, val urlFiltering: Boolean, val decryptedApps: Int)
 
 enum class OverviewNotice {
+    /**
+     * Lists that are on were never downloaded, so less is filtered than the
+     * switches say. A state rather than a tip: it cannot be dismissed, and
+     * goes once they have rules.
+     */
+    ListsMissing,
+
     /** The system's "Block connections without VPN" is on: the chosen apps have no network while the VPN is down. */
     Lockdown,
 
@@ -130,6 +146,7 @@ class OverviewViewModel @Inject constructor(
     private val vpn: VpnController,
     private val methods: FilterMethodRepository,
     private val https: HttpsRepository,
+    private val lists: ListsRepository,
     @Dispatcher(IO) private val io: CoroutineDispatcher,
     @Dispatcher(DEFAULT) private val defaultDispatcher: CoroutineDispatcher,
     changes: DataChanges,
@@ -158,6 +175,8 @@ class OverviewViewModel @Inject constructor(
     private var rootAvailable = false
     private var rootProbeStarted = false
 
+    private var download: Job? = null
+
     // Read on start, after a change made anywhere in the app, on request, and
     // every REFRESH_MS while the screen is shown: nothing runs once it is not.
     val uiState: StateFlow<OverviewUiState> = merge(
@@ -174,6 +193,8 @@ class OverviewViewModel @Inject constructor(
         vpn.status.drop(1).map { false },
         // Root mode began or finished updating: what runs changes with it.
         updater.state.drop(1).map { false },
+        // An update started or ended, wherever it was asked: the lists notice waits for it.
+        lists.updating.drop(1).map { false },
     ).onEach { withApps -> if (withApps) appsStale = true }
         .mapLatest { load() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OverviewUiState.Loading)
@@ -217,7 +238,10 @@ class OverviewViewModel @Inject constructor(
         val data = userData.userData.first()
         val dismissed = data.dismissedTips
         val vpnStatus = vpn.status.value
+        val missing = missingLists(subscriptions, data)
+        // Missing lists come first: they mean less is filtered than shown, where the others are tips.
         val notice = when {
+            missing != null && !lists.updating.value -> OverviewNotice.ListsMissing
             !data.capabilities.usesVpn -> null
             vpnStatus.lockdown && LOCKDOWN_TIP !in dismissed -> OverviewNotice.Lockdown
             withContext(io) { vpn.shouldOfferBatteryExemption() } -> OverviewNotice.BatteryExemption
@@ -248,6 +272,7 @@ class OverviewViewModel @Inject constructor(
                 } else {
                     null
                 },
+                missingLists = missing,
                 notice = notice,
                 updating = updating,
             )
@@ -309,6 +334,20 @@ class OverviewViewModel @Inject constructor(
 
     fun batteryExemptionIntent(): Intent? = vpn.requestBatteryExemptionIntent()
 
+    /**
+     * Downloads the lists now. Asked for by the user, it runs on any network,
+     * as Filters' "Update now" does; the background update keeps to Wi-Fi if
+     * the settings say so. How each list fared is read back with the overview.
+     */
+    fun downloadLists() {
+        if (download?.isActive == true) return
+        download = viewModelScope.launchCatching("overview download", onFailure = {
+            messages.show(UiMessage(R.string.feature_overview_lists_download_failed))
+        }) {
+            lists.update().collect {}
+        }
+    }
+
     fun dismissNotice(notice: OverviewNotice) {
         viewModelScope.launch {
             suspendRunCatching {
@@ -345,6 +384,17 @@ class OverviewViewModel @Inject constructor(
     private companion object {
         const val TOP_APPS = 3
 
+        /**
+         * The enabled lists never downloaded, unless root setup still holds the
+         * list choices: an update is refused until they are saved.
+         */
+        fun missingLists(subscriptions: List<FilterList>, data: UserData): MissingLists? {
+            if (data.method == FilterMethod.Root && data.hasPendingLists) return null
+            val missing = subscriptions.filter { it.awaitsFirstDownload }
+            if (missing.isEmpty()) return null
+            return MissingLists(missing.size, failed = missing.any { it.error != null })
+        }
+
         const val LOCKDOWN_TIP = "vpn:lockdown"
         const val ROOT_TIP = "vpn:root-available"
 
@@ -352,6 +402,7 @@ class OverviewViewModel @Inject constructor(
             OverviewNotice.Lockdown -> LOCKDOWN_TIP
             OverviewNotice.RootAvailable -> ROOT_TIP
             OverviewNotice.BatteryExemption -> error("Battery notice follows the observed VPN stop")
+            OverviewNotice.ListsMissing -> error("Missing lists are a state, not a tip")
         }
     }
 }

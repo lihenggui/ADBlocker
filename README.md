@@ -151,7 +151,8 @@ private key and the app's data. Android stores the certificate separately.
 ## Usage
 
 - **Overview** shows filtering status and blocked requests. Use it to
-  pause or resume filtering.
+  pause or resume filtering. It also says when an enabled list has never
+  been downloaded, and so filters nothing yet, and offers to download it.
 - **Apps** lists installed apps and how each is filtered.
 - **Filters** manages subscriptions, custom rules, and trusted sites.
   Supported lists include EasyList, uBlock Origin lists, and AdGuard lists.

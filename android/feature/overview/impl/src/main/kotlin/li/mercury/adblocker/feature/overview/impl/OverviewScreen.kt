@@ -109,6 +109,7 @@ fun OverviewScreen(
         },
         onSwitchToRoot = viewModel::switchToRoot,
         onOpenHttps = onOpenHttps,
+        onDownloadLists = viewModel::downloadLists,
     )
 }
 
@@ -130,6 +131,7 @@ internal fun OverviewScreen(
     onSwitchToRoot: () -> Unit = {},
     onBatteryExemption: () -> Unit = {},
     onOpenHttps: () -> Unit = {},
+    onDownloadLists: () -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     Scaffold(
@@ -179,7 +181,7 @@ internal fun OverviewScreen(
                 is OverviewUiState.Ready -> OverviewContent(
                     state = shown,
                     actions = HeroActions(onPause, onResume, onStartService, onTurnOnAgain, onReconnect),
-                    notices = NoticeActions(onDismissNotice, onSwitchToRoot, onBatteryExemption),
+                    notices = NoticeActions(onDismissNotice, onSwitchToRoot, onBatteryExemption, onDownloadLists, onOpenFilters),
                     onOpenApp = onOpenApp,
                     onOpenFilters = onOpenFilters,
                     onOpenSettings = onOpenSettings,
@@ -205,9 +207,9 @@ private fun OverviewContent(
     val margin = pageMargin(compact)
     val first: @Composable () -> Unit = {
         StatusHero(state.status, state.filteredApps, actions, if (state.method == FilterMethod.Vpn) state.vpn else null)
-        // Under the status it concerns; it folds away once dismissed.
+        // Under the status it concerns; it folds away once dismissed or resolved.
         FadeThrough(state.notice, { it }, label = "notice") { notice ->
-            if (notice != null) Notice(notice, notices) else Spacer(Modifier.fillMaxWidth())
+            if (notice != null) Notice(notice, state.missingLists, notices) else Spacer(Modifier.fillMaxWidth())
         }
         Spacer(Modifier.height(12.dp))
         TodayCard(state.stats)

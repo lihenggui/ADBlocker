@@ -205,6 +205,34 @@ class OverviewScreenScreenshotTests {
         }
     }
 
+    @Test
+    fun givenAnEnabledListNeverDownloaded_whenShown_thenSaysItFiltersNothingYet() {
+        capturePhone("OverviewListsPending") { Overview(listsMissing(failed = false)) }
+        composeTestRule.onNodeWithText("1 list has no rules yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun givenListsWhoseFirstDownloadFailed_whenShown_thenSaysTheDownloadFailed() {
+        capturePhone("OverviewListsFailed") { Overview(listsMissing(failed = true)) }
+        composeTestRule.onNodeWithText("2 lists have no rules yet").assertIsDisplayed()
+    }
+
+    @Test
+    fun givenListsWhoseFirstDownloadFailed_whenShownInDarkTheme_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_dark", DefaultTestDevices.PHONE.spec, "OverviewListsFailed", darkMode = true) { Overview(listsMissing(failed = true)) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenListsWhoseFirstDownloadFailed_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewListsFailed") { Overview(listsMissing(failed = true)) }
+    }
+
+    private fun listsMissing(failed: Boolean) = ready().copy(
+        missingLists = MissingLists(count = if (failed) 2 else 1, failed = failed),
+        notice = OverviewNotice.ListsMissing,
+    )
+
     /** The VPN defaults to connected with URL filtering on and no certificate installed yet. */
     private fun vpn(status: VpnStatus = VpnStatus(state = VpnState.On)) = ready().copy(
         method = FilterMethod.Vpn,

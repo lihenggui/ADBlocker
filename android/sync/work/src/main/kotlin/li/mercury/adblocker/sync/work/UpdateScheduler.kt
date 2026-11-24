@@ -129,5 +129,5 @@ class UpdateScheduler @Inject constructor(
     }
 }
 
-/** Whether a list that is on has no copy yet: one that is off is not downloaded. */
-internal fun anyNeverDownloaded(lists: List<FilterList>): Boolean = lists.any { it.enabled && it.updated == null }
+/** Whether a list that is on has no copy yet. */
+internal fun anyNeverDownloaded(lists: List<FilterList>): Boolean = lists.any { it.awaitsFirstDownload }
