@@ -85,7 +85,9 @@ interface ModuleRepository {
      * manager lists it. Returns whether it is active at once, which it is
      * whenever this returns.
      *
-     * @throws AbdException if root is missing or the installer fails.
+     * @throws AbdException if root is missing or the installer fails: a
+     * [AbdException.CommandFailed] then carries what the installer said was
+     * wrong, in its own words, for the screens to show.
      */
     suspend fun installBundled(): Boolean
 
@@ -244,7 +246,7 @@ internal class RootModuleRepository(
 
     override suspend fun installBundled(): Boolean {
         val result = rootShell.run(installCommand(context.applicationInfo.sourceDir), label = "module install", timeoutSeconds = INSTALL_TIMEOUT_SECONDS)
-        if (!result.isSuccess) throw AbdException.CommandFailed(result.output.ifBlank { result.error })
+        if (!result.isSuccess) throw AbdException.CommandFailed(installerMessage(result.output))
         // The installer leaves the module in use: one that is not this
         // app's now was not installed.
         if (state() != ModuleState.Ready) throw AbdException.CommandFailed("Could not verify the installed module")
@@ -402,6 +404,18 @@ internal suspend fun awaitRunning(abd: AbdClient): Boolean = withTimeoutOrNull(5
     while (!abd.status().running) delay(500L)
     true
 } ?: false
+
+/**
+ * What the installer said went wrong: the lines it marks with "!"
+ * (module/customize.sh, module/direct.sh). The rest of what it printed is
+ * what it did and what the tools it ran listed, with the paths of the
+ * package and of its staging directory, and is not passed on.
+ */
+internal fun installerMessage(output: String): String = output.lineSequence()
+    .map(String::trim)
+    .filter { it.startsWith("!") }
+    .joinToString("\n") { it.removePrefix("!").trim() }
+    .ifEmpty { "The installer failed" }
 
 /**
  * A shell command that installs the module in [apkPath] with the module's
