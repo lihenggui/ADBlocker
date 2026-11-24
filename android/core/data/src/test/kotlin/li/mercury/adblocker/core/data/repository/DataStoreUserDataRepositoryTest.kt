@@ -120,6 +120,16 @@ class DataStoreUserDataRepositoryTest {
         }
     }
 
+    @Test
+    fun givenTheListsWereCheckedForAVersion_whenTheStoreReopens_thenThatVersionIsRead() = runTest {
+        withRepository { repository, _ ->
+            assertEquals(null, repository.listsCheckedVersion())
+            repository.setListsCheckedVersion(42)
+        }
+
+        withRepository { repository, _ -> assertEquals(42L, repository.listsCheckedVersion()) }
+    }
+
     private suspend fun withRepository(action: suspend (DataStoreUserDataRepository, DataStore<Preferences>) -> Unit) {
         val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
         val store = PreferenceDataStoreFactory.create(scope = scope) { temporary.root.resolve("user.preferences_pb") }

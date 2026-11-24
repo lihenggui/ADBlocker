@@ -22,6 +22,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -130,6 +131,10 @@ class UserPreferencesDataSource @Inject constructor(
 
     suspend fun setFilterMethod(method: FilterMethod) = dataStore.edit { it.useMethod(method) }
 
+    suspend fun listsCheckedVersion(): Long? = dataStore.data.first()[LISTS_CHECKED_VERSION]
+
+    suspend fun setListsCheckedVersion(version: Long) = dataStore.edit { it[LISTS_CHECKED_VERSION] = version }
+
     private fun MutablePreferences.useMethod(method: FilterMethod) {
         this[FILTER_METHOD] = method.name
         remove(ROOT_SWITCH_PENDING)
@@ -174,6 +179,7 @@ class UserPreferencesDataSource @Inject constructor(
         val ROOT_HANDOFF_ATTEMPT = stringPreferencesKey("root_handoff_attempt")
         val ROOT_HANDOFF_TO_FINISH = stringPreferencesKey("root_handoff_to_finish")
         val MODULE_INSTALLED_BY_APP = booleanPreferencesKey("module_installed_by_app")
+        val LISTS_CHECKED_VERSION = longPreferencesKey("lists_checked_version")
     }
 }
 

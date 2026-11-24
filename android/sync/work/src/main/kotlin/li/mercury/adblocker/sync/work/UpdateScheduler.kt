@@ -33,15 +33,14 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.ListsRepository
 import li.mercury.adblocker.core.data.repository.UserDataRepository
-import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.UpdateInterval
 import java.time.Duration
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.time.Duration.Companion.seconds
 
 /** Keeps the background list update scheduled as the settings say. */
 @Singleton
@@ -66,18 +65,16 @@ class UpdateScheduler @Inject constructor(
         scope.launch { downloadMissing() }
     }
 
-    /**
-     * Asks for an update when a list that is on has never been downloaded.
-     * A list that an update of the app made a default is on from then, and
-     * the periodic update may be days away.
-     */
-    suspend fun downloadMissing() {
-        if (!userData.userData.first().onboardingDone) return
-        // Unreadable lists are read again when the app next starts.
-        val missing = suspendRunCatching("lists before an update") { lists.lists() }.getOrNull()
-            ?.let(::anyNeverDownloaded) ?: return
-        if (missing) updateSoon()
-    }
+    private val missingLists = MissingListsCheck(
+        versionCode = { context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode },
+        userData = userData,
+        readLists = lists::lists,
+        requestUpdate = ::updateSoon,
+        readTimeout = MISSING_LISTS_READ_TIMEOUT,
+    )
+
+    /** Asks for an update if a list that is on was never downloaded, once for each installed version. */
+    suspend fun downloadMissing() = missingLists.run()
 
     private fun schedule(interval: UpdateInterval, wifiOnly: Boolean) {
         if (interval == UpdateInterval.Never) {
@@ -121,13 +118,13 @@ class UpdateScheduler @Inject constructor(
         .setRequiresBatteryNotLow(batteryNotLow)
         .build()
 
-    private companion object {
-        const val PERIODIC = "update-lists"
-        const val ONCE = "update-lists-once"
-        const val ROOT_ONCE = "update-root-lists-once"
-        const val BACKOFF_MINUTES = 30L
+    companion object {
+        /** How long [downloadMissing] waits for the lists: well under the limit of a broadcast receiver. */
+        val MISSING_LISTS_READ_TIMEOUT = 8.seconds
+
+        private const val PERIODIC = "update-lists"
+        private const val ONCE = "update-lists-once"
+        private const val ROOT_ONCE = "update-root-lists-once"
+        private const val BACKOFF_MINUTES = 30L
     }
 }
-
-/** Whether a list that is on has no copy yet. */
-internal fun anyNeverDownloaded(lists: List<FilterList>): Boolean = lists.any { it.awaitsFirstDownload }
