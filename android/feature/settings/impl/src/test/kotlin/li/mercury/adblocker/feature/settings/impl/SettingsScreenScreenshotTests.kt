@@ -247,6 +247,28 @@ class SettingsScreenScreenshotTests {
     }
 
     @Test
+    fun givenAModuleFlashedInAManagerNotFound_whenShown_thenSaysToRemoveItInTheRootManager() {
+        captureTallPhone("SettingsFlashedUnknownManager") {
+            Settings(state.copy(service = state.service.copy(installedByApp = false, rootManager = null)))
+        }
+    }
+
+    @Test
+    fun givenAModuleFlashedInTheManagerWithTheLongestName_whenShown_thenTheHeadlineFits() {
+        captureTallPhone("SettingsFlashedKernelSu") {
+            Settings(state.copy(service = state.service.copy(installedByApp = false, rootManager = "KernelSU")))
+        }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAModuleFlashedInTheManagerWithTheLongestName_whenShownInChinese_thenTheHeadlineFits() {
+        composeTestRule.captureForDevice("phone_tall_zh", TALL_PHONE, "SettingsFlashedKernelSu") {
+            Settings(state.copy(service = state.service.copy(installedByApp = false, rootManager = "KernelSU")))
+        }
+    }
+
+    @Test
     fun givenAModuleFlashedAndWaitingForARestart_whenTheAppsCopyRuns_thenSaysWhenTheModuleTakesEffect() {
         captureTallPhone("SettingsFlashedPending") {
             Settings(state.copy(service = state.service.copy(stagedInManager = true, rootManager = "APatch")))
