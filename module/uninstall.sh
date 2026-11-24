@@ -63,9 +63,13 @@ else
 fi
 
 # A module the app had installed that this one never came to replace would
-# start again at the next boot, with nothing left of what it kept.
-DIRECT=/data/adb/adblocker_direct
-if [ "$MODDIR" != "$DIRECT" ] && ! rm -rf "$DIRECT" /data/adb/service.d/adblocker.sh; then
-    printf '%s\n' "uninstall: the module the app had installed could not be removed" >&2
-fi
+# start again at the next boot, with nothing left of what it kept. Only run
+# from a root manager's own directory is this the flashed module.
+case "$MODDIR" in
+/data/adb/modules/* | /data/adb/modules_update/*)
+    if ! rm -rf /data/adb/adblocker_direct /data/adb/service.d/adblocker.sh; then
+        printf '%s\n' "uninstall: the module the app had installed could not be removed" >&2
+    fi
+    ;;
+esac
 exit "$cleanup"
