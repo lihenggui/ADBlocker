@@ -496,6 +496,21 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun givenAFlashedModuleInUseWithAnUpdateStaged_whenItsVersionMatches_thenTheWaitingUpdateIsKnown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleInstalled = true
+        installedByApp = false
+        staged = true
+        rootManager = "Magisk"
+        showSettings()
+
+        val service = viewModel.uiState.value.service
+        assertEquals(ModuleState.Ready, service.module)
+        assertEquals(false, service.installedByApp)
+        assertTrue(service.stagedInManager)
+    }
+
+    @Test
     fun givenAModuleMarkedForRemovalInItsManager_whenShown_thenNoUpdateIsSaidToWait() = runTest {
         userData.setFilterMethod(FilterMethod.Root)
         heldByManager = true
