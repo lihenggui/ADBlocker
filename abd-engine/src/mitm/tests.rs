@@ -2299,7 +2299,7 @@ fn a_page_gone_to_is_its_own_first_party_whatever_led_there() {
             req = req.header(REFERER, referer);
         }
         let url = format!("https://ads.example{path}");
-        evaluate_request(&filters, &req.body(()).unwrap(), &url).blocked
+        evaluate_request(&filters.for_app("com.app"), &req.body(()).unwrap(), &url).blocked
     };
     let news = Some("https://news.example/");
     for referer in [None, news] {

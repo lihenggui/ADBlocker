@@ -213,6 +213,7 @@ impl Policy {
         if allow.covers(host) {
             return Verdict::Passthrough(Reason::Trusted);
         }
+        let filters = filters.for_app(package);
         if domain_only {
             return if filters.blocks_domain(host) {
                 Verdict::Block

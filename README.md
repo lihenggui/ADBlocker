@@ -185,7 +185,9 @@ In `/data/adb/adblocker`, `sources` holds the addresses of the filter lists
 and `exclusion-sources` those of the lists of hosts that are never
 decrypted, one a line. Updates add missing bundled exclusion sources to
 an existing selection. An empty exclusion selection keeps decryption off.
-Custom rules go in `rules/*.txt`, in the syntax of the filter lists. Run
+Custom rules go in `rules/*.txt`, in the syntax of the filter lists. A
+rule ending in `$app=` and a package name, such as
+`||ads.example^$app=com.reader`, applies in that app only. Run
 `abd update` or `abd reload` after a change.
 
 </details>

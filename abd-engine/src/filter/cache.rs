@@ -18,7 +18,7 @@ use std::path::Path;
 
 use adblock::Engine;
 
-use super::{Filters, PageExceptions, RequestRules, use_scriptlets};
+use super::{AppRules, Filters, PageExceptions, RequestRules, use_scriptlets};
 use crate::files;
 use crate::list_files::MAX_COMPILED;
 
@@ -39,6 +39,9 @@ impl Filters {
         let has_no_cosmetic: bool = f.next()?.parse().ok()?;
         let has_no_elements: bool = f.next()?.parse().ok()?;
         let has_specific: bool = f.next()?.parse().ok()?;
+        // Absent from what was kept before there were rules for apps:
+        // those of its lists were not compiled.
+        let has_apps: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
         let mut engine = |name: &str| {
             let compiled = files::read_bytes(&cache.join(name), remaining).ok()?;
@@ -84,6 +87,17 @@ impl Filters {
             } else {
                 None
             },
+            apps: if has_apps {
+                Some(AppRules::compiled(
+                    engine("app-blocks")?,
+                    engine("app-exceptions")?,
+                    engine("app-hosts")?,
+                    engine("app-guards")?,
+                    excepted(&cache.join("app-excepted"))?,
+                ))
+            } else {
+                None
+            },
             rules,
             host_rules,
         })
@@ -98,7 +112,20 @@ impl Filters {
             let hosts = self.hosts.serialize();
             let host_guards = self.host_guards.as_ref().map(Engine::serialize);
             let exceptions = &self.page_exceptions;
+            let apps = self.apps.as_ref();
+            let [
+                app_blocks,
+                app_exceptions,
+                app_hosts,
+                app_guards,
+                app_excepted,
+            ] = app_rules(apps);
             let compiled = [
+                ("app-blocks", app_blocks),
+                ("app-exceptions", app_exceptions),
+                ("app-hosts", app_hosts),
+                ("app-guards", app_guards),
+                ("app-excepted", app_excepted),
                 ("full", Some(full)),
                 ("unknown", unknown),
                 ("hosts", Some(hosts)),
@@ -146,7 +173,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.host_guards.is_some(),
@@ -154,9 +181,33 @@ impl Filters {
                 exceptions.all.is_some(),
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),
+                apps.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };
         let _ = write();
     }
+}
+
+/// The rules for apps as they are kept, in the order of their files.
+fn app_rules(apps: Option<&AppRules>) -> [Option<Vec<u8>>; 5] {
+    let Some(rules) = apps else {
+        return Default::default();
+    };
+    let excepted = rules.excepted.iter().flat_map(|name| name.to_be_bytes());
+    [
+        Some(rules.blocks.serialize()),
+        Some(rules.exceptions.serialize()),
+        Some(rules.hosts.serialize()),
+        Some(rules.guards.serialize()),
+        Some(excepted.collect()),
+    ]
+}
+
+/// The apps that exceptions name, as they were kept.
+fn excepted(file: &Path) -> Option<Vec<u64>> {
+    let kept = files::read_bytes(file, MAX_COMPILED).ok()?;
+    let (names, rest) = kept.as_chunks::<8>();
+    rest.is_empty()
+        .then(|| names.iter().map(|name| u64::from_be_bytes(*name)).collect())
 }
