@@ -42,7 +42,7 @@ class RootDiagnosticsRepositoryTest {
     val temporary = TemporaryFolder()
 
     private val application get() = RuntimeEnvironment.getApplication()
-    private var readDaemon: () -> CommandResult = { CommandResult(true, 0, "daemon started", "") }
+    private var readDaemon: () -> CommandResult = { CommandResult(true, 0, "== abd.log\ndaemon started", "") }
     private val shell = object : RootShell(Dispatchers.Unconfined) {
         override suspend fun run(command: String, label: String, timeoutSeconds: Int): CommandResult {
             assertEquals("log export", label)
@@ -57,7 +57,7 @@ class RootDiagnosticsRepositoryTest {
         val logs = application.filesDir.resolve("logs")
         assertTrue(logs.mkdirs())
         logs.resolve("current").writeText("app started")
-        readDaemon = { CommandResult(false, 1, "previous session ended", "private shell diagnostics") }
+        readDaemon = { CommandResult(false, 1, "== abd.log\nprevious session ended", "private shell diagnostics") }
         val destination = temporary.newFile()
         val repository = RootDiagnosticsRepository(application, shell, truncatingWriter, StandardTestDispatcher(testScheduler))
 
