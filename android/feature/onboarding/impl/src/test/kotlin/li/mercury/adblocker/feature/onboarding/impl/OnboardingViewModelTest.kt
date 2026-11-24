@@ -181,9 +181,10 @@ class OnboardingViewModelTest {
         )
     }
 
-    /** A module flashed in a root manager that waits for a restart, as Magisk and APatch leave it. */
-    private var moduleState = ModuleState.NeedsRestart
+    /** Nothing in use, as also while a module flashed in Magisk or APatch waits for a restart. */
+    private var moduleState = ModuleState.NotInstalled
     private var installerFailure: String? = null
+    private var startFailure: AbdException? = null
 
     private val viewModel by lazy { newViewModel() }
 
@@ -197,6 +198,11 @@ class OnboardingViewModelTest {
                 installerFailure?.let { throw AbdException.CommandFailed(it) }
                 moduleState = ModuleState.Ready
                 return true
+            }
+
+            override suspend fun ensureRunning() {
+                done += "start"
+                startFailure?.let { throw it }
             }
         },
         apps = apps,
@@ -392,13 +398,30 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun givenRootModeReady_whenSettingUp_thenNothingIsInstalled() = runTest {
+    fun givenRootModeReady_whenSettingUp_thenNothingIsInstalledAndItIsMadeToRun() = runTest {
         root = true
         moduleState = ModuleState.Ready
         leaveTheCheck()
         repeat(3) { viewModel.next() }
 
-        assertEquals(listOf("configure lists", "configure apps", "update"), done)
+        assertEquals(listOf("start", "configure lists", "configure apps", "update"), done)
+        assertTrue(viewModel.uiState.value.install is InstallState.Done)
+    }
+
+    @Test
+    fun givenRootModeReadyButItDoesNotRun_whenSettingUp_thenSetupFails() = runTest {
+        root = true
+        moduleState = ModuleState.Ready
+        startFailure = AbdException.TimedOut()
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(InstallState.Failed(LoadFailure.TimedOut), viewModel.uiState.value.install)
+        assertEquals(listOf("start"), done)
+
+        startFailure = null
+        viewModel.install()
+        assertEquals(listOf("start", "start", "configure lists", "configure apps", "update"), done)
         assertTrue(viewModel.uiState.value.install is InstallState.Done)
     }
 

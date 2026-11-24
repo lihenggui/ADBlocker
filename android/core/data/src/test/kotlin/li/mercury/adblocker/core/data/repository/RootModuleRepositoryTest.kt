@@ -183,6 +183,7 @@ class RootModuleRepositoryTest {
             installed(direct)
             CommandResult(true, 0, "", "")
         }
+        readyAt = 1
         assertTrue(module.installBundled())
         assertEquals(ModuleState.Ready, module.state())
     }
@@ -299,7 +300,57 @@ class RootModuleRepositoryTest {
             installed(direct)
             CommandResult(true, 0, "- Installing with root alone", "")
         }
+        // The installer started the daemon, which is up at the second look.
+        readyAt = 2
         assertTrue(module.installBundled())
+        assertEquals(emptyList(), starts())
+    }
+
+    @Test
+    fun givenAnInstallerSucceedsButDidNotStartTheDaemon_whenInstalling_thenTheDaemonIsStarted() = runTest {
+        installer = {
+            installed(direct)
+            CommandResult(true, 0, "! Installed, but the daemon did not start", "")
+        }
+        // Not within the wait for one that is starting; then started here.
+        readyAt = 12
+        assertTrue(module.installBundled())
+        assertEquals(listOf(direct.name), starts())
+    }
+
+    @Test
+    fun givenAnInstallerSucceedsAndTheDaemonNeverRuns_whenInstalling_thenInstallationFails() = runTest {
+        installer = {
+            installed(direct)
+            CommandResult(true, 0, "", "")
+        }
+        assertFailsWith<AbdException.TimedOut> { module.installBundled() }
+        assertEquals(listOf(direct.name), starts())
+    }
+
+    @Test
+    fun givenAReadyModuleWithNothingRunning_whenMadeToRun_thenItIsStarted() = runTest {
+        installed(direct).resolve("disable").writeText("")
+        assertEquals(ModuleState.Ready, module.state())
+        readyAt = 12
+        module.ensureRunning()
+        assertEquals(listOf(direct.name), starts())
+        assertFalse(direct.resolve("disable").exists())
+    }
+
+    @Test
+    fun givenAModuleTurnedOffInTheManager_whenMadeToRun_thenItFails() = runTest {
+        installed(flashed).resolve("disable").writeText("")
+        assertFailsWith<AbdException.CommandFailed> { module.ensureRunning() }
+        assertEquals(emptyList(), starts())
+    }
+
+    @Test
+    fun givenADaemonThatRuns_whenMadeToRun_thenItIsLeftAlone() = runTest {
+        installed(direct)
+        readyAt = 1
+        module.ensureRunning()
+        assertEquals(emptyList(), starts())
     }
 
     @Test

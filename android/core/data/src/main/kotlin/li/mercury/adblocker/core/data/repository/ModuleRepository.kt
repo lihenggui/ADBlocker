@@ -82,13 +82,25 @@ interface ModuleRepository {
      * root manager is brought up to date where it is and stays the manager's;
      * without one the module goes into a directory of this app's, and no
      * manager lists it. Returns whether it is active at once, which it is
-     * whenever this returns.
+     * whenever this returns: its daemon runs.
      *
-     * @throws AbdException if root is missing or the installer fails: a
-     * [AbdException.CommandFailed] then carries what the installer said was
-     * wrong, in its own words, for the screens to show.
+     * @throws AbdException if root is missing, the installer fails or the
+     * daemon does not run afterwards: a [AbdException.CommandFailed] then
+     * carries what the installer said was wrong, in its own words, for the
+     * screens to show.
      */
     suspend fun installBundled(): Boolean
+
+    /**
+     * Makes sure the daemon of the module in use runs: waits for one that is
+     * starting, and starts one that is stopped, as [startDaemon] does. A
+     * module can be ready, by its files, with nothing running: after the
+     * app was installed again, or where nothing started it at boot.
+     *
+     * @throws AbdException if it does not run: [AbdException.CommandFailed]
+     * for a module that is turned off or marked for removal in a root manager.
+     */
+    suspend fun ensureRunning()
 
     /**
      * Whether this app installed the module in use, and so is what removes
@@ -249,7 +261,14 @@ internal class RootModuleRepository(
         // The installer leaves the module in use: one that is not this
         // app's now was not installed.
         if (state() != ModuleState.Ready) throw AbdException.CommandFailed("Could not verify the installed module")
+        // The installer goes on when the service script failed, and says so only in passing.
+        ensureRunning()
         return true
+    }
+
+    override suspend fun ensureRunning() {
+        if (awaitRunning(abd)) return
+        if (!startDaemon()) throw AbdException.CommandFailed("The module is turned off in the root manager")
     }
 
     override suspend fun isInstalledByApp(): Boolean = try {

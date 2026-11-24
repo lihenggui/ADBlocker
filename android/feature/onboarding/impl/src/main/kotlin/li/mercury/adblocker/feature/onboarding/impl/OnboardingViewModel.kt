@@ -270,7 +270,13 @@ class OnboardingViewModel @Inject constructor(
                 state.update { it.copy(install = InstallState.Running(InstallStage.Module, 0.1f)) }
                 // Only after a VPN setup that did not finish, before root was granted.
                 val rootSelected = userData.userData.first().method == FilterMethod.Root || methods.switchTo(FilterMethod.Root) == FilterMethodSwitch.Complete
-                if (module.state() != ModuleState.Ready && !setUpRootMode()) return@suspendRunCatching
+                if (module.state() != ModuleState.Ready) {
+                    if (!setUpRootMode()) return@suspendRunCatching
+                } else {
+                    // Ready says what is installed, not that it runs: nothing
+                    // may have started it since the device or the app did.
+                    module.ensureRunning()
+                }
                 if (!rootSelected && !methods.retryRootSwitch() && userData.userData.first().method != FilterMethod.Root) {
                     throw AbdException.CommandFailed("Root setup is waiting for the module")
                 }
