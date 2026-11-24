@@ -14,9 +14,10 @@
 
 //! Rules as the engine reads them: which it applies, and which not.
 //!
-//! The check runs without the permissions of a trusted catalog list.
+//! The check uses the permissions of the user's own rules.
 
-use crate::filter::{Patterns, valid_app_rule, valid_response_rule};
+use crate::filter::{Patterns, valid_app_rule, valid_response_rule, valid_script_exception};
+use crate::rule::javascript::Scripts;
 use crate::rule::{self, Kind, MatcherCheck};
 
 use crate::protocol_types::{Issue, IssueKind, RulesCheck};
@@ -26,10 +27,11 @@ pub use crate::rule::{count, is_comment};
 pub fn check(text: &str) -> RulesCheck {
     crate::public_suffix::install();
     let mut patterns = Patterns::default();
+    let mut scripts = Scripts::default();
     let mut rules = 0;
     let mut issues = Vec::new();
     for (n, line) in text.lines().enumerate() {
-        let rule = rule::read(line);
+        let rule = rule::read_with_scripts(line, Some(&mut scripts));
         if matches!(rule.kind, Kind::Comment) {
             continue;
         }
@@ -38,6 +40,7 @@ pub fn check(text: &str) -> RulesCheck {
             Kind::Comment => unreachable!(),
             Kind::Response(response) if valid_response_rule(response, &mut patterns) => continue,
             Kind::App(app) if valid_app_rule(app, &mut patterns) => continue,
+            Kind::PageException(_) if valid_script_exception(&rule) => continue,
             Kind::App(_) | Kind::Response(_) => IssueKind::Invalid,
             Kind::Matcher | Kind::Cosmetic | Kind::PageException(_) | Kind::NotApplied(_) => {
                 match rule.matcher_check() {
@@ -108,11 +111,22 @@ mod tests {
         assert_eq!(check(text).rules, 5);
         assert_eq!(
             kinds(text),
-            [
-                (3, IssueKind::Cosmetic),
-                (4, IssueKind::Cosmetic),
-                (5, IssueKind::Cosmetic),
-            ]
+            [(3, IssueKind::Cosmetic), (5, IssueKind::Cosmetic),]
+        );
+    }
+
+    #[test]
+    fn javascript_and_page_script_exceptions_are_checked_with_user_permissions() {
+        let text = "site.test#%#window.fixture = 1;\n\
+                    except.site.test#@%#window.fixture = 1;\n\
+                    @@||site.test^$jsinject,elemhide\n\
+                    @@||site.test^$jsinject,content\n\
+                    @@||site.test^$jsinject,extension\n\
+                    @@||site.test^$extension\n\
+                    site.test#%#window.fixture = '</script>';\n";
+        assert_eq!(
+            kinds(text),
+            [(6, IssueKind::Invalid), (7, IssueKind::Cosmetic)]
         );
     }
 

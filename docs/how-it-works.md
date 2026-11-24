@@ -353,16 +353,19 @@ protocols pass through unchanged.
 The shared engine applies cosmetic rules to decrypted HTML by default in
 both root and VPN modes. **Hide page elements** can be turned off in Settings.
 The engine puts site CSS and a single script right after the
-page's `<head>` tag. The script runs matched uBlock Origin scriptlets
-and hands matched procedural actions to a throttled DOM observer.
+page's `<head>` tag. The script runs matched uBlock Origin scriptlets and
+AdGuard JavaScript rules and hands matched procedural actions to a throttled
+DOM observer.
 The rule reader maps compatible AdGuard `#%#//scriptlet(...)` calls and
 their exceptions to the bundled scriptlets. It maps single CSS rule sets
 with `#$#` or `#$?#` and their exceptions to style and removal actions.
-AdGuard JavaScript injection and `$$` HTML filtering are unsupported.
+AdGuard `#%#` JavaScript rules and `#@%#` exceptions require named domains
+and come from marked lists or user rules. `$jsinject` disables scriptlets
+and JavaScript rules on matching pages. `$$` HTML filtering is unsupported.
 Selectors such as `:has()` stay in native CSS where the parser represents
 them as CSS. Rules based on generic classes and IDs can still use a second
-style at the end of the document. The compiled lists keep each source's
-scriptlet permissions when they are reloaded from the cache. See
+style at the end of the document. The cache keeps the compiled permissions
+and the JavaScript rule bodies. See
 [SECURITY.md](../SECURITY.md#hiding-page-elements) for the CSP and trust
 limits.
 

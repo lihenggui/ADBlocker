@@ -41,6 +41,8 @@ const SCRIPTLET_START: &str = "(() => {\nconst scriptletGlobals = {};\n";
 const SCRIPTLET_END: &str = "\n})();\n";
 const CALL_START: &str = "try {";
 const CALL_END: &str = "\n} catch ( e ) { }\n";
+pub(crate) const JAVASCRIPT_START: &str = "(function(){\n";
+pub(crate) const JAVASCRIPT_END: &str = "\n})();";
 
 pub(crate) fn assemble(scriptlets: String, actions: HashSet<String>) -> Option<String> {
     let scriptlets = scriptlet_code(&scriptlets);
@@ -107,13 +109,11 @@ fn scriptlet_code(mut generated: &str) -> Option<String> {
         return Some([SCRIPTLET_START, generated, SCRIPTLET_END].concat());
     }
 
-    // adblock-rust emits bundled function definitions followed by try/catch
-    // blocks with one call per line. It quotes arguments and escapes their
-    // newlines, so a list cannot supply either of the structural delimiters.
-    // Walk backward so try/catch inside a bundled function is never split.
+    // adblock-rust emits helper definitions before its try/catch blocks.
+    // Walk backward so try/catch inside a helper is never split.
     let mut calls = Vec::new();
     while let Some(block) = generated.strip_suffix(CALL_END) {
-        let (start, call) = block.rsplit_once('\n')?;
+        let (start, call) = split_call(block)?;
         generated = start.strip_suffix(CALL_START)?;
         if safe_raw_text(call) {
             calls.push(call);
@@ -145,6 +145,19 @@ fn scriptlet_code(mut generated: &str) -> Option<String> {
     }
     script += SCRIPTLET_END;
     Some(script)
+}
+
+fn split_call(block: &str) -> Option<(&str, &str)> {
+    let Some(body) = block.strip_suffix(JAVASCRIPT_END) else {
+        // Bundled scriptlet calls escape newlines in their arguments.
+        return block.rsplit_once('\n');
+    };
+    // Each JavaScript rule body occupies exactly one line between its wrappers.
+    let (start, _) = body.rsplit_once('\n')?;
+    let start = start
+        .strip_suffix(JAVASCRIPT_START.trim_end())?
+        .strip_suffix('\n')?;
+    Some((start, &block[start.len() + 1..]))
 }
 
 pub(crate) fn safe_raw_text(script: &str) -> bool {

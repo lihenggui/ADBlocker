@@ -23,6 +23,7 @@ fn filters(rules: &str) -> Filters {
 }
 
 mod guards;
+mod javascript;
 
 mod lists {
     use super::*;

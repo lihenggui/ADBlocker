@@ -26,6 +26,7 @@ use self::options::{OptionToken, Options, Quoting, unescaped};
 pub(crate) mod action;
 mod adguard;
 mod comment;
+pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
 mod response;
@@ -82,10 +83,18 @@ pub(crate) struct PageException<'a> {
     pub(crate) document: bool,
     pub(crate) content: bool,
     pub(crate) urlblock: bool,
+    pub(crate) script: bool,
     pub(crate) elements: Option<Elements>,
 }
 
 pub(crate) fn read(line: &str) -> Rule<'_> {
+    read_with_scripts(line, None)
+}
+
+pub(crate) fn read_with_scripts<'a>(
+    line: &'a str,
+    scripts: Option<&mut javascript::Scripts<'a>>,
+) -> Rule<'a> {
     let line = line.trim();
     let mut rule = Rule {
         line,
@@ -98,7 +107,13 @@ pub(crate) fn read(line: &str) -> Rule<'_> {
         rule.kind = Kind::Comment;
         return rule;
     }
-    if let Some(translated) = adguard::translate(line) {
+    if javascript::uses_reserved_name(line) {
+        rule.kind = Kind::NotApplied(Reason::AdGuard(adguard::Unsupported::JavaScript(
+            javascript::Rejection::ReservedName,
+        )));
+        return rule;
+    }
+    if let Some(translated) = adguard::translate(line, scripts) {
         match translated {
             Ok(translated) => {
                 rule.translated = Some(translated);
@@ -253,7 +268,7 @@ impl<'a> Rule<'a> {
     /// on a line the matcher accepts. The CLI keeps its existing verdict.
     pub(crate) fn matcher_check(&self) -> MatcherCheck {
         if let Some(translated) = &self.translated {
-            return if translated.trusted {
+            return if translated.requires_trusted_scriptlets {
                 MatcherCheck::Cosmetic
             } else {
                 MatcherCheck::AppliedCosmetic
@@ -358,6 +373,7 @@ impl<'a> PageException<'a> {
     fn read(options: &Options<'a>) -> Option<Self> {
         let (mut document, mut content, mut urlblock) = (false, false, false);
         let (mut element, mut specific, mut generic) = (false, false, false);
+        let mut script = false;
         for token in options.tokens() {
             match page_modifier(token) {
                 Some(PageModifier::Document) => document = true,
@@ -366,6 +382,7 @@ impl<'a> PageException<'a> {
                 Some(PageModifier::Element) => element = true,
                 Some(PageModifier::Specific) => specific = true,
                 Some(PageModifier::Generic) => generic = true,
+                Some(PageModifier::Script) => script = true,
                 None => (),
             }
         }
@@ -377,11 +394,12 @@ impl<'a> PageException<'a> {
         } else {
             None
         };
-        (document || content || urlblock || elements.is_some()).then_some(Self {
+        (document || content || urlblock || elements.is_some() || script).then_some(Self {
             pattern: options.pattern,
             document,
             content,
             urlblock,
+            script,
             elements,
         })
     }
@@ -389,7 +407,8 @@ impl<'a> PageException<'a> {
     pub(crate) fn project(&self, options: impl Iterator<Item = OptionToken<'a>>) -> String {
         let mut projected = format!("{}$document", self.pattern);
         for token in options {
-            if page_modifier(token).is_none() {
+            // The bare extension flag targets separate userscripts.
+            if page_modifier(token).is_none() && !(self.script && token.raw == "extension") {
                 projected.push(',');
                 projected.push_str(token.raw);
             }
@@ -425,7 +444,7 @@ fn cosmetic(line: &str) -> bool {
 /// The generic cosmetic engine takes its rules directly from the source
 /// lists, with the default permissions of that matcher.
 pub(crate) fn generic_cosmetic(line: &str) -> bool {
-    if !line.contains('#') {
+    if !line.contains('#') || javascript::uses_reserved_name(line) {
         return false;
     }
     matches!(parse_filter(line, false, cosmetic_options()), Ok(ParsedLine::Cosmetic(rule))

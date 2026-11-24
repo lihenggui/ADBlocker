@@ -34,11 +34,11 @@ pub(crate) use self::app_rules::{
     AppProjections, AppRules, name as app_rule, valid as valid_app_rule,
 };
 pub(crate) use self::load::MatcherLists;
-use self::load::use_scriptlets;
 use self::page_exceptions::PageExceptions;
 use self::response_rules::ResponseRules;
 use crate::apps::Identity;
 pub use crate::list_files::{ListFiles, MAX_LIST};
+use crate::rule::javascript::ScriptTable;
 
 mod app_patterns;
 mod app_rules;
@@ -48,11 +48,13 @@ mod load;
 mod page_exceptions;
 mod response_rules;
 
+pub(crate) use page_exceptions::valid_script_exception;
 pub(crate) use response_rules::valid as valid_response_rule;
 
 pub struct Filters {
     pub generation: Option<u64>,
     requests: RequestRules,
+    scripts: ScriptTable,
     page_exceptions: PageExceptions,
     hosts: Engine,
     /// The hosts that exceptions name.
@@ -275,6 +277,7 @@ impl Filters {
             return Hiding::default();
         }
         let found = self.requests.full.url_cosmetic_resources(url);
+        let no_scripts = PageExceptions::matches(self.page_exceptions.script.as_ref(), &page);
         let no_elements = PageExceptions::matches(self.page_exceptions.element.as_ref(), &page);
         let generic = self
             .page_exceptions
@@ -296,7 +299,14 @@ impl Filters {
         };
         Hiding {
             css: crate::cosmetic::style(selectors),
-            script: crate::cosmetic::script(found.injected_script, actions),
+            script: crate::cosmetic::script(
+                if no_scripts {
+                    String::new()
+                } else {
+                    found.injected_script
+                },
+                actions,
+            ),
             by_name: (!no_elements && !found.generichide).then_some(found.exceptions),
         }
     }

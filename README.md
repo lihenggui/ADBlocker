@@ -299,8 +299,10 @@ Turn off **URL filtering** to keep HTTPS encrypted.
 - **Hide page elements** hides elements named by your lists on decrypted
   pages, such as empty ad frames. It is on by default and can be turned off
   in Settings or with `abd cosmetic off` in a root shell. It also runs
-  supported uBlock Origin and AdGuard scriptlets and applies AdGuard CSS
-  injection rules and procedural rules such as `:has-text()`.
+  supported uBlock Origin and AdGuard scriptlets, AdGuard JavaScript rules
+  from marked lists and user rules, AdGuard CSS injection rules, and
+  procedural rules such as `:has-text()`. The `$jsinject` page exception
+  disables scriptlets and JavaScript rules on matching pages.
   Procedural rules also match elements a page adds later; generic CSS rules
   based only on a class or ID can miss them. See
   [how this changes a page](SECURITY.md#hiding-page-elements).

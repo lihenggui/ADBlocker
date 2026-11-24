@@ -19,9 +19,10 @@ use std::path::Path;
 use adblock::Engine;
 
 use super::response_rules::ResponseRules;
-use super::{AppRules, Filters, PageExceptions, Patterns, RequestRules, use_scriptlets};
+use super::{AppRules, Filters, PageExceptions, Patterns, RequestRules, load::use_resources};
 use crate::files;
 use crate::list_files::MAX_COMPILED;
+use crate::rule::javascript::{MAX_CACHED_SCRIPTS, ScriptTable};
 
 /// The files of the rules for apps, in the order they are kept in.
 const APPS: [&str; 4] = ["app-blocks", "app-exceptions", "app-hosts", "app-guards"];
@@ -41,6 +42,15 @@ fn optional_engine(present: bool, read: impl FnOnce() -> Option<Engine>) -> Opti
     } else {
         Some(None)
     }
+}
+
+fn read_engine(cache: &Path, name: &str, remaining: &mut usize) -> Option<Engine> {
+    let compiled = files::read_bytes(&cache.join(name), *remaining).ok()?;
+    *remaining -= compiled.len();
+    let mut engine = Engine::default();
+    // The engine's checksum rejects a truncated or damaged file.
+    engine.deserialize(&compiled).ok()?;
+    Some(engine)
 }
 
 impl Filters {
@@ -66,6 +76,7 @@ impl Filters {
         let has_no_content: bool = f.next()?.parse().ok()?;
         let has_responses: bool = f.next()?.parse().ok()?;
         let has_urlblock: bool = f.next()?.parse().ok()?;
+        let has_no_scripts: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
         let patterns = files::read_bytes(&cache.join("app-patterns"), remaining).ok()?;
         remaining -= patterns.len();
@@ -82,28 +93,26 @@ impl Filters {
         } else {
             None
         };
-        let mut engine = |name: &str| {
-            let compiled = files::read_bytes(&cache.join(name), remaining).ok()?;
-            remaining -= compiled.len();
-            let mut engine = Engine::default();
-            // Checked by the engine against its own checksum: a file cut
-            // short or damaged is refused, and the lists are read instead.
-            engine.deserialize(&compiled).ok()?;
-            Some(engine)
-        };
+        let script_data =
+            files::read_bytes(&cache.join("scripts"), remaining.min(MAX_CACHED_SCRIPTS)).ok()?;
+        remaining -= script_data.len();
+        let scripts = ScriptTable::cached(&script_data)?;
+        let mut engine = |name| read_engine(cache, name, &mut remaining);
         let responses = match actions {
             Some(actions) => Some(ResponseRules::cached(engine("response-rules")?, &actions)?),
             None => None,
         };
         let mut full = engine("full")?;
-        use_scriptlets(&mut full);
+        use_resources(&mut full, &scripts);
         Some(Self {
             generation: Some(key),
             requests: RequestRules { full },
+            scripts,
             page_exceptions: PageExceptions {
                 all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
                 content: optional_engine(has_no_content, || engine("no-content"))?,
                 urlblock: optional_engine(has_urlblock, || engine("no-urlblock"))?,
+                script: optional_engine(has_no_scripts, || engine("no-scripts"))?,
                 element: optional_engine(has_no_elements, || engine("no-element-hiding"))?,
                 specific: if has_specific {
                     Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
@@ -134,6 +143,11 @@ impl Filters {
         APPS.into_iter().zip(kept.unwrap_or_default()).chain([
             ("app-patterns", Some(self.patterns.serialized())),
             ("full", Some(self.requests.full.serialize())),
+            ("scripts", Some(self.scripts.serialized())),
+            (
+                "no-scripts",
+                exceptions.script.as_ref().map(Engine::serialize),
+            ),
             (
                 "no-content",
                 exceptions.content.as_ref().map(Engine::serialize),
@@ -211,7 +225,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.guards_incomplete,
@@ -225,6 +239,7 @@ impl Filters {
                 exceptions.content.is_some(),
                 self.responses.is_some(),
                 exceptions.urlblock.is_some(),
+                exceptions.script.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };

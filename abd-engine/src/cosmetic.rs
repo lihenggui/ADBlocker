@@ -16,18 +16,17 @@
 //! the elements, and a style that hides them is put into the page as it
 //! is passed on.
 //!
-//! This is the one place where what a server sent is changed, and it is
-//! done only where the user turned it on (`settings.rs`). The lists are
-//! not trusted with it: a selector is put into a page only if nothing in
-//! it could end the style or begin anything else (`style`), so that a
-//! list can have elements hidden and nothing more. A page is changed only
-//! where it is plain where its head begins (`place`), and is otherwise
-//! passed on as it came. Where the page says which styles it allows, this
-//! one is added to them by its hash, which allows no other (`permit`).
+//! Cosmetic filtering only changes a page where its head can be found
+//! (`place`). Selectors must be safe inside a style element (`style`).
+//! Scriptlets, trusted JavaScript rules and procedural actions share a
+//! bounded script element. Where the page restricts inline styles or
+//! scripts, their hashes are added to the appropriate policies (`csp`).
 
 mod csp;
 mod script;
-pub(crate) use script::{Prefix, Preparation, assemble as script, safe_raw_text};
+pub(crate) use script::{
+    JAVASCRIPT_END, JAVASCRIPT_START, Prefix, Preparation, assemble as script, safe_raw_text,
+};
 
 use std::collections::{HashSet, VecDeque};
 use std::fmt::Write as _;

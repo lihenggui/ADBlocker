@@ -44,7 +44,7 @@ pub(super) fn translate(
     Ok(Translation {
         line,
         scriptlet: false,
-        trusted: false,
+        requires_trusted_scriptlets: false,
     })
 }
 

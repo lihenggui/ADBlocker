@@ -154,8 +154,6 @@ fn each_adguard_form_projects_with_its_domains_and_exception_marker() {
 fn unsupported_adguard_forms_keep_their_own_reason() {
     use Unsupported::*;
     for (line, expected) in [
-        ("example.org#%#window.close()", JavaScript),
-        ("example.org#@%#window.close()", JavaScript),
         (
             "example.org#%#//scriptlet('json-prune', broken)",
             ScriptletSyntax,

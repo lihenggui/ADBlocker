@@ -45,6 +45,13 @@ pub(crate) const MAX_APP_REGEX: usize = 64 << 10;
 /// Packages whose pattern matches are remembered in one list generation.
 pub(crate) const MAX_APP_PATTERN_PACKAGES: usize = 4096;
 
+/// The longest JavaScript rule body, in bytes. Longer bodies are skipped.
+pub(crate) const MAX_JS_RULE: usize = 16 << 10;
+/// Distinct JavaScript bodies kept in one generation. Rules needing another are skipped.
+pub(crate) const MAX_JS_SCRIPTS: usize = 4096;
+/// Bytes of distinct JavaScript bodies kept in one generation. Rules that would exceed it are skipped.
+pub(crate) const MAX_JS_TABLE_BYTES: usize = 4 << 20;
+
 /// The most response rules kept from a generation of lists. The compiled
 /// expressions share `MAX_RESPONSE_REGEX_BYTES` and each NFA fits `MAX_RESPONSE_REGEX`.
 pub(crate) const MAX_RESPONSE_RULES: usize = 1024;

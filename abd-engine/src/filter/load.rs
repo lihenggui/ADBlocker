@@ -29,6 +29,7 @@ use super::response_rules::ResponseProjections;
 use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
+use crate::rule::javascript::{self, ScriptTable, Scripts};
 use crate::rule::{self, Kind, Rule};
 
 impl ListFiles {
@@ -92,12 +93,26 @@ impl MatcherLists {
     }
 }
 
-pub(super) fn use_scriptlets(engine: &mut Engine) {
+pub(super) fn use_resources(engine: &mut Engine, scripts: &ScriptTable) {
     static RESOURCES: std::sync::LazyLock<Vec<Resource>> = std::sync::LazyLock::new(|| {
         serde_json::from_str(include_str!("../../resources/scriptlets.json"))
             .expect("bundled scriptlet resources are valid")
     });
-    engine.use_resources(RESOURCES.iter().cloned());
+    engine.use_resources(RESOURCES.iter().cloned().chain(scripts.resources()));
+}
+
+fn user_rules(path: &Path) -> bool {
+    path.parent().and_then(Path::file_name) == Some("rules".as_ref())
+}
+
+fn source_permissions(path: &Path) -> (bool, PermissionMask) {
+    let scripts = user_rules(path) || trusted_list_file(path, Trust::Scripts);
+    let mut permissions =
+        PermissionMask::from_bits(u8::from(trusted_list_file(path, Trust::Scriptlets)));
+    if scripts {
+        permissions |= javascript::PERMISSION;
+    }
+    (scripts, permissions)
 }
 
 impl Filters {
@@ -160,14 +175,13 @@ impl Filters {
         let mut apps = AppProjections::default();
         let mut responses = ResponseProjections::default();
         let mut patterns = Patterns::default();
+        let mut scripts = Scripts::default();
         for (path, text) in &lists {
-            let trust_responses = path.parent().and_then(Path::file_name) == Some("rules".as_ref())
-                || trusted_list_file(path, Trust::ResponseRules);
-            let permissions =
-                PermissionMask::from_bits(u8::from(trusted_list_file(path, Trust::Scriptlets)));
+            let trust_responses = user_rules(path) || trusted_list_file(path, Trust::ResponseRules);
+            let (trust_scripts, permissions) = source_permissions(path);
             let mut normalized = String::with_capacity(text.len());
             for line in text.lines() {
-                let source = rule::read(line);
+                let source = rule::read_with_scripts(line, trust_scripts.then_some(&mut scripts));
                 MatcherLists::add(&mut normalized, &source);
                 hosts.add(&source, &disabled);
                 pages.add(&source);
@@ -197,12 +211,14 @@ impl Filters {
         });
         let host_rules = hosts.finish(&app_blocks, guard_budget);
         let mut requests = matcher.compile();
-        use_scriptlets(&mut requests.full);
+        let scripts = scripts.finish();
+        use_resources(&mut requests.full, &scripts);
         let responses = responses.compile(&mut patterns);
         patterns.report_dropped();
         Ok(Self {
             generation,
             requests,
+            scripts,
             page_exceptions: pages.compile(texts()),
             hosts: Engine::new_with_filter_set(host_rules.whole),
             host_guards: Engine::new_with_filter_set(host_rules.guards),

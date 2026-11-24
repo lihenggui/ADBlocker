@@ -18,6 +18,7 @@ use adblock::filters::cosmetic::{CosmeticFilterAction, CosmeticFilterError};
 use adblock::lists::{FilterParseError, ParsedLine, parse_filter};
 
 use super::cosmetic_options;
+use super::javascript::{self, Scripts};
 
 mod arguments;
 mod names;
@@ -26,7 +27,7 @@ mod style;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub(crate) enum Unsupported {
-    JavaScript,
+    JavaScript(javascript::Rejection),
     ScriptletSyntax,
     ScriptletName,
     ScriptletResource,
@@ -40,10 +41,13 @@ pub(crate) enum Unsupported {
 pub(super) struct Translation {
     pub(super) line: String,
     pub(super) scriptlet: bool,
-    pub(super) trusted: bool,
+    pub(super) requires_trusted_scriptlets: bool,
 }
 
-pub(super) fn translate(line: &str) -> Option<Result<Translation, Unsupported>> {
+pub(super) fn translate<'a>(
+    line: &'a str,
+    scripts: Option<&mut Scripts<'a>>,
+) -> Option<Result<Translation, Unsupported>> {
     // The matcher's explicit network anchors take precedence over hashes.
     if line.starts_with('|') || line.starts_with("@@|") {
         return None;
@@ -62,14 +66,45 @@ pub(super) fn translate(line: &str) -> Option<Result<Translation, Unsupported>> 
         "@$?" => (false, "#@?#"),
         _ => return None,
     };
-    Some(checked_domains(domains).and_then(|domains| {
-        if scriptlet {
-            scriptlets::translate(&domains, target, body)
-        } else {
-            style::translate(&domains, target, body)
-        }
-        .and_then(validate)
-    }))
+    let body = body.trim();
+    if scriptlet && !body.starts_with("//scriptlet(") {
+        return Some(translate_javascript(domains, target, body, scripts));
+    }
+    Some(
+        checked_domains(domains)
+            .and_then(|domains| {
+                if scriptlet {
+                    scriptlets::translate(&domains, target, body)
+                } else {
+                    style::translate(&domains, target, body)
+                }
+            })
+            .and_then(validate),
+    )
+}
+
+fn translate_javascript<'a>(
+    domains: &str,
+    marker: &str,
+    body: &'a str,
+    scripts: Option<&mut Scripts<'a>>,
+) -> Result<Translation, Unsupported> {
+    use javascript::Rejection;
+    if domains.is_empty() {
+        return Err(Unsupported::JavaScript(Rejection::NoDomains));
+    }
+    let scripts = scripts.ok_or(Unsupported::JavaScript(Rejection::Untrusted))?;
+    javascript::check_body(body).map_err(Unsupported::JavaScript)?;
+    let domains = checked_domains(domains)?;
+    let id = scripts.number(body);
+    let name = javascript::name(id);
+    let translated = validate(Translation {
+        line: format!("{domains}{marker}+js({name})"),
+        scriptlet: true,
+        requires_trusted_scriptlets: false,
+    })?;
+    scripts.keep(body, id).map_err(Unsupported::JavaScript)?;
+    Ok(translated)
 }
 
 fn checked_domains(domains: &str) -> Result<String, Unsupported> {

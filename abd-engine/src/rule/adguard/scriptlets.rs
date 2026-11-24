@@ -19,10 +19,6 @@ pub(super) fn translate(
     marker: &str,
     body: &str,
 ) -> Result<Translation, Unsupported> {
-    let body = body.trim();
-    if !body.starts_with("//scriptlet(") {
-        return Err(Unsupported::JavaScript);
-    }
     let args = body
         .strip_prefix("//scriptlet(")
         .and_then(|text| text.strip_suffix(')'))
@@ -54,7 +50,7 @@ pub(super) fn translate(
     Ok(Translation {
         line,
         scriptlet: true,
-        trusted,
+        requires_trusted_scriptlets: trusted,
     })
 }
 

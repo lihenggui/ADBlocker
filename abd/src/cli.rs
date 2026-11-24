@@ -67,7 +67,7 @@ usage: abd <command>, as root
   rules get                           print your own rules
   rules set                           replace them with standard input
   rules append [--unique]             append input, or one rule only if new
-  rules check [--json]                the rules on standard input that are not applied
+  rules check [--json]                check standard input with the user's rule permissions
   check [--json] [--app <app>] <url> [<page> [<kind>]]   what the lists say of a request
   pinned [--json [<app>]]             the hosts apps would not let us read
   pinned forget <app> [<host>]        have them read again

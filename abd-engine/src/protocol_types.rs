@@ -63,7 +63,7 @@ pub struct Issue {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IssueKind {
-    /// Element hiding or a scriptlet: not applied.
+    /// An unapplied cosmetic rule.
     Cosmetic,
     /// Not a rule.
     Invalid,

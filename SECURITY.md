@@ -129,6 +129,11 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
   ADBlocker passes rule arguments as data. A page can detect the additions and
   observe the effects of scriptlets. Scriptlets have the page's privileges
   and follow its policies for network requests and dynamic code evaluation.
+- A list marked `trustedScripts` and the user's own rules can run JavaScript
+  of their choice in the pages they name, with the privileges of those pages.
+  The catalog grants this mark to the Android builds of AdGuard Base,
+  AdGuard Chinese and AdGuard Mobile Ads. Other lists cannot supply
+  JavaScript rule bodies.
 - For procedural filters, a bundled script applies selectors and actions
   such as text matching, removing elements and setting CSS properties.
   Supported AdGuard CSS injection rules use these same style and removal
@@ -147,8 +152,11 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
   unchanged. For CSS, ADBlocker adds a hash for the style it puts in
   the head. A style added at the end of the page carries the page's own
   style nonce when the policy requires one.
-- ADBlocker skips unsafe scriptlet calls and procedural actions larger
-  than 4 KiB. It caps the script at 256 KiB, gives scriptlet calls priority,
+- ADBlocker skips unsafe scriptlet calls and JavaScript rule bodies, and
+  procedural actions larger than 4 KiB. It accepts JavaScript rule bodies
+  up to 16 KiB and keeps up to 4,096 distinct bodies totaling up to 4 MiB
+  per filter generation. It caps the page
+  script at 256 KiB, gives whole scriptlet and JavaScript calls priority,
   and keeps up to 128 procedural actions in sorted order. ADBlocker omits
   the script for response policies that require Trusted Types or forbid
   scripts in a sandbox, and when the injection point, encoding or policy
@@ -161,12 +169,13 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
   `trustedScriptlets`. The catalog grants this permission to uBlock
   Origin's own filter lists and the Android builds of AdGuard Base,
   AdGuard Chinese and AdGuard Mobile Ads. Custom subscriptions and user
-  rules can use ordinary scriptlets. Redirected downloads never receive
-  trusted permissions.
+  rules can use ordinary scriptlets. The `trustedScripts` mark uses the
+  same direct HTTPS download and exact URL requirements. Redirected
+  downloads never receive trusted permissions.
 - The engine requests uncompressed documents and reads at most 16 KiB
   ahead for up to 250 ms to inspect the explicit head before sending its
   script. It streams the remaining document and records neither the
-  selected scriptlets nor their page URLs.
+  selected scripts nor their page URLs.
 
 ## DNS in root mode
 
@@ -294,8 +303,8 @@ connection falls back to TCP.
 - The engine limits concurrent connections, retained state and filter list
   input. Timeouts bound how long it waits for an app or a server.
 - Filter lists are fetched over HTTPS. They select what is blocked and,
-  while **Hide page elements** is enabled, what is hidden and which bundled
-  scriptlets run in decrypted pages, as described in
+  while **Hide page elements** is enabled, what is hidden and which
+  scriptlets and trusted JavaScript rules run in decrypted pages, as described in
   [hiding page elements](#hiding-page-elements).
 - When the daemon stops, its lookup routes go with its process, and
   cleanup removes the lookup routing rules and disables TCP marking and

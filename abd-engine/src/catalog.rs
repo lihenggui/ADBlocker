@@ -39,6 +39,8 @@ struct List<'a> {
     #[serde(default)]
     trusted_scriptlets: bool,
     #[serde(default)]
+    trusted_scripts: bool,
+    #[serde(default)]
     trusted_response_rules: bool,
 }
 
@@ -86,11 +88,13 @@ static EXCLUSIONS: LazyLock<String> = LazyLock::new(|| source_text(catalog().htt
 
 pub(crate) enum Trust {
     Scriptlets,
+    Scripts,
     ResponseRules,
 }
 
 static SCRIPTLETS: LazyLock<Vec<&str>> =
     LazyLock::new(|| trusted_urls(|list| list.trusted_scriptlets));
+static SCRIPTS: LazyLock<Vec<&str>> = LazyLock::new(|| trusted_urls(|list| list.trusted_scripts));
 static RESPONSES: LazyLock<Vec<&str>> =
     LazyLock::new(|| trusted_urls(|list| list.trusted_response_rules));
 
@@ -116,6 +120,7 @@ impl Trust {
     pub(crate) fn urls(self) -> &'static [&'static str] {
         match self {
             Self::Scriptlets => &SCRIPTLETS,
+            Self::Scripts => &SCRIPTS,
             Self::ResponseRules => &RESPONSES,
         }
     }

@@ -112,7 +112,9 @@ pub fn split(url: &str) -> Result<(&str, u16, &str)> {
 }
 
 pub(crate) fn trusted_download(url: &str) -> bool {
-    Trust::Scriptlets.urls().contains(&url) || Trust::ResponseRules.urls().contains(&url)
+    [Trust::Scriptlets, Trust::Scripts, Trust::ResponseRules]
+        .into_iter()
+        .any(|trust| trust.urls().contains(&url))
 }
 
 /// Copies made before response-rule trust stay usable for ordinary filtering

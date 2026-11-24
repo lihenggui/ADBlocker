@@ -26,6 +26,7 @@ pub(crate) enum PageModifier {
     Element,
     Specific,
     Generic,
+    Script,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -97,7 +98,7 @@ const fn modifier(names: &'static [&'static str], kind: Kind, value: Value) -> M
 }
 
 use Kind::{Action, App, Destination, Flag, Page, Source, Type, Unsupported};
-use PageModifier::{Content, Document, Element, Generic, Specific, Urlblock};
+use PageModifier::{Content, Document, Element, Generic, Script, Specific, Urlblock};
 use Value::{None as FlagValue, Optional, Required};
 
 static MODIFIERS: &[Modifier] = &[
@@ -127,6 +128,7 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["elemhide", "ehide"], Page(Element), FlagValue),
     modifier(&["specifichide", "shide"], Page(Specific), FlagValue),
     modifier(&["generichide", "ghide"], Page(Generic), FlagValue),
+    modifier(&["jsinject"], Page(Script), FlagValue),
     // The bit numbers are part of the response rule cache.
     modifier(&["script"], Type(1 << 0), FlagValue),
     modifier(&["xmlhttprequest", "xhr"], Type(1 << 1), FlagValue),
@@ -143,7 +145,6 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["popunder"], Unsupported, FlagValue),
     modifier(&["stealth"], Unsupported, Optional),
     modifier(&["extension"], Unsupported, Optional),
-    modifier(&["jsinject"], Unsupported, FlagValue),
     modifier(&["network"], Unsupported, FlagValue),
     modifier(&["denyallow"], Unsupported, Required),
     modifier(&["cookie"], Unsupported, Optional),

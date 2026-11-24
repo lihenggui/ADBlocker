@@ -1922,6 +1922,27 @@ async fn adguard_scriptlet_and_style_reach_the_page_like_their_matcher_forms() {
 }
 
 #[tokio::test]
+async fn a_decrypted_page_runs_matching_javascript_only_with_cosmetics_enabled() {
+    for settings in [None, Some("cosmetic off\n")] {
+        let rig = rig(Setup {
+            rules: "site.test#%#window.adbFixture = 42; // trailing comment\n\
+                    other.test#%#window.foreignFixture = true;\n",
+            settings,
+            ..Setup::default()
+        })
+        .await;
+        let (status, page, real) = rig.get(Trust::System, H1, "/page", None).await.unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(!real);
+        assert_eq!(
+            page.contains("(function(){\nwindow.adbFixture = 42; // trailing comment\n})();"),
+            settings.is_none()
+        );
+        assert!(!page.contains("foreignFixture"));
+    }
+}
+
+#[tokio::test]
 async fn without_a_settings_file_matching_elements_are_hidden_on_decrypted_pages() {
     for alpn in [H1, BOTH] {
         let rig = rig(Setup {

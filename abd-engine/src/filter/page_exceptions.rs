@@ -19,7 +19,7 @@ use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
 use super::{Page, RequestRules, is_network_exception};
-use crate::rule::{self, Elements};
+use crate::rule::{self, Elements, PageException, Rule};
 
 /// adblock-rust handles generic-hide and cosmetic exceptions itself. It
 /// treats document exceptions as network exceptions and does not parse
@@ -30,6 +30,7 @@ pub(super) struct PageExceptions {
     pub(super) content: Option<Engine>,
     pub(super) urlblock: Option<Engine>,
     pub(super) element: Option<Engine>,
+    pub(super) script: Option<Engine>,
     pub(super) specific: Option<(Engine, Engine)>,
 }
 
@@ -46,6 +47,21 @@ pub(super) struct PageProjections {
     urlblock: String,
     element: String,
     specific: String,
+    script: String,
+}
+
+fn projection(source: &Rule<'_>, page: &PageException<'_>) -> Option<String> {
+    let projected = page.project(source.literal_options());
+    rule::read(&projected)
+        .network()
+        .is_some_and(|rule| rule.is_badfilter() || is_network_exception(&rule))
+        .then_some(projected)
+}
+
+pub(crate) fn valid_script_exception(source: &Rule<'_>) -> bool {
+    source
+        .page_exception()
+        .is_some_and(|page| page.script && projection(source, page).is_some())
 }
 
 impl PageProjections {
@@ -53,13 +69,9 @@ impl PageProjections {
         let Some(page) = source.page_exception() else {
             return;
         };
-        let projected = page.project(source.literal_options());
-        if !rule::read(&projected)
-            .network()
-            .is_some_and(|rule| rule.is_badfilter() || is_network_exception(&rule))
-        {
+        let Some(projected) = projection(source, page) else {
             return;
-        }
+        };
         let target = if page.document {
             Some(&mut self.all)
         } else {
@@ -72,6 +84,7 @@ impl PageProjections {
             .into_iter()
             .chain(page.urlblock.then_some(&mut self.urlblock))
             .chain(page.content.then_some(&mut self.content))
+            .chain(page.script.then_some(&mut self.script))
         {
             target.push_str(&projected);
             target.push('\n');
@@ -85,6 +98,7 @@ impl PageProjections {
             urlblock,
             element,
             specific,
+            script,
         } = self;
         let specific = (!specific.is_empty()).then(|| {
             let options = ParseOptions {
@@ -102,6 +116,7 @@ impl PageProjections {
             content: (!content.is_empty()).then(|| compile(content, ParseOptions::default())),
             urlblock: (!urlblock.is_empty()).then(|| compile(urlblock, ParseOptions::default())),
             element: (!element.is_empty()).then(|| compile(element, ParseOptions::default())),
+            script: (!script.is_empty()).then(|| compile(script, ParseOptions::default())),
             specific,
         }
     }
