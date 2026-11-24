@@ -107,4 +107,16 @@
     <string name="feature_overview_battery_title">Android 已停止 VPN</string>
     <string name="feature_overview_battery_text">后台过滤已停止。允许 ADBlocker 不受电池优化限制，以帮助保持过滤。</string>
     <string name="feature_overview_battery_action">允许后台运行</string>
+    <plurals name="feature_overview_lists_missing_title">
+        <item quantity="other">%1$d 个订阅还没有规则</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="other">下载完成前不会过滤。</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="other">下载失败。下载完成前不会过滤。</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">立即下载</string>
+    <string name="feature_overview_lists_missing_open">查看订阅</string>
+    <string name="feature_overview_lists_download_failed">下载失败</string>
 </resources>

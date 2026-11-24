@@ -28,7 +28,10 @@ data class FilterList(
     val updated: Instant?,
     /** Why the last update of this list failed; null after a success. */
     val error: String?,
-)
+) {
+    /** On but never downloaded: it contributes no rules until a download succeeds. One that is off is not downloaded. */
+    val awaitsFirstDownload: Boolean get() = enabled && updated == null
+}
 
 /** What `abd update --json` reports as it goes. */
 sealed interface UpdateEvent {

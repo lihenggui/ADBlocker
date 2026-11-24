@@ -22,6 +22,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -35,6 +36,7 @@ import li.mercury.adblocker.core.data.repository.DataChanges
 import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
+import li.mercury.adblocker.core.data.repository.ListsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
 import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.repository.OverviewRepository
@@ -43,12 +45,14 @@ import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppEntry
 import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterLevel
+import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteredApp
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.StatsSummary
+import li.mercury.adblocker.core.model.UpdateEvent
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnState
 import li.mercury.adblocker.core.model.VpnStatus
@@ -56,6 +60,7 @@ import li.mercury.adblocker.core.testing.MainDispatcherRule
 import li.mercury.adblocker.core.testing.TestUserDataRepository
 import li.mercury.adblocker.core.testing.unexpected
 import org.junit.Rule
+import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -78,6 +83,27 @@ class OverviewViewModelTest {
     private val changes = DataChanges()
     private val userData = TestUserDataRepository(UserData(filterMethod = FilterMethod.Vpn))
     private val vpnStatus = MutableStateFlow(VpnStatus(state = VpnState.On))
+    private var subscriptions = emptyList<FilterList>()
+    private val running = MutableStateFlow(false)
+    private var finishUpdate = CompletableDeferred<Unit>()
+
+    private val lists = object : ListsRepository by unexpected() {
+        override val updating: StateFlow<Boolean> = running
+
+        // As the repository does: running while the download lasts, then the lists read back.
+        override fun update() = flow {
+            done += "update"
+            running.value = true
+            try {
+                finishUpdate.await()
+                subscriptions = subscriptions.map { it.copy(updated = Instant.EPOCH, rules = 10, error = null) }
+                emit(UpdateEvent.Finished(updated = subscriptions.size, unchanged = 0, failed = 0))
+            } finally {
+                changes.notifyChanged()
+                running.value = false
+            }
+        }
+    }
 
     private val vpn = object : VpnController {
         override suspend fun engineAvailable() = true
@@ -117,7 +143,7 @@ class OverviewViewModelTest {
             snapshotsRead++
             snapshotFailure?.let { throw it }
             val current = filteringApps?.let { status.copy(apps = 5, filteringApps = it) } ?: status
-            return OverviewSnapshot(current, StatsSummary.Empty, emptyList())
+            return OverviewSnapshot(current, StatsSummary.Empty, subscriptions)
         }
     }
 
@@ -162,6 +188,7 @@ class OverviewViewModelTest {
             https = object : HttpsRepository by unexpected() {
                 override fun certificateInstalled() = false
             },
+            lists = lists,
             io = main.testDispatcher,
             defaultDispatcher = main.testDispatcher,
             changes = changes,
@@ -339,5 +366,82 @@ class OverviewViewModelTest {
         runCurrent()
 
         assertEquals(1, (viewModel.uiState.value as OverviewUiState.Ready).filteredApps)
+    }
+
+    private fun list(name: String, enabled: Boolean = true, updated: Instant? = null, error: String? = null) = FilterList("https://lists.example/$name.txt", enabled, title = null, rules = updated?.let { 10 }, updated = updated, error = error)
+
+    @Test
+    fun givenAnEnabledListNeverDownloaded_whenShown_thenSaysItHasNoRulesYetAndThatTheDownloadIsPending() = runTest {
+        subscriptions = listOf(list("ads"), list("trackers", updated = Instant.EPOCH))
+        val state = shown()
+        assertEquals(OverviewNotice.ListsMissing, state.notice)
+        assertEquals(MissingLists(count = 1, failed = false), state.missingLists)
+    }
+
+    @Test
+    fun givenANeverDownloadedListWhoseDownloadFailed_whenShown_thenSaysTheDownloadFailed() = runTest {
+        subscriptions = listOf(list("ads"), list("blocked", error = "connection refused"))
+        assertEquals(MissingLists(count = 2, failed = true), shown().missingLists)
+    }
+
+    @Test
+    fun givenAListWithACopyWhoseRefreshFailed_whenShown_thenNoListNoticeIsShown() = runTest {
+        root = false
+        subscriptions = listOf(list("ads", updated = Instant.EPOCH, error = "connection refused"))
+        val state = shown()
+        assertNull(state.notice)
+        assertNull(state.missingLists)
+    }
+
+    @Test
+    fun givenADisabledListNeverDownloaded_whenShown_thenNoListNoticeIsShown() = runTest {
+        root = false
+        subscriptions = listOf(list("ads", enabled = false), list("trackers", updated = Instant.EPOCH))
+        assertNull(shown().notice)
+    }
+
+    @Test
+    fun givenAnUpdateRuns_whenShown_thenTheListNoticeWaitsAndTheNextNoticeShows() = runTest {
+        subscriptions = listOf(list("ads"))
+        vpnStatus.value = VpnStatus(state = VpnState.On, alwaysOn = true, lockdown = true)
+        running.value = true
+        assertEquals(OverviewNotice.Lockdown, shown().notice)
+
+        running.value = false
+        assertEquals(OverviewNotice.ListsMissing, (viewModel.uiState.value as OverviewUiState.Ready).notice)
+    }
+
+    @Test
+    fun givenListsMissingUnderRoot_whenShown_thenTheyAreNoticed() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        subscriptions = listOf(list("ads"))
+        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+    }
+
+    @Test
+    fun givenListsMissingAndRootGranted_whenShown_thenTheListsComeBeforeTheTips() = runTest {
+        subscriptions = listOf(list("ads"))
+        vpnStatus.value = VpnStatus(state = VpnState.On, alwaysOn = true, lockdown = true)
+        viewModel.onStart()
+        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+    }
+
+    @Test
+    fun givenListsMissing_whenTheDownloadIsAsked_thenTheUpdateRunsAndTheNoticeGoesOnceTheyHaveRules() = runTest {
+        root = false
+        subscriptions = listOf(list("ads"))
+        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+
+        viewModel.downloadLists()
+        viewModel.downloadLists()
+        assertEquals(listOf("update"), done)
+        assertNull((viewModel.uiState.value as OverviewUiState.Ready).notice)
+
+        finishUpdate.complete(Unit)
+        runCurrent()
+        val state = viewModel.uiState.value as OverviewUiState.Ready
+        assertNull(state.notice)
+        assertNull(state.missingLists)
+        assertTrue(viewModel.pendingMessages.value.isEmpty())
     }
 }

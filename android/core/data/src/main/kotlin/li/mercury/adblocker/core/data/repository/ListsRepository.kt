@@ -17,6 +17,9 @@
 package li.mercury.adblocker.core.data.repository
 
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
@@ -40,6 +43,9 @@ internal val UPDATE_TIMEOUT = 10.minutes
 /** The filter list subscriptions. */
 interface ListsRepository {
     suspend fun lists(): List<FilterList>
+
+    /** Whether a list update runs in the app, whoever started it: the background update, Filters, onboarding or the Overview. */
+    val updating: StateFlow<Boolean>
 
     suspend fun setEnabled(url: String, enabled: Boolean)
 
@@ -78,7 +84,10 @@ internal class AbdListsRepository(
     @Inject
     constructor(abd: AbdClient, root: RootTransport, changes: DataChanges, userData: UserDataRepository) : this(abd, root.fixedAbdClient(), changes, userData)
 
-    private val updating = Mutex()
+    private val lock = Mutex()
+    private val running = MutableStateFlow(false)
+
+    override val updating: StateFlow<Boolean> = running.asStateFlow()
 
     override suspend fun lists(): List<FilterList> = abd.lists()
 
@@ -97,19 +106,24 @@ internal class AbdListsRepository(
     override fun updateRoot(): Flow<UpdateEvent> = update(root, rootOnly = true)
 
     private fun update(client: AbdClient, rootOnly: Boolean, url: String? = null): Flow<UpdateEvent> = flow {
-        updating.withLock {
+        lock.withLock {
             val settings = userData.userData.first()
             if ((rootOnly || settings.method == FilterMethod.Root) && settings.hasPendingLists) {
                 throw AbdException.CommandFailed("Subscription setup is pending")
             }
-            changes.changing {
-                withTimeoutOrNull(UPDATE_TIMEOUT) {
-                    if (url == null) {
-                        emitAll(client.update())
-                    } else if (client.lists().any { it.url == url && it.enabled && it.rules == null }) {
-                        emitAll(client.updateList(url))
-                    }
-                } ?: throw AbdException.TimedOut()
+            running.value = true
+            try {
+                changes.changing {
+                    withTimeoutOrNull(UPDATE_TIMEOUT) {
+                        if (url == null) {
+                            emitAll(client.update())
+                        } else if (client.lists().any { it.url == url && it.enabled && it.rules == null }) {
+                            emitAll(client.updateList(url))
+                        }
+                    } ?: throw AbdException.TimedOut()
+                }
+            } finally {
+                running.value = false
             }
         }
     }

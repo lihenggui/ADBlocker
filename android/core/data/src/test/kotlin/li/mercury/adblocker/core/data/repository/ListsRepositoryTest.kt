@@ -35,6 +35,7 @@ import li.mercury.adblocker.core.testing.unexpected
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 
 class ListsRepositoryTest {
@@ -93,6 +94,27 @@ class ListsRepositoryTest {
         finish.complete(Unit)
         all.join()
         single.join()
+    }
+
+    @Test
+    fun givenAnUpdateRuns_whenItEndsWithAFailure_thenItIsReportedAsRunningOnlyMeanwhile() = runTest {
+        val started = CompletableDeferred<Unit>()
+        val finish = CompletableDeferred<Unit>()
+        val abd = object : AbdClient by unexpected() {
+            override fun update(): Flow<UpdateEvent> = flow {
+                started.complete(Unit)
+                finish.await()
+                throw AbdException.CommandFailed("unreachable")
+            }
+        }
+        val lists = AbdListsRepository(abd, unexpected<AbdClient>(), DataChanges(), TestUserDataRepository())
+        assertFalse(lists.updating.value)
+        val update = launch { assertFailsWith<AbdException.CommandFailed> { lists.update().toList() } }
+        started.await()
+        assertTrue(lists.updating.value)
+        finish.complete(Unit)
+        update.join()
+        assertFalse(lists.updating.value)
     }
 
     @Test

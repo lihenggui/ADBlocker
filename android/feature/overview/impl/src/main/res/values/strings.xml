@@ -122,4 +122,19 @@
     <string name="feature_overview_battery_title">Android stopped the VPN</string>
     <string name="feature_overview_battery_text">Filtering stopped in the background. Allow ADBlocker to run without battery restrictions to help keep filtering active.</string>
     <string name="feature_overview_battery_action">Allow background use</string>
+    <plurals name="feature_overview_lists_missing_title">
+        <item quantity="one">%1$d list has no rules yet</item>
+        <item quantity="other">%1$d lists have no rules yet</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="one">It filters nothing until it is downloaded.</item>
+        <item quantity="other">They filter nothing until they are downloaded.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="one">The download failed. It filters nothing until it is downloaded.</item>
+        <item quantity="other">The download failed. They filter nothing until they are downloaded.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Download now</string>
+    <string name="feature_overview_lists_missing_open">Open lists</string>
+    <string name="feature_overview_lists_download_failed">Download failed</string>
 </resources>

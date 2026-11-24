@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonColors
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -33,8 +34,8 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.unit.dp
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 
@@ -43,67 +44,100 @@ internal class NoticeActions(
     val dismiss: (OverviewNotice) -> Unit,
     val switchToRoot: () -> Unit,
     val batteryExemption: () -> Unit,
+    val downloadLists: () -> Unit = {},
+    val openLists: () -> Unit = {},
 )
 
-/** Something to know once, in the secondary container: what it is, what it means, and what can be done. */
+/**
+ * What to know about now: what it is, what it means, and what can be done.
+ * Tips are in the secondary container. Lists that do not filter are a state
+ * that needs attention: in the tertiary container while waiting for a
+ * download, in the error container once one failed.
+ */
 @Composable
-internal fun Notice(notice: OverviewNotice, actions: NoticeActions) {
+internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: NoticeActions) {
+    val failed = notice == OverviewNotice.ListsMissing && missing?.failed == true
+    val scheme = MaterialTheme.colorScheme
+    val (container, content, accent) = when {
+        notice != OverviewNotice.ListsMissing -> Triple(scheme.secondaryContainer, scheme.onSecondaryContainer, scheme.secondary to scheme.onSecondary)
+        failed -> Triple(scheme.errorContainer, scheme.onErrorContainer, scheme.error to scheme.onError)
+        else -> Triple(scheme.tertiaryContainer, scheme.onTertiaryContainer, scheme.tertiary to scheme.onTertiary)
+    }
     Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ),
+        colors = CardDefaults.cardColors(containerColor = container, contentColor = content),
         modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
     ) {
         Column(Modifier.padding(16.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
                 Icon(
-                    if (notice == OverviewNotice.Lockdown) AdbIcons.Warning else AdbIcons.Security,
+                    when {
+                        notice == OverviewNotice.Lockdown -> AdbIcons.Warning
+                        notice != OverviewNotice.ListsMissing -> AdbIcons.Security
+                        failed -> AdbIcons.Error
+                        else -> AdbIcons.Download
+                    },
                     contentDescription = null,
                     modifier = Modifier.padding(top = 2.dp).size(20.dp),
                 )
                 Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(
-                            when (notice) {
-                                OverviewNotice.Lockdown -> R.string.feature_overview_lockdown_title
-                                OverviewNotice.RootAvailable -> R.string.feature_overview_root_title
-                                OverviewNotice.BatteryExemption -> R.string.feature_overview_battery_title
-                            },
-                        ),
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                    Text(
-                        stringResource(
-                            when (notice) {
-                                OverviewNotice.Lockdown -> R.string.feature_overview_lockdown_text
-                                OverviewNotice.RootAvailable -> R.string.feature_overview_root_text
-                                OverviewNotice.BatteryExemption -> R.string.feature_overview_battery_text
-                            },
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
+                    Text(noticeTitle(notice, missing), style = MaterialTheme.typography.titleMedium)
+                    Text(noticeText(notice, missing), style = MaterialTheme.typography.bodyMedium)
                 }
             }
-            Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                val textColors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
-                when (notice) {
-                    OverviewNotice.Lockdown -> TextButton(onClick = { actions.dismiss(notice) }, colors = textColors) {
-                        Text(stringResource(R.string.feature_overview_notice_ok))
-                    }
+            NoticeButtons(notice, actions, ButtonDefaults.textButtonColors(contentColor = content), ButtonDefaults.buttonColors(containerColor = accent.first, contentColor = accent.second))
+        }
+    }
+}
 
-                    OverviewNotice.RootAvailable, OverviewNotice.BatteryExemption -> {
-                        val battery = notice == OverviewNotice.BatteryExemption
-                        TextButton(onClick = { actions.dismiss(notice) }, colors = textColors) { Text(stringResource(R.string.feature_overview_root_dismiss)) }
-                        Button(
-                            onClick = if (battery) actions.batteryExemption else actions.switchToRoot,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.secondary,
-                                contentColor = MaterialTheme.colorScheme.onSecondary,
-                            ),
-                        ) { Text(stringResource(if (battery) R.string.feature_overview_battery_action else R.string.feature_overview_root_switch)) }
-                    }
-                }
+@Composable
+private fun noticeTitle(notice: OverviewNotice, missing: MissingLists?): String = when (notice) {
+    OverviewNotice.ListsMissing -> {
+        val count = missing?.count ?: 0
+        pluralStringResource(R.plurals.feature_overview_lists_missing_title, count, count)
+    }
+
+    OverviewNotice.Lockdown -> stringResource(R.string.feature_overview_lockdown_title)
+
+    OverviewNotice.RootAvailable -> stringResource(R.string.feature_overview_root_title)
+
+    OverviewNotice.BatteryExemption -> stringResource(R.string.feature_overview_battery_title)
+}
+
+@Composable
+private fun noticeText(notice: OverviewNotice, missing: MissingLists?): String = when (notice) {
+    OverviewNotice.ListsMissing -> pluralStringResource(
+        if (missing?.failed == true) R.plurals.feature_overview_lists_missing_failed else R.plurals.feature_overview_lists_missing_pending,
+        missing?.count ?: 0,
+    )
+
+    OverviewNotice.Lockdown -> stringResource(R.string.feature_overview_lockdown_text)
+
+    OverviewNotice.RootAvailable -> stringResource(R.string.feature_overview_root_text)
+
+    OverviewNotice.BatteryExemption -> stringResource(R.string.feature_overview_battery_text)
+}
+
+@Composable
+private fun NoticeButtons(notice: OverviewNotice, actions: NoticeActions, textColors: ButtonColors, filledColors: ButtonColors) = Row(
+    Modifier.fillMaxWidth().padding(top = 12.dp),
+    horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+) {
+    when (notice) {
+        // Not dismissible: it goes once the lists have rules.
+        OverviewNotice.ListsMissing -> {
+            TextButton(onClick = actions.openLists, colors = textColors) { Text(stringResource(R.string.feature_overview_lists_missing_open)) }
+            Button(onClick = actions.downloadLists, colors = filledColors) { Text(stringResource(R.string.feature_overview_lists_missing_download)) }
+        }
+
+        OverviewNotice.Lockdown -> TextButton(onClick = { actions.dismiss(notice) }, colors = textColors) {
+            Text(stringResource(R.string.feature_overview_notice_ok))
+        }
+
+        OverviewNotice.RootAvailable, OverviewNotice.BatteryExemption -> {
+            val battery = notice == OverviewNotice.BatteryExemption
+            TextButton(onClick = { actions.dismiss(notice) }, colors = textColors) { Text(stringResource(R.string.feature_overview_root_dismiss)) }
+            Button(onClick = if (battery) actions.batteryExemption else actions.switchToRoot, colors = filledColors) {
+                Text(stringResource(if (battery) R.string.feature_overview_battery_action else R.string.feature_overview_root_switch))
             }
         }
     }
