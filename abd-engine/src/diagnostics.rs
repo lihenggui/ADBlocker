@@ -25,7 +25,7 @@ use ring::digest::{SHA256, digest};
 
 use crate::{
     files,
-    filter::{self, RequestRules},
+    filter::{self, AppRules, RequestRules},
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     list_url,
     paths::Paths,
@@ -40,6 +40,7 @@ const MAX_INDEX: usize = 512 * 1024;
 
 struct Diagnostics {
     rules: RequestRules,
+    apps: Option<AppRules>,
     index: Vec<Entry>,
 }
 
@@ -75,10 +76,14 @@ impl Diagnostics {
                         indexing = false;
                         break;
                     }
-                    let mut entry = [0; 20];
-                    entry[..16].copy_from_slice(&fingerprint(&rule));
-                    entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
-                    index.push(entry);
+                    // A rule for apps is named as the engine has it.
+                    for rule in [Some(rule.as_ref()), filter::app_rule(&rule).as_deref()] {
+                        let Some(rule) = rule else { continue };
+                        let mut entry = [0; 20];
+                        entry[..16].copy_from_slice(&fingerprint(rule));
+                        entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
+                        index.push(entry);
+                    }
                 }
             }
             lists.push(text);
@@ -86,6 +91,7 @@ impl Diagnostics {
         index.sort_unstable();
         index.dedup_by(|next, first| next[..16] == first[..16]);
         Ok(Self {
+            apps: AppRules::project(lists.iter().map(String::as_str), true),
             rules: RequestRules::build(lists, true, options),
             index,
         })
@@ -95,7 +101,10 @@ impl Diagnostics {
         // Very dense lists still get exact attribution within the text budget.
         if self.index.is_empty() {
             for (file, text) in read_lists(files).flatten() {
-                if text.lines().any(|line| filter::network_line(line) == rule) {
+                if text.lines().any(|line| {
+                    let line = filter::network_line(line);
+                    line == rule || filter::app_rule(&line).as_deref() == Some(rule)
+                }) {
                     return Some(file);
                 }
             }
@@ -128,7 +137,19 @@ impl Diagnostics {
             Some((decoded, tail))
         }
         let (full, rest) = engine(rest)?;
-        let (unknown, entries) = engine(rest)?;
+        let (unknown, mut rest) = engine(rest)?;
+        let mut apps = [&[][..]; 5];
+        for kept in &mut apps {
+            let (size, tail) = rest.split_at_checked(4)?;
+            (*kept, rest) =
+                tail.split_at_checked(u32::from_le_bytes(size.try_into().ok()?) as usize)?;
+        }
+        let apps = if apps[0].is_empty() {
+            None
+        } else {
+            Some(AppRules::compiled(apps)?)
+        };
+        let entries = rest;
         let (entries, tail) = entries.as_chunks::<20>();
         if !tail.is_empty() || entries.len() > MAX_INDEX {
             return None;
@@ -138,6 +159,7 @@ impl Diagnostics {
                 full: full?,
                 unknown,
             },
+            apps,
             index: entries.to_vec(),
         })
     }
@@ -149,14 +171,23 @@ impl Diagnostics {
             .unknown
             .as_ref()
             .map_or_else(Vec::new, Engine::serialize);
-        let size = 48 + full.len() + unknown.len() + self.index.len() * size_of::<Entry>();
+        // Empty, as no compiled engine is, where no list has such a rule.
+        let apps = self
+            .apps
+            .as_ref()
+            .map(AppRules::serialized)
+            .unwrap_or_default();
+        let compiled = [full, unknown].into_iter().chain(apps);
+        let size = 40
+            + compiled.clone().map(|part| 4 + part.len()).sum::<usize>()
+            + self.index.len() * size_of::<Entry>();
         if size > MAX_COMPILED {
             return Ok(());
         }
         let mut data = Vec::with_capacity(size);
         data.resize(32, 0);
         data.extend(generation.to_le_bytes());
-        for compiled in [full, unknown] {
+        for compiled in compiled {
             data.extend((compiled.len() as u32).to_le_bytes());
             data.extend(compiled);
         }
@@ -189,12 +220,16 @@ fn load(dirs: &[&Path], cache: &Path) -> Result<(Vec<PathBuf>, Diagnostics)> {
 }
 
 /// `abd check --json` keeps the original rule text for attribution.
-pub fn check(paths: &Paths, url: &str, page: &str, kind: &str) -> Result<Check> {
+///
+/// `app` is the app that asks, as the engine names it, for the rules that
+/// are for apps; without one only the rules for every app are looked at.
+pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str) -> Result<Check> {
     crate::public_suffix::install();
     let rules = paths.rules();
     let lists = paths.lists();
     let (files, diagnostics) = load(&[&lists, &rules], &paths.cache().join("diagnostic-v1"))?;
-    let result = diagnostics.rules.check(url, page, kind, "GET");
+    let apps = diagnostics.apps.as_ref().zip(app);
+    let result = diagnostics.rules.check_for(apps, url, page, kind, "GET");
     let source = result.rule.as_deref().and_then(|rule| {
         let file = diagnostics.source(&files, rule)?;
         if file.parent() == Some(rules.as_path()) {
@@ -224,7 +259,7 @@ mod tests {
         std::fs::create_dir_all(paths.rules()).unwrap();
         std::fs::create_dir_all(paths.lists()).unwrap();
         std::fs::write(paths.user_rules(), "||ads.example^\n").unwrap();
-        let diagnostic = || check(&paths, "https://ads.example/", "", "image");
+        let diagnostic = || check(&paths, None, "https://ads.example/", "", "image");
         assert!(diagnostic().unwrap().blocked);
         let cache = paths.cache().join("diagnostic-v1");
         let cached = std::fs::read(&cache).unwrap();
@@ -243,6 +278,34 @@ mod tests {
     }
 
     #[test]
+    fn a_rule_for_an_app_is_found_for_that_app_and_named_with_its_list() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.rules()).unwrap();
+        std::fs::write(
+            paths.user_rules(),
+            "||shop.example^$app=com.reader\n||ads.example^\n@@||ads.example^$app=com.reader\n",
+        )
+        .unwrap();
+        let shop = |app| check(&paths, app, "https://shop.example/a", "", "other").unwrap();
+        let ads = |app| check(&paths, app, "https://ads.example/a", "", "other").unwrap();
+        // Built, and then read back as it was kept.
+        for _ in 0..2 {
+            let found = shop(Some("com.reader"));
+            assert!(found.blocked);
+            assert_eq!(
+                found.rule.as_deref(),
+                Some("||shop.example^$app=com.reader")
+            );
+            assert_eq!(found.source.as_deref(), Some("rules"));
+            assert!(!shop(Some("com.other")).blocked);
+            assert!(!shop(None).blocked);
+            assert!(!ads(Some("com.reader")).blocked);
+            assert!(ads(Some("com.other")).blocked && ads(None).blocked);
+        }
+    }
+
+    #[test]
     fn diagnostics_without_a_source_keep_real_context_unknown_across_cache_loads() {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
@@ -251,10 +314,28 @@ mod tests {
             paths.user_rules(),
             "||private.example^$3p\n||ads.example^\n@@||ads.example/allowed^$from=reader.example,image\n",
         ).unwrap();
-        let no_source = || check(&paths, "https://private.example/p.gif", "", "image").unwrap();
-        let normal = || check(&paths, "https://ads.example/blocked/p.gif", "", "image").unwrap();
-        let possible_exception =
-            || check(&paths, "https://ads.example/allowed/p.gif", "", "image").unwrap();
+        let no_source =
+            || check(&paths, None, "https://private.example/p.gif", "", "image").unwrap();
+        let normal = || {
+            check(
+                &paths,
+                None,
+                "https://ads.example/blocked/p.gif",
+                "",
+                "image",
+            )
+            .unwrap()
+        };
+        let possible_exception = || {
+            check(
+                &paths,
+                None,
+                "https://ads.example/allowed/p.gif",
+                "",
+                "image",
+            )
+            .unwrap()
+        };
         for _ in 0..2 {
             let unknown = no_source();
             assert!(!unknown.blocked);
@@ -267,6 +348,7 @@ mod tests {
             assert!(
                 check(
                     &paths,
+                    None,
                     "https://private.example/p.gif",
                     "https://reader.example/",
                     "image"

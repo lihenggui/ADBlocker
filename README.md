@@ -171,7 +171,7 @@ module. The examples below abbreviate this path to `abd`.
 | `abd pinned` | List hosts for which an app has rejected the local certificate. Use `abd pinned forget <package> [<host>]` to retry decryption on a later connection. |
 | `abd reload` | Read the lists, rules and apps again. |
 | `abd stats` | Show filtering statistics. |
-| `abd check <url>` | Check whether the lists block a URL and identify the matching list. |
+| `abd check [--app <package>] <url>` | Check whether the lists block a URL and identify the matching list. With `--app`, the rules for that app count as well. |
 
 For a work app, use `<profile-serial>:<package>` wherever a command takes
 an app, for example `abd app add 10:com.example.news`. Use the serial

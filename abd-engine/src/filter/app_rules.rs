@@ -24,7 +24,7 @@
 //! them is applied to none, and an exception for any app is applied to
 //! all.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
@@ -42,18 +42,18 @@ const MAX_EXCEPTED: usize = 4096;
 /// for could not be narrowed to hosts.
 const ANY_HOST: &str = "@@|https://";
 
+/// The option that the apps of a rule are written as for adblock-rust.
+const SOURCE: &str = "domain=";
+
 pub(crate) struct AppRules {
     pub(super) blocks: Engine,
-    pub(super) exceptions: Engine,
+    exceptions: Engine,
     /// The blocks of a whole host, for a connection that stays encrypted.
     pub(super) hosts: Engine,
     /// Where an exception may apply, for a host refused before a request.
-    pub(super) guards: Engine,
+    guards: Engine,
     /// The apps that exceptions name, sorted.
-    pub(super) excepted: Vec<u64>,
-    /// The rule as its list has it, by the form the engines hold. Kept
-    /// only with debug info.
-    originals: HashMap<String, String>,
+    excepted: Vec<u64>,
 }
 
 /// One app among the app rules.
@@ -122,7 +122,7 @@ impl Scoped<'_> {
 
     fn for_apps(&self, rule: &str) -> String {
         let separator = if rule.contains('$') { ',' } else { '$' };
-        format!("{rule}{separator}domain={}", self.apps)
+        format!("{rule}{separator}{SOURCE}{}", self.apps)
     }
 
     fn line(&self) -> String {
@@ -157,9 +157,24 @@ impl Scoped<'_> {
 
 /// The rule with its app as a source, if it is one for apps that the
 /// engine applies.
-pub(crate) fn rewritten(line: &str) -> Option<String> {
+fn rewritten(line: &str) -> Option<String> {
     let line = scoped(line)?.line();
     network(&line).is_some().then_some(line)
+}
+
+/// The rule that an engine here names, as one for apps again: its apps
+/// are its last option.
+fn shown(rule: String) -> String {
+    match rule.rsplit_once(SOURCE) {
+        Some((rest, apps)) => format!("{rest}app={apps}"),
+        None => rule,
+    }
+}
+
+/// How a rule for apps is named when it matched, if `line` is one that the
+/// engine applies: with its apps last and in lower case.
+pub(crate) fn named(line: &str) -> Option<String> {
+    rewritten(line).map(shown)
 }
 
 fn engine(rules: String, debug: bool) -> Engine {
@@ -185,19 +200,14 @@ fn swap_source<T>(
 
 impl AppRules {
     /// The app rules of `lists`, if they have any.
-    pub(super) fn project<'a>(lists: impl Iterator<Item = &'a str>, debug: bool) -> Option<Self> {
+    pub(crate) fn project<'a>(lists: impl Iterator<Item = &'a str>, debug: bool) -> Option<Self> {
         let rules: Vec<_> = lists
             .flat_map(str::lines)
-            .filter_map(|line| Some((line.trim(), scoped(line)?)))
-            .filter_map(|(original, rule)| {
+            .filter_map(scoped)
+            .filter_map(|rule| {
                 let line = rule.line();
                 let parsed = network(&line)?;
-                Some((
-                    original,
-                    rule,
-                    (parsed.get_id(), parsed.is_badfilter()),
-                    line,
-                ))
+                Some((rule, (parsed.get_id(), parsed.is_badfilter()), line))
             })
             .collect();
         if rules.is_empty() {
@@ -205,12 +215,11 @@ impl AppRules {
         }
         let disabled: HashSet<u64> = rules
             .iter()
-            .filter_map(|(_, _, (id, bad), _)| bad.then_some(*id))
+            .filter_map(|(_, (id, bad), _)| bad.then_some(*id))
             .collect();
         let [mut blocks, mut exceptions, mut hosts, mut guards] = [const { String::new() }; 4];
         let mut excepted = Vec::new();
-        let mut originals = HashMap::new();
-        for (original, rule, (id, bad), line) in rules {
+        for (rule, (id, bad), line) in rules {
             if bad || disabled.contains(&id) {
                 continue;
             }
@@ -227,9 +236,6 @@ impl AppRules {
             };
             kept.push_str(&line);
             kept.push('\n');
-            if debug {
-                originals.insert(line, original.to_owned());
-            }
         }
         excepted.sort_unstable();
         excepted.dedup();
@@ -240,25 +246,42 @@ impl AppRules {
             hosts: engine(hosts, false),
             guards: engine(guards, false),
             excepted,
-            originals,
         })
     }
 
-    pub(super) fn compiled(
-        blocks: Engine,
-        exceptions: Engine,
-        hosts: Engine,
-        guards: Engine,
-        excepted: Vec<u64>,
-    ) -> Self {
-        Self {
-            blocks,
-            exceptions,
-            hosts,
-            guards,
-            excepted,
-            originals: HashMap::new(),
+    /// The engines as they are kept, each to be read back by
+    /// [`AppRules::compiled`] in this order.
+    pub(crate) fn serialized(&self) -> [Vec<u8>; 5] {
+        let excepted = self.excepted.iter().flat_map(|name| name.to_be_bytes());
+        [
+            self.blocks.serialize(),
+            self.exceptions.serialize(),
+            self.hosts.serialize(),
+            self.guards.serialize(),
+            excepted.collect(),
+        ]
+    }
+
+    /// What [`AppRules::serialized`] kept, if it is whole.
+    pub(crate) fn compiled(kept: [&[u8]; 5]) -> Option<Self> {
+        let [blocks, exceptions, hosts, guards, excepted] = kept;
+        let engine = |compiled: &[u8]| {
+            let mut engine = Engine::default();
+            // Checked by the engine against its own checksum.
+            engine.deserialize(compiled).ok()?;
+            Some(engine)
+        };
+        let (names, rest) = excepted.as_chunks::<8>();
+        if !rest.is_empty() {
+            return None;
         }
+        Some(Self {
+            blocks: engine(blocks)?,
+            exceptions: engine(exceptions)?,
+            hosts: engine(hosts)?,
+            guards: engine(guards)?,
+            excepted: names.iter().map(|name| u64::from_be_bytes(*name)).collect(),
+        })
     }
 
     /// `app` as the engine names it: a package, or a shared UID's group.
@@ -273,11 +296,6 @@ impl AppRules {
                 blocks: false,
             },
         }
-    }
-
-    fn original(&self, rule: Option<String>) -> Option<String> {
-        let rule = rule?;
-        Some(self.originals.get(&rule).cloned().unwrap_or(rule))
     }
 
     /// Judges `req` by the rules of `web` and those of the app together:
@@ -329,7 +347,7 @@ impl AppRules {
                 .is_none();
         }
         if !web_rule {
-            check.rule = self.original(own.filter.and_then(|rule| rule.raw_line));
+            check.rule = own.filter.and_then(|rule| rule.raw_line).map(shown);
         }
         check
     }
@@ -477,9 +495,13 @@ mod tests {
     }
 
     #[test]
-    fn the_rule_that_matched_is_named_as_its_list_has_it() {
+    fn the_rule_that_matched_is_named_with_its_apps() {
         let rule = "||shop.example^$script,app=com.reader";
-        let f = filters(&format!("{rule}\n"));
+        let f = filters("||shop.example^$app=com.Reader,script\n");
+        assert_eq!(
+            super::named("||shop.example^$app=com.Reader,script").as_deref(),
+            Some(rule)
+        );
         let check = f.for_app("com.reader").check_with_page(
             "https://shop.example/a.js",
             None,

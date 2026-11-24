@@ -31,7 +31,7 @@ commit.
 | `allow.json` | `abd allow list --json` | |
 | `rules-check.json` | `abd rules check --json` | For `rules.txt` on standard input |
 | `rules.txt` | input of `abd rules check` and `abd rules set` | |
-| `check.json` | `abd check --json <url> <page> <kind>` | |
+| `check.json` | `abd check --json [--app <app>] <url> <page> <kind>` | |
 | `watch.jsonl` | `abd watch --json` | One event a line |
 
 ## Conventions

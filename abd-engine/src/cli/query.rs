@@ -56,17 +56,7 @@ pub(super) fn run(
             out,
             &protocol::stats(paths, clock::now(), stats_boundaries(boundaries)?)?,
         ),
-        ["check", "--json", url, rest @ ..] if rest.len() <= 2 => {
-            let (page, kind) = request(url, rest);
-            print_json(out, &diagnostics::check(paths, url, page, kind)?)
-        }
-        ["check", url, rest @ ..] if rest.len() <= 2 && !url.starts_with("--") => {
-            let (page, kind) = request(url, rest);
-            let c = diagnostics::check(paths, url, page, kind)?;
-            let said = if c.blocked { "blocked" } else { "allowed" };
-            writeln!(out, "{said} {}", c.rule.unwrap_or_default())?;
-            Ok(())
-        }
+        ["check", rest @ ..] => check(paths, rest, out),
 
         ["pinned"] => {
             for p in protocol::pinned(paths, None, clock::now()) {
@@ -118,6 +108,34 @@ fn forget(paths: &Paths, on: &dyn Host, package: &str, host: Option<&str>) -> Re
         );
         std::thread::sleep(Duration::from_millis(20));
     }
+}
+
+/// `abd check [--json] [--app <app>] <url> [<page> [<kind>]]`.
+fn check(paths: &Paths, args: &[&str], out: &mut dyn Write) -> Result<()> {
+    let (json, args) = match args {
+        ["--json", rest @ ..] => (true, rest),
+        _ => (false, args),
+    };
+    let (app, args) = match args {
+        ["--app", app, rest @ ..] if crate::apps::Identity::parse(app).is_some() => {
+            (Some(*app), rest)
+        }
+        _ => (None, args),
+    };
+    let [url, rest @ ..] = args else {
+        return unknown(&[&["check"], args].concat());
+    };
+    if rest.len() > 2 || url.starts_with("--") {
+        return unknown(&[&["check"], args].concat());
+    }
+    let (page, kind) = request(url, rest);
+    let found = diagnostics::check(paths, app, url, page, kind)?;
+    if json {
+        return print_json(out, &found);
+    }
+    let said = if found.blocked { "blocked" } else { "allowed" };
+    writeln!(out, "{said} {}", found.rule.unwrap_or_default())?;
+    Ok(())
 }
 
 /// The page and kind of a request to `url`, as `check` is given them.
