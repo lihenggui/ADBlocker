@@ -426,12 +426,28 @@ impl Ctx {
 
     /// What is done with a connection that was to be decrypted and stays
     /// encrypted after all, for `reason`: it has no requests to judge, so
-    /// its host is judged by the domain rules, as `Policy::decide_named`
-    /// judges one known beforehand to stay encrypted. Returns whether it
-    /// is handed on; one that is not has been reset.
-    fn hands_on(&self, app: &TcpStream, package: &str, host: &str, reason: Reason) -> bool {
-        // A trusted host is never blocked.
-        if reason != Reason::Trusted && self.filters().for_app(package).blocks_domain(host) {
+    /// its host is. Returns whether it is handed on; one that is not has
+    /// been reset.
+    ///
+    /// Where the app does not trust us or the server cannot be verified,
+    /// an exception that names the host leaves the host to the app. Any
+    /// other connection is judged by the domain rules, as
+    /// `Policy::decide_named` judges one known beforehand to stay
+    /// encrypted for the same reason.
+    fn hands_on(&self, app: &TcpStream, peer: (u32, &str, &str), reason: Reason) -> bool {
+        let (uid, package, host) = peer;
+        let filters = self.filters();
+        let filters = filters.for_app(package);
+        // The user may have trusted the host, or taken the app out, while
+        // the server was asked: neither is blocked any more.
+        let judged =
+            self.is_package(uid, package) && !self.lists.allow.read().unwrap().covers(host);
+        let blocked = judged
+            && match reason {
+                Reason::Untrusted | Reason::Unverified => filters.blocks_unread(host),
+                _ => filters.blocks_domain(host),
+            };
+        if blocked {
             self.services
                 .stats
                 .count(Some(package), Counter::HostsBlocked);
@@ -575,7 +591,7 @@ async fn inspect_tls(
         }
         Verdict::Mitm if trusting == Trusting::No => {
             trace!(ctx, "pass    {package} {host} (not made to trust us)");
-            if !ctx.hands_on(&app, &package, &host, Reason::Untrusted) {
+            if !ctx.hands_on(&app, (origin.uid, &package, &host), Reason::Untrusted) {
                 return Ok(());
             }
             splice(&ctx, app, origin).await

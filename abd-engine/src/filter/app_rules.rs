@@ -326,7 +326,7 @@ impl AppRules {
 
 #[cfg(test)]
 mod tests {
-    use super::super::Filters;
+    use super::super::{Filters, Page};
 
     fn filters(rules: &str) -> Filters {
         let dir = tempfile::tempdir().unwrap();
@@ -337,7 +337,7 @@ mod tests {
     fn blocked(filters: &Filters, app: &str, url: &str) -> bool {
         filters
             .for_app(app)
-            .check_with_page(url, None, false, "other", "GET")
+            .check_with_page(url, Page::NONE, "other", "GET")
             .blocked
     }
 
@@ -419,8 +419,7 @@ mod tests {
         let f = filters("||x.example^\n@@||x.example^\n||x.example^$important,app=com.reader\n");
         let check = f.for_app("com.reader").check_with_page(
             "https://x.example/",
-            None,
-            false,
+            Page::NONE,
             "other",
             "GET",
         );
@@ -482,8 +481,7 @@ mod tests {
         );
         let check = f.for_app("com.reader").check_with_page(
             "https://shop.example/a.js",
-            None,
-            false,
+            Page::NONE,
             "script",
             "GET",
         );

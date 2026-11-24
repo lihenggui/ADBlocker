@@ -49,6 +49,13 @@ pub(super) struct Peer {
     pub(super) retry: Option<u64>,
 }
 
+impl Peer {
+    /// Whose connection it is and to where, for `Ctx::hands_on`.
+    fn judged(&self) -> (u32, &str, &str) {
+        (self.origin.uid, &self.package, &self.host)
+    }
+}
+
 struct Verified {
     stream: tokio_rustls::client::TlsStream<TcpStream>,
     profile: Option<(u32, Arc<Tls>)>,
@@ -73,14 +80,14 @@ pub(super) async fn mitm(
     app.set_nodelay(true)?;
     let verified = match verify_upstream(&ctx, &app, &peer, &hello).await? {
         Ok(verified) => verified,
-        Err(reason) if ctx.hands_on(&app, &peer.package, &peer.host, reason) => {
+        Err(reason) if ctx.hands_on(&app, peer.judged(), reason) => {
             return splice(&ctx, app, peer.origin).await;
         }
         Err(_) => return Ok(()),
     };
     if let Some(reason) = still_inspectable(&ctx, &peer) {
         drop(verified);
-        if !ctx.hands_on(&app, &peer.package, &peer.host, reason) {
+        if !ctx.hands_on(&app, peer.judged(), reason) {
             return Ok(());
         }
         return splice(&ctx, app, peer.origin).await;

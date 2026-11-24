@@ -53,7 +53,7 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   the daemon's process holds, so they end with it, however it ends.
   Lookup capture that cannot be set up leaves connection filtering running.
   Pass connections through when the daemon cannot verify the server or the
-  app rejects the local CA. Android VPN lockdown controls access after the
+  app rejects the local CA, unless a rule blocks their host. Android VPN lockdown controls access after the
   VPN stops.
 - Root refuses UDP 443 for active app UIDs through the capture quota.
   The VPN refuses recognized client QUIC Initials for active apps so they
@@ -65,7 +65,9 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   certificate. Keep HTTPS encrypted until the exclusion policy is ready.
   See SECURITY.md for the limits of local TLS inspection.
 - When in doubt, block less. A rule is applied only where what it needs to
-  know is known (`abd-engine/src/filter.rs`).
+  know is known (`abd-engine/src/filter.rs`). A request that names no page
+  is judged as AdGuard judges one without a referrer: it is first-party
+  and of none of the pages a rule names.
 - Choosing a named shared UID in Root mode chooses its current and future
   members in that Android profile. In All apps, a personal group is included
   or excluded together. They share one selection, pause and record

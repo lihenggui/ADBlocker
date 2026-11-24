@@ -49,8 +49,11 @@ pub struct Filters {
     requests: RequestRules,
     page_exceptions: PageExceptions,
     hosts: Engine,
-    /// `None` when the lists allow a pattern on potentially any host.
-    host_guards: Option<Engine>,
+    /// The hosts that exceptions name.
+    host_guards: Engine,
+    /// Whether an exception names no host, and so may allow a request to
+    /// any.
+    any_host_guard: bool,
     /// `None` when no list has a rule for an app.
     apps: Option<AppRules>,
     pub rules: usize,
@@ -167,6 +170,24 @@ fn is_network_exception(rule: &NetworkFilter<'_>) -> bool {
         && !rule.is_removeparam()
 }
 
+/// What a request says of the page that made it.
+#[derive(Clone, Copy)]
+pub(crate) enum Page<'a> {
+    Named(&'a RequestUrl),
+    /// The request is for a page, which is its own.
+    Itself,
+    /// Not named: by an app outside a page, or by a browser that keeps the
+    /// page to itself and says only whether it is of another site.
+    Unnamed {
+        cross_site: bool,
+    },
+}
+
+impl Page<'_> {
+    /// No page, as an app's own request has none.
+    pub(crate) const NONE: Self = Self::Unnamed { cross_site: false };
+}
+
 /// The matcher of requests.
 pub(crate) struct RequestRules {
     pub(crate) full: Engine,
@@ -231,7 +252,8 @@ impl RequestRules {
         method: &str,
     ) -> Check {
         let page = parse_http_page(source);
-        let Some(mut req) = Self::request_with_page(url, page.as_ref(), false, kind, method) else {
+        let page = page.as_ref().map_or(Page::NONE, Page::Named);
+        let Some(mut req) = Self::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
         match apps.and_then(|(rules, app)| Some((rules, AppRules::scope(app)?))) {
@@ -242,28 +264,28 @@ impl RequestRules {
 
     /// The request for `url`, made by the page `source` if it names one. A
     /// document is its own page.
-    fn request_with_page(
-        url: &str,
-        source: Option<&RequestUrl>,
-        document: bool,
-        kind: &str,
-        method: &str,
-    ) -> Option<Request> {
+    fn request_with_page(url: &str, page: Page<'_>, kind: &str, method: &str) -> Option<Request> {
         let url = parse_url(url)?;
-        let source = if document {
-            Some(&url).filter(|page| is_http_page(page))
-        } else {
-            source
+        let source = match page {
+            Page::Itself => Some(&url).filter(|page| is_http_page(page)),
+            Page::Named(source) => Some(source),
+            Page::Unnamed { .. } => None,
+        };
+        let third_party = match (source, page) {
+            (Some(source), _) => source.domain() != url.domain(),
+            // A browser says which side its page is on without naming it.
+            // With no page at all there is no other party to be the third.
+            (None, Page::Unnamed { cross_site }) => cross_site,
+            (None, _) => false,
         };
         Some(Request::preparsed(
             &url.url,
             url.hostname(),
-            // No page: no rule for named pages applies, and a rule for
-            // every page but some does.
+            // No page named: no rule for named pages applies, and a rule
+            // for every page but some does.
             source.map_or("", RequestUrl::hostname),
             kind,
-            // Without a page there is no other party to be the third.
-            source.is_some_and(|source| source.domain() != url.domain()),
+            third_party,
             method,
         ))
     }
@@ -362,7 +384,8 @@ impl Filters {
             requests,
             page_exceptions: PageExceptions::build(texts()),
             hosts: Engine::new_with_filter_set(host_rules.whole),
-            host_guards: host_rules.guards.map(Engine::new_with_filter_set),
+            host_guards: Engine::new_with_filter_set(host_rules.guards),
+            any_host_guard: host_rules.any_host,
             apps: AppRules::project(texts(), debug),
             rules: rules_count,
             host_rules: host_rules.count,
@@ -475,12 +498,19 @@ pub struct AppFilters<'a> {
 impl AppFilters<'_> {
     /// A full-mode early block must leave room for any web exception.
     pub fn blocks_host(&self, host: &str) -> bool {
-        let Some(guards) = &self.filters.host_guards else {
-            return false;
-        };
+        !self.filters.any_host_guard && self.blocks_unread(host)
+    }
+
+    /// For a connection of an app none of whose requests can be read: the
+    /// block of its host stands unless an exception names that host. One
+    /// that names no host says nothing of this one, and if it counted here
+    /// no host would be refused such an app.
+    pub fn blocks_unread(&self, host: &str) -> bool {
         Filters::host_request(host).is_some_and(|mut request| {
             self.blocks_whole(&mut request)
-                && guards
+                && self
+                    .filters
+                    .host_guards
                     .check_network_request_subset(&request, false, true)
                     .exception
                     .is_none()
@@ -507,14 +537,12 @@ impl AppFilters<'_> {
     pub(crate) fn check_with_page(
         &self,
         url: &str,
-        source: Option<&RequestUrl>,
-        document: bool,
+        page: Page<'_>,
         kind: &str,
         method: &str,
     ) -> Check {
         let requests = &self.filters.requests;
-        let Some(mut req) = RequestRules::request_with_page(url, source, document, kind, method)
-        else {
+        let Some(mut req) = RequestRules::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
         match &self.app {
@@ -1399,13 +1427,12 @@ mod tests {
             ] {
                 for document in [false, true] {
                     let page = parse_http_page(source);
-                    let actual = f.for_any_app().check_with_page(
-                        url,
-                        page.as_ref(),
-                        document,
-                        "script",
-                        "GET",
-                    );
+                    let told = match (document, page.as_ref()) {
+                        (true, _) => Page::Itself,
+                        (false, Some(page)) => Page::Named(page),
+                        (false, None) => Page::NONE,
+                    };
+                    let actual = f.for_any_app().check_with_page(url, told, "script", "GET");
                     let expected =
                         f.check(url, if document { url } else { source }, "script", "GET");
                     assert_eq!(
@@ -1441,7 +1468,12 @@ mod tests {
             let page = std::hint::black_box(parse_http_page(source));
             assert!(
                 f.for_any_app()
-                    .check_with_page(url, page.as_ref(), false, "image", "GET")
+                    .check_with_page(
+                        url,
+                        page.as_ref().map_or(Page::NONE, Page::Named),
+                        "image",
+                        "GET"
+                    )
                     .blocked
             );
         }

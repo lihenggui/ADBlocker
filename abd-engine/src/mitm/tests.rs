@@ -1063,7 +1063,7 @@ async fn an_answer_the_server_ends_the_connection_with_reaches_the_app_whole() {
 }
 
 #[tokio::test]
-async fn a_request_without_a_source_is_neither_first_nor_third_party() {
+async fn a_request_without_a_page_is_no_third_party() {
     let rig = rig(Setup {
         rules: "||site.test^$third-party\n",
         ..Setup::default()
@@ -1204,23 +1204,33 @@ async fn a_pinned_host_its_domain_rules_block_is_refused_with_a_try_pending() {
 }
 
 #[tokio::test]
-async fn an_app_not_made_to_trust_us_is_refused_a_host_its_domain_rules_block() {
-    let rig = rig(Setup {
-        // The exception keeps the host from being refused before a
-        // request, and no request of this app is ever seen.
-        rules: "||site.test^\n@@||site.test/pass^$image\n",
+async fn an_app_not_made_to_trust_us_is_refused_a_host_that_no_exception_names() {
+    let unnamed = rig(Setup {
+        // The exception names no host: it keeps every host from being
+        // refused before a request, and no request of this app is seen.
+        rules: "||site.test^\n@@/pass^$image\n",
         trusting: Trusting::No,
         ..Setup::default()
     })
     .await;
-    assert!(rig.handshake(Trust::System, H1).await.is_err());
-    assert_eq!(rig.hits(), 0);
-    assert_eq!(rig.count(Counter::HostsBlocked), 1);
-    assert_eq!(rig.count(Counter::Passed), 0);
+    assert!(unnamed.handshake(Trust::System, H1).await.is_err());
+    assert_eq!(unnamed.hits(), 0);
+    assert_eq!(unnamed.count(Counter::HostsBlocked), 1);
+    assert_eq!(unnamed.count(Counter::Passed), 0);
+
+    // An exception that names the host leaves it to the app.
+    let named = rig(Setup {
+        rules: "||site.test^\n@@||site.test/pass^$image\n@@/other^$image\n",
+        trusting: Trusting::No,
+        ..Setup::default()
+    })
+    .await;
+    assert!(named.get(Trust::ServerOnly, H1, "/", None).await.unwrap().2);
+    assert_eq!(named.count(Counter::HostsBlocked), 0);
 }
 
 #[tokio::test]
-async fn work_tls_uses_only_its_profile_trust_and_an_undecrypted_host_follows_its_domain_rules() {
+async fn work_tls_uses_only_its_profile_trust_and_respects_opaque_exceptions() {
     let work_uid = 1_010_001;
     let rig = rig(Setup {
         uid: work_uid,
@@ -1231,10 +1241,9 @@ async fn work_tls_uses_only_its_profile_trust_and_an_undecrypted_host_follows_it
     *rig.ctx.selection.apps.write().unwrap() =
         Arc::new(BTreeMap::from([(work_uid, "31:com.app".to_owned())]));
     let real = || rig.get(Trust::ServerOnly, H1, "/ads/asset.png", None);
-    // With the local CA absent, and with a profile that distrusts the
-    // upstream root, nothing of the work app is decrypted: no request is
-    // seen that the exception could allow, and the host's rule refuses it.
-    assert!(real().await.is_err());
+    // The absent local CA and a profile that distrusts the upstream
+    // root both leave the ClientHello untouched for the work app.
+    assert!(real().await.unwrap().2);
     let without_upstream = Arc::new(rig.ctx.services.tls.with_roots(RootCertStore::empty()));
     rig.ctx
         .selection
@@ -1242,10 +1251,9 @@ async fn work_tls_uses_only_its_profile_trust_and_an_undecrypted_host_follows_it
         .write()
         .unwrap()
         .insert(31, without_upstream);
-    assert!(real().await.is_err());
-    assert_eq!(rig.count(Counter::HostsBlocked), 2);
+    assert!(real().await.unwrap().2);
+    assert_eq!(rig.count(Counter::HostsBlocked), 0);
     assert_eq!(rig.count(Counter::Decrypted), 0);
-    assert_eq!(rig.hits(), 0);
 
     let authorized = Arc::new(
         rig.ctx
@@ -2329,6 +2337,44 @@ fn a_page_gone_to_is_its_own_first_party_whatever_led_there() {
     // Made by no page it names: there is no other party to be the third.
     assert!(blocked("/own", Some("script"), None));
     assert!(!blocked("/other", Some("script"), None));
+}
+
+#[test]
+fn a_browser_that_names_no_page_still_says_whose_request_it_is() {
+    let dir = tempfile::tempdir().unwrap();
+    let rules = "||ads.example/own$script,first-party\n\
+                 ||ads.example/other$script,third-party\n\
+                 ||ads.example/page$domain=~ads.example\n";
+    std::fs::write(dir.path().join("list.txt"), rules).unwrap();
+    let filters = Filters::load(&[dir.path()], false).unwrap();
+    let blocked = |path: &str, headers: &[(&str, &str)]| {
+        let mut req = Request::get(path);
+        for (name, value) in headers {
+            req = req.header(*name, *value);
+        }
+        let url = format!("https://ads.example{path}");
+        evaluate_request(&filters.for_app("com.app"), &req.body(()).unwrap(), &url).blocked
+    };
+    let script = ("sec-fetch-dest", "script");
+    let cross_site = [script, ("sec-fetch-site", "cross-site")];
+    assert!(blocked("/other", &cross_site));
+    assert!(!blocked("/own", &cross_site));
+    for site in ["same-origin", "same-site"] {
+        let same = [script, ("sec-fetch-site", site)];
+        assert!(blocked("/own", &same), "{site}");
+        assert!(!blocked("/other", &same), "{site}");
+    }
+    // Over HTTP a browser sends no Sec-Fetch-Dest: going to a page, it
+    // asks for an upgrade, and the page is its own. An app's request for
+    // the same is of no page, which is not the one page the rule spares.
+    assert!(!blocked("/page", &[("upgrade-insecure-requests", "1")]));
+    assert!(blocked("/page", &[]));
+    // Led there from another page, it is not the user's own going there.
+    let led = [
+        ("upgrade-insecure-requests", "1"),
+        ("referer", "https://news.example/"),
+    ];
+    assert!(blocked("/page", &led));
 }
 
 #[test]
