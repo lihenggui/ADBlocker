@@ -157,11 +157,10 @@ fn restore(paths: &Paths, file: &mut File, lock: &files::Lock) -> Result<()> {
             files::remove_if_present(&path)?;
         }
     }
-    let configured = match sources.as_deref() {
-        Some(bytes) => std::str::from_utf8(bytes).unwrap_or_default(),
-        None => abd_engine::catalog::default_sources(),
-    };
-    update::prune_unsubscribed(configured, &paths.lists(), Some(&paths.list_info()), lock)?;
+    // Read back as every reader reads it, so a list that moved keeps its
+    // new copy.
+    let configured = sources::configured(paths)?;
+    update::prune_unsubscribed(&configured, &paths.lists(), Some(&paths.list_info()), lock)?;
     for dir in [paths.rules(), paths.lists(), paths.list_info()] {
         sync_dir(&dir)?;
     }

@@ -77,17 +77,57 @@ pub(crate) fn text_of(file: &Path) -> Result<Option<String>> {
     if !file.try_exists()? {
         return Ok(None);
     }
-    Ok(Some(files::read_text(file, MAX_FILE)?))
+    Ok(Some(moved(files::read_text(file, MAX_FILE)?)))
 }
 
-fn text(paths: &Paths) -> Result<String> {
+/// Catalog lists whose address changed after a release saved the old one.
+/// Every reader of the file comes through `text_of`, so a saved choice
+/// follows the list, and the next update prunes the copy of the old address
+/// with its information like that of any list no longer subscribed.
+const MOVED: [(&str, &str); 1] = [(
+    // AdGuard leaves out of its uBlock build the rules that name apps.
+    "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+    "https://filters.adtidy.org/android/filters/11.txt",
+)];
+
+fn moved(text: String) -> String {
+    let address = |line: &str| {
+        let line = line.trim();
+        line.strip_prefix('#').unwrap_or(line).to_owned()
+    };
+    let has = |url: &str| text.lines().any(|line| address(line) == url);
+    let pending: Vec<_> = MOVED.iter().filter(|(old, _)| has(old)).collect();
+    if pending.is_empty() {
+        return text;
+    }
+    let mut out = String::with_capacity(text.len());
+    for line in text.lines() {
+        let url = address(line);
+        match pending.iter().find(|(old, _)| *old == url) {
+            // The new address chosen as well: its line is the choice.
+            Some((_, new)) if has(new) => continue,
+            Some((_, new)) => {
+                if line.trim().starts_with('#') {
+                    out.push('#');
+                }
+                out.push_str(new);
+            }
+            None => out.push_str(line),
+        }
+        out.push('\n');
+    }
+    out
+}
+
+/// The selection in effect: the sources file, or the defaults without one.
+pub fn configured(paths: &Paths) -> Result<String> {
     text_or(&paths.sources(), crate::catalog::default_sources())
 }
 
 /// The sources, in the order of the file; those a new installation has if
 /// there is none yet.
 pub fn read(paths: &Paths) -> Vec<Source> {
-    parse(&text(paths).unwrap_or_default())
+    parse(&configured(paths).unwrap_or_default())
 }
 
 pub enum Change {
@@ -117,7 +157,7 @@ pub fn configure(paths: &Paths, selection: &str) -> Result<()> {
     }
     let path = paths.sources();
     let lock = files::lock(&path)?;
-    let current = text(paths)?;
+    let current = configured(paths)?;
     let mut remaining = choices.clone();
     let mut next = String::with_capacity(current.len());
     for line in current.lines() {
@@ -164,7 +204,7 @@ pub fn edit(paths: &Paths, url: &str, change: Change) -> Result<bool> {
         )));
     }
     let _lock = files::lock(&paths.sources())?;
-    let text = text(paths)?;
+    let text = configured(paths)?;
     let disabled = format!("#{url}");
     let is = |line: &str, as_: &str| line.trim() == as_;
     let present = text.lines().any(|l| is(l, url) || is(l, &disabled));
@@ -657,6 +697,67 @@ mod tests {
         ] {
             assert!(edit(&paths, bad, Change::Add).is_err(), "{bad:?}");
         }
+    }
+
+    #[test]
+    fn a_saved_choice_of_a_moved_list_is_read_as_its_new_address() {
+        let (old, new) = MOVED[0];
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::write(paths.sources(), format!("# Lists\n{A}\n#{old}\n")).unwrap();
+        assert_eq!(
+            read(&paths),
+            [
+                Source {
+                    url: A.to_owned(),
+                    enabled: true
+                },
+                Source {
+                    url: new.to_owned(),
+                    enabled: false
+                },
+            ]
+        );
+        edit(&paths, new, Change::Enable).unwrap();
+        assert_eq!(
+            std::fs::read_to_string(paths.sources()).unwrap(),
+            format!("# Lists\n{A}\n{new}\n")
+        );
+
+        std::fs::write(paths.sources(), format!("{old}\n#{new}\n")).unwrap();
+        assert_eq!(
+            read(&paths),
+            [Source {
+                url: new.to_owned(),
+                enabled: false
+            }]
+        );
+    }
+
+    #[test]
+    fn the_copy_of_a_moved_list_is_pruned_with_what_is_known_of_it() {
+        let (old, new) = MOVED[0];
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.lists()).unwrap();
+        std::fs::write(paths.sources(), format!("{old}\n")).unwrap();
+        let copy = paths.lists().join(file_name(old));
+        std::fs::write(&copy, "||ads.example^\n").unwrap();
+        write_info(
+            &paths.list_info(),
+            &Info {
+                url: old.to_owned(),
+                ..Info::default()
+            },
+        )
+        .unwrap();
+
+        let lock = files::lock(&paths.sources()).unwrap();
+        let selection = configured(&paths).unwrap();
+        prune_unsubscribed(&selection, &paths.lists(), Some(&paths.list_info()), &lock).unwrap();
+        assert!(!copy.exists());
+        assert!(!info_file(&paths.list_info(), old).exists());
+        assert_eq!(read(&paths)[0].url, new);
     }
 
     #[test]

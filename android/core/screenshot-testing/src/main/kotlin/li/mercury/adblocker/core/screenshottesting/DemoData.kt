@@ -115,7 +115,7 @@ object DemoData {
 
     const val EASYLIST = "https://easylist.to/easylist/easylist.txt"
     const val EASYPRIVACY = "https://easylist.to/easylist/easyprivacy.txt"
-    const val ADGUARD_MOBILE = "https://filters.adtidy.org/extension/ublock/filters/11.txt"
+    const val ADGUARD_MOBILE = "https://filters.adtidy.org/android/filters/11.txt"
     const val UBLOCK = "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt"
     const val EASYLIST_CHINA = "https://easylist-downloads.adblockplus.org/easylistchina.txt"
 
