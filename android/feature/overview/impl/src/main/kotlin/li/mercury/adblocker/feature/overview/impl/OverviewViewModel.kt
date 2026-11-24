@@ -49,6 +49,8 @@ import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.ModuleUpdate
+import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.repository.OverviewRepository
 import li.mercury.adblocker.core.data.repository.UserDataRepository
 import li.mercury.adblocker.core.data.toLoadFailure
@@ -70,6 +72,9 @@ sealed interface OverviewUiState {
 
     data class Failed(val failure: LoadFailure) : OverviewUiState
 
+    /** Root mode is being brought up to date with this app, and cannot be read until it is. */
+    data object Updating : OverviewUiState
+
     data class Ready(
         val status: DaemonStatus,
         val filteredApps: Int,
@@ -85,6 +90,8 @@ sealed interface OverviewUiState {
         val https: HttpsSetup? = null,
         /** Something to know once, shown until dismissed. */
         val notice: OverviewNotice? = null,
+        /** Root mode is being brought up to date with this app; the old one filters meanwhile. */
+        val updating: Boolean = false,
     ) : OverviewUiState
 }
 
@@ -95,7 +102,7 @@ enum class OverviewNotice {
     /** The system's "Block connections without VPN" is on: the chosen apps have no network while the VPN is down. */
     Lockdown,
 
-    /** Root was granted since the VPN was chosen: the root module can filter instead. */
+    /** Root was granted since the VPN was chosen: root mode can filter instead. */
     RootAvailable,
 
     BatteryExemption,
@@ -111,6 +118,7 @@ class OverviewViewModel @Inject constructor(
     private val apps: AppsRepository,
     private val overview: OverviewRepository,
     private val module: ModuleRepository,
+    private val updater: ModuleUpdater,
     private val userData: UserDataRepository,
     private val vpn: VpnController,
     private val methods: FilterMethodRepository,
@@ -157,6 +165,8 @@ class OverviewViewModel @Inject constructor(
         reload.map { true },
         // The VPN started, stopped or was taken over: the engine's status changes with it.
         vpn.status.drop(1).map { false },
+        // Root mode began or finished updating: what runs changes with it.
+        updater.state.drop(1).map { false },
     ).onEach { withApps -> if (withApps) appsStale = true }
         .mapLatest { load() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OverviewUiState.Loading)
@@ -174,7 +184,13 @@ class OverviewViewModel @Inject constructor(
         }
     }
 
-    private suspend fun load(): OverviewUiState = suspendRunCatching("overview") {
+    private suspend fun load(): OverviewUiState {
+        val updating = updater.state.value == ModuleUpdate.Updating
+        // While root mode updates, a failed read is the update's doing: it is said once the update ends.
+        return read(updating).getOrElse { e -> if (updating) OverviewUiState.Updating else OverviewUiState.Failed(e.toLoadFailure()) }
+    }
+
+    private suspend fun read(updating: Boolean): Result<OverviewUiState> = suspendRunCatching("overview") {
         val (status, summary, subscriptions) = overview.snapshot()
         val entries = installed.takeUnless { appsStale }
             ?: withContext(defaultDispatcher) { apps.apps() }.also {
@@ -216,10 +232,9 @@ class OverviewViewModel @Inject constructor(
                     null
                 },
                 notice = notice,
+                updating = updating,
             )
         }
-    }.getOrElse { e ->
-        OverviewUiState.Failed(e.toLoadFailure())
     }
 
     /** Reads everything again; the screen asks each time it is shown. */
@@ -244,19 +259,27 @@ class OverviewViewModel @Inject constructor(
     /** Starts the daemon, which takes a moment; the overview is read again once it runs, or once it stopped waiting. */
     fun startService() = act {
         try {
-            if (!module.startDaemon()) messages.show(UiMessage(R.string.feature_overview_module_disabled))
+            if (!module.startDaemon()) showTurnedOffInManager()
         } finally {
             refresh()
         }
     }
 
-    /** Turns the module on again after its boot guard turned it off, and starts the daemon. */
+    /** Turns root mode on again after its boot guard turned it off, and starts the daemon. */
     fun turnOnAgain() = act {
         try {
-            if (!module.turnOnAgain()) messages.show(UiMessage(R.string.feature_overview_module_disabled))
+            if (!module.turnOnAgain()) showTurnedOffInManager()
         } finally {
             refresh()
         }
+    }
+
+    /** Only a module in a root manager stays off: the app turns its own installation on again. */
+    private suspend fun showTurnedOffInManager() {
+        val manager = suspendRunCatching { module.rootManager() }.getOrNull()
+        messages.show(
+            if (manager == null) UiMessage(R.string.feature_overview_module_disabled) else UiMessage(R.string.feature_overview_module_disabled_in, listOf(manager)),
+        )
     }
 
     /** The system's consent screen to show before the VPN starts, or null once given. */
@@ -279,8 +302,8 @@ class OverviewViewModel @Inject constructor(
     }
 
     /**
-     * Requests root filtering. The VPN keeps filtering while the module
-     * and its settings are prepared.
+     * Requests root filtering. The VPN keeps filtering while root mode and
+     * its settings are prepared; Settings sets root mode up where it is not.
      */
     fun switchToRoot() = act {
         try {

@@ -67,6 +67,7 @@
     <string name="feature_overview_service_running">Running</string>
     <string name="feature_overview_service_running_since">Running for %1$s</string>
     <string name="feature_overview_service_stopped">Not running</string>
+    <string name="feature_overview_updating">Updating root mode…</string>
     <plurals name="feature_overview_paused_for_hours">
         <item quantity="one">Paused for %1$d hour. Apps connect without filtering.</item>
         <item quantity="other">Paused for %1$d hours. Apps connect without filtering.</item>
@@ -77,9 +78,10 @@
     </plurals>
     <string name="feature_overview_paused_until_resumed">Paused until resumed. Apps connect without filtering.</string>
     <string name="feature_overview_undo">Undo</string>
-    <string name="feature_overview_module_disabled">The module is disabled. Enable it in the root manager.</string>
+    <string name="feature_overview_module_disabled">The ADBlocker module is turned off or set to be removed in the root manager. Change it there.</string>
+    <string name="feature_overview_module_disabled_in">The ADBlocker module is turned off or set to be removed in %1$s. Change it there.</string>
     <string name="feature_overview_service_timeout">The filtering service did not respond in time.</string>
-    <string name="feature_overview_root_pending">Open Settings to finish switching to root mode.</string>
+    <string name="feature_overview_root_pending">Switching to root mode did not finish. Try again in Settings.</string>
     <string name="feature_overview_action_failed">Action failed. Check the filtering service in Settings.</string>
     <string name="feature_overview_turned_off">Turned off</string>
     <!-- The date the device last failed to finish starting up. -->

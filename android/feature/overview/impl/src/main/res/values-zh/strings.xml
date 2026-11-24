@@ -58,6 +58,7 @@
     <string name="feature_overview_service_running">运行中</string>
     <string name="feature_overview_service_running_since">已运行 %1$s</string>
     <string name="feature_overview_service_stopped">未运行</string>
+    <string name="feature_overview_updating">正在更新 root 模式…</string>
     <plurals name="feature_overview_paused_for_hours">
         <item quantity="other">已暂停 %1$d 小时。期间应用直接联网，不经过过滤。</item>
     </plurals>
@@ -66,9 +67,10 @@
     </plurals>
     <string name="feature_overview_paused_until_resumed">已暂停，直到手动恢复。期间应用直接联网，不经过过滤。</string>
     <string name="feature_overview_undo">撤销</string>
-    <string name="feature_overview_module_disabled">模块已停用。请在 root 管理器中启用。</string>
+    <string name="feature_overview_module_disabled">ADBlocker 模块已在 root 管理器中停用或标记为移除，请在其中更改。</string>
+    <string name="feature_overview_module_disabled_in">ADBlocker 模块已在 %1$s 中停用或标记为移除，请在其中更改。</string>
     <string name="feature_overview_service_timeout">过滤服务未及时响应。</string>
-    <string name="feature_overview_root_pending">请在“设置”中完成切换至 root 模式。</string>
+    <string name="feature_overview_root_pending">未能完成切换至 root 模式，请在“设置”中重试。</string>
     <string name="feature_overview_action_failed">操作失败。请在“设置”中检查过滤服务。</string>
     <string name="feature_overview_turned_off">已自动关闭</string>
     <string name="feature_overview_turned_off_detail">由于设备连续两次未能完成启动，过滤已于 %1$s 自动关闭。应用直接联网，不经过过滤。</string>
