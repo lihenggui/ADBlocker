@@ -122,6 +122,7 @@ internal fun StatusRows(state: OverviewUiState.Ready, onOpenFilters: () -> Unit,
                 supporting = {
                     Text(
                         when {
+                            state.updating -> stringResource(R.string.feature_overview_updating)
                             !state.status.running -> stringResource(R.string.feature_overview_service_stopped)
                             started != null -> stringResource(R.string.feature_overview_service_running_since, started)
                             else -> stringResource(R.string.feature_overview_service_running)

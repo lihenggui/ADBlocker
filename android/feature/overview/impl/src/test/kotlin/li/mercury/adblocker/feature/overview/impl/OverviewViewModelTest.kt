@@ -28,6 +28,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.repository.AppsRepository
 import li.mercury.adblocker.core.data.repository.DaemonRepository
 import li.mercury.adblocker.core.data.repository.DataChanges
@@ -35,6 +36,7 @@ import li.mercury.adblocker.core.data.repository.FilterMethodRepository
 import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.HttpsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.repository.OverviewRepository
 import li.mercury.adblocker.core.data.repository.OverviewSnapshot
 import li.mercury.adblocker.core.data.vpn.VpnController
@@ -44,6 +46,7 @@ import li.mercury.adblocker.core.model.FilterLevel
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteredApp
 import li.mercury.adblocker.core.model.InstalledApp
+import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.StatsSummary
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnState
@@ -55,6 +58,7 @@ import org.junit.Rule
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class OverviewViewModelTest {
@@ -110,10 +114,31 @@ class OverviewViewModelTest {
 
         override suspend fun snapshot(): OverviewSnapshot {
             snapshotsRead++
+            snapshotFailure?.let { throw it }
             val current = filteringApps?.let { status.copy(apps = 5, filteringApps = it) } ?: status
             return OverviewSnapshot(current, StatsSummary.Empty, emptyList())
         }
     }
+
+    private var snapshotFailure: Exception? = null
+    private var started = false
+    private var rootManager: String? = null
+    private var installing: CompletableDeferred<Unit>? = null
+
+    private val module = object : ModuleRepository by unexpected() {
+        override suspend fun startDaemon() = started
+
+        override suspend fun turnOnAgain() = started
+
+        override suspend fun rootManager() = rootManager
+
+        override suspend fun installBundled(): Boolean {
+            installing?.await()
+            return true
+        }
+    }
+
+    private val updater = ModuleUpdater(userData, module)
 
     private val viewModel by lazy {
         OverviewViewModel(
@@ -125,7 +150,8 @@ class OverviewViewModelTest {
                 }
             },
             overview = overview,
-            module = object : ModuleRepository by unexpected() {},
+            module = module,
+            updater = updater,
             userData = userData,
             vpn = vpn,
             methods = methods,
@@ -204,6 +230,47 @@ class OverviewViewModelTest {
         viewModel.switchToRoot()
         assertEquals(listOf("method Root"), done)
         assertEquals(FilterMethod.Root, userData.userData.value.method)
+    }
+
+    @Test
+    fun givenAnOlderRootModeThatIsUpdating_whenItCannotBeRead_thenUpdatingIsShownUntilItEnds() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        snapshotFailure = AbdException.ModuleOutdated()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+        assertEquals(OverviewUiState.Failed(LoadFailure.ModuleOutdated), viewModel.uiState.value)
+
+        val install = CompletableDeferred<Unit>()
+        installing = install
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { updater.update() }
+        assertEquals(OverviewUiState.Updating, viewModel.uiState.value)
+
+        snapshotFailure = null
+        install.complete(Unit)
+        runCurrent()
+        assertEquals(false, (viewModel.uiState.value as OverviewUiState.Ready).updating)
+    }
+
+    @Test
+    fun givenRootModeUpdating_whenTheOldOneStillAnswers_thenItIsShownAsUpdating() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        installing = CompletableDeferred()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { updater.update() }
+
+        assertTrue(shown().updating)
+    }
+
+    @Test
+    fun givenAModuleKeptOffInItsManager_whenStarted_thenTheManagerIsNamed() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        rootManager = "Magisk"
+        shown()
+
+        viewModel.startService()
+        runCurrent()
+
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(R.string.feature_overview_module_disabled_in, message.text)
+        assertEquals(listOf<Any>("Magisk"), message.args)
     }
 
     @Test

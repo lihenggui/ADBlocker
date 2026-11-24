@@ -17,8 +17,10 @@
     <string name="core_ui_retry">重试</string>
     <string name="core_ui_failure_no_root">没有 root 权限</string>
     <string name="core_ui_failure_no_root_text">请在 root 管理器中为 ADBlocker 授予 root 权限，然后重试。</string>
-    <string name="core_ui_failure_module_missing">模块未安装</string>
-    <string name="core_ui_failure_module_missing_text">请在“设置”中安装模块。</string>
+    <string name="core_ui_failure_module_missing">root 模式未启用</string>
+    <string name="core_ui_failure_module_missing_text">请在“设置”中启用 root 模式。</string>
+    <string name="core_ui_failure_update_needed">root 模式需要更新</string>
+    <string name="core_ui_failure_update_needed_text">请在“设置”中更新。</string>
     <string name="core_ui_failure_failed">加载失败</string>
     <string name="core_ui_failure_failed_text">过滤服务没有响应。请在“设置”中查看其状态。</string>
     <string name="core_ui_failure_timed_out">响应超时</string>

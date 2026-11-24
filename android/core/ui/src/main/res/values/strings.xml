@@ -17,8 +17,10 @@
     <string name="core_ui_retry">Try again</string>
     <string name="core_ui_failure_no_root">No root access</string>
     <string name="core_ui_failure_no_root_text">Grant root access to ADBlocker in the root manager, then try again.</string>
-    <string name="core_ui_failure_module_missing">Module not installed</string>
-    <string name="core_ui_failure_module_missing_text">Install the module in Settings.</string>
+    <string name="core_ui_failure_module_missing">Root mode not set up</string>
+    <string name="core_ui_failure_module_missing_text">Set up root mode in Settings.</string>
+    <string name="core_ui_failure_update_needed">Root mode needs an update</string>
+    <string name="core_ui_failure_update_needed_text">Update it in Settings.</string>
     <string name="core_ui_failure_failed">Loading failed</string>
     <string name="core_ui_failure_failed_text">The filtering service did not respond. Check its status in Settings.</string>
     <string name="core_ui_failure_timed_out">Timed out</string>

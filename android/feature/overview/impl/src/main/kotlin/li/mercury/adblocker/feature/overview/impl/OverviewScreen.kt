@@ -36,6 +36,7 @@ import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LoadingIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
@@ -149,6 +150,21 @@ internal fun OverviewScreen(
                 OverviewUiState.Loading -> LoadingIndicator()
 
                 is OverviewUiState.Failed -> FailureView(shown.failure, onRetry)
+
+                // Under five seconds as a rule: a loading indicator, with what is waited for.
+                OverviewUiState.Updating -> Column(
+                    Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    LoadingIndicator()
+                    Text(
+                        stringResource(R.string.feature_overview_updating),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 8.dp),
+                    )
+                }
 
                 is OverviewUiState.Ready -> OverviewContent(
                     state = shown,

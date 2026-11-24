@@ -46,6 +46,6 @@ private fun failureStrings(failure: LoadFailure): Pair<Int, Int> = when (failure
     LoadFailure.ModuleMissing -> R.string.core_ui_failure_module_missing to R.string.core_ui_failure_module_missing_text
     LoadFailure.EngineMissing -> R.string.core_ui_failure_engine_missing to R.string.core_ui_failure_engine_missing_text
     LoadFailure.TimedOut -> R.string.core_ui_failure_timed_out to R.string.core_ui_failure_timed_out_text
-    LoadFailure.ModuleOutdated -> R.string.core_ui_failure_failed to R.string.core_ui_failure_failed_text
+    LoadFailure.ModuleOutdated -> R.string.core_ui_failure_update_needed to R.string.core_ui_failure_update_needed_text
     LoadFailure.Failed -> R.string.core_ui_failure_failed to R.string.core_ui_failure_failed_text
 }

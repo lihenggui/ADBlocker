@@ -97,6 +97,35 @@ class OverviewScreenScreenshotTests {
     }
 
     @Test
+    fun givenRootModeNotSetUp_whenShown_thenSaysWhereToSetItUp() {
+        capturePhone("OverviewNotSetUp") { Overview(OverviewUiState.Failed(LoadFailure.ModuleMissing)) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenRootModeNotSetUp_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewNotSetUp") {
+            Overview(OverviewUiState.Failed(LoadFailure.ModuleMissing))
+        }
+    }
+
+    @Test
+    fun givenAnOlderRootMode_whenACommandIsRejected_thenSaysItNeedsAnUpdate() {
+        capturePhone("OverviewUpdateNeeded") { Overview(OverviewUiState.Failed(LoadFailure.ModuleOutdated)) }
+    }
+
+    @Test
+    fun givenRootModeUpdating_whenShown_thenSaysSo() {
+        capturePhone("OverviewUpdating") { Overview(OverviewUiState.Updating) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenRootModeUpdating_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewUpdating") { Overview(OverviewUiState.Updating) }
+    }
+
+    @Test
     fun givenTheVpn_whenFiltering_thenSaysTheMethodAndHowFarHttpsIsSetUp() {
         capturePhone("OverviewVpn") { Overview(vpn()) }
     }
