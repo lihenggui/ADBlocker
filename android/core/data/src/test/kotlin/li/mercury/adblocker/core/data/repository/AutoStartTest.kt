@@ -74,6 +74,46 @@ class AutoStartTest {
     }
 
     @Test
+    fun givenRootMode_whenTheAppIsOpenedAgainAndAgain_thenTheDaemonIsStartedOnceForTheProcess() = runTest {
+        // Whose the module is, is asked of root while the app is open.
+        val autoStart = autoStart(ownRootMode.copy(moduleInstalledByApp = false))
+        assertEquals(AutoStart.Outcome.Started, autoStart.whenOpened())
+        assertEquals(AutoStart.Outcome.NotAsked, autoStart.whenOpened())
+        assertEquals(1, asked)
+    }
+
+    @Test
+    fun givenAStartThatFailed_whenTheAppIsOpenedAgain_thenItIsLeftToTheUser() = runTest {
+        answer = { throw AbdException.TimedOut() }
+        val autoStart = autoStart(ownRootMode)
+        assertEquals(AutoStart.Outcome.Failed, autoStart.whenOpened())
+        assertEquals(AutoStart.Outcome.NotAsked, autoStart.whenOpened())
+        assertEquals(1, asked)
+    }
+
+    @Test
+    fun givenAnotherMethodOrNoSetup_whenTheAppIsOpened_thenRootIsNotAskedFor() = runTest {
+        for (settings in listOf(ownRootMode.copy(filterMethod = FilterMethod.Vpn), ownRootMode.copy(onboardingDone = false))) {
+            assertEquals(AutoStart.Outcome.NotAsked, autoStart(settings).whenOpened(), settings.toString())
+        }
+        assertEquals(0, asked)
+    }
+
+    @Test
+    fun givenSetupFinishesWhileTheAppIsOpen_whenItIsOpenedNext_thenTheDaemonIsStarted() = runTest {
+        val settings = TestUserDataRepository(ownRootMode.copy(onboardingDone = false))
+        val autoStart = AutoStart(
+            settings,
+            object : ModuleRepository by unexpected() {
+                override suspend fun startUnasked() = true
+            },
+        )
+        assertEquals(AutoStart.Outcome.NotAsked, autoStart.whenOpened())
+        settings.setOnboardingDone(true)
+        assertEquals(AutoStart.Outcome.Started, autoStart.whenOpened())
+    }
+
+    @Test
     fun givenRootIsRefused_whenTheDeviceBoots_thenItFailsQuietlyAndIsNotTriedAgain() = runTest {
         answer = { throw AbdException.NoRoot() }
         assertEquals(AutoStart.Outcome.Failed, autoStart(ownRootMode).afterBoot())

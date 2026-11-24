@@ -25,6 +25,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.repository.AppsRepository
+import li.mercury.adblocker.core.data.repository.AutoStart
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.ModuleRepository
 import li.mercury.adblocker.core.data.repository.PendingSetup
@@ -62,8 +63,13 @@ class MainActivityViewModelTest {
                 }
             }
         }
+        var starts = 0
         val module = object : ModuleRepository by unexpected() {
             override suspend fun state() = ModuleState.Ready
+            override suspend fun startUnasked(): Boolean {
+                starts++
+                return true
+            }
         }
         var updates = 0
         val scheduler = object : ListUpdateScheduler by unexpected() {
@@ -72,7 +78,7 @@ class MainActivityViewModelTest {
             }
         }
         val setup = PendingSetup(settings, module, apps, unexpected(), unexpected(), unexpected())
-        val viewModel = MainActivityViewModel(settings, setup, scheduler)
+        val viewModel = MainActivityViewModel(settings, setup, scheduler, AutoStart(settings, module))
 
         viewModel.applyPendingSetup()
         runCurrent()
@@ -92,6 +98,8 @@ class MainActivityViewModelTest {
         assertEquals(2, attempts)
         assertEquals(emptySet(), settings.userData.value.pendingApps)
         assertEquals(1, updates)
+        // A stopped daemon is started when the app is first opened, and not at each return to it.
+        assertEquals(1, starts)
     }
 
     @Test
@@ -106,7 +114,7 @@ class MainActivityViewModelTest {
             }
         }
         val pendingSetup = PendingSetup(repository, unexpected(), unexpected(), unexpected(), unexpected(), unexpected())
-        val viewModel = MainActivityViewModel(repository, pendingSetup, unexpected())
+        val viewModel = MainActivityViewModel(repository, pendingSetup, unexpected(), AutoStart(repository, unexpected()))
         runCurrent()
         assertEquals(0, reads)
 

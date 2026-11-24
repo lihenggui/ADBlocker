@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import li.mercury.adblocker.core.common.result.launchCatching
+import li.mercury.adblocker.core.data.repository.AutoStart
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.PendingSetup
 import li.mercury.adblocker.core.data.repository.UserDataRepository
@@ -36,6 +37,7 @@ class MainActivityViewModel @Inject constructor(
     private val userDataRepository: UserDataRepository,
     private val pendingSetup: PendingSetup,
     private val scheduler: ListUpdateScheduler,
+    private val autoStart: AutoStart,
 ) : ViewModel() {
     /** The settings; null until read, so that the first frame already has the right colors. */
     val userData: StateFlow<UserData?> = userDataRepository.userData
@@ -53,6 +55,8 @@ class MainActivityViewModel @Inject constructor(
     fun applyPendingSetup() {
         if (applyingSetup?.isActive == true) return
         applyingSetup = viewModelScope.launchCatching("pending setup") {
+            // A daemon nothing started since the device did, before what waits for it.
+            autoStart.whenOpened()
             if (pendingSetup.applyIfReady()) scheduler.updateSoon()
         }
     }

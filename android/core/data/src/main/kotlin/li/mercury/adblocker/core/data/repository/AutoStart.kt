@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.first
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.UserData
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -62,6 +63,19 @@ class AutoStart @Inject constructor(
         val settings = userData.userData.first()
         if (!settings.inRootMode || !settings.moduleInstalledByApp) return Outcome.NotAsked
         return start("boot")
+    }
+
+    private val opened = AtomicBoolean(false)
+
+    /**
+     * When the app is opened in root mode, once for a process: the boot
+     * broadcast does not reach an app the user force-stopped, or one a
+     * device keeps from starting by itself. The app runs root commands
+     * while it is open, so whose the module is can be asked here.
+     */
+    suspend fun whenOpened(): Outcome {
+        if (!userData.userData.first().inRootMode || opened.getAndSet(true)) return Outcome.NotAsked
+        return start("open")
     }
 
     private suspend fun start(occasion: String): Outcome = try {

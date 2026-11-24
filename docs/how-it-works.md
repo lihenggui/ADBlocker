@@ -366,7 +366,8 @@ it, and it can be in either of two places.
   the app starts the daemon when the device has finished booting, which
   takes root being granted to it then. The app asks for root at boot only
   in root mode with a module it installed, and does nothing when the daemon
-  runs already or the module turned itself off.
+  runs already or the module turned itself off. It does the same when it
+  is opened, once, for a device that did not deliver the boot broadcast.
 - Flashed in a root manager, it is in `/data/adb/modules/adblocker`. This
   one is in use once it has its daemon: a manager keeps a directory without
   it for a module it applies at the next boot. When it first starts, it
