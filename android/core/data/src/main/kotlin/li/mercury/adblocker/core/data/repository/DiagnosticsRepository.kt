@@ -24,7 +24,10 @@ import kotlinx.coroutines.withContext
 import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
 import li.mercury.adblocker.core.common.dispatchers.Dispatcher
 import li.mercury.adblocker.core.common.result.suspendRunCatching
+import li.mercury.adblocker.core.data.root.ModulePaths.LOCATE
 import li.mercury.adblocker.core.data.root.ModulePaths.LOG
+import li.mercury.adblocker.core.data.root.ModulePaths.MODULE_DIR
+import li.mercury.adblocker.core.data.root.ModulePaths.MODULE_PROP
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.data.root.shellQuoted
 import java.io.File
@@ -52,8 +55,14 @@ internal class RootDiagnosticsRepository @Inject constructor(
 internal suspend fun exportLogFile(rootShell: RootShell, appLogs: File, write: suspend (ByteArray) -> Unit): LogExportResult {
     val current = LOG.shellQuoted()
     val history = "$LOG.old".shellQuoted()
+    // Which root mode is installed, where, comes first: the screens no longer show its version.
     val command = """
         failed=0
+        echo "== root mode"
+        $LOCATE
+        echo "$MODULE_DIR"
+        sed -n 's/^version=/version /p; s/^versionCode=/versionCode /p' $MODULE_PROP 2>/dev/null
+        echo "== abd.log"
         if [ -e $history ] || [ -L $history ]; then
             tail -n 2000 $history 2>/dev/null || failed=1
         fi
@@ -65,8 +74,7 @@ internal suspend fun exportLogFile(rootShell: RootShell, appLogs: File, write: s
     // Both parts are already in memory, so the document is written whole, through
     // the writer that truncates what the user chose to replace.
     val text = buildString {
-        appendLine("== abd.log")
-        appendLine(daemon?.output.orEmpty())
+        appendLine(daemon?.output ?: "== abd.log")
         appendLine("== app")
         appendLine(app)
     }

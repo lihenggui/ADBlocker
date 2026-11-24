@@ -20,7 +20,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.root.CommandResult
-import li.mercury.adblocker.core.data.root.ModulePaths.LOG
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.data.root.sh
 import org.junit.Rule
@@ -34,14 +33,16 @@ class DiagnosticsRepositoryTest {
     @get:Rule
     val temporary = TemporaryFolder()
 
-    private val current get() = temporary.root.resolve("abd.log")
-    private val history get() = temporary.root.resolve("abd.log.old")
+    /** What stands for /data/adb. */
+    private val adb get() = temporary.root.resolve("adb")
+    private val current get() = adb.resolve("adblocker/abd.log").also { it.parentFile?.mkdirs() }
+    private val history get() = adb.resolve("adblocker/abd.log.old").also { it.parentFile?.mkdirs() }
     private var rootGranted = true
     private val shell = object : RootShell(Dispatchers.IO) {
         override suspend fun run(command: String, label: String, timeoutSeconds: Int): CommandResult {
             if (!rootGranted) throw AbdException.NoRoot()
             assertEquals("log export", label)
-            val result = sh(command.replace(LOG, current.path))
+            val result = sh(command.replace("/data/adb", adb.path))
             return CommandResult(result.code == 0, result.code, result.output, "")
         }
     }
@@ -86,6 +87,30 @@ class DiagnosticsRepositoryTest {
         assertEquals(LogExportResult.DaemonIncomplete, result)
         assertTrue("daemon started" in text)
         assertTrue("app started" in text)
+    }
+
+    @Test
+    fun givenRootModeTheAppInstalled_whenExporting_thenItsVersionAndPlaceComeFirst() = runTest {
+        current.writeText("daemon started")
+        adb.resolve("adblocker_direct").mkdirs()
+        adb.resolve("adblocker_direct/module.prop").writeText("id=adblocker\nversion=v0.3.0\nversionCode=30\n")
+
+        val (result, text) = export()
+
+        assertEquals(LogExportResult.Complete, result)
+        val rootMode = text.substringAfter("== root mode\n").substringBefore("== abd.log")
+        assertEquals(listOf(adb.resolve("adblocker_direct").path, "version v0.3.0", "versionCode 30"), rootMode.trim().lines())
+        assertTrue(text.substringAfter("== abd.log").contains("daemon started"))
+    }
+
+    @Test
+    fun givenNoRootModeInstalled_whenExporting_thenTheDaemonLogIsStillComplete() = runTest {
+        current.writeText("daemon started")
+
+        val (result, text) = export()
+
+        assertEquals(LogExportResult.Complete, result)
+        assertTrue("daemon started" in text)
     }
 
     @Test
