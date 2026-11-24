@@ -28,6 +28,7 @@ import li.mercury.adblocker.core.data.root.CommandResult
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.data.root.script
 import li.mercury.adblocker.core.model.ModuleState
+import li.mercury.adblocker.core.testing.TestUserDataRepository
 import li.mercury.adblocker.core.testing.unexpected
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -81,6 +82,7 @@ class RootModuleRepositoryTest {
     private var rootManagerAnswer = "Magisk"
     private var rootManagerAsked = 0
     private var installer: () -> CommandResult = { CommandResult(true, 0, "", "") }
+    private val settings = TestUserDataRepository()
     private val module by lazy { repository() }
 
     private fun repository() = RootModuleRepository(
@@ -101,6 +103,7 @@ class RootModuleRepositoryTest {
             override suspend fun status() = parseStatus("""{"running":${++checks >= readyAt},"paused":false}""")
         },
         changes = DataChanges(),
+        userData = settings,
         ioDispatcher = Dispatchers.Unconfined,
     )
 
@@ -124,6 +127,8 @@ class RootModuleRepositoryTest {
 
     private fun starts() = if (started.exists()) started.readLines() else emptyList()
 
+    private fun rememberedAsTheApps() = settings.userData.value.moduleInstalledByApp
+
     @Test
     fun givenAnUnreadableModule_whenCheckingReadiness_thenTheModuleIsUnverified() = runTest {
         installed(direct).resolve("bin/abd").setExecutable(false)
@@ -137,9 +142,13 @@ class RootModuleRepositoryTest {
 
     @Test
     fun givenNoRoot_whenCheckingReadiness_thenRootIsReportedMissing() = runTest {
+        settings.setModuleInstalledByApp(true)
         rootGranted = false
         assertEquals(ModuleState.NoRoot, module.state())
         assertFalse(module.isInstalledByApp())
+        // Root not answering says nothing of whose the module is.
+        assertTrue(rememberedAsTheApps())
+        assertFailsWith<AbdException.NoRoot> { module.startUnasked() }
     }
 
     @Test
@@ -147,6 +156,8 @@ class RootModuleRepositoryTest {
         installed(direct)
         assertEquals(ModuleState.Ready, module.state())
         assertEquals("v$bundledCode.0", module.installedVersion())
+        // Remembered with the state, for the boot that follows.
+        assertTrue(rememberedAsTheApps())
         assertTrue(module.isInstalledByApp())
     }
 
@@ -156,7 +167,9 @@ class RootModuleRepositoryTest {
         installed(flashed, versionCode = bundledCode + 1)
         assertEquals(ModuleState.Mismatched, module.state())
         assertEquals("v${bundledCode + 1}.0", module.installedVersion())
+        settings.setModuleInstalledByApp(true)
         assertFalse(module.isInstalledByApp())
+        assertFalse(rememberedAsTheApps())
     }
 
     @Test
@@ -245,16 +258,19 @@ class RootModuleRepositoryTest {
     @Test
     fun givenAModuleInstalledByTheApp_whenRemoved_thenItsOwnScriptRemovesIt() = runTest {
         installed(direct)
+        assertTrue(module.isInstalledByApp())
         module.remove()
         assertFalse(direct.exists())
+        assertFalse(rememberedAsTheApps())
         assertEquals(ModuleState.NotInstalled, module.state())
     }
 
     @Test
     fun givenARemovalThatLeavesTheModule_whenRemoved_thenItFails() = runTest {
         installed(direct).resolve("keep").writeText("")
-        assertFailsWith<AbdException.CommandFailed> { module.remove() }
         assertTrue(module.isInstalledByApp())
+        assertFailsWith<AbdException.CommandFailed> { module.remove() }
+        assertTrue(rememberedAsTheApps())
     }
 
     @Test
@@ -306,6 +322,42 @@ class RootModuleRepositoryTest {
         assertTrue(module.startDaemon())
         assertFalse(direct.resolve("disable").exists())
         assertEquals(listOf(direct.name), starts())
+    }
+
+    @Test
+    fun givenAModuleInstalledByTheAppIsStopped_whenStartedUnasked_thenItIsStarted() = runTest {
+        installed(direct)
+        readyAt = 2
+        assertTrue(module.startUnasked())
+        assertEquals(listOf(direct.name), starts())
+        assertTrue(rememberedAsTheApps())
+    }
+
+    @Test
+    fun givenTheDaemonRunsAlready_whenStartedUnasked_thenNothingIsStarted() = runTest {
+        installed(direct)
+        readyAt = 1
+        assertFalse(module.startUnasked())
+        assertEquals(emptyList(), starts())
+    }
+
+    @Test
+    fun givenAModuleInstalledByTheAppTurnedItselfOff_whenStartedUnasked_thenItStaysOff() = runTest {
+        installed(direct).resolve("disable").writeText("")
+        assertFalse(module.startUnasked())
+        assertTrue(direct.resolve("disable").exists())
+        assertEquals(emptyList(), starts())
+    }
+
+    @Test
+    fun givenAModuleInTheManager_whenStartedUnasked_thenItIsLeftToTheManager() = runTest {
+        installed(direct)
+        installed(flashed)
+        settings.setModuleInstalledByApp(true)
+        assertFalse(module.startUnasked())
+        assertEquals(emptyList(), starts())
+        assertEquals(0, checks)
+        assertFalse(rememberedAsTheApps())
     }
 
     @Test

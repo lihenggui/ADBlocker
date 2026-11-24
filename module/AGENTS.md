@@ -32,7 +32,8 @@ and pid files in `/data/adb/adblocker`.
   starts it. For its own directory it leaves a launcher in
   `/data/adb/service.d`, which the three managers run at late_start, to
   start the daemon at boot (`direct.sh boot`); where nothing runs it, the
-  daemon is started from the app. `boot` does nothing while a root manager
+  app starts the daemon once the device has booted (`AutoStart`), with the
+  same `service.sh`. `boot` does nothing while a root manager
   has the module or the module is disabled. `remove` uninstalls, from the
   app or at boot once the app is gone from `/data/system/packages.list`;
   a list that lacks what every device has says nothing. The daemon of such

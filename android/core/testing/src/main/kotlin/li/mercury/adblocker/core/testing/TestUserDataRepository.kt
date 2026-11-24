@@ -72,6 +72,8 @@ class TestUserDataRepository(initial: UserData = UserData()) : UserDataRepositor
 
     override suspend fun setRootSwitchCancelling() = userData.update { it.copy(rootSwitchCancelling = true) }
 
+    override suspend fun setModuleInstalledByApp(installed: Boolean) = userData.update { it.copy(moduleInstalledByApp = installed) }
+
     override suspend fun startRootHandoff(): String = handoffAttempt ?: UUID.randomUUID().toString().also { handoffAttempt = it }
 
     override suspend fun rootHandoffAttempt() = handoffAttempt

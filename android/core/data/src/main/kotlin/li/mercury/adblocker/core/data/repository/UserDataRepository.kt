@@ -54,6 +54,9 @@ interface UserDataRepository {
 
     suspend fun setRootSwitchCancelling()
 
+    /** Remembers whether this app installed the root module in use. */
+    suspend fun setModuleInstalledByApp(installed: Boolean)
+
     /** Records the attempt before the root command can create a rollback snapshot. */
     suspend fun startRootHandoff(): String
 
@@ -129,6 +132,10 @@ internal class DataStoreUserDataRepository @Inject constructor(
 
     override suspend fun setRootSwitchCancelling() {
         source.setRootSwitchCancelling()
+    }
+
+    override suspend fun setModuleInstalledByApp(installed: Boolean) {
+        source.setModuleInstalledByApp(installed)
     }
 
     override suspend fun startRootHandoff() = source.startRootHandoff()

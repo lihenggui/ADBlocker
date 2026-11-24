@@ -363,7 +363,10 @@ it, and it can be in either of two places.
   `/data/adb/adblocker_direct` and starts it at once. No root manager lists
   it. A launcher in `/data/adb/service.d`, which KernelSU, Magisk and APatch
   run at late_start, starts it at boot. Where nothing runs that directory,
-  the daemon runs from when it is started in the app.
+  the app starts the daemon when the device has finished booting, which
+  takes root being granted to it then. The app asks for root at boot only
+  in root mode with a module it installed, and does nothing when the daemon
+  runs already or the module turned itself off.
 - Flashed in a root manager, it is in `/data/adb/modules/adblocker`. This
   one is in use once it has its daemon: a manager keeps a directory without
   it for a module it applies at the next boot. When it first starts, it

@@ -23,8 +23,8 @@
 #   direct.sh remove              by the app, or at boot once the app is gone
 #
 # KernelSU, Magisk and APatch run what is in /data/adb/service.d at
-# late_start, as they run a module's service.sh. Where nothing does, the
-# daemon is started from the app.
+# late_start, as they run a module's service.sh. Where nothing does, the app
+# starts the daemon once the device has booted.
 #
 # A module flashed in a root manager is the one in use once it has its
 # daemon: a manager keeps a directory with module.prop alone for a module it
@@ -84,7 +84,7 @@ replace_direct() {
         stop_installed && rm -rf "$DIRECT" || abort "! Could not replace the installed module"
     fi
     mv "$MODPATH" "$DIRECT" || abort "! Could not install the module"
-    write_launcher || ui_print "! Could not register for boot; start the daemon from the app after a restart"
+    write_launcher || ui_print "! Could not register for boot; the app starts the daemon after a restart"
 }
 
 # Brings the module in the root manager up to date where it is. What the
