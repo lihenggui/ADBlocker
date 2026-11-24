@@ -467,7 +467,7 @@ pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> Info {
         if known.rules.is_none()
             && let Ok(Some(text)) = read_list(&path, MAX_LIST)
         {
-            known.rules = Some(crate::rule_text::count(&text));
+            known.rules = Some(crate::rule::count(&text));
             known.title = known.title.or_else(|| title(&text));
         }
     } else {
@@ -497,7 +497,7 @@ pub fn lists_updated(paths: &Paths) -> Option<u64> {
 pub fn title(list: &str) -> Option<String> {
     list.lines()
         .take(200)
-        .take_while(|l| crate::rule_text::is_comment(l))
+        .take_while(|l| crate::rule::is_comment(l))
         .find_map(|l| {
             let rest = l.trim().strip_prefix('!')?.trim_start();
             let title = rest.strip_prefix("Title:")?.trim();

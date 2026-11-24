@@ -20,46 +20,9 @@ use std::collections::{HashMap, HashSet};
 use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
 use adblock::lists::{FilterSet, ParseOptions};
 
-use super::{domain_named, is_network_exception, network, option_name, opts, to_domains};
+use super::{domain_named, is_network_exception};
+use crate::rule::{self, ExceptionHost, Rule};
 use crate::{host::suffixes, public_suffix};
-
-/// Whether `host` is a name somebody registered, or one below such a name.
-///
-/// A rule for anything wider, `||com^` or `||co.uk^`, would have every
-/// connection of the filtered apps to that part of the internet refused:
-/// no list means that, and one that says it is mistaken or hostile.
-fn registrable(host: &str) -> bool {
-    let plain = host
-        .bytes()
-        .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-');
-    plain
-        // A suffix the list of public ones does not know is taken for one
-        // label, so a name below it still has a root.
-        && public_suffix::Name::parse(host).is_some_and(|name| name.root().is_some())
-}
-
-/// `||host^` with nothing else, or a hosts-file line; and what takes
-/// such a rule back, an exception (`@@||host^`) or `$badfilter`, without
-/// which a host the lists allow after all would still be refused whole.
-pub(super) fn host_only(line: &str) -> Option<String> {
-    whole_rule(line).map(|(rule, _)| rule.into_owned())
-}
-
-pub(super) fn whole_rule(line: &str) -> Option<(Cow<'_, str>, &str)> {
-    let line = line.trim();
-    if let Some(rest) = line.strip_prefix("@@").unwrap_or(line).strip_prefix("||") {
-        let rest = rest.strip_suffix("$badfilter").unwrap_or(rest);
-        let host = rest.strip_suffix('^')?;
-        return registrable(host).then_some((Cow::Borrowed(line), host));
-    }
-    let mut f = line.split_ascii_whitespace();
-    match (f.next(), f.next(), f.next()) {
-        (Some("0.0.0.0" | "127.0.0.1"), Some(host), None) if registrable(host) => {
-            Some((Cow::Owned(format!("||{host}^")), host))
-        }
-        _ => None,
-    }
-}
 
 fn name_matches_host_pattern(host: &str) -> bool {
     !host.is_empty()
@@ -69,13 +32,6 @@ fn name_matches_host_pattern(host: &str) -> bool {
                     .bytes()
                     .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
         })
-}
-
-/// What `pattern` begins with, up to where a host name would end.
-fn host_token(pattern: &str) -> &str {
-    &pattern[..pattern
-        .find(['/', '^', '?', ':', '|', '$'])
-        .unwrap_or(pattern.len())]
 }
 
 /// Whether `host` is a host pattern with a wildcard, such as `google.*`
@@ -92,54 +48,58 @@ fn wildcard_host(host: &str) -> bool {
 /// at least as wide as the host part of the exception, and returns whether
 /// it names one. An exception names a host by a host-anchored pattern, or
 /// by a pattern that begins with a host name.
-fn exception_host(line: &str, rule: &NetworkFilter<'_>, out: &mut String) -> bool {
-    if let Some(pattern) = line.strip_prefix("@@||") {
-        let token = host_token(pattern);
-        if wildcard_host(token) {
-            push_guard(out, token, "^");
-            return true;
+fn exception_host(source: &Rule<'_>, rule: &NetworkFilter<'_>, out: &mut String) -> bool {
+    match source.exception_host() {
+        Some(ExceptionHost::Anchored(host)) => anchored_guard(host, rule, out),
+        Some(ExceptionHost::Leading {
+            host,
+            has_scheme,
+            absolute,
+        }) => {
+            let absolute = absolute && rule.mask.contains(Mask::IS_LEFT_ANCHOR);
+            leading_guard(host, has_scheme, absolute, out)
         }
-        let Some(name) = rule.hostname.as_deref() else {
-            return false;
-        };
-        if rule.mask.contains(Mask::IS_HOSTNAME_REGEX) || !name_matches_host_pattern(name) {
-            return false;
-        }
-        // Without a separator the rule can also match part of a hostname.
-        let suffix = (rule.mask.contains(Mask::IS_RIGHT_ANCHOR) && rule.filter.iter().len() == 0)
-            || (rule.mask.contains(Mask::IS_LEFT_ANCHOR)
-                && rule
-                    .filter
-                    .iter()
-                    .next()
-                    .is_some_and(|path| path.starts_with('/')));
-        push_guard(out, name, if suffix { "^" } else { "" });
+        None => false,
+    }
+}
+
+fn anchored_guard(token: &str, rule: &NetworkFilter<'_>, out: &mut String) -> bool {
+    if wildcard_host(token) {
+        push_guard(out, token, "^");
         return true;
     }
-    let Some(pattern) = line.strip_prefix("@@") else {
+    let Some(name) = rule.hostname.as_deref() else {
         return false;
     };
-    let pattern = pattern.strip_prefix('|').unwrap_or(pattern);
-    let authority = ["https://", "http://", "://"]
-        .into_iter()
-        .find_map(|scheme| pattern.strip_prefix(scheme));
+    if rule.mask.contains(Mask::IS_HOSTNAME_REGEX) || !name_matches_host_pattern(name) {
+        return false;
+    }
+    // Without a separator the rule can also match part of a hostname.
+    let suffix = (rule.mask.contains(Mask::IS_RIGHT_ANCHOR) && rule.filter.iter().len() == 0)
+        || (rule.mask.contains(Mask::IS_LEFT_ANCHOR)
+            && rule
+                .filter
+                .iter()
+                .next()
+                .is_some_and(|path| path.starts_with('/')));
+    push_guard(out, name, if suffix { "^" } else { "" });
+    true
+}
+
+fn leading_guard(host: &str, has_scheme: bool, absolute: bool, out: &mut String) -> bool {
     // A leading hostname counts for its own host even when the pattern
     // could also match in the path on another host.
-    let token = host_token(authority.unwrap_or(pattern).trim_start_matches('/'));
-    if authority.is_some()
-        && let Some(label) = token.strip_suffix('.')
+    if has_scheme
+        && let Some(label) = host.strip_suffix('.')
         && !label.contains('.')
         && name_matches_host_pattern(label)
         && label.bytes().any(|b| b.is_ascii_lowercase())
     {
-        push_guard(out, token, "*^");
+        push_guard(out, host, "*^");
         return true;
     }
-    let absolute = rule.mask.contains(Mask::IS_LEFT_ANCHOR)
-        && (pattern.starts_with("https://") || pattern.starts_with("http://"))
-        && authority.is_some_and(|authority| !authority.starts_with('/'));
-    if name_matches_host_pattern(token) && (absolute || has_known_suffix(token)) {
-        push_guard(out, token, "^");
+    if name_matches_host_pattern(host) && (absolute || has_known_suffix(host)) {
+        push_guard(out, host, "^");
         return true;
     }
     false
@@ -182,60 +142,80 @@ pub(super) struct HostRules {
 /// gives a guard the apps of its rule.
 pub(super) type AppHostBlocks = HashMap<String, Vec<String>>;
 
-impl HostRules {
-    pub(super) fn project<'a>(
-        lists: impl Iterator<Item = &'a str>,
-        disabled: &HashSet<u64>,
-        app_blocks: &AppHostBlocks,
-        guard_budget: usize,
-    ) -> Self {
-        let mut hosts = FilterSet::new(false);
-        let mut blocked = HashSet::new();
-        let mut host_rules = 0;
-        let mut scope_rules = String::new();
-        let mut page_rules = String::new();
-        for text in lists {
-            let mut only = String::new();
-            for line in text.lines().map(str::trim) {
-                let whole = whole_rule(line);
-                let exception = line.starts_with("@@");
-                let Some(rule) = whole
-                    .as_ref()
-                    .map(|(candidate, _)| candidate.as_ref())
-                    .or(exception.then_some(line))
-                    .and_then(network)
-                else {
-                    continue;
-                };
-                if disabled.contains(&rule.get_id()) {
-                    continue;
-                }
-                if let Some((candidate, original)) = &whole
-                    && !rule.is_badfilter()
-                {
-                    only.push_str(candidate);
-                    only.push('\n');
-                    host_rules += 1;
-                    if !exception && let Some(name) = rule.hostname.as_deref() {
-                        // Reuse the source text except where the parser normalized it.
-                        blocked.insert(if name == *original {
-                            Cow::Borrowed(*original)
-                        } else {
-                            Cow::Owned(name.to_owned())
-                        });
-                    }
-                }
-                if exception && guards_exception(line, &rule) {
-                    let out = if rule.opt_domains.is_some() {
-                        &mut page_rules
-                    } else {
-                        &mut scope_rules
-                    };
-                    project_guard(line, &rule, out);
-                }
-            }
-            hosts.add_filter_list(only, ParseOptions::default());
+pub(super) struct HostProjections<'a> {
+    hosts: FilterSet,
+    blocked: HashSet<Cow<'a, str>>,
+    count: usize,
+    scope_rules: String,
+    page_rules: String,
+    current: String,
+}
+
+impl<'a> HostProjections<'a> {
+    pub(super) fn new() -> Self {
+        Self {
+            hosts: FilterSet::new(false),
+            blocked: HashSet::new(),
+            count: 0,
+            scope_rules: String::new(),
+            page_rules: String::new(),
+            current: String::new(),
         }
+    }
+
+    pub(super) fn add(&mut self, source: &Rule<'a>, disabled: &HashSet<u64>) {
+        let whole = source.whole_host();
+        let exception = source.exception();
+        let parsed = match &whole {
+            Some((Cow::Owned(candidate), _)) => rule::parse_network(candidate),
+            _ if whole.is_some() || exception => source.network(),
+            _ => None,
+        };
+        let Some(rule) = parsed else {
+            return;
+        };
+        if disabled.contains(&rule.get_id()) {
+            return;
+        }
+        if let Some((candidate, original)) = &whole
+            && !rule.is_badfilter()
+        {
+            self.current.push_str(candidate);
+            self.current.push('\n');
+            self.count += 1;
+            if !exception && let Some(name) = rule.hostname.as_deref() {
+                // Reuse the source text except where the parser normalized it.
+                self.blocked.insert(if name == *original {
+                    Cow::Borrowed(*original)
+                } else {
+                    Cow::Owned(name.to_owned())
+                });
+            }
+        }
+        if exception && can_guard(source, &rule) {
+            let out = if rule.opt_domains.is_some() {
+                &mut self.page_rules
+            } else {
+                &mut self.scope_rules
+            };
+            write_guards(source, &rule, out);
+        }
+    }
+
+    pub(super) fn finish_list(&mut self) {
+        self.hosts
+            .add_filter_list(std::mem::take(&mut self.current), ParseOptions::default());
+    }
+
+    pub(super) fn finish(self, app_blocks: &AppHostBlocks, guard_budget: usize) -> HostRules {
+        let Self {
+            hosts,
+            blocked,
+            count,
+            scope_rules,
+            page_rules,
+            ..
+        } = self;
         let mut remaining = guard_budget;
         let kept =
             kept_guards(&scope_rules, &blocked, app_blocks, &mut remaining).and_then(|scope| {
@@ -244,14 +224,14 @@ impl HostRules {
             });
         let guards_incomplete = kept.is_none();
         let (scope, pages) = kept.unwrap_or_default();
-        Self {
+        HostRules {
             whole: hosts,
             guards: guard_set(scope.shared),
             page_guards: optional_guard_set(pages.shared),
             app_guards: optional_guard_set(scope.apps),
             app_page_guards: optional_guard_set(pages.apps),
             guards_incomplete,
-            count: host_rules,
+            count,
         }
     }
 }
@@ -320,11 +300,11 @@ fn block_suffixes(host: &str) -> impl Iterator<Item = &str> {
 
 /// Whether `rule` is an exception that could allow an HTTPS request, and
 /// so one a host may have to be left alone for.
-pub(super) fn guards_exception(line: &str, rule: &NetworkFilter<'_>) -> bool {
+pub(super) fn can_guard(source: &Rule<'_>, rule: &NetworkFilter<'_>) -> bool {
     is_network_exception(rule)
         && rule.mask.contains(Mask::FROM_HTTPS)
-        && !(rule.mask.contains(Mask::IS_LEFT_ANCHOR) && line.starts_with("@@|http://"))
-        && !opts(line).any(|option| option_name(option) == "tag")
+        && !(rule.mask.contains(Mask::IS_LEFT_ANCHOR) && source.http_only_anchor())
+        && !source.has_tag()
 }
 
 /// What an exception was found to guard.
@@ -338,15 +318,16 @@ pub(super) enum GuardCoverage {
 }
 
 /// Writes the guards of the exception `line` to `scope_rules`.
-pub(super) fn project_guard(
-    line: &str,
+pub(super) fn write_guards(
+    source: &Rule<'_>,
     rule: &NetworkFilter<'_>,
     scope_rules: &mut String,
 ) -> GuardCoverage {
-    if exception_host(line, rule, scope_rules) {
+    if exception_host(source, rule, scope_rules) {
         GuardCoverage::NamedHosts
     } else if let Some(domains) = &rule.opt_to_domains {
-        let mut scope = to_domains(line)
+        let mut scope = source
+            .destinations()
             .filter(|domain| name_matches_host_pattern(domain))
             .filter(|domain| domain_named(domains, domain))
             .collect::<Vec<_>>();

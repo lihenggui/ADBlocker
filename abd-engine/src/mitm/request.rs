@@ -31,7 +31,7 @@ use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
 use crate::filter::{AppFilters, Filters, Hiding, Page};
 use crate::relay;
-use crate::response_action::{ActionKind, ResponseAction};
+use crate::rule::action::ResponseAction;
 use crate::stats::Counter;
 use crate::tls::Tls;
 
@@ -301,9 +301,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             .as_ref()
             .map_or_else(Vec::new, |m| m.actions(kind.as_str()));
         // Only replacement rules take precedence after the connection passes host filtering.
-        let blocked = !actions
-            .iter()
-            .any(|action| action.kind() == ActionKind::Replace)
+        let blocked = !actions.iter().any(|action| action.overrides_block())
             && filters
                 .check_with_page(url, self.page, kind.as_str(), self.method)
                 .blocked;

@@ -22,7 +22,7 @@ use hyper::header::{CONTENT_TYPE, HeaderValue};
 
 use super::*;
 use crate::limits::MAX_REWRITE_RESULT;
-use crate::response_action::ActionSpec;
+use crate::rule::action::ActionSpec;
 
 fn action(pattern: &str, text: &str, flags: bool) -> Vec<Arc<ResponseAction>> {
     vec![Arc::new(

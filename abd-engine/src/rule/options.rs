@@ -12,26 +12,34 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Option boundaries and quoting shared by app conditions and response rules.
+//! Option boundaries and quoting shared by the rule reader and action values.
 
-use adblock::lists::{FilterParseError, ParseOptions, RuleTypes, parse_filter};
+pub(super) const APP: &str = "app";
+pub(super) const PRUNE: &str = "jsonprune";
+pub(super) const REPLACE: &str = "replace";
 
 /// AdGuard quotes option separators with an immediately preceding backslash.
-pub(super) fn unescaped(text: &str, byte: u8) -> impl DoubleEndedIterator<Item = usize> {
+pub(crate) fn unescaped(text: &str, byte: u8) -> impl DoubleEndedIterator<Item = usize> {
     text.bytes().enumerate().filter_map(move |(i, b)| {
         (b == byte && (i == 0 || text.as_bytes()[i - 1] != b'\\')).then_some(i)
     })
 }
 
 /// Split options after skipping the two slash-delimited replacement fields.
-pub(super) fn options(text: &str) -> impl Iterator<Item = &str> {
+fn options(text: &str, quoting: Quoting) -> impl Iterator<Item = &str> {
     let mut remaining = Some(text);
     std::iter::from_fn(move || {
         let text = remaining?;
-        let start = text.strip_prefix("replace=/").map_or(0, |value| {
-            text.len() - value.len() + option_value_end(value)
-        });
-        let Some(comma) = unescaped(&text[start..], b',').next() else {
+        let (start, comma) = match quoting {
+            Quoting::Literal => (0, text.find(',')),
+            Quoting::AdGuard => {
+                let start = replacement_fields(text).map_or(0, |value| {
+                    text.len() - value.len() + option_value_end(value)
+                });
+                (start, unescaped(&text[start..], b',').next())
+            }
+        };
+        let Some(comma) = comma else {
             remaining = None;
             return Some(text);
         };
@@ -41,20 +49,103 @@ pub(super) fn options(text: &str) -> impl Iterator<Item = &str> {
     })
 }
 
-pub(super) fn network_condition(line: &str, pattern: &str) -> bool {
-    let parse = ParseOptions {
-        rule_types: RuleTypes::CosmeticOnly,
-        ..ParseOptions::default()
-    };
-    !pattern.contains('#')
-        || matches!(
-            parse_filter(line, false, parse),
-            Err(FilterParseError::Unsupported)
-        )
+#[derive(Clone, Copy)]
+pub(super) enum Quoting {
+    Literal,
+    AdGuard,
+}
+
+#[derive(Clone, Copy)]
+pub(crate) struct OptionToken<'a> {
+    pub(crate) raw: &'a str,
+    pub(crate) raw_name: &'a str,
+    pub(crate) value: Option<&'a str>,
+}
+
+impl<'a> OptionToken<'a> {
+    pub(crate) fn name(&self) -> &'a str {
+        self.raw_name.trim_start_matches('~')
+    }
+}
+
+pub(super) struct Options<'a> {
+    pub(super) pattern: &'a str,
+    pub(super) suffix: &'a str,
+    spans: Vec<Span>,
+}
+
+/// Store positions within the suffix so even a long list of options
+/// needs only one borrowed string.
+#[derive(Clone, Copy)]
+struct Span {
+    end: usize,
+    name_end: usize,
+}
+
+impl Span {
+    fn token(self, suffix: &str, start: usize) -> OptionToken<'_> {
+        let Self { end, name_end } = self;
+        OptionToken {
+            raw: &suffix[start..end],
+            raw_name: &suffix[start..name_end],
+            value: (name_end < end).then(|| &suffix[name_end + 1..end]),
+        }
+    }
+}
+
+fn spans(suffix: &str, quoting: Quoting) -> impl Iterator<Item = (usize, Span)> {
+    let mut start = 0;
+    options(suffix, quoting).map(move |raw| {
+        let end = start + raw.len();
+        let name_end = raw.find('=').map_or(end, |offset| start + offset);
+        let previous = start;
+        start = end + 1;
+        (previous, Span { end, name_end })
+    })
+}
+
+impl<'a> Options<'a> {
+    pub(super) fn read(line: &'a str, quoting: Quoting) -> Option<Self> {
+        let at = match quoting {
+            Quoting::Literal => line.rfind('$'),
+            Quoting::AdGuard => option_separator(line),
+        }?;
+        Some(Self::split(&line[..at], &line[at + 1..], quoting))
+    }
+
+    /// The older page and host projections see every comma and the last dollar.
+    pub(super) fn also_literal(&self) -> bool {
+        !self.suffix.contains('$') && self.tokens().all(|token| !token.raw.contains(','))
+    }
+
+    pub(super) fn split(pattern: &'a str, suffix: &'a str, quoting: Quoting) -> Self {
+        Self {
+            pattern,
+            suffix,
+            spans: spans(suffix, quoting).map(|(_, span)| span).collect(),
+        }
+    }
+
+    pub(super) fn tokens(&self) -> impl Iterator<Item = OptionToken<'a>> + '_ {
+        (0..self.spans.len()).map(|index| self.token(index))
+    }
+
+    pub(super) fn token(&self, index: usize) -> OptionToken<'a> {
+        let start = if index == 0 {
+            0
+        } else {
+            self.spans[index - 1].end + 1
+        };
+        self.spans[index].token(self.suffix, start)
+    }
+}
+
+fn replacement_fields(text: &str) -> Option<&str> {
+    text.strip_prefix(REPLACE)?.strip_prefix("=/")
 }
 
 /// A regular expression that forms the condition can contain dollar signs.
-pub(super) fn regex_option_separator(line: &str) -> Option<usize> {
+pub(crate) fn regex_option_separator(line: &str) -> Option<usize> {
     let pattern = line.strip_prefix("@@").unwrap_or(line);
     let close = delimiter(pattern.strip_prefix('/')?)?;
     let after = line.len() - pattern.len() + close + 2;
@@ -64,7 +155,7 @@ pub(super) fn regex_option_separator(line: &str) -> Option<usize> {
 /// Find the last unquoted dollar outside a regular expression condition or
 /// a replacement or app value. Both value parsers check dollar quoting
 /// separately, so malformed quoting stays with the rule that contains it.
-pub(super) fn option_separator(line: &str) -> Option<usize> {
+pub(crate) fn option_separator(line: &str) -> Option<usize> {
     let mut cursor = regex_option_separator(line).unwrap_or(0);
     if cursor == 0 && line.ends_with('/') {
         let pattern = line.strip_prefix("@@").unwrap_or(line);
@@ -93,15 +184,15 @@ pub(super) fn option_separator(line: &str) -> Option<usize> {
         let option = &line[cursor..];
         if option
             .trim_start_matches('~')
-            .strip_prefix("app")
+            .strip_prefix(APP)
             .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
         {
             app_options = true;
         }
-        if let Some(value) = option.strip_prefix("replace=/") {
+        if let Some(value) = replacement_fields(option) {
             cursor = line.len() - value.len() + option_value_end(value);
         } else if line[cursor..]
-            .strip_prefix("jsonprune")
+            .strip_prefix(PRUNE)
             .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
         {
             // Keep malformed quoting in the response rule so it cannot
@@ -114,7 +205,7 @@ pub(super) fn option_separator(line: &str) -> Option<usize> {
 
 /// Skip both fields. uBlock accepts a raw comma within a field when
 /// it cannot begin another option.
-pub(super) fn option_value_end(value: &str) -> usize {
+pub(crate) fn option_value_end(value: &str) -> usize {
     let mut slashes = 0;
     let mut escaped = false;
     for (index, byte) in value.bytes().enumerate() {
@@ -150,7 +241,7 @@ fn starts_option(tail: &str) -> bool {
 }
 
 /// A slash is quoted when an odd number of backslashes precedes it.
-pub(super) fn delimiter(part: &str) -> Option<usize> {
+pub(crate) fn delimiter(part: &str) -> Option<usize> {
     let mut escaped = false;
     for (index, byte) in part.bytes().enumerate() {
         match byte {
@@ -163,7 +254,7 @@ pub(super) fn delimiter(part: &str) -> Option<usize> {
 }
 
 /// Remove only the quoting of this layer and leave regex escapes intact.
-pub(super) fn unescape(part: &str, chars: &[char]) -> String {
+pub(crate) fn unescape(part: &str, chars: &[char]) -> String {
     let mut iter = part.chars().peekable();
     let mut output = String::with_capacity(part.len());
     while let Some(ch) = iter.next() {
@@ -174,4 +265,17 @@ pub(super) fn unescape(part: &str, chars: &[char]) -> String {
         }
     }
     output
+}
+
+#[cfg(test)]
+pub(crate) fn option_texts(text: &str) -> impl Iterator<Item = &str> {
+    options(text, Quoting::AdGuard)
+}
+
+pub(super) fn literal_options(suffix: &str) -> impl Iterator<Item = &str> {
+    options(suffix, Quoting::Literal)
+}
+
+pub(super) fn literal_tokens(suffix: &str) -> impl Iterator<Item = OptionToken<'_>> {
+    spans(suffix, Quoting::Literal).map(|(start, span)| span.token(suffix, start))
 }

@@ -18,44 +18,40 @@
 //! user has pages changed for it (`cosmetic.rs`), and scriptlets never:
 //! the check names both, whatever the setting is at the moment.
 
-use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, parse_filter};
+use crate::filter::{Patterns, valid_app_rule, valid_response_rule};
+use crate::rule::{self, Kind, MatcherCheck};
 
 use crate::protocol_types::{Issue, IssueKind, RulesCheck};
-pub use crate::rule_text::{count, is_comment};
+pub use crate::rule::{count, is_comment};
 
 /// The rules of `text` that will not be applied, by line.
 pub fn check(text: &str) -> RulesCheck {
     crate::public_suffix::install();
-    let mut patterns = crate::filter::Patterns::default();
+    let mut patterns = Patterns::default();
     let mut rules = 0;
     let mut issues = Vec::new();
     for (n, line) in text.lines().enumerate() {
-        if is_comment(line) {
+        let rule = rule::read(line);
+        if matches!(rule.kind, Kind::Comment) {
             continue;
         }
         rules += 1;
-        let kind = match crate::filter::response_rule(line, &mut patterns) {
-            Some(true) => continue,
-            Some(false) => IssueKind::Invalid,
-            None if crate::filter::has_app(line) => {
-                if crate::filter::valid_app_rule(line, &mut patterns) {
-                    continue;
+        let kind = match &rule.kind {
+            Kind::Comment => unreachable!(),
+            Kind::Response(response) if valid_response_rule(response, &mut patterns) => continue,
+            Kind::App(app) if valid_app_rule(app, &mut patterns) => continue,
+            Kind::App(_) | Kind::Response(_) => IssueKind::Invalid,
+            Kind::Matcher | Kind::Cosmetic | Kind::PageException(_) | Kind::NotApplied(_) => {
+                match rule.matcher_check() {
+                    MatcherCheck::Network => continue,
+                    MatcherCheck::Cosmetic => IssueKind::Cosmetic,
+                    MatcherCheck::Invalid => IssueKind::Invalid,
                 }
-                IssueKind::Invalid
             }
-            None => match parse_filter(line, false, ParseOptions::default()) {
-                Ok(ParsedLine::Network(_)) => continue,
-                Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
-                    IssueKind::Cosmetic
-                }
-                // What adblock-rust sets aside as AdGuard's HTML filtering.
-                Err(FilterParseError::Unsupported) if line.contains("$$") => IssueKind::Cosmetic,
-                Err(_) => IssueKind::Invalid,
-            },
         };
         issues.push(Issue {
             line: n + 1,
-            text: line.trim().to_owned(),
+            text: rule.line.to_owned(),
             kind,
         });
     }

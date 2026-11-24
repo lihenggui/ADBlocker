@@ -34,7 +34,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Sleep, sleep};
 
 use crate::limits::{MAX_REWRITE_BODY, MAX_REWRITES, REWRITE_WAIT, REWRITE_WORK};
-use crate::response_action::ResponseAction;
+use crate::rule::action::ResponseAction;
 
 static SLOTS: std::sync::LazyLock<Slots> = std::sync::LazyLock::new(|| Slots::new(MAX_REWRITES));
 

@@ -25,11 +25,12 @@ use ring::digest::{SHA256, digest};
 
 use crate::{
     files,
-    filter::{self, AppRules, Patterns, RequestRules},
+    filter::{AppProjections, AppRules, MatcherLists, Patterns, RequestRules, app_rule},
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     list_url,
     paths::Paths,
     protocol_types::Check,
+    rule::{self, Kind, Rule},
     sources,
 };
 
@@ -51,54 +52,75 @@ fn fingerprint(rule: &str) -> [u8; 16] {
         .unwrap()
 }
 
+fn app_name(rule: &Rule<'_>) -> Option<String> {
+    match &rule.kind {
+        Kind::App(app) => app_rule(app),
+        _ => None,
+    }
+}
+
+fn index_rule(source: &Rule<'_>, number: usize, index: &mut Vec<Entry>) -> bool {
+    let normalized = source.normalized();
+    if normalized.is_empty() {
+        return true;
+    }
+    // A rule for apps takes two entries.
+    if index.len() + 2 > MAX_INDEX {
+        *index = Vec::new();
+        return false;
+    }
+    // A rule for apps is named as the engine has it.
+    let named = app_name(source);
+    for rule in [Some(normalized.as_ref()), named.as_deref()]
+        .into_iter()
+        .flatten()
+    {
+        let mut entry = [0; 20];
+        entry[..16].copy_from_slice(&fingerprint(rule));
+        entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
+        index.push(entry);
+    }
+    true
+}
+
 impl Diagnostics {
     fn build<'a>(
         paths: &[PathBuf],
         entries: impl Iterator<Item = std::io::Result<(&'a Path, String)>>,
     ) -> Result<Self> {
-        let mut lists = Vec::new();
         let options = ParseOptions {
             rule_types: RuleTypes::NetworkOnly,
             ..ParseOptions::default()
         };
         let mut index = Vec::new();
         let mut indexing = true;
-        for entry in entries {
-            let (file, text) = entry?;
-            if indexing {
-                let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
-                for rule in text
-                    .lines()
-                    .map(filter::network_line)
-                    .filter(|s| !s.is_empty())
-                {
-                    // A rule for apps takes two entries.
-                    if index.len() + 2 > MAX_INDEX {
-                        index = Vec::new();
-                        indexing = false;
-                        break;
-                    }
-                    // A rule for apps is named as the engine has it.
-                    for rule in [Some(rule.as_ref()), filter::app_rule(&rule).as_deref()] {
-                        let Some(rule) = rule else { continue };
-                        let mut entry = [0; 20];
-                        entry[..16].copy_from_slice(&fingerprint(rule));
-                        entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
-                        index.push(entry);
-                    }
+        let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
+        let mut matcher = MatcherLists::new(true);
+        let mut apps = AppProjections::default();
+        let mut patterns = Patterns::default();
+        for (file, text) in &lists {
+            let mut normalized = String::with_capacity(text.len());
+            let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
+            for line in text.lines() {
+                let source = rule::read(line);
+                MatcherLists::add(&mut normalized, &source);
+                if let Kind::App(app) = &source.kind {
+                    apps.add(app, &mut patterns);
+                }
+                if indexing {
+                    indexing = index_rule(&source, number, &mut index);
                 }
             }
-            lists.push(text);
+            matcher.finish_list(normalized, options);
         }
         index.sort_unstable();
         index.dedup_by(|next, first| next[..16] == first[..16]);
-        let mut patterns = Patterns::default();
-        let apps = AppRules::project(lists.iter().map(String::as_str), true, &mut patterns);
+        let apps = apps.compile(true, |_, _| {});
         patterns.report_dropped();
         Ok(Self {
             apps,
             patterns,
-            rules: RequestRules::build(lists, true, options),
+            rules: matcher.compile(),
             index,
         })
     }
@@ -108,8 +130,8 @@ impl Diagnostics {
         if self.index.is_empty() {
             for (file, text) in read_lists(files).flatten() {
                 if text.lines().any(|line| {
-                    let line = filter::network_line(line);
-                    line == rule || filter::app_rule(&line).as_deref() == Some(rule)
+                    let source = rule::read(line);
+                    source.normalized() == rule || app_name(&source).as_deref() == Some(rule)
                 }) {
                     return Some(file);
                 }

@@ -370,7 +370,7 @@ fn commit_body(
     let known = Info {
         url: url.to_owned(),
         title: sources::title(text),
-        rules: Some(crate::rule_text::count(text)),
+        rules: Some(crate::rule::count(text)),
         updated: Some(crate::clock::now()),
         error: None,
         validator: validator.and_then(|mut v| {

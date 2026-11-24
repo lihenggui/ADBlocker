@@ -16,11 +16,55 @@
 
 use std::path::Path;
 
-use super::super::rule_options::{option_value_end, regex_option_separator};
 use super::*;
 use crate::filter::{Filters, parse_http_page};
 use crate::list_url::{file_name, untrusted_file_name};
 use crate::protocol_types::IssueKind;
+use crate::rule::action::value_end;
+use crate::rule::options::{
+    delimiter, option_separator, option_texts as options, option_value_end, regex_option_separator,
+};
+
+impl ResponseRules {
+    fn build_with_budget<'a>(
+        sources: impl Iterator<Item = &'a str>,
+        budget: usize,
+        patterns: &mut Patterns,
+    ) -> Option<Self> {
+        let mut kept = ResponseProjections::default();
+        for line in sources.flat_map(str::lines) {
+            let source = rule::read(line);
+            if let rule::Kind::Response(response) = source.kind {
+                kept.add(source.line, response);
+            }
+        }
+        kept.compile_with_budget(budget, patterns)
+    }
+}
+
+fn split(line: &str) -> Option<(&str, &str)> {
+    match rule::read(line).kind {
+        rule::Kind::Response(response) => Some(response.parts()),
+        _ => None,
+    }
+}
+
+fn check(line: &str, patterns: &mut Patterns) -> Option<bool> {
+    match rule::read(line).kind {
+        rule::Kind::Response(response) => Some(valid(&response, patterns)),
+        _ => None,
+    }
+}
+
+fn action(value: &str) -> Option<ActionSpec> {
+    ActionKind::Replace.parse(value)
+}
+
+impl<'a> Parsed<'a> {
+    fn parse(pattern: &'a str, suffix: &'a str) -> Option<Self> {
+        Self::from_rule(&ResponseRule::from_parts(pattern, suffix)?)
+    }
+}
 
 #[test]
 fn a_regex_condition_consumes_its_dollar_signs_before_the_options() {

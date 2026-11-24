@@ -12,88 +12,139 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! A body action describes one change to a response. Its specification
-//! can be shared by several conditions and kept in the compiled cache.
-//! Each kind of action owns its compilation and execution, so the
-//! matcher and the body collector can serve other action kinds.
-
 use regex_automata::meta::Regex;
 use regex_automata::util::{iter::Searcher, syntax};
 use regex_automata::{Input, MatchKind};
-use serde::{Deserialize, Serialize};
 
-use crate::jsonpath::{self, Path};
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
+use crate::rule::options::{delimiter, unescape, unescaped};
 
-/// The cache representation and identity of an action.
-#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub(crate) enum ActionSpec {
-    Prune(String),
-    Replace {
-        pattern: String,
-        replacement: String,
-        insensitive: bool,
-        single_line: bool,
-    },
+pub(crate) struct Compiled {
+    regex: Regex,
+    parts: Vec<Replacement>,
 }
 
-/// A compiled action that can safely be shared among concurrent jobs.
-pub(crate) enum ResponseAction {
-    Prune(Path),
-    Replace {
-        regex: Regex,
-        parts: Vec<Replacement>,
-    },
-}
-
-/// Pieces of the replacement that distinguish literal text from capture references.
-pub(crate) enum Replacement {
+enum Replacement {
     Text(Vec<u8>),
     Group(usize),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) enum ActionKind {
-    Prune,
-    Replace,
+pub(super) fn disables(value: Option<&str>) -> bool {
+    matches!(value, None | Some(""))
 }
 
-impl ActionSpec {
-    /// Reject a pattern that cannot be searched within the per-expression limit.
-    pub(crate) fn compile(&self) -> Option<ResponseAction> {
-        match self {
-            Self::Prune(expression) => Path::parse(expression).map(ResponseAction::Prune),
-            Self::Replace {
-                pattern,
-                replacement,
-                insensitive,
-                single_line,
-            } => {
-                if pattern.len().saturating_add(replacement.len()) > MAX_RESPONSE_RULE {
-                    return None;
+pub(super) fn overrides_block() -> bool {
+    true
+}
+
+/// Find the start of the flags after both slash-delimited fields.
+fn value_fields(value: &str) -> Option<(usize, usize)> {
+    let first = delimiter(value)?;
+    let end = first + 2 + delimiter(&value[first + 1..])?;
+    Some((first, end))
+}
+
+#[cfg(test)]
+pub(crate) fn value_end(value: &str) -> Option<usize> {
+    value_fields(value).map(|(_, end)| end)
+}
+
+pub(super) struct Parsed {
+    pub(super) pattern: String,
+    pub(super) replacement: String,
+    pub(super) insensitive: bool,
+    pub(super) single_line: bool,
+}
+
+/// Decode a replacement after checking its quoting and optional flags.
+pub(super) fn parse(value: &str) -> Option<Parsed> {
+    if unescaped(value, b'$').next().is_some() {
+        return None;
+    }
+    let value = unescape(value, &[',', '$']);
+    let value = value.strip_prefix('/')?;
+    let (first, end) = value_fields(value)?;
+    let flags = &value[end..];
+    flags
+        .bytes()
+        .all(|b| matches!(b, b'i' | b's'))
+        .then(|| Parsed {
+            pattern: value[..first].to_owned(),
+            replacement: unescape(&value[first + 1..end - 1], &['/']),
+            insensitive: flags.contains('i'),
+            single_line: flags.contains('s'),
+        })
+}
+
+pub(super) fn compile(
+    pattern: &str,
+    replacement: &str,
+    insensitive: bool,
+    single_line: bool,
+) -> Option<Compiled> {
+    if pattern.len().saturating_add(replacement.len()) > MAX_RESPONSE_RULE {
+        return None;
+    }
+    let regex = Regex::builder()
+        .configure(
+            Regex::config()
+                .nfa_size_limit(Some(MAX_RESPONSE_REGEX))
+                .match_kind(MatchKind::LeftmostFirst)
+                .utf8_empty(false)
+                .hybrid_cache_capacity(2 << 20),
+        )
+        .syntax(
+            syntax::Config::new()
+                .utf8(false)
+                .case_insensitive(insensitive)
+                .dot_matches_new_line(single_line),
+        )
+        .build(&translate_pattern(pattern)?)
+        .ok()?;
+    Some(Compiled {
+        regex,
+        parts: replacement_parts(replacement),
+    })
+}
+
+impl Compiled {
+    pub(super) fn regex_bytes(&self) -> usize {
+        self.regex.memory_usage()
+    }
+
+    pub(super) fn apply(&self, input: &[u8], within_budget: &dyn Fn() -> bool) -> Option<Vec<u8>> {
+        let regex = &self.regex;
+        let mut output = Vec::new();
+        let mut end = 0;
+        let mut cache = regex.create_cache();
+        let mut matches = Searcher::new(Input::new(input)).into_captures_iter(
+            regex.create_captures(),
+            |input, captures| {
+                regex.search_captures_with(&mut cache, input, captures);
+                Ok(())
+            },
+        );
+        while within_budget() {
+            let Some(groups) = matches.next() else {
+                append(&mut output, &input[end..])?;
+                return Some(output);
+            };
+            let groups = groups.ok()?;
+            let matched = groups.get_match()?;
+            append(&mut output, &input[end..matched.start()])?;
+            for part in &self.parts {
+                match part {
+                    Replacement::Text(text) => append(&mut output, text)?,
+                    Replacement::Group(n) => {
+                        if let Some(found) = groups.get_group(*n) {
+                            append(&mut output, &input[found.range()])?;
+                        }
+                    }
                 }
-                let regex = Regex::builder()
-                    .configure(
-                        Regex::config()
-                            .nfa_size_limit(Some(MAX_RESPONSE_REGEX))
-                            .match_kind(MatchKind::LeftmostFirst)
-                            .utf8_empty(false)
-                            .hybrid_cache_capacity(2 << 20),
-                    )
-                    .syntax(
-                        syntax::Config::new()
-                            .utf8(false)
-                            .case_insensitive(*insensitive)
-                            .dot_matches_new_line(*single_line),
-                    )
-                    .build(&translate_pattern(pattern)?)
-                    .ok()?;
-                Some(ResponseAction::Replace {
-                    regex,
-                    parts: replacement_parts(replacement),
-                })
             }
+            end = matched.end();
         }
+        None
     }
 }
 
@@ -192,67 +243,6 @@ fn replacement_parts(replacement: &str) -> Vec<Replacement> {
     parts
 }
 
-impl ResponseAction {
-    pub(crate) fn kind(&self) -> ActionKind {
-        match self {
-            Self::Prune(_) => ActionKind::Prune,
-            Self::Replace { .. } => ActionKind::Replace,
-        }
-    }
-
-    /// Heap used by the compiled matcher. Search scratch space belongs to
-    /// the blocking job, so an idle action keeps none of it.
-    pub(crate) fn regex_bytes(&self) -> usize {
-        match self {
-            Self::Replace { regex, .. } => regex.memory_usage(),
-            Self::Prune(_) => 0,
-        }
-    }
-
-    /// `None` abandons the whole rewrite on overflow, timeout or cancellation.
-    pub(crate) fn apply(&self, input: &[u8], within_budget: &dyn Fn() -> bool) -> Option<Vec<u8>> {
-        if !within_budget() {
-            return None;
-        }
-        match self {
-            Self::Prune(path) => jsonpath::prune(path, input, within_budget),
-            Self::Replace { regex, parts } => {
-                let mut output = Vec::new();
-                let mut end = 0;
-                let mut cache = regex.create_cache();
-                let mut matches = Searcher::new(Input::new(input)).into_captures_iter(
-                    regex.create_captures(),
-                    |input, captures| {
-                        regex.search_captures_with(&mut cache, input, captures);
-                        Ok(())
-                    },
-                );
-                while within_budget() {
-                    let Some(groups) = matches.next() else {
-                        append(&mut output, &input[end..])?;
-                        return Some(output);
-                    };
-                    let groups = groups.ok()?;
-                    let matched = groups.get_match()?;
-                    append(&mut output, &input[end..matched.start()])?;
-                    for part in parts {
-                        match part {
-                            Replacement::Text(text) => append(&mut output, text)?,
-                            Replacement::Group(n) => {
-                                if let Some(found) = groups.get_group(*n) {
-                                    append(&mut output, &input[found.range()])?;
-                                }
-                            }
-                        }
-                    }
-                    end = matched.end();
-                }
-                None
-            }
-        }
-    }
-}
-
 /// Refuse growth before allocating or writing any bytes past the result limit.
 fn append(output: &mut Vec<u8>, bytes: &[u8]) -> Option<()> {
     if bytes.len() > MAX_REWRITE_RESULT - output.len() {
@@ -264,7 +254,36 @@ fn append(output: &mut Vec<u8>, bytes: &[u8]) -> Option<()> {
 
 #[cfg(test)]
 mod tests {
-    use super::translate_pattern;
+    use super::*;
+
+    #[test]
+    fn a_replacement_decodes_escapes_and_compiles_and_applies_captures() {
+        let Some(Parsed {
+            pattern,
+            replacement,
+            insensitive,
+            single_line,
+        }) = parse(r"/(a\,b)/\$1\//i")
+        else {
+            panic!("expected a replacement");
+        };
+        let compiled = compile(&pattern, &replacement, insensitive, single_line).unwrap();
+        assert_eq!(
+            compiled.apply(b"A,B", &|| true).as_deref(),
+            Some(b"A,B/".as_slice())
+        );
+        assert!(compiled.apply(b"A,B", &|| false).is_none());
+        assert!(parse(r"/a/$1/").is_none());
+        assert!(compile("(", "", false, false).is_none());
+    }
+
+    #[test]
+    fn an_unvalued_or_empty_replace_exception_disables_replacements() {
+        assert!(disables(None));
+        assert!(disables(Some("")));
+        assert!(!disables(Some("/a/b/")));
+        assert!(overrides_block());
+    }
 
     #[test]
     fn literal_braces_are_quoted_and_repeat_counts_keep_their_meaning() {

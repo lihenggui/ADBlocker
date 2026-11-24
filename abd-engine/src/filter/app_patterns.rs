@@ -21,14 +21,12 @@ use adblock::utils::fast_hash;
 use regex::{Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 
-use super::{
-    app_package,
-    rule_options::{delimiter, unescape, unescaped},
-};
+use super::app_package;
 use crate::apps::valid_package;
 use crate::limits::{
     MAX_APP_EXPRESSION, MAX_APP_PATTERN_PACKAGES, MAX_APP_PATTERNS, MAX_APP_REGEX,
 };
+use crate::rule::options::{delimiter, unescape, unescaped};
 
 // '@' is forbidden inside a package name and denotes userinfo in a URL,
 // so no package or hostname can be one of these source names.

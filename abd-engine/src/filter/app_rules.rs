@@ -30,10 +30,10 @@ use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
+use super::Check;
 use super::app_patterns::{Patterns, Scope};
-use super::host_rules::{GuardCoverage, guards_exception, project_guard, whole_rule};
-use super::rule_options::{network_condition, option_separator, options, unescaped};
-use super::{Check, network, option_name, source_option};
+use super::host_rules::{GuardCoverage, can_guard, write_guards};
+use crate::rule::{self, AppRule, whole_pattern};
 
 /// An exception for every address, as a guard: the exception it stands
 /// for could not be narrowed to hosts.
@@ -72,52 +72,19 @@ struct Scoped<'a> {
     apps: String,
 }
 
-fn app_options(line: &str) -> Option<(&str, &str)> {
-    if !line.contains("app") {
-        return None;
-    }
-    let at = option_separator(line)?;
-    let (pattern, suffix) = (&line[..at], &line[at + 1..]);
-    if !network_condition(line, pattern) {
-        return None;
-    }
-    options(suffix)
-        .any(|option| option_name(option) == "app")
-        .then_some((pattern, suffix))
-}
-
-pub(crate) fn has_app(line: &str) -> bool {
-    app_options(line.trim()).is_some()
-}
-
-fn scoped<'a>(line: &'a str, patterns: &mut Patterns) -> Option<(Scoped<'a>, u64, bool, String)> {
-    let (pattern, all) = app_options(line.trim())?;
-    if super::response_rules::is_response_rule(line) || unescaped(all, b'$').next().is_some() {
-        return None;
-    }
-    let mut apps = None;
-    let mut rest = Vec::new();
-    for option in options(all) {
-        if let Some(names) = option.strip_prefix("app=") {
-            // Two conditions on the app would have to hold together, and
-            // the source condition holds when one of its names does.
-            if apps.replace(names).is_some() {
-                return None;
-            }
-        } else if source_option(option) {
-            return None;
-        } else {
-            rest.push(option);
-        }
-    }
-    let prepared = patterns.prepare(apps?)?;
+fn scoped<'a>(
+    rule: &AppRule<'a>,
+    patterns: &mut Patterns,
+) -> Option<(Scoped<'a>, u64, bool, String)> {
+    let condition = rule.condition()?;
+    let prepared = patterns.prepare(condition.apps)?;
     let rule = Scoped {
-        pattern,
-        options: rest,
+        pattern: condition.pattern,
+        options: condition.options,
         apps: prepared.encoded.clone(),
     };
     let line = rule.for_apps(&rule.unscoped(), !rule.options.is_empty());
-    let parsed = network(&line)?;
+    let parsed = rule::read(&line).network()?;
     let (id, bad) = (parsed.get_id(), parsed.is_badfilter());
     patterns.keep(prepared);
     Some((rule, id, bad, line))
@@ -148,7 +115,7 @@ impl Scoped<'_> {
     fn whole_host(&self) -> Option<(String, &str)> {
         self.options
             .is_empty()
-            .then(|| whole_rule(self.pattern))
+            .then(|| whole_pattern(self.pattern))
             .flatten()
             .map(|(rule, host)| (self.for_apps(&rule, false), host))
     }
@@ -157,11 +124,13 @@ impl Scoped<'_> {
         let mut found = String::new();
         // A rule taken back with `$badfilter` is left out before this.
         let line = self.unscoped();
-        let any_host = network(&line)
-            .filter(|rule| guards_exception(&line, rule))
+        let source = rule::read(&line);
+        let any_host = source
+            .network()
+            .filter(|rule| can_guard(&source, rule))
             .is_some_and(|rule| {
                 matches!(
-                    project_guard(&line, &rule, &mut found),
+                    write_guards(&source, &rule, &mut found),
                     GuardCoverage::Unbounded
                 )
             });
@@ -181,14 +150,14 @@ fn shown(rule: String, patterns: &Patterns) -> String {
 }
 
 /// How a rule for apps is named when it matched.
-pub(crate) fn named(line: &str) -> Option<String> {
+pub(crate) fn name(rule: &AppRule<'_>) -> Option<String> {
     let mut patterns = Patterns::default();
-    let (_, _, _, projected) = scoped(line, &mut patterns)?;
+    let (_, _, _, projected) = scoped(rule, &mut patterns)?;
     Some(shown(projected, &patterns))
 }
 
-pub(crate) fn valid(line: &str, patterns: &mut Patterns) -> bool {
-    scoped(line, patterns).is_some()
+pub(crate) fn valid(rule: &AppRule<'_>, patterns: &mut Patterns) -> bool {
+    scoped(rule, patterns).is_some()
 }
 
 fn engine(rules: String, debug: bool) -> Engine {
@@ -201,28 +170,23 @@ fn engine(rules: String, debug: bool) -> Engine {
     Engine::new_with_filter_set(set)
 }
 
-impl AppRules {
-    /// The app rules of `lists`, if they have any.
-    pub(crate) fn project<'a>(
-        lists: impl Iterator<Item = &'a str>,
-        debug: bool,
-        patterns: &mut Patterns,
-    ) -> Option<Self> {
-        Self::project_with_hosts(lists, debug, patterns, |_, _| {})
+#[derive(Default)]
+pub(crate) struct AppProjections<'a> {
+    rules: Vec<(Scoped<'a>, u64, bool, String)>,
+}
+
+impl<'a> AppProjections<'a> {
+    pub(crate) fn add(&mut self, rule: &AppRule<'a>, patterns: &mut Patterns) {
+        self.rules.extend(scoped(rule, patterns));
     }
 
-    /// As [`AppRules::project`], telling `visit_host` each host that a rule
-    /// blocks whole and the apps of that rule.
-    pub(super) fn project_with_hosts<'a>(
-        lists: impl Iterator<Item = &'a str>,
+    /// Tell the host projection each host an app rule blocks whole.
+    pub(crate) fn compile(
+        self,
         debug: bool,
-        patterns: &mut Patterns,
         mut visit_host: impl FnMut(&str, &str),
-    ) -> Option<Self> {
-        let rules: Vec<_> = lists
-            .flat_map(str::lines)
-            .filter_map(|line| scoped(line, patterns))
-            .collect();
+    ) -> Option<AppRules> {
+        let rules = self.rules;
         if rules.is_empty() {
             return None;
         }
@@ -249,14 +213,16 @@ impl AppRules {
             kept.push_str(&line);
             kept.push('\n');
         }
-        Some(Self {
+        Some(AppRules {
             blocks: engine(blocks, debug),
             exceptions: engine(exceptions, debug),
             hosts: engine(hosts, false),
             guards: engine(guards, false),
         })
     }
+}
 
+impl AppRules {
     /// The engines as they are kept, each to be read back by
     /// [`AppRules::compiled`] in this order.
     pub(crate) fn serialized(&self) -> [Vec<u8>; 4] {
@@ -351,6 +317,14 @@ impl AppRules {
             super::unguarded(&self.guards, req)
                 && web.is_none_or(|guards| super::unguarded(guards, req))
         })
+    }
+}
+
+#[cfg(test)]
+fn named(line: &str) -> Option<String> {
+    match rule::read(line).kind {
+        rule::Kind::App(app) => name(&app),
+        _ => None,
     }
 }
 
