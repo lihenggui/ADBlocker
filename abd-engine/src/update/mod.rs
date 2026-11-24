@@ -290,7 +290,7 @@ impl Subscription<'_> {
         }
         let fetched = fetched.and_then(|download| match download {
             Download::Body(body, validator) => self
-                .prepare_body(file, body)
+                .prepare_body(url, file, body)
                 .map(|body| Download::Body(body, validator))
                 .map_err(|e| reason(&e)),
             Download::Unchanged => Ok(Download::Unchanged),
@@ -324,6 +324,9 @@ impl Subscription<'_> {
                 (ListState::Failed, known)
             }
         };
+        if state != ListState::Failed && matches!(self.kind, ListKind::Filter) {
+            sources::prune_previous_copy(self.dir, self.info, url)?;
+        }
         if let Some(dir) = self.info {
             sources::write_info(dir, &known)?;
         }
@@ -338,10 +341,16 @@ impl Subscription<'_> {
         }))
     }
 
-    fn prepare_body(self, file: &Path, body: Bytes) -> Result<Bytes> {
+    fn prepare_body(self, url: &str, file: &Path, body: Bytes) -> Result<Bytes> {
         if matches!(self.kind, ListKind::Filter) {
             let base = self.sources.parent().unwrap_or_else(|| Path::new("."));
-            check_growth(&[self.dir, &Paths::new(base).rules()], &[file], body.len())?;
+            let (address, active) = sources::active_copy(self.dir, url);
+            let replacing = if address == url { file } else { &active };
+            check_growth(
+                &[self.dir, &Paths::new(base).rules()],
+                &[replacing],
+                body.len(),
+            )?;
         }
         self.kind.retain_previous(file, body)
     }

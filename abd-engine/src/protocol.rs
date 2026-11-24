@@ -329,6 +329,8 @@ pub struct List {
     pub rules: Option<usize>,
     pub updated: Option<u64>,
     pub error: Option<String>,
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
+    pub using_previous_address: bool,
 }
 
 /// The sections read together for a refresh of the overview.
@@ -346,7 +348,7 @@ pub fn lists(paths: &Paths) -> Vec<List> {
     sources::read(paths)
         .into_iter()
         .map(|s| {
-            let info = sources::list_info(&dir, &info_dir, &s);
+            let (info, using_previous_address) = sources::list_info(&dir, &info_dir, &s);
             List {
                 url: s.url,
                 enabled: s.enabled,
@@ -354,6 +356,7 @@ pub fn lists(paths: &Paths) -> Vec<List> {
                 rules: info.rules,
                 updated: info.updated,
                 error: info.error,
+                using_previous_address,
             }
         })
         .collect()
@@ -404,6 +407,7 @@ mod tests {
     const EASYLIST: &str = "https://easylist.to/easylist/easylist.txt";
     const CHINA: &str = "https://easylist-downloads.adblockplus.org/easylistchina.txt";
     const OLD_ADGUARD_CHINESE: &str = "https://filters.adtidy.org/extension/ublock/filters/224.txt";
+    const ADGUARD_CHINESE: &str = "https://filters.adtidy.org/android/filters/224.txt";
     const OLD_ADGUARD_BASE: &str =
         "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt";
 
@@ -858,8 +862,8 @@ mod tests {
         std::fs::write(
             paths.sources(),
             format!(
-                "# The filter lists\n{EASYLIST}\n{CHINA}\n#{OLD_ADGUARD_CHINESE}\n#{OLD_ADGUARD_BASE}\n{}",
-                crate::sources::tests::defaults_off(&[EASYLIST])
+                "# The filter lists\n{EASYLIST}\n{CHINA}\n{OLD_ADGUARD_CHINESE}\n#{OLD_ADGUARD_BASE}\n{}",
+                crate::sources::tests::defaults_off(&[EASYLIST, ADGUARD_CHINESE])
             ),
         )
         .unwrap();
@@ -872,6 +876,23 @@ mod tests {
             1_763_444_600,
             Some("connection timed out"),
         );
+        info(
+            paths,
+            OLD_ADGUARD_CHINESE,
+            "AdGuard Chinese",
+            1234,
+            1_763_440_000,
+            None,
+        );
+        sources::write_info(
+            &paths.list_info(),
+            &sources::Info {
+                url: ADGUARD_CHINESE.to_owned(),
+                error: Some("connection refused".to_owned()),
+                ..sources::Info::default()
+            },
+        )
+        .unwrap();
     }
 
     #[test]

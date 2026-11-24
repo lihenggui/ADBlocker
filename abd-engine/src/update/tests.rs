@@ -24,6 +24,175 @@ use super::*;
 const FIRST: &str = "https://first.example/list.txt";
 const SECOND: &str = "https://second.example/list.txt";
 
+const MOVED_FROM: &str = crate::list_url::MOVED[0].0;
+const MOVED_TO: &str = crate::list_url::MOVED[0].1;
+
+fn moved_list() -> (tempfile::TempDir, Paths, Info) {
+    let (dir, paths) = data();
+    let off = sources::tests::defaults_off(&[MOVED_TO]);
+    std::fs::write(paths.sources(), format!("{MOVED_FROM}\n{off}")).unwrap();
+    std::fs::create_dir_all(paths.lists()).unwrap();
+    let copy = paths.lists().join(file_name(MOVED_FROM));
+    std::fs::write(&copy, "! Title: Previous copy\n||old.example^\n").unwrap();
+    let known = Info {
+        url: MOVED_FROM.to_owned(),
+        title: Some("Previous copy".to_owned()),
+        rules: Some(1),
+        updated: Some(123),
+        validator: Some(Validator {
+            resource: MOVED_FROM.to_owned(),
+            tag: Some("\"old\"".to_owned()),
+            modified: None,
+            file: file_stamp(&copy).unwrap(),
+        }),
+        ..Info::default()
+    };
+    sources::write_info(&paths.list_info(), &known).unwrap();
+    (dir, paths, known)
+}
+
+async fn replace_moved_list(only: Option<&str>) {
+    let (_dir, paths, known) = moved_list();
+    let sub = Subscription {
+        sources: &paths.sources(),
+        default: "",
+        kind: ListKind::Filter,
+        dir: &paths.lists(),
+        info: Some(&paths.list_info()),
+        only,
+    };
+    let old = paths.lists().join(file_name(MOVED_FROM));
+    let new = paths.lists().join(file_name(MOVED_TO));
+    let unrelated = paths.lists().join(file_name(SECOND));
+    if only.is_some() {
+        std::fs::write(&unrelated, "||unrelated.example^\n").unwrap();
+    }
+    let load = || crate::filter::Filters::load_cached(&[&paths.lists()], &paths.cache()).unwrap();
+    let before = load().generation;
+    for (result, error) in [
+        (Err(anyhow!("connection refused")), "connection refused"),
+        (Ok(Download::Unchanged), "the answer is not a list"),
+        (
+            Ok(Download::Body(
+                Bytes::from_static(b"<html>Error</html>"),
+                None,
+            )),
+            "the answer is not a list",
+        ),
+    ] {
+        let result = std::cell::RefCell::new(Some(result));
+        let fetch = |url, validator: Option<Validator>| {
+            assert_eq!(url, MOVED_TO);
+            assert!(validator.is_none());
+            std::future::ready(result.borrow_mut().take().unwrap())
+        };
+        let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
+        assert_eq!((tally.failed, tally.changed()), (1, 0));
+        assert!(old.exists() && !new.exists());
+        assert_eq!(
+            sources::info(&paths.list_info(), MOVED_FROM).as_ref(),
+            Some(&known)
+        );
+        let filters = load();
+        assert_eq!(filters.generation, before);
+        assert!(filters.blocks_host("old.example"));
+        let lists = crate::protocol::lists(&paths);
+        let list = &lists[0];
+        assert_eq!(list.url, MOVED_TO);
+        assert_eq!(list.error.as_deref(), Some(error));
+        assert_eq!((list.rules, list.updated), (Some(1), Some(123)));
+        assert!(list.using_previous_address);
+    }
+
+    let fetch = |url, validator: Option<Validator>| {
+        assert_eq!(url, MOVED_TO);
+        assert!(validator.is_none());
+        std::future::ready(Ok(Download::Body(
+            Bytes::from_static(b"||new.example^\n"),
+            None,
+        )))
+    };
+    let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
+    assert_eq!((tally.failed, tally.changed()), (0, 1));
+    assert!(!old.exists() && new.is_file());
+    assert!(!sources::info_file(&paths.list_info(), MOVED_FROM).exists());
+    assert_eq!(unrelated.exists(), only.is_some());
+    let filters = load();
+    assert_ne!(filters.generation, before);
+    assert!(!filters.blocks_host("old.example"));
+    assert!(filters.blocks_host("new.example"));
+    let lists = crate::protocol::lists(&paths);
+    assert_eq!(lists[0].rules, Some(1));
+    assert!(lists[0].error.is_none() && !lists[0].using_previous_address);
+}
+
+#[tokio::test]
+async fn a_full_update_keeps_the_moved_list_until_its_replacement_is_validated() {
+    replace_moved_list(None).await;
+}
+
+#[tokio::test]
+async fn a_targeted_update_keeps_the_moved_list_until_its_replacement_is_validated() {
+    replace_moved_list(Some(MOVED_TO)).await;
+}
+
+#[tokio::test]
+async fn the_input_budget_counts_a_moved_list_replacement_in_place_of_its_previous_copy() {
+    let (_dir, paths, _) = moved_list();
+    let old = paths.lists().join(file_name(MOVED_FROM));
+    let old_len = old.metadata().unwrap().len();
+    std::fs::create_dir(paths.rules()).unwrap();
+    for n in 0..crate::list_files::MAX_LISTS / MAX_SIZE {
+        let len = if n == 0 {
+            MAX_SIZE as u64 - old_len - 1
+        } else {
+            MAX_SIZE as u64
+        };
+        std::fs::File::create(paths.rules().join(format!("{n}.txt")))
+            .unwrap()
+            .set_len(len)
+            .unwrap();
+    }
+    for (growth, expected_failed) in [(2, 1), (1, 0)] {
+        let fetch = |_| {
+            let mut body = b"||new.example^\n".to_vec();
+            body.resize(old_len as usize + growth, b'\n');
+            std::future::ready(Ok(Bytes::from(body)))
+        };
+        let tally = fetch_all(
+            &paths.sources(),
+            "",
+            &paths.lists(),
+            Some(&paths.list_info()),
+            &fetch,
+            &mut |_| {},
+        )
+        .await
+        .unwrap();
+        assert_eq!(tally.failed, expected_failed);
+        assert_eq!(old.exists(), expected_failed > 0);
+    }
+}
+
+#[tokio::test]
+async fn an_update_prunes_the_previous_copy_of_a_disabled_moved_list() {
+    let (_dir, paths, _) = moved_list();
+    std::fs::write(paths.sources(), format!("#{MOVED_FROM}\n")).unwrap();
+    let tally = fetch_all(
+        &paths.sources(),
+        "",
+        &paths.lists(),
+        Some(&paths.list_info()),
+        &|_| -> std::future::Ready<Result<Bytes>> { panic!("a disabled list is not fetched") },
+        &mut |_| {},
+    )
+    .await
+    .unwrap();
+    assert_eq!(tally.changed(), 1);
+    assert!(!paths.lists().join(file_name(MOVED_FROM)).exists());
+    assert!(!sources::info_file(&paths.list_info(), MOVED_FROM).exists());
+}
+
 #[tokio::test]
 async fn updating_adds_a_new_bundled_exclusion_source_to_an_existing_selection() {
     let (_dir, paths) = data();

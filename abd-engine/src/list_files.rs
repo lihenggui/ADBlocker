@@ -18,6 +18,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 use crate::files;
+use crate::list_url::{MOVED, copy_names};
 
 /// The most a list may hold, and all of them together. The lists of the
 /// default sources are 5 MiB together; what is far beyond that is not a
@@ -145,22 +146,46 @@ fn list_paths(dirs: &[&Path]) -> io::Result<Vec<PathBuf>> {
             Err(e) if e.kind() == io::ErrorKind::NotFound => continue,
             entries => entries?,
         };
+        let start = paths.len();
         for path in entries {
             paths.push(path?);
         }
+        prefer_current(dir, &mut paths, start);
     }
     Ok(paths)
 }
 
 pub(crate) fn readable_paths(dirs: &[&Path]) -> Vec<PathBuf> {
-    let mut files: Vec<_> = dirs
-        .iter()
-        .filter_map(|dir| lists_in(dir).ok())
-        .flatten()
-        .flatten()
-        .collect();
+    let mut files = Vec::new();
+    for dir in dirs {
+        if let Ok(entries) = lists_in(dir) {
+            let start = files.len();
+            files.extend(entries.flatten());
+            prefer_current(dir, &mut files, start);
+        }
+    }
     files.sort();
     files
+}
+
+fn prefer_current(dir: &Path, files: &mut Vec<PathBuf>, start: usize) {
+    if dir.file_name() != Some("lists".as_ref()) {
+        return;
+    }
+    // A reader can see both files between publication and pruning, or
+    // after an interrupted update. Only the chosen file enters the cache key.
+    for &(old, new) in MOVED {
+        let current = copy_names(new)
+            .map(|name| dir.join(name))
+            .any(|path| files[start..].contains(&path) && path.is_file());
+        if current {
+            for path in copy_names(old).map(|name| dir.join(name)) {
+                if let Some(index) = files[start..].iter().position(|file| *file == path) {
+                    files.swap_remove(start + index);
+                }
+            }
+        }
+    }
 }
 
 /// Reads lists in order. If the collection does not fit, the caller cannot

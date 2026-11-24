@@ -23,6 +23,28 @@ pub(crate) use crate::catalog::Trust;
 /// The longest address taken.
 pub(crate) const MAX_URL: usize = 1024;
 
+/// Catalog addresses saved by earlier releases and their replacements.
+pub(crate) const MOVED: &[(&str, &str)] = &[
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+        "https://filters.adtidy.org/android/filters/11.txt",
+    ),
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+        "https://filters.adtidy.org/android/filters/224.txt",
+    ),
+    (
+        "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
+        "https://filters.adtidy.org/android/filters/2.txt",
+    ),
+];
+
+pub(crate) fn previous_address(url: &str) -> Option<&'static str> {
+    MOVED
+        .iter()
+        .find_map(|&(old, new)| (new == url).then_some(old))
+}
+
 /// Whether `url` is an address a list can be fetched from.
 pub fn valid(url: &str) -> bool {
     url.len() <= MAX_URL
@@ -101,6 +123,10 @@ pub(crate) fn untrusted_file_name(url: &str) -> Option<String> {
         && (!Trust::Scriptlets.urls().contains(&url)
             || url == "https://filters.adtidy.org/android/filters/11.txt"))
         .then(|| base_file_name(url))
+}
+
+pub(crate) fn copy_names(url: &str) -> impl Iterator<Item = String> {
+    std::iter::once(file_name(url)).chain(untrusted_file_name(url))
 }
 
 pub(crate) fn trusted_list_file(path: &Path, trust: Trust) -> bool {

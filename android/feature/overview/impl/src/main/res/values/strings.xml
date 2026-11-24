@@ -139,6 +139,10 @@
         <item quantity="other">They start filtering once they are downloaded.</item>
     </plurals>
     <string name="feature_overview_lists_missing_download">Download now</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="one">Filtering continues with the previous copy.</item>
+        <item quantity="other">Filtering continues with the previous copies.</item>
+    </plurals>
     <string name="feature_overview_lists_missing_open">Open lists</string>
     <string name="feature_overview_lists_download_failed">Download failed</string>
     <string name="feature_overview_app_list_withheld_title">Most apps aren’t filtered</string>

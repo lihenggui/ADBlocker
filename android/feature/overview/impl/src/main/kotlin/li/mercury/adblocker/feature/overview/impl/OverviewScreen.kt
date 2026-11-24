@@ -214,7 +214,7 @@ private fun OverviewContent(
         StatusHero(state.status, state.filteredApps, actions, if (state.method == FilterMethod.Vpn) state.vpn else null)
         // Under the status it concerns; it folds away once dismissed or resolved.
         FadeThrough(state.notice, { it }, label = "notice") { notice ->
-            if (notice != null) Notice(notice, state.missingLists, notices) else Spacer(Modifier.fillMaxWidth())
+            if (notice != null) Notice(notice, state.listDownloads, notices) else Spacer(Modifier.fillMaxWidth())
         }
         Spacer(Modifier.height(12.dp))
         TodayCard(state.stats)

@@ -517,6 +517,11 @@ with its removal, while the VPN is in use.
 
 - The daemon waits for connections and configuration changes. The app
   schedules subscription updates through WorkManager.
+- When a catalog list moves, its saved selection follows the new address.
+  An enabled list keeps filtering with the rules and trust of its previous
+  copy until an update validates and publishes the replacement. A failed
+  download is reported while the previous copy remains in use. Publishing
+  the replacement removes the previous copy and its download metadata.
 - The daemon resumes TLS sessions on both sides, so the many connections
   a browser opens to one site do not each cost two full handshakes.
 - On startup, the daemon can load compiled lists from its cache.

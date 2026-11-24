@@ -65,6 +65,7 @@ import org.junit.Rule
 import java.time.Instant
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -416,14 +417,14 @@ class OverviewViewModelTest {
     fun givenAnEnabledListNeverDownloaded_whenShown_thenSaysItHasNoRulesYetAndThatTheDownloadIsPending() = runTest {
         subscriptions = listOf(list("ads"), list("trackers", updated = Instant.EPOCH))
         val state = shown()
-        assertEquals(OverviewNotice.ListsMissing, state.notice)
-        assertEquals(MissingLists(count = 1, failed = false), state.missingLists)
+        assertEquals(OverviewNotice.ListDownloads, state.notice)
+        assertEquals(ListDownloads(missing = 1, missingFailed = false), state.listDownloads)
     }
 
     @Test
     fun givenANeverDownloadedListWhoseDownloadFailed_whenShown_thenSaysTheDownloadFailed() = runTest {
         subscriptions = listOf(list("ads"), list("blocked", error = "connection refused"))
-        assertEquals(MissingLists(count = 2, failed = true), shown().missingLists)
+        assertEquals(ListDownloads(missing = 2, missingFailed = true), shown().listDownloads)
     }
 
     @Test
@@ -432,7 +433,22 @@ class OverviewViewModelTest {
         subscriptions = listOf(list("ads", updated = Instant.EPOCH, error = "connection refused"))
         val state = shown()
         assertNull(state.notice)
-        assertNull(state.missingLists)
+        assertNull(state.listDownloads)
+    }
+
+    @Test
+    fun givenAListUsingItsPreviousCopy_whenItsDownloadFails_thenOverviewReportsTheFailureWithItsRulesStillInUse() = runTest {
+        root = false
+        val moved = list("ads").copy(rules = 10, error = "connection refused", usingPreviousAddress = true)
+        subscriptions = listOf(moved)
+        val state = shown()
+        assertFalse(moved.awaitsFirstDownload)
+        assertEquals(OverviewNotice.ListDownloads, state.notice)
+        assertEquals(ListDownloads(missing = 0, missingFailed = false, usingPreviousAddress = 1), state.listDownloads)
+
+        subscriptions = listOf(list("ads", updated = Instant.EPOCH))
+        viewModel.refresh()
+        assertNull((viewModel.uiState.value as OverviewUiState.Ready).listDownloads)
     }
 
     @Test
@@ -450,14 +466,14 @@ class OverviewViewModelTest {
         assertEquals(OverviewNotice.Lockdown, shown().notice)
 
         running.value = false
-        assertEquals(OverviewNotice.ListsMissing, (viewModel.uiState.value as OverviewUiState.Ready).notice)
+        assertEquals(OverviewNotice.ListDownloads, (viewModel.uiState.value as OverviewUiState.Ready).notice)
     }
 
     @Test
     fun givenListsMissingUnderRoot_whenShown_thenTheyAreNoticed() = runTest {
         userData.setFilterMethod(FilterMethod.Root)
         subscriptions = listOf(list("ads"))
-        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+        assertEquals(OverviewNotice.ListDownloads, shown().notice)
     }
 
     @Test
@@ -465,14 +481,14 @@ class OverviewViewModelTest {
         subscriptions = listOf(list("ads"))
         vpnStatus.value = VpnStatus(state = VpnState.On, alwaysOn = true, lockdown = true)
         viewModel.onStart()
-        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+        assertEquals(OverviewNotice.ListDownloads, shown().notice)
     }
 
     @Test
     fun givenListsMissing_whenTheDownloadIsAsked_thenTheUpdateRunsAndTheNoticeGoesOnceTheyHaveRules() = runTest {
         root = false
         subscriptions = listOf(list("ads"))
-        assertEquals(OverviewNotice.ListsMissing, shown().notice)
+        assertEquals(OverviewNotice.ListDownloads, shown().notice)
 
         viewModel.downloadLists()
         viewModel.downloadLists()
@@ -483,7 +499,7 @@ class OverviewViewModelTest {
         runCurrent()
         val state = viewModel.uiState.value as OverviewUiState.Ready
         assertNull(state.notice)
-        assertNull(state.missingLists)
+        assertNull(state.listDownloads)
         assertTrue(viewModel.pendingMessages.value.isEmpty())
     }
 }

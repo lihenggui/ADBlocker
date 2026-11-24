@@ -58,9 +58,9 @@ internal class NoticeActions(
  * download failed.
  */
 @Composable
-internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: NoticeActions) {
-    val failed = notice == OverviewNotice.ListsMissing && missing?.failed == true
-    val state = notice == OverviewNotice.ListsMissing || notice == OverviewNotice.AppListWithheld
+internal fun Notice(notice: OverviewNotice, downloads: ListDownloads?, actions: NoticeActions) {
+    val failed = notice == OverviewNotice.ListDownloads && downloads?.failed == true
+    val state = notice == OverviewNotice.ListDownloads || notice == OverviewNotice.AppListWithheld
     val scheme = MaterialTheme.colorScheme
     val (container, content, accent) = when {
         !state -> Triple(scheme.secondaryContainer, scheme.onSecondaryContainer, scheme.secondary to scheme.onSecondary)
@@ -85,8 +85,8 @@ internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: Not
                     modifier = Modifier.padding(top = 2.dp).size(20.dp),
                 )
                 Column(Modifier.weight(1f)) {
-                    Text(noticeTitle(notice, missing), style = MaterialTheme.typography.titleMedium)
-                    Text(noticeText(notice, missing), style = MaterialTheme.typography.bodyMedium)
+                    Text(noticeTitle(notice, downloads), style = MaterialTheme.typography.titleMedium)
+                    Text(noticeText(notice, downloads), style = MaterialTheme.typography.bodyMedium)
                 }
             }
             NoticeButtons(notice, actions, ButtonDefaults.textButtonColors(contentColor = content), ButtonDefaults.buttonColors(containerColor = accent.first, contentColor = accent.second))
@@ -95,11 +95,15 @@ internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: Not
 }
 
 @Composable
-private fun noticeTitle(notice: OverviewNotice, missing: MissingLists?): String = when (notice) {
-    OverviewNotice.ListsMissing -> {
-        val count = missing?.count ?: 0
-        val title = if (missing?.failed == true) R.plurals.feature_overview_lists_failed_title else R.plurals.feature_overview_lists_pending_title
-        pluralStringResource(title, count, count)
+private fun noticeTitle(notice: OverviewNotice, downloads: ListDownloads?): String = when (notice) {
+    OverviewNotice.ListDownloads -> {
+        val missing = downloads?.missing ?: 0
+        val previous = downloads?.usingPreviousAddress ?: 0
+        when {
+            previous > 0 && missing > 0 -> stringResource(R.string.feature_overview_lists_download_failed)
+            downloads?.failed == true -> pluralStringResource(R.plurals.feature_overview_lists_failed_title, missing + previous, missing + previous)
+            else -> pluralStringResource(R.plurals.feature_overview_lists_pending_title, missing, missing)
+        }
     }
 
     OverviewNotice.AppListWithheld -> stringResource(R.string.feature_overview_app_list_withheld_title)
@@ -112,11 +116,20 @@ private fun noticeTitle(notice: OverviewNotice, missing: MissingLists?): String 
 }
 
 @Composable
-private fun noticeText(notice: OverviewNotice, missing: MissingLists?): String = when (notice) {
-    OverviewNotice.ListsMissing -> pluralStringResource(
-        if (missing?.failed == true) R.plurals.feature_overview_lists_missing_failed else R.plurals.feature_overview_lists_missing_pending,
-        missing?.count ?: 0,
-    )
+private fun noticeText(notice: OverviewNotice, downloads: ListDownloads?): String = when (notice) {
+    OverviewNotice.ListDownloads -> {
+        val missing = downloads?.missing ?: 0
+        val previous = downloads?.usingPreviousAddress ?: 0
+        listOfNotNull(
+            if (previous > 0) pluralStringResource(R.plurals.feature_overview_lists_previous_copy, previous) else null,
+            if (missing > 0) {
+                val text = if (downloads?.missingFailed == true) R.plurals.feature_overview_lists_missing_failed else R.plurals.feature_overview_lists_missing_pending
+                pluralStringResource(text, missing)
+            } else {
+                null
+            },
+        ).joinToString("\n")
+    }
 
     OverviewNotice.AppListWithheld -> stringResource(R.string.feature_overview_app_list_withheld_text)
 
@@ -133,8 +146,8 @@ private fun NoticeButtons(notice: OverviewNotice, actions: NoticeActions, textCo
     horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
 ) {
     when (notice) {
-        // Not dismissible: it goes once the lists have rules.
-        OverviewNotice.ListsMissing -> {
+        // A successful download clears this notice.
+        OverviewNotice.ListDownloads -> {
             TextButton(onClick = actions.openLists, colors = textColors) { Text(stringResource(R.string.feature_overview_lists_missing_open)) }
             Button(onClick = actions.downloadLists, colors = filledColors) { Text(stringResource(R.string.feature_overview_lists_missing_download)) }
         }

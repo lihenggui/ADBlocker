@@ -101,8 +101,8 @@ sealed interface OverviewUiState {
         val vpn: VpnStatus = VpnStatus(),
         /** With the VPN: how far HTTPS inspection is set up. */
         val https: HttpsSetup? = null,
-        /** Lists that are on and have no rules yet, or null when every one has a copy. */
-        val missingLists: MissingLists? = null,
+        /** On lists without a copy or whose download from a new address failed. */
+        val listDownloads: ListDownloads? = null,
         /** What to know about now: a state shown while it holds, or a tip shown until dismissed. */
         val notice: OverviewNotice? = null,
         /** Root mode is being brought up to date with this app; the old one filters meanwhile. */
@@ -110,8 +110,9 @@ sealed interface OverviewUiState {
     ) : OverviewUiState
 }
 
-/** How many enabled lists were never downloaded, and whether the last attempt failed for any of them. */
-data class MissingLists(val count: Int, val failed: Boolean)
+data class ListDownloads(val missing: Int, val missingFailed: Boolean, val usingPreviousAddress: Int = 0) {
+    val failed: Boolean get() = missingFailed || usingPreviousAddress > 0
+}
 
 /** HTTPS without root: the installed certificate, the URL filtering setting, and the apps using HTTPS inspection. */
 data class HttpsSetup(val certificateInstalled: Boolean, val urlFiltering: Boolean, val decryptedApps: Int)
@@ -119,17 +120,16 @@ data class HttpsSetup(val certificateInstalled: Boolean, val urlFiltering: Boole
 enum class OverviewNotice {
     /**
      * With the VPN in All apps, the system withholds the installed app list:
-     * the VPN routes only the few apps it shows. A state, as [ListsMissing]
+     * the VPN routes only the few apps it shows. A state, as [ListDownloads]
      * is; it goes once the list is allowed.
      */
     AppListWithheld,
 
     /**
-     * Lists that are on were never downloaded, so less is filtered than the
-     * switches say. A state rather than a tip: it cannot be dismissed, and
-     * goes once they have rules.
+     * Lists are waiting for a first download or are still using a previous
+     * copy after a failed download from a new address.
      */
-    ListsMissing,
+    ListDownloads,
 
     /** The system's "Block connections without VPN" is on: the chosen apps have no network while the VPN is down. */
     Lockdown,
@@ -248,12 +248,11 @@ class OverviewViewModel @Inject constructor(
         val data = userData.userData.first()
         val dismissed = data.dismissedTips
         val vpnStatus = vpn.status.value
-        val missing = missingLists(subscriptions, data)
-        // States come before tips: they mean less is filtered than shown. Apps
-        // the VPN cannot see come first, unfiltered by any list.
+        val downloads = listDownloads(subscriptions, data)
+        // Apps the VPN cannot see come first, since no list can filter them.
         val notice = when {
             appsUnseen(data, status, inventory) -> OverviewNotice.AppListWithheld
-            missing != null && !lists.updating.value -> OverviewNotice.ListsMissing
+            downloads != null && !lists.updating.value -> OverviewNotice.ListDownloads
             !data.capabilities.usesVpn -> null
             vpnStatus.lockdown && LOCKDOWN_TIP !in dismissed -> OverviewNotice.Lockdown
             withContext(io) { vpn.shouldOfferBatteryExemption() } -> OverviewNotice.BatteryExemption
@@ -284,7 +283,7 @@ class OverviewViewModel @Inject constructor(
                 } else {
                     null
                 },
-                missingLists = missing,
+                listDownloads = downloads,
                 notice = notice,
                 updating = updating,
             )
@@ -400,14 +399,15 @@ class OverviewViewModel @Inject constructor(
         fun appsUnseen(data: UserData, status: DaemonStatus, inventory: AppInventory<*>): Boolean = data.capabilities.usesVpn && status.filteringScope == FilteringScope.All && inventory.listWithheld
 
         /**
-         * The enabled lists never downloaded, unless root setup still holds the
-         * list choices: an update is refused until they are saved.
+         * Root setup can still hold the list choices; an update is refused
+         * until they are saved.
          */
-        fun missingLists(subscriptions: List<FilterList>, data: UserData): MissingLists? {
+        fun listDownloads(subscriptions: List<FilterList>, data: UserData): ListDownloads? {
             if (data.method == FilterMethod.Root && data.hasPendingLists) return null
             val missing = subscriptions.filter { it.awaitsFirstDownload }
-            if (missing.isEmpty()) return null
-            return MissingLists(missing.size, failed = missing.any { it.error != null })
+            val previous = subscriptions.count { it.enabled && it.usingPreviousAddress && it.error != null }
+            if (missing.isEmpty() && previous == 0) return null
+            return ListDownloads(missing.size, missing.any { it.error != null }, previous)
         }
 
         const val LOCKDOWN_TIP = "vpn:lockdown"
@@ -417,7 +417,7 @@ class OverviewViewModel @Inject constructor(
             OverviewNotice.Lockdown -> LOCKDOWN_TIP
             OverviewNotice.RootAvailable -> ROOT_TIP
             OverviewNotice.BatteryExemption -> error("Battery notice follows the observed VPN stop")
-            OverviewNotice.ListsMissing, OverviewNotice.AppListWithheld -> error("$this is a state, not a tip")
+            OverviewNotice.ListDownloads, OverviewNotice.AppListWithheld -> error("$this is a state, not a tip")
         }
     }
 }

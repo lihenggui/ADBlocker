@@ -28,9 +28,11 @@ data class FilterList(
     val updated: Instant?,
     /** Why the last update of this list failed; null after a success. */
     val error: String?,
+    /** The active copy was downloaded from the catalog's previous address. */
+    val usingPreviousAddress: Boolean = false,
 ) {
     /** On but never downloaded: it contributes no rules until a download succeeds. One that is off is not downloaded. */
-    val awaitsFirstDownload: Boolean get() = enabled && updated == null
+    val awaitsFirstDownload: Boolean get() = enabled && updated == null && !usingPreviousAddress
 }
 
 /** What `abd update --json` reports as it goes. */

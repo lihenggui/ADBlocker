@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use crate::files;
 use crate::list_files::{MAX_LIST, check_budget, read_list};
 pub use crate::list_url::valid;
-use crate::list_url::{base_file_name, file_name, untrusted_file_name};
+use crate::list_url::{MOVED, base_file_name, copy_names, previous_address};
 use crate::malformed::Malformed;
 use crate::paths::Paths;
 
@@ -80,25 +80,7 @@ pub(crate) fn text_of(file: &Path) -> Result<Option<String>> {
     Ok(Some(moved(files::read_text(file, MAX_FILE)?)))
 }
 
-/// Catalog lists whose address changed after a release saved the old one.
-/// Every reader of the file comes through `text_of`, so a saved choice
-/// follows the list, and the next update prunes the copy of the old address
-/// with its information like that of any list no longer subscribed.
-const MOVED: &[(&str, &str)] = &[
-    (
-        "https://filters.adtidy.org/extension/ublock/filters/11.txt",
-        "https://filters.adtidy.org/android/filters/11.txt",
-    ),
-    (
-        "https://filters.adtidy.org/extension/ublock/filters/224.txt",
-        "https://filters.adtidy.org/android/filters/224.txt",
-    ),
-    (
-        "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
-        "https://filters.adtidy.org/android/filters/2.txt",
-    ),
-];
-
+/// A saved choice follows the catalog's current address.
 fn moved(text: String) -> String {
     let has = |url: &str| text.lines().any(|line| address(line) == url);
     let pending: Vec<_> = MOVED.iter().filter(|(old, _)| has(old)).collect();
@@ -336,14 +318,14 @@ fn withdraw(paths: &Paths, url: &str, selection: &str, keep_cached: bool) -> Res
     if !has_disabled_copy(&dir, url) {
         files::remove_if_present(&info_file(&paths.list_info(), url))?;
     }
+    prune_previous_copy(&dir, Some(&paths.list_info()), url)?;
     Ok(())
 }
 
 /// Keep the copy under its untrusted name available until a fresh download
 /// is saved under the trusted name. Either copy follows subscription changes.
 fn copy_paths(dir: &Path, url: &str, extension: &str) -> impl Iterator<Item = PathBuf> {
-    std::iter::once(dir.join(file_name(url)).with_extension(extension))
-        .chain(untrusted_file_name(url).map(|name| dir.join(name).with_extension(extension)))
+    copy_names(url).map(move |name| dir.join(name).with_extension(extension))
 }
 
 fn copy_path(dir: &Path, url: &str, extension: &str) -> PathBuf {
@@ -355,6 +337,42 @@ fn copy_path(dir: &Path, url: &str, extension: &str) -> PathBuf {
         return untrusted;
     }
     current
+}
+
+/// Keep the original filename because it determines which rules are trusted.
+pub(crate) fn active_copy<'a>(dir: &Path, url: &'a str) -> (&'a str, PathBuf) {
+    let current = copy_path(dir, url, "txt");
+    if let Some(old) = previous_address(url)
+        && !current.is_file()
+    {
+        let previous = copy_path(dir, old, "txt");
+        if previous.is_file() {
+            return (old, previous);
+        }
+    }
+    (url, current)
+}
+
+/// Only the selected list's previous address is affected by a targeted update.
+pub(crate) fn prune_previous_copy(
+    dir: &Path,
+    info: Option<&Path>,
+    url: &str,
+) -> std::io::Result<()> {
+    if let Some(old) = previous_address(url) {
+        for path in ["txt", "disabled", "new"]
+            .into_iter()
+            .flat_map(|ext| copy_paths(dir, old, ext))
+        {
+            files::remove_if_present(&path)?;
+        }
+        if let Some(info) = info {
+            let metadata = info_file(info, old);
+            files::remove_if_present(&metadata)?;
+            files::remove_if_present(&metadata.with_extension("new"))?;
+        }
+    }
+    Ok(())
 }
 
 pub(crate) fn has_disabled_copy(dir: &Path, url: &str) -> bool {
@@ -458,21 +476,24 @@ pub fn info(dir: &Path, url: &str) -> Option<Info> {
 
 /// A file can outlive its metadata after an interrupted update, and a
 /// failed replacement can leave metadata without a usable copy.
-pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> Info {
-    let path = copy_path(
-        dir,
-        &source.url,
-        if source.enabled { "txt" } else { "disabled" },
-    );
-    let copy = Some(path).filter(|path| {
-        path.metadata()
-            .is_ok_and(|meta| meta.is_file() && meta.len() <= MAX_LIST as u64)
-    });
-    if copy.is_none() && !source.enabled {
-        return Info::default();
+pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> (Info, bool) {
+    let (address, path) = if source.enabled {
+        active_copy(dir, &source.url)
+    } else {
+        (source.url.as_str(), copy_path(dir, &source.url, "disabled"))
+    };
+    let has_copy = path
+        .metadata()
+        .is_ok_and(|meta| meta.is_file() && meta.len() <= MAX_LIST as u64);
+    if !has_copy && !source.enabled {
+        return (Info::default(), false);
     }
-    let mut known = info(info_dir, &source.url).unwrap_or_default();
-    if let Some(path) = copy {
+    let previous = address != source.url;
+    let mut known = info(info_dir, address).unwrap_or_default();
+    if previous {
+        known.error = info(info_dir, &source.url).and_then(|current| current.error);
+    }
+    if has_copy {
         if known.rules.is_none()
             && let Ok(Some(text)) = read_list(&path, MAX_LIST)
         {
@@ -483,7 +504,7 @@ pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> Info {
         known.rules = None;
         known.updated = None;
     }
-    known
+    (known, previous && has_copy)
 }
 
 pub fn write_info(dir: &Path, info: &Info) -> Result<()> {
@@ -495,10 +516,12 @@ pub fn write_info(dir: &Path, info: &Info) -> Result<()> {
 
 /// When a list was last updated, the most recently updated of them.
 pub fn lists_updated(paths: &Paths) -> Option<u64> {
+    let lists = paths.lists();
+    let metadata = paths.list_info();
     read(paths)
         .iter()
         .filter(|s| s.enabled)
-        .filter_map(|s| info(&paths.list_info(), &s.url)?.updated)
+        .filter_map(|s| info(&metadata, active_copy(&lists, &s.url).0)?.updated)
         .max()
 }
 
@@ -527,12 +550,17 @@ pub fn prune_unsubscribed(
     let mut keep_info = HashSet::new();
     for source in parse(configured) {
         let url = source.url.as_str();
+        let (address, file) = if source.enabled {
+            active_copy(dir, url)
+        } else {
+            (url, copy_path(dir, url, "disabled"))
+        };
         if let Some(info) = info
-            && (source.enabled || has_disabled_copy(dir, url))
+            && (source.enabled || file.is_file())
         {
             keep_info.insert(info_file(info, url));
+            keep_info.insert(info_file(info, address));
         }
-        let file = copy_path(dir, url, if source.enabled { "txt" } else { "disabled" });
         keep.extend(
             file.file_name()
                 .map(|name| name.to_string_lossy().into_owned()),
@@ -569,6 +597,7 @@ fn prune(dir: &Path, stale: impl Fn(&std::fs::DirEntry) -> bool) -> std::io::Res
 pub(crate) mod tests {
     use super::*;
     use crate::list_url::MAX_URL;
+    use crate::list_url::{file_name, untrusted_file_name};
 
     /// The lines that turn off each default but those of `named`, which
     /// the file has lines of its own for.
@@ -859,7 +888,7 @@ pub(crate) mod tests {
     }
 
     #[test]
-    fn the_copy_of_a_moved_list_is_pruned_with_what_is_known_of_it() {
+    fn a_moved_copy_and_its_metadata_are_kept_only_while_selected_and_without_a_replacement() {
         for &(old, new) in MOVED {
             moved_copy(old, new);
         }
@@ -885,9 +914,42 @@ pub(crate) mod tests {
         let lock = files::lock(&paths.sources()).unwrap();
         let selection = configured(&paths).unwrap();
         prune_unsubscribed(&selection, &paths.lists(), Some(&paths.list_info()), &lock).unwrap();
+        assert!(copy.exists());
+        assert!(info_file(&paths.list_info(), old).exists());
+        assert_eq!(read(&paths)[0].url, new);
+
+        let replacement = paths.lists().join(file_name(new));
+        std::fs::write(&replacement, "||fresh.example^\n").unwrap();
+        prune_unsubscribed(&selection, &paths.lists(), Some(&paths.list_info()), &lock).unwrap();
+        assert!(replacement.exists());
         assert!(!copy.exists());
         assert!(!info_file(&paths.list_info(), old).exists());
-        assert_eq!(read(&paths)[0].url, new);
+    }
+
+    #[test]
+    fn disabling_or_removing_a_moved_list_withdraws_its_previous_copy() {
+        for change in [Change::Disable, Change::Remove] {
+            let dir = tempfile::tempdir().unwrap();
+            let paths = Paths::new(dir.path());
+            let (old, new) = MOVED[0];
+            std::fs::write(paths.sources(), format!("{old}\n")).unwrap();
+            std::fs::create_dir(paths.lists()).unwrap();
+            let copy = paths.lists().join(file_name(old));
+            std::fs::write(&copy, "||ads.example^\n").unwrap();
+            write_info(
+                &paths.list_info(),
+                &Info {
+                    url: old.to_owned(),
+                    ..Info::default()
+                },
+            )
+            .unwrap();
+
+            assert!(edit(&paths, new, change).unwrap());
+            assert!(!copy.exists());
+            assert!(!copy.with_extension("disabled").exists());
+            assert!(!info_file(&paths.list_info(), old).exists());
+        }
     }
 
     #[test]

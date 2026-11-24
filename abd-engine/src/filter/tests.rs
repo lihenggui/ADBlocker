@@ -161,6 +161,39 @@ mod lists {
     }
 
     #[test]
+    fn a_moved_copy_retains_its_trust_and_a_replacement_with_the_same_rules_gets_a_new_cache_key() {
+        let temp = tempfile::tempdir().unwrap();
+        let paths = crate::paths::Paths::new(temp.path());
+        let lists = paths.lists();
+        std::fs::create_dir(&lists).unwrap();
+        let (previous, current) = crate::list_url::MOVED[0];
+        let old = lists.join(crate::list_url::file_name(previous));
+        let new = lists.join(crate::list_url::file_name(current));
+        let text = "||blocked.test^\n\
+                    ||rewrite.test^$replace=/X/Y/\n\
+                    page.test#%#//scriptlet('trusted-set-constant', 'adgTrusted', '42')\n";
+        std::fs::write(&old, text).unwrap();
+        let load = || Filters::load_cached(&[&lists], &paths.cache()).unwrap();
+        let before = load();
+        for filters in [before, load()] {
+            assert!(filters.blocks_host("blocked.test"));
+            assert!(filters.hiding("https://page.test/").script.is_none());
+            assert!(filters.responses.is_none());
+        }
+        let old_generation = load().generation;
+
+        // A reader can see both files while the updater removes the old one.
+        std::fs::write(&new, text).unwrap();
+        let published = load();
+        assert_ne!(published.generation, old_generation);
+        assert_eq!(published.rules, text.lines().count());
+        assert!(published.hiding("https://page.test/").script.is_some());
+        assert!(published.responses.is_some());
+        std::fs::remove_file(old).unwrap();
+        assert_eq!(load().generation, published.generation);
+    }
+
+    #[test]
     fn adguard_cosmetic_exceptions_and_negated_domains_match_in_the_engine() {
         let rules = "example.org,~skip.example.org#%#//scriptlet('set-constant', 'fixture', '42')\n\
                      example.org,~skip.example.org#$#.ad { display: none; }\n\

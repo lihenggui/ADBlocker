@@ -27,7 +27,6 @@ use crate::{
     files,
     filter::{AppProjections, AppRules, MatcherLists, Patterns, RequestRules, app_rule},
     list_files::{ListFiles, MAX_COMPILED, read_lists},
-    list_url,
     paths::Paths,
     protocol_types::Check,
     rule::{self, Kind, Rule},
@@ -264,10 +263,9 @@ pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str
         if file.parent() == Some(rules.as_path()) {
             return Some("rules".to_owned());
         }
-        let name = file.file_name()?.to_str()?;
         sources::read(paths)
             .into_iter()
-            .find(|s| list_url::file_name(&s.url) == name)
+            .find(|s| s.enabled && sources::active_copy(&lists, &s.url).1 == *file)
             .map(|s| s.url)
     });
     Ok(Check {

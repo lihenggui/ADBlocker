@@ -254,13 +254,14 @@ private class ListDto(
     val rules: Int? = null,
     val updated: Long? = null,
     val error: String? = null,
+    @SerialName("using_previous_address") val usingPreviousAddress: Boolean = false,
 )
 
 fun parseLists(text: String): List<FilterList> = reading("lists") {
     json.decodeFromString<List<ListDto>>(text).map(ListDto::toFilterList)
 }
 
-private fun ListDto.toFilterList() = FilterList(url, enabled, title, rules, updated.toInstant(), error)
+private fun ListDto.toFilterList() = FilterList(url, enabled, title, rules, updated.toInstant(), error, usingPreviousAddress)
 
 @Serializable
 private class OverviewDto(val status: StatusDto, val stats: StatsDto, val lists: List<ListDto>)

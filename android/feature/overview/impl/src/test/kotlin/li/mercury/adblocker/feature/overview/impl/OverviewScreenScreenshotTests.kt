@@ -224,6 +224,19 @@ class OverviewScreenScreenshotTests {
     }
 
     @Test
+    fun givenAPreviousCopyStillInUse_whenTheNoticeIsShown_thenItReportsTheFailureAndContinuedFiltering() {
+        composeTestRule.setContent {
+            Notice(
+                OverviewNotice.ListDownloads,
+                ListDownloads(missing = 0, missingFailed = false, usingPreviousAddress = 1),
+                NoticeActions(dismiss = {}, switchToRoot = {}, batteryExemption = {}),
+            )
+        }
+        composeTestRule.onNodeWithText("1 list failed to download").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Filtering continues with the previous copy.").assertIsDisplayed()
+    }
+
+    @Test
     fun givenListsWhoseFirstDownloadFailed_whenShownInDarkTheme_thenMatchesGolden() {
         composeTestRule.captureForDevice("phone_dark", DefaultTestDevices.PHONE.spec, "OverviewListsFailed", darkMode = true) { Overview(listsMissing(failed = true)) }
     }
@@ -250,8 +263,8 @@ class OverviewScreenScreenshotTests {
     }
 
     private fun listsMissing(failed: Boolean) = ready().copy(
-        missingLists = MissingLists(count = if (failed) 2 else 1, failed = failed),
-        notice = OverviewNotice.ListsMissing,
+        listDownloads = ListDownloads(missing = if (failed) 2 else 1, missingFailed = failed),
+        notice = OverviewNotice.ListDownloads,
     )
 
     /** The VPN defaults to connected with URL filtering on and no certificate installed yet. */
