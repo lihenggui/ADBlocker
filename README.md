@@ -19,7 +19,7 @@ rooted:
 
 | | Root mode | VPN mode |
 | --- | --- | --- |
-| Needs | Root with KernelSU, Magisk or APatch | No root |
+| Needs | Root access | No root |
 | Android's VPN slot | Stays free for another VPN | Used by ADBlocker |
 | HTTPS filtering by URL | Filtered personal apps; work apps need their administrator to install the CA | Apps that trust user certificates, once you install ADBlocker's |
 | DNS filtering | Plain DNS lookups from filtered apps | Queries from filtered apps |
@@ -40,8 +40,8 @@ individual choices.
 **URL filtering** is on by default and applies URL and resource rules to
 every filtered app where possible. A rule can then block
 `news.example/ads/banner` while allowing `news.example/articles/today`.
-Ordinary HTTP/1 on port 80 needs no certificate. For HTTPS over TCP, the
-module makes its local CA available to filtered personal apps in root mode.
+Ordinary HTTP/1 on port 80 needs no certificate. For HTTPS over TCP, root
+mode makes its local CA available to filtered personal apps.
 In VPN mode, install the certificate through Settings; only apps that trust
 user-installed certificates accept it. Until then, HTTPS stays encrypted
 and only domain rules apply. Turn off **URL filtering** in Settings to
@@ -67,7 +67,7 @@ are counted once for the group.
 On the Apps page, a briefcase marks the work copy of an app. Each copy
 has its own selection, pause, activity and statistics. If Android cannot
 list a work profile's apps for a moment, retry from the Apps page; the
-other apps stay manageable meanwhile. The module keeps your choices while
+other apps stay manageable meanwhile. Root mode keeps your choices while
 a work profile is paused. Deleting the work profile clears its selections
 and pauses, and a newly created profile starts with none.
 
@@ -84,39 +84,61 @@ See [work profile trust](SECURITY.md#work-profiles).
 Both methods require a 64-bit ARM (arm64) or x86 (x86_64) device.
 
 - Root mode: Android 12 or later, a GKI kernel (5.10 or newer), and root
-  with module support: [KernelSU](https://kernelsu.org),
+  access, for example from [KernelSU](https://kernelsu.org),
   [Magisk](https://github.com/topjohnwu/Magisk) or
-  [APatch](https://apatch.dev).
+  [APatch](https://apatch.dev). With root from another source, ADBlocker
+  starts root mode itself after a restart; on devices that keep apps from
+  starting at boot, allow ADBlocker to start automatically.
 - VPN mode: Android 10 or later.
 
 ## Installation
 
-Download from [Releases](../../releases). `adblocker-<version>.apk.zip`
-and `adblocker-<version>.apk` are the same package, which contains both
-the Android app and the root module, under two names. To build it
-yourself, see the [build instructions](CONTRIBUTING.md#building).
+Download `adblocker-<version>.apk` from [Releases](../../releases) and
+install it. `adblocker-<version>.apk.zip` is the same package under a
+second name, for root managers. To build it yourself, see the
+[build instructions](CONTRIBUTING.md#building).
 
-- **With root**, install the `.apk.zip` as a module in your root manager.
-  This also attempts to install the app. Alternatively, install the
-  `.apk` and follow the root setup in ADBlocker.
-- **Without root**, install the `.apk`. Open ADBlocker, choose your apps
-  and lists, and grant VPN permission.
+Open ADBlocker and choose your apps and lists. With root access, ADBlocker
+sets up root mode: filtering starts at once, without a restart, and again
+after every restart. Without root, it uses VPN mode and asks for VPN
+permission.
 
 Setup suggests the general lists and the regional lists for the
 languages of the device, such as EasyList China, AdGuard Chinese and
 AWAvenue Ads Rule for Chinese.
 
-KernelSU applies the module immediately. Magisk and APatch require a
-restart. ADBlocker saves the selected subscriptions, downloads the lists,
-and updates them in the background at the configured interval. To download
+ADBlocker saves the selected subscriptions, downloads the lists, and
+updates them in the background at the configured interval. To download
 lists from a root shell, run `abd update`.
+
+### Installing as a module
+
+The same file is a module for KernelSU, Magisk and APatch. Install the
+`.apk.zip` in your root manager if you want root mode listed and managed
+there; this also attempts to install the app. KernelSU applies it
+immediately, Magisk and APatch after a restart. If ADBlocker is opened
+before that restart, it sets up root mode itself, and the module takes
+over afterwards with the same settings.
+
+### Updating
+
+Install the new APK over the app, then open ADBlocker; it updates root
+mode. A module in a root manager can also be updated by installing the new
+`.apk.zip` there.
 
 ### Uninstalling
 
-With root, remove the module in the root manager, restart the device, and
-uninstall the app. Have the work profile administrator remove any CA installed
-for work filtering. Removing the module deletes its certificate authority
-and its other data.
+In root mode, follow **Settings › Remove root mode**, then uninstall the
+app. Removing root mode stops filtering and deletes its certificate
+authority and its other data. If you installed ADBlocker as a module,
+remove it in the root manager and restart instead. Have the work profile
+administrator remove any CA installed for work filtering.
+
+If the app is uninstalled first, root mode that ADBlocker set up stops
+filtering within about a minute. Where KernelSU, Magisk or APatch is
+installed, its files and data are deleted at the next restart. With root
+from another source they stay, including its certificate authority, so
+remove root mode in Settings before uninstalling the app.
 
 In VPN mode, if you installed ADBlocker's certificate, follow **Settings ›
 Remove the certificate** before uninstalling the app. Uninstalling deletes the
@@ -144,8 +166,10 @@ holds the HTTPS filtering setup.
 <details>
 <summary>Root command-line reference</summary>
 
-Run `/data/adb/modules/adblocker/bin/abd` in a root shell to manage the
-module. The examples below abbreviate this path to `abd`.
+Run `abd` in a root shell to manage root mode: it is
+`/data/adb/adblocker_direct/bin/abd` when ADBlocker set up root mode, and
+`/data/adb/modules/adblocker/bin/abd` when it was installed as a module.
+The examples below abbreviate this path to `abd`.
 
 | Command | What it does |
 | --- | --- |
@@ -304,7 +328,7 @@ In VPN mode:
 
 ## How it works
 
-The root module looks up the sending app's UID before handing a
+In root mode, ADBlocker looks up the sending app's UID before handing a
 connection to the filter. When it connects to the site, it uses that
 same app's network identity. The [design walkthrough](docs/how-it-works.md)
 follows one connection from the kernel through the HTTPS checks to the
