@@ -295,6 +295,16 @@ Without a source, it applies independently decidable blocking rules and
 preserves exceptions that might apply. The HTTP method, URL and available
 resource type still inform the decision.
 
+A rule can name the apps it is for with AdGuard's `$app=` option:
+`||ads.example^$app=com.reader` blocks the host in that app only, and
+`$app=~com.reader` in every app but that one. An exception with the
+option allows in the named apps what a rule for every app blocks. These
+rules apply to lookups, to connections that stay encrypted and to
+decrypted requests alike. A block that names both an app and a page is
+not applied, and an exception that names both applies whatever the page.
+The apps of a shared UID are not told apart: a block for one of them
+applies to none, and an exception for any app applies to all of them.
+
 On TCP port 80 the engine recognizes a bounded HTTP/1 request header.
 With URL filtering off it judges the Host header. With it on, each ordinary
 request on the connection is checked against the web rules. A blocked

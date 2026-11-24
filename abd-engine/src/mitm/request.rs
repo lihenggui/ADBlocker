@@ -27,7 +27,7 @@ use hyper_util::rt::TokioIo;
 
 use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
-use crate::filter::{Filters, Hiding};
+use crate::filter::{AppFilters, Filters, Hiding};
 use crate::relay;
 use crate::stats::Counter;
 use crate::tls::Tls;
@@ -161,7 +161,7 @@ pub(super) struct Shared {
 
 /// Evaluate the metadata of an HTTP request using the URL validated by its transport.
 pub fn evaluate_request<'a, B>(
-    filters: &Filters,
+    filters: &AppFilters<'_>,
     req: &'a Request<B>,
     url: &str,
 ) -> RequestDecision<'a> {
@@ -169,7 +169,7 @@ pub fn evaluate_request<'a, B>(
 }
 
 fn evaluate<'a, B>(
-    filters: &Filters,
+    filters: &AppFilters<'_>,
     req: &'a Request<B>,
     url: &str,
     kind: &'static str,
@@ -230,6 +230,7 @@ pub(super) async fn serve<'a>(
     let selected = ctx.is_package(*uid, package);
     let url_filtering = ctx.selection.url_filtering.load(Relaxed);
     let filters = ctx.filters();
+    let for_app = filters.for_app(package);
     if let Some(response) = guard_site(shared, req.version(), selected, url_filtering) {
         return Ok(response);
     }
@@ -250,14 +251,14 @@ pub(super) async fn serve<'a>(
         && (https.is_some() || !ctx.lists.allow.read().unwrap().covers(host))
     {
         if url_filtering {
-            let decision = evaluate(&filters, &req, url, kind);
+            let decision = evaluate(&for_app, &req, url, kind);
             if decision.blocked {
                 record_request(ctx, package, host, url, decision);
                 return Ok(empty(StatusCode::FORBIDDEN));
             }
             Some((url, host, decision))
         } else {
-            if filters.blocks_domain(host) {
+            if for_app.blocks_domain(host) {
                 ctx.services
                     .stats
                     .count(Some(package), Counter::HostsBlocked);

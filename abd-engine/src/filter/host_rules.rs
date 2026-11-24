@@ -154,7 +154,7 @@ impl HostRules {
 
 /// Builds a guard for the exception's necessary destination. Returns true
 /// when the destination cannot be narrowed to specific host patterns.
-fn project_guard(line: &str, disabled: &HashSet<u64>, scope_rules: &mut String) -> bool {
+pub(super) fn project_guard(line: &str, disabled: &HashSet<u64>, scope_rules: &mut String) -> bool {
     let Some(rule) = network(line) else {
         return false;
     };

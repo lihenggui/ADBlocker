@@ -38,6 +38,8 @@ pub fn check(text: &str) -> RulesCheck {
             Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => IssueKind::Cosmetic,
             // What adblock-rust sets aside as AdGuard's HTML filtering.
             Err(FilterParseError::Unsupported) if line.contains("$$") => IssueKind::Cosmetic,
+            // A rule for apps, which is rewritten for adblock-rust.
+            Err(_) if crate::filter::app_rule(line).is_some() => continue,
             Err(_) => IssueKind::Invalid,
         };
         issues.push(Issue {
@@ -71,7 +73,10 @@ mod tests {
                     ||ads.example^$frobnicate\n\
                     x\n\
                     # a hosts comment\n\
-                    0.0.0.0 tracker.example\n";
+                    0.0.0.0 tracker.example\n\
+                    ||ads.example^$app=com.reader\n\
+                    ||ads.example^$app=not/a/package\n\
+                    ||ads.example^$app=com.reader,domain=site.example\n";
         assert_eq!(
             kinds(text),
             [
@@ -81,9 +86,11 @@ mod tests {
                 (7, IssueKind::Cosmetic),
                 (8, IssueKind::Invalid),
                 (9, IssueKind::Invalid),
+                (13, IssueKind::Invalid),
+                (14, IssueKind::Invalid),
             ]
         );
-        assert_eq!(check(text).rules, 8);
+        assert_eq!(check(text).rules, 11);
     }
 
     #[test]

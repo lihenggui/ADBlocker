@@ -30,11 +30,14 @@ use adblock::resources::{PermissionMask, Resource};
 use adblock::url_parser::{RequestUrl, parse_url};
 use anyhow::Result;
 
+use self::app_rules::AppRules;
+pub(crate) use self::app_rules::rewritten as app_rule;
 use self::host_rules::{HostRules, host_only};
 use self::page_exceptions::PageExceptions;
 pub use crate::list_files::{ListFiles, MAX_LIST};
 use crate::list_files::{exceeds_budget, read_lists, readable_paths};
 
+mod app_rules;
 mod cache;
 mod host_rules;
 mod page_exceptions;
@@ -46,6 +49,8 @@ pub struct Filters {
     hosts: Engine,
     /// `None` when the lists allow a pattern on potentially any host.
     host_guards: Option<Engine>,
+    /// `None` when no list has a rule for an app.
+    apps: Option<AppRules>,
     pub rules: usize,
     pub host_rules: usize,
 }
@@ -290,17 +295,15 @@ impl RequestRules {
         self.check_request(req, known)
     }
 
-    fn check_with_page(
-        &self,
+    /// The request for `url` and whether the page that made it is known.
+    fn request_with_page(
         url: &str,
         source: Option<&RequestUrl>,
         document: bool,
         kind: &str,
         method: &str,
-    ) -> Check {
-        let Some(url) = parse_url(url) else {
-            return Check::default();
-        };
+    ) -> Option<(Request, bool)> {
+        let url = parse_url(url)?;
         let source = if document {
             Some(&url).filter(|page| is_http_page(page))
         } else {
@@ -314,19 +317,23 @@ impl RequestRules {
             source.is_none_or(|source| source.domain() != url.domain()),
             method,
         );
-        self.check_request(req, source.is_some())
+        Some((req, source.is_some()))
     }
 
-    fn check_request(&self, mut req: Request, known: bool) -> Check {
-        let engine = if let (false, Some(unknown)) = (known, &self.unknown) {
+    /// The engine that judges `req`, which is made ready for it.
+    fn engine(&self, req: &mut Request, known: bool) -> &Engine {
+        if let (false, Some(unknown)) = (known, &self.unknown) {
             // Only projected destination conditions use this index in
             // the unknown-source engine.
             req.source_hostname_hashes.clone_from(&req.hostname_hashes);
             unknown
         } else {
             &self.full
-        };
-        let r = engine.check_network_request(&req);
+        }
+    }
+
+    fn check_request(&self, mut req: Request, known: bool) -> Check {
+        let r = self.engine(&mut req, known).check_network_request(&req);
         Check {
             blocked: r.should_block(),
             rule: r.filter.and_then(|f| f.raw_line),
@@ -421,29 +428,37 @@ impl Filters {
             page_exceptions: PageExceptions::build(texts()),
             hosts: Engine::new_with_filter_set(host_rules.whole),
             host_guards: host_rules.guards.map(Engine::new_with_filter_set),
+            apps: AppRules::project(texts(), debug),
             rules: rules_count,
             host_rules: host_rules.count,
         })
     }
 
-    /// A full-mode early block must leave room for any web exception.
-    pub fn blocks_host(&self, host: &str) -> bool {
-        let Some(guards) = &self.host_guards else {
-            return false;
-        };
-        Self::host_request(host).is_some_and(|request| {
-            self.hosts.check_network_request(&request).should_block()
-                && guards
-                    .check_network_request_subset(&request, false, true)
-                    .exception
-                    .is_none()
-        })
+    /// The rules as they apply to `app`, which the engine names by its
+    /// package or its shared UID's group.
+    pub fn for_app(&self, app: &str) -> AppFilters<'_> {
+        AppFilters {
+            filters: self,
+            app: self.apps.as_ref().map(|rules| (rules, rules.scope(app))),
+        }
     }
 
-    /// Domain mode uses only explicit whole-domain blocks and exceptions.
+    /// The rules that apply whatever the app.
+    fn for_any_app(&self) -> AppFilters<'_> {
+        AppFilters {
+            filters: self,
+            app: None,
+        }
+    }
+
+    /// [`AppFilters::blocks_host`], by the rules for every app.
+    pub fn blocks_host(&self, host: &str) -> bool {
+        self.for_any_app().blocks_host(host)
+    }
+
+    /// [`AppFilters::blocks_domain`], by the rules for every app.
     pub fn blocks_domain(&self, host: &str) -> bool {
-        Self::host_request(host)
-            .is_some_and(|request| self.hosts.check_network_request(&request).should_block())
+        self.for_any_app().blocks_domain(host)
     }
 
     fn host_request(host: &str) -> Option<Request> {
@@ -514,6 +529,45 @@ impl Filters {
     pub fn check(&self, url: &str, source: &str, kind: &str, method: &str) -> Check {
         self.requests.check(url, source, kind, method)
     }
+}
+
+/// The rules as they apply to one app.
+pub struct AppFilters<'a> {
+    filters: &'a Filters,
+    app: Option<(&'a AppRules, app_rules::Scope)>,
+}
+
+impl AppFilters<'_> {
+    /// A full-mode early block must leave room for any web exception.
+    pub fn blocks_host(&self, host: &str) -> bool {
+        let Some(guards) = &self.filters.host_guards else {
+            return false;
+        };
+        Filters::host_request(host).is_some_and(|mut request| {
+            self.blocks_whole(&mut request)
+                && guards
+                    .check_network_request_subset(&request, false, true)
+                    .exception
+                    .is_none()
+                && self
+                    .app
+                    .as_ref()
+                    .is_none_or(|(rules, scope)| rules.unguarded(&mut request, scope))
+        })
+    }
+
+    /// Domain mode uses only explicit whole-domain blocks and exceptions.
+    pub fn blocks_domain(&self, host: &str) -> bool {
+        Filters::host_request(host).is_some_and(|mut request| self.blocks_whole(&mut request))
+    }
+
+    fn blocks_whole(&self, request: &mut Request) -> bool {
+        let hosts = &self.filters.hosts;
+        match &self.app {
+            Some((rules, scope)) => rules.check(hosts, &rules.hosts, request, scope).blocked,
+            None => hosts.check_network_request(request).should_block(),
+        }
+    }
 
     pub(crate) fn check_with_page(
         &self,
@@ -523,8 +577,19 @@ impl Filters {
         kind: &str,
         method: &str,
     ) -> Check {
-        self.requests
-            .check_with_page(url, source, document, kind, method)
+        let requests = &self.filters.requests;
+        let Some((mut req, known)) =
+            RequestRules::request_with_page(url, source, document, kind, method)
+        else {
+            return Check::default();
+        };
+        match &self.app {
+            Some((rules, scope)) => {
+                let web = requests.engine(&mut req, known);
+                rules.check(web, &rules.blocks, &mut req, scope)
+            }
+            None => requests.check_request(req, known),
+        }
     }
 }
 
@@ -1398,7 +1463,13 @@ mod tests {
             ] {
                 for document in [false, true] {
                     let page = parse_http_page(source);
-                    let actual = f.check_with_page(url, page.as_ref(), document, "script", "GET");
+                    let actual = f.for_any_app().check_with_page(
+                        url,
+                        page.as_ref(),
+                        document,
+                        "script",
+                        "GET",
+                    );
                     let expected =
                         f.check(url, if document { url } else { source }, "script", "GET");
                     assert_eq!(
@@ -1433,7 +1504,8 @@ mod tests {
         for _ in 0..count {
             let page = std::hint::black_box(parse_http_page(source));
             assert!(
-                f.check_with_page(url, page.as_ref(), false, "image", "GET")
+                f.for_any_app()
+                    .check_with_page(url, page.as_ref(), false, "image", "GET")
                     .blocked
             );
         }

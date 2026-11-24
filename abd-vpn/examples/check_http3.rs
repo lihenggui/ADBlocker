@@ -208,8 +208,10 @@ async fn filter_fixture(
                 && req.uri().authority().map(|a| a.as_str()) == Some(HOST),
             "unexpected fixture origin"
         );
+        // The fixture's lists have no rule for an app.
+        let rules = filters.for_app("fixture.client");
         let blocked =
-            abd_engine::mitm::evaluate_request(filters, &req, &req.uri().to_string()).blocked;
+            abd_engine::mitm::evaluate_request(&rules, &req, &req.uri().to_string()).blocked;
         let mut send = send.clone();
         workers.spawn(async move {
             if blocked {
