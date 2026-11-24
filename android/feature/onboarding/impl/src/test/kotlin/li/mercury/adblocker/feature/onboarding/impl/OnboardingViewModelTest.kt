@@ -37,6 +37,7 @@ import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.ListsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.VpnTransferPart
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppIconSource
 import li.mercury.adblocker.core.model.AppInventory
@@ -64,6 +65,7 @@ import org.robolectric.RobolectricTestRunner
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
@@ -77,7 +79,7 @@ class OnboardingViewModelTest {
 
     private var root = false
     private var languages = listOf("zh-Hans-CN")
-    private var switchResult = FilterMethodSwitch.Complete
+    private var switchResult: FilterMethodSwitch = FilterMethodSwitch.Complete
     private var vpnFails = false
     private var vpnAfterStart = VpnState.On
     private val vpnStatus = MutableStateFlow(VpnStatus())
@@ -537,6 +539,18 @@ class OnboardingViewModelTest {
     }
 
     @Test
+    fun givenTheAppListIsWithheldAndNoRootSettings_whenSavingVpnSetup_thenNoTransferWarningAppears() = runTest {
+        listWithheld = true
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+        viewModel.startVpn()
+
+        assertTrue(viewModel.uiState.value.appListWithheld)
+        assertEquals(InstallState.Done(active = false, apps = 0), viewModel.uiState.value.install)
+        assertNull(viewModel.uiState.value.vpnTransferFailure)
+    }
+
+    @Test
     fun withoutRootTheCheckGoesOnWithTheVpnAndNothingOfTheModuleIsTouched() = runTest {
         leaveTheCheck()
         assertEquals(OnboardingStep.About, viewModel.uiState.value.step)
@@ -572,12 +586,13 @@ class OnboardingViewModelTest {
 
     @Test
     fun givenRootSettingsCouldNotBeCarried_whenVpnSetupFinishes_thenTheIncompleteTransferRemainsVisible() = runTest {
-        switchResult = FilterMethodSwitch.VpnTransferIncomplete
+        val incomplete = FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Rules, VpnTransferPart.TrustedSites))
+        switchResult = incomplete
         leaveTheCheck()
         pickBrowser()
         viewModel.startVpn()
 
-        assertTrue(viewModel.uiState.value.vpnTransferIncomplete)
+        assertEquals(incomplete, viewModel.uiState.value.vpnTransferFailure)
         assertTrue((viewModel.uiState.value.install as InstallState.Done).active)
         assertEquals(setOf(browser.packageName), configuredApps)
     }

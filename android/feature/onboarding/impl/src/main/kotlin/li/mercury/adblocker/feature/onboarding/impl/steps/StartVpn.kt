@@ -30,6 +30,7 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import li.mercury.adblocker.core.data.repository.VpnTransferPart
 import li.mercury.adblocker.core.designsystem.component.MarkDefaults
 import li.mercury.adblocker.core.designsystem.component.MarkState
 import li.mercury.adblocker.core.designsystem.component.StatusMark
@@ -101,10 +102,23 @@ internal fun ColumnScope.StartVpn(state: OnboardingUiState, onStart: () -> Unit,
         },
         centered = true,
     ) {
-        Reveal(state.vpnTransferIncomplete) { Hint(stringResource(R.string.feature_onboarding_vpn_transfer_incomplete), centered = true) }
+        RevealNotNull(state.vpnTransferFailure) { failure ->
+            Column {
+                if (failure.failed.isEmpty()) Hint(stringResource(R.string.feature_onboarding_vpn_transfer_incomplete), centered = true)
+                for (part in failure.failed.sorted()) Hint(stringResource(part.failureText()), centered = true)
+            }
+        }
         // A failure takes the parts away; the words above say what went wrong.
         Reveal(hasApps && install !is InstallState.Failed) { VpnParts(state, install, done, lists) }
     }
+}
+
+private fun VpnTransferPart.failureText() = when (this) {
+    VpnTransferPart.Apps -> R.string.feature_onboarding_vpn_transfer_apps
+    VpnTransferPart.Lists -> R.string.feature_onboarding_vpn_transfer_lists
+    VpnTransferPart.Rules -> R.string.feature_onboarding_vpn_transfer_rules
+    VpnTransferPart.TrustedSites -> R.string.feature_onboarding_vpn_transfer_trusted_sites
+    VpnTransferPart.UrlFiltering -> R.string.feature_onboarding_vpn_transfer_url_filtering
 }
 
 /** The button the VPN step shows. Finish turning on keeps its place; other buttons fade through. */

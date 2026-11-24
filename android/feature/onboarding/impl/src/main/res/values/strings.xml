@@ -114,6 +114,11 @@
     <string name="feature_onboarding_notifications_off">Notifications not allowed</string>
     <string name="feature_onboarding_notifications_off_text">Can be allowed in Settings</string>
     <string name="feature_onboarding_vpn_transfer_incomplete">Some root mode settings could not be carried over.</string>
+    <string name="feature_onboarding_vpn_transfer_apps">The root mode app filtering settings could not be carried over.</string>
+    <string name="feature_onboarding_vpn_transfer_lists">Some root mode filter list settings could not be carried over.</string>
+    <string name="feature_onboarding_vpn_transfer_rules">The root mode custom rules could not be carried over.</string>
+    <string name="feature_onboarding_vpn_transfer_trusted_sites">Some root mode trusted sites could not be carried over.</string>
+    <string name="feature_onboarding_vpn_transfer_url_filtering">The root mode URL filtering settings could not be carried over.</string>
     <string name="feature_onboarding_vpn_connected">VPN connected</string>
     <string name="feature_onboarding_vpn_connected_text">Only the chosen apps use the VPN</string>
     <string name="feature_onboarding_lists_downloaded">Lists downloaded</string>

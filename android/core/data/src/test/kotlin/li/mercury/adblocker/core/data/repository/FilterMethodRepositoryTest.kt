@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdException
+import li.mercury.adblocker.core.data.FilterCatalog
 import li.mercury.adblocker.core.data.repository.FilterMethodRepositoryFixture.FakeAbd
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteringScope
@@ -102,7 +103,7 @@ class FilterMethodRepositoryTest {
             beforeCommand = { if (it == "app add ") throw AbdException.CommandRejected() }
         }
 
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Apps)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(prior, engine.apps)
     }
@@ -131,46 +132,100 @@ class FilterMethodRepositoryTest {
             trusted = listOf("bank.example"),
         )
         val engine = FakeAbd().apply { failing += "allow add bank.example" }
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.TrustedSites)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
         assertEquals(root.apps, engine.apps)
         assertTrue(engine.trusted.isEmpty())
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.method)
     }
 
     @Test
-    fun aMethodThatCannotBeReadIsLeftWithNothingCarried() = runTest {
-        val root = FakeAbd(apps = setOf("com.example.news")).apply { unreachable = AbdException.NoRoot() }
-        val engine = FakeAbd(apps = setOf("com.example.shop"))
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
-        assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.method)
-        assertEquals(setOf("com.example.shop"), engine.apps)
-        assertEquals(emptyList(), engine.ran)
-    }
-
-    @Test
-    fun givenNoMethodChosenAndNoRoot_whenChoosingVpn_thenTheSwitchIsComplete() = runTest {
+    fun givenRootOrItsModuleIsUnavailable_whenChoosingVpn_thenTheSwitchIsComplete() = runTest {
         for (absent in listOf(AbdException.NoRoot(), AbdException.ModuleMissing())) {
-            fixture.userData.userData.value = UserData()
-            val root = FakeAbd().apply { unreachable = absent }
-            val engine = FakeAbd(apps = setOf("com.example.shop"))
+            for (settings in listOf(UserData(), UserData(filterMethod = FilterMethod.Root, onboardingDone = true))) {
+                fixture.userData.userData.value = settings
+                val root = FakeAbd().apply { unreachable = absent }
+                val engine = FakeAbd(apps = setOf("com.example.shop"))
 
-            assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+                assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
-            assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
-            assertEquals(setOf("com.example.shop"), engine.apps)
-            assertEquals(emptyList(), engine.ran)
+                assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+                assertEquals(setOf("com.example.shop"), engine.apps)
+                assertEquals(emptyList(), engine.ran)
+            }
         }
     }
 
     @Test
-    fun givenNoMethodChosenAndTheModuleTimesOut_whenChoosingVpn_thenTheTransferIsIncomplete() = runTest {
+    fun givenNoRootSetupAndAnUnreadableModule_whenChoosingVpn_thenTheSwitchIsComplete() = runTest {
         fixture.userData.userData.value = UserData()
+        val root = FakeAbd().apply { unreachable = AbdException.TimedOut() }
+        val engine = FakeAbd()
+
+        assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+        assertTrue(engine.ran.isEmpty())
+    }
+
+    @Test
+    fun givenCompletedLegacyRootSetupAndAnUnreadableModule_whenChoosingVpn_thenTheTransferIsIncomplete() = runTest {
+        fixture.userData.userData.value = UserData(onboardingDone = true)
         val root = FakeAbd(apps = setOf("com.example.news")).apply { unreachable = AbdException.TimedOut() }
         val engine = FakeAbd()
 
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+        assertTrue(engine.ran.isEmpty())
+    }
+
+    @Test
+    fun givenAnUnconfiguredModuleWithBundledDefaults_whenChoosingVpn_thenNoVpnSettingsAreReplaced() = runTest {
+        fixture.userData.userData.value = UserData()
+        val defaults = FilterCatalog.setupLists(listOf("zh")).filterValues { it } +
+            ("https://filters.adtidy.org/extension/ublock/filters/224.txt" to true)
+        val root = FakeAbd(lists = defaults).apply { failing += "rules get" }
+        val engine = FakeAbd(apps = setOf("com.example.saved")).apply { unreachable = AbdException.EngineMissing() }
+
+        assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+        assertEquals(setOf("com.example.saved"), engine.apps)
+    }
+
+    @Test
+    fun givenAStoredVpnChoice_whenSetupResumesAfterAnUpgrade_thenNeitherConfigurationIsRead() = runTest {
+        val directory = temporaryFolder.newFolder()
+        fixture.withStoredPreferences(directory) { it.setFilterMethod(FilterMethod.Vpn) }
+        val root = FakeAbd().apply { beforeCommand = { error("VPN was already chosen") } }
+        val engine = FakeAbd().apply { beforeCommand = { error("Nothing to carry") } }
+
+        fixture.withStoredPreferences(directory) { stored ->
+            assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine, stored).switchTo(FilterMethod.Vpn))
+            assertEquals(FilterMethod.Vpn, stored.userData.first().filterMethod)
+        }
+    }
+
+    @Test
+    fun givenNoAppChoicesButCustomRulesAndLists_whenBothFail_thenBothPartsAreReported() = runTest {
+        fixture.userData.userData.value = UserData()
+        val root = FakeAbd(lists = mapOf(EASYLIST to false), rules = "||ads.example^\n")
+        val engine = FakeAbd().apply { failing += setOf("list add", "rules set") }
+
+        assertEquals(
+            FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Lists, VpnTransferPart.Rules)),
+            fixture.repository(root, engine).switchTo(FilterMethod.Vpn),
+        )
+    }
+
+    @Test
+    fun givenIdenticalUrlSettings_whenSwitchingToVpn_thenNoUrlSettingIsWritten() = runTest {
+        val root = FakeAbd(apps = setOf("com.example.news"))
+        val engine = FakeAbd().apply { failing += setOf("url-filtering", "cosmetic") }
+
+        assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertEquals(root.apps, engine.apps)
     }
 
     @Test
@@ -197,7 +252,7 @@ class FilterMethodRepositoryTest {
             failing += "app selections --json"
         }
 
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Apps)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.method)
         assertEquals(previous, engine.apps)
@@ -212,7 +267,7 @@ class FilterMethodRepositoryTest {
         val engine = FakeAbd(excluded = previousExclusions)
         engine.beforeCommand = { if (it == "rules get") root.excluded += "com.example.shop" }
 
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Apps)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.method)
         assertEquals(previousExclusions, engine.excluded)
@@ -235,7 +290,7 @@ class FilterMethodRepositoryTest {
             }
         }
 
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Apps)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(priorApps, engine.apps)
         assertEquals(priorExclusions, engine.excluded)
@@ -292,7 +347,7 @@ class FilterMethodRepositoryTest {
     fun aPartThatCannotBeReadIsLeftAsTheNewMethodHasIt() = runTest {
         val root = FakeAbd(apps = setOf("com.example.news"), rules = "||ads.example^\n").apply { failing += "rules get" }
         val engine = FakeAbd(rules = "||kept.example^\n")
-        assertEquals(FilterMethodSwitch.VpnTransferIncomplete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+        assertEquals(FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Rules)), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
         assertEquals("||kept.example^\n", engine.rules)
         assertEquals(setOf("com.example.news"), engine.apps)
     }

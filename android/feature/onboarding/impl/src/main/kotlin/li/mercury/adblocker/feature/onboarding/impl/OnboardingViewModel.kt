@@ -111,7 +111,7 @@ data class OnboardingUiState(
     val notifications: Boolean? = null,
     /** With the VPN: the system's consent was refused the last time it was asked. */
     val consentRefused: Boolean = false,
-    val vpnTransferIncomplete: Boolean = false,
+    val vpnTransferFailure: FilterMethodSwitch.VpnTransferIncomplete? = null,
     /** The method setup goes on with, set when the check is left: root mode where it can run, the VPN otherwise. */
     val method: FilterMethod = FilterMethod.Root,
 ) {
@@ -338,8 +338,9 @@ class OnboardingViewModel @Inject constructor(
             downloadPending = true
             suspendRunCatching("vpn start") {
                 state.update { it.copy(consentRefused = false, install = InstallState.Running(InstallStage.Apps, 0.1f)) }
-                if (methods.switchTo(FilterMethod.Vpn) == FilterMethodSwitch.VpnTransferIncomplete) {
-                    state.update { it.copy(vpnTransferIncomplete = true) }
+                val transfer = methods.switchTo(FilterMethod.Vpn)
+                if (transfer is FilterMethodSwitch.VpnTransferIncomplete) {
+                    state.update { it.copy(vpnTransferFailure = transfer) }
                 }
                 lists.configure(choice.lists)
                 apps.configure(choice.picks)

@@ -25,6 +25,7 @@ import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.AbdClient
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.AbdWriteLock
+import li.mercury.adblocker.core.data.FilterCatalog
 import li.mercury.adblocker.core.data.fixedAbdClient
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.data.transport.AbdTransport
@@ -107,9 +108,15 @@ internal class DefaultFilterMethodRepository(
             userData.setFilterMethod(method)
             return FilterMethodSwitch.Complete
         }
-        val transfer = writes.mutex.withLock { switchToVpn(firstChoice = settings.filterMethod == null) }
+        // VPN setup always records its method. Root setup can finish with the method unset.
+        val rootWasConfigured = settings.filterMethod == FilterMethod.Root || settings.onboardingDone
+        val transfer = writes.mutex.withLock { switchToVpn(rootWasConfigured) }
         if (transfer.listsAdded) scheduleUpdates()
-        if (transfer.failed == 0) FilterMethodSwitch.Complete else FilterMethodSwitch.VpnTransferIncomplete
+        when {
+            transfer.rootUnreadable -> FilterMethodSwitch.VpnTransferIncomplete()
+            transfer.failed.isNotEmpty() -> FilterMethodSwitch.VpnTransferIncomplete(transfer.failed.toSet())
+            else -> FilterMethodSwitch.Complete
+        }
     }
 
     override suspend fun retryRootSwitch(): Boolean = switching.withLock {
@@ -274,15 +281,18 @@ internal class DefaultFilterMethodRepository(
         }
     }
 
-    private suspend fun switchToVpn(firstChoice: Boolean): Written = changes.changing {
+    private suspend fun switchToVpn(rootWasConfigured: Boolean): Written = changes.changing {
         val from = transportOf(FilterMethod.Root).fixedAbdClient()
         val carried = suspendRunCatching { read(from) }.getOrElse { e ->
-            Timber.w("method switch: read apps: %s", e.javaClass.simpleName)
             userData.setFilterMethod(FilterMethod.Vpn)
-            // Before any method was chosen, a device without root or without
-            // the module has no root settings: there is nothing to carry.
-            val nothingToCarry = firstChoice && (e is AbdException.NoRoot || e is AbdException.ModuleMissing)
-            return@changing Written(failed = if (nothingToCarry) 0 else 1)
+            if (e is AbdException.NoRoot || e is AbdException.ModuleMissing) return@changing Written()
+            Timber.w("method switch: read apps: %s", e.javaClass.simpleName)
+            return@changing Written(rootUnreadable = rootWasConfigured)
+        }
+        if (!rootWasConfigured && !carried.hasChoices) {
+            // A fresh module already returns built-in defaults. Leave any VPN settings in place.
+            userData.setFilterMethod(FilterMethod.Vpn)
+            return@changing Written()
         }
 
         val to = transportOf(FilterMethod.Vpn).fixedAbdClient()
@@ -290,12 +300,11 @@ internal class DefaultFilterMethodRepository(
         val previous = suspendRunCatching { to.appSelections() }.getOrNull()
         // The VPN uses personal packages. An identity in another profile
         // must never turn on its personal instance or replace saved work choices.
-        val personal = carried.apps.chosen.filter { SavedAppKey(it).isTransferablePersonalPackage }
         val savedWork = previous?.chosen.orEmpty().filterNotTo(mutableSetOf()) { SavedAppKey(it).isPersonal }
-        val wanted = carried.apps.copy(chosen = savedWork + personal)
+        val wanted = carried.apps.copy(chosen = savedWork + carried.personal)
         val verified = previous != null && suspendRunCatching { from.appSelections() == carried.apps }.getOrDefault(false)
-        if (!publishVpn(to, previous.takeIf { verified }, wanted)) written.failed++
-        if (written.failed > 0) {
+        if (!publishVpn(to, previous.takeIf { verified }, wanted)) written.failed += VpnTransferPart.Apps
+        if (written.failed.isNotEmpty()) {
             Timber.w("method switch: VPN transfer incomplete")
         } else {
             Timber.i("method switch: %d items carried", written.done)
@@ -353,9 +362,19 @@ internal class DefaultFilterMethodRepository(
         val trusted: List<String>?,
         val urlFiltering: Boolean?,
         val cosmetic: Boolean?,
-    )
+    ) {
+        val personal = apps.chosen.filter { SavedAppKey(it).isTransferablePersonalPackage }
+        val hasChoices: Boolean
+            get() = personal.isNotEmpty() || apps.excluded.isNotEmpty() || apps.scope == FilteringScope.All ||
+                !rules.isNullOrEmpty() || !trusted.isNullOrEmpty() || urlFiltering == false || cosmetic == true ||
+                lists.orEmpty().any { !it.enabled || !FilterCatalog.canBeDefault(it.url) }
+    }
 
-    private class Written(var done: Int = 0, var failed: Int = 0, var listsAdded: Boolean = false)
+    private class Written(val rootUnreadable: Boolean = false) {
+        val failed = mutableSetOf<VpnTransferPart>()
+        var done = 0
+        var listsAdded = false
+    }
 
     /** What [from] has, each part on its own; throws if its apps cannot be read at all. */
     private suspend fun read(from: AbdClient): Carried {
@@ -374,64 +393,73 @@ internal class DefaultFilterMethodRepository(
     private suspend fun writeToVpn(to: AbdClient, carried: Carried): Written {
         val written = Written()
 
-        suspend fun <T> read(read: suspend () -> T): T? = suspendRunCatching { read() }.getOrElse {
-            written.failed++
+        suspend fun <T> read(part: VpnTransferPart, read: suspend () -> T): T? = suspendRunCatching { read() }.getOrElse {
+            written.failed += part
             null
         }
 
-        suspend fun each(change: suspend () -> Unit): Boolean {
+        suspend fun each(part: VpnTransferPart, change: suspend () -> Unit): Boolean {
             val ok = suspendRunCatching { change() }.isSuccess
-            if (ok) written.done++ else written.failed++
+            if (ok) written.done++ else written.failed += part
             return ok
         }
 
         // The option travels with the other settings. Each method still checks its own trust.
-        when (carried.urlFiltering) {
-            null -> written.failed++
-
-            false -> each { to.setUrlFiltering(false) }
-
-            true -> if (each { to.setUrlFiltering(true) }) {
+        val urlFiltering = carried.urlFiltering
+        val urlPart = VpnTransferPart.UrlFiltering
+        if (urlFiltering == null) {
+            written.failed += urlPart
+        } else {
+            val current = suspendRunCatching { to.status() }.getOrNull()
+            val copiedUrl = current?.urlFiltering == urlFiltering || each(urlPart) { to.setUrlFiltering(urlFiltering) }
+            if (copiedUrl && urlFiltering) {
                 val cosmetic = carried.cosmetic
-                if (cosmetic == null) written.failed++ else each { to.setCosmetic(cosmetic) }
+                if (cosmetic == null) {
+                    written.failed += urlPart
+                } else if (current?.cosmetic != cosmetic) {
+                    each(urlPart) { to.setCosmetic(cosmetic) }
+                }
             }
         }
 
+        val trustedPart = VpnTransferPart.TrustedSites
         val trusted = carried.trusted
         if (trusted == null) {
-            written.failed++
+            written.failed += trustedPart
         } else {
-            read { to.allowList() }?.let { had ->
-                had.filterNot { it in trusted }.forEach { each { to.disallow(it) } }
-                trusted.filterNot { it in had }.forEach { each { to.allow(it) } }
+            read(trustedPart) { to.allowList() }?.let { had ->
+                had.filterNot { it in trusted }.forEach { each(trustedPart) { to.disallow(it) } }
+                trusted.filterNot { it in had }.forEach { each(trustedPart) { to.allow(it) } }
             }
         }
 
+        val rulesPart = VpnTransferPart.Rules
         val rules = carried.rules
         if (rules == null) {
-            written.failed++
+            written.failed += rulesPart
         } else {
-            read { to.userRules() }?.let { had ->
-                if (had != rules) each { to.setUserRules(rules) }
+            read(rulesPart) { to.userRules() }?.let { had ->
+                if (had != rules) each(rulesPart) { to.setUserRules(rules) }
             }
         }
 
+        val listsPart = VpnTransferPart.Lists
         val lists = carried.lists
         if (lists == null) {
-            written.failed++
+            written.failed += listsPart
         } else {
-            read { to.lists().associate { it.url to it.enabled } }?.let { had ->
+            read(listsPart) { to.lists().associate { it.url to it.enabled } }?.let { had ->
                 val wanted = lists.map { it.url }.toSet()
-                had.keys.filterNot { it in wanted }.forEach { each { to.removeList(it) } }
+                had.keys.filterNot { it in wanted }.forEach { each(listsPart) { to.removeList(it) } }
                 for (list in lists) {
                     val enabled = had[list.url]
                     when {
-                        enabled == null -> if (each { to.addList(list.url) }) {
+                        enabled == null -> if (each(listsPart) { to.addList(list.url) }) {
                             written.listsAdded = true
-                            if (!list.enabled) each { to.setListEnabled(list.url, false) }
+                            if (!list.enabled) each(listsPart) { to.setListEnabled(list.url, false) }
                         }
 
-                        enabled != list.enabled -> each { to.setListEnabled(list.url, list.enabled) }
+                        enabled != list.enabled -> each(listsPart) { to.setListEnabled(list.url, list.enabled) }
                     }
                 }
             }

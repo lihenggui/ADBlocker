@@ -61,4 +61,13 @@ object FilterCatalog {
     }
 
     fun byUrl(url: String): CatalogEntry? = entries.firstOrNull { it.url == url }
+
+    /** The root module can be older than the app and use an earlier default address. */
+    internal fun canBeDefault(url: String): Boolean = when (url) {
+        "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+        "https://filters.adtidy.org/extension/ublock/filters/224.txt",
+        -> true
+
+        else -> byUrl(url)?.let { it.defaultEnabled || it.defaultLanguages.isNotEmpty() } == true
+    }
 }
