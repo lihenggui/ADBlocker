@@ -190,7 +190,8 @@ class SettingsViewModel @Inject constructor(
         val byApp = if (inUse) suspendRunCatching { module.isInstalledByApp() }.getOrNull() else null
         // What waits replaces the app's installation at the restart, or is all there is until then.
         // For a module that needs the restart it tells an update waiting from a removal.
-        val mayWait = byApp == true || state == ModuleState.NotInstalled || state == ModuleState.NeedsRestart
+        // For a flashed module in use, of any version, it is an update the manager applies at the restart.
+        val mayWait = byApp != null || state == ModuleState.NotInstalled || state == ModuleState.NeedsRestart
         val staged = mayWait && suspendRunCatching { module.isStagedInManager() }.getOrDefault(state == ModuleState.NeedsRestart)
         return Installation(state, byApp, staged)
     }

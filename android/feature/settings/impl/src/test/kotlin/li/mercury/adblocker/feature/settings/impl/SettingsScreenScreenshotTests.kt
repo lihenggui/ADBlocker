@@ -280,6 +280,14 @@ class SettingsScreenScreenshotTests {
     }
 
     @Test
+    fun givenAFlashedModuleOfThisVersionWithAnUpdateStaged_whenShown_thenLooksAsAnyWaitingUpdate() {
+        // The manager copied the new module's files already: the module reads as ready, and the row is the same.
+        captureTallPhone("SettingsRestartToUpdate") {
+            Settings(heldForUpdate.copy(service = heldForUpdate.service.copy(module = ModuleState.Ready, installedByApp = false)))
+        }
+    }
+
+    @Test
     @Config(qualifiers = "zh-rCN")
     fun givenAModuleWithAnUpdateWaitingInItsManager_whenShownInChinese_thenMatchesGolden() {
         composeTestRule.captureForDevice("phone_tall_zh", TALL_PHONE, "SettingsRestartToUpdate") { Settings(heldForUpdate) }

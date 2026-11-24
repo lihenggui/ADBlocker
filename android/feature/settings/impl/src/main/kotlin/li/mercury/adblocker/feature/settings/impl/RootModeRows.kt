@@ -233,6 +233,13 @@ internal fun installationRow(service: ServiceInfo, onRemove: () -> Unit): RootRo
             AdbIcons.Info,
         )
 
+        // The manager has copied the new module's files but runs the old daemon until the restart.
+        service.installedByApp == false && service.stagedInManager -> RootRow(
+            inManager,
+            stringResource(R.string.feature_settings_root_restart_to_update),
+            AdbIcons.Info,
+        )
+
         service.stagedInManager -> RootRow(inManager, stringResource(R.string.feature_settings_root_flashed_pending_text), AdbIcons.Info)
 
         service.installedByApp == true -> RootRow(
