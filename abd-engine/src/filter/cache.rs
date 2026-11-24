@@ -38,7 +38,6 @@ impl Filters {
         }
         let (rules, host_rules) = (f.next()?.parse().ok()?, f.next()?.parse().ok()?);
         let has_host_guards = f.next()?.parse().ok()?;
-        let has_unknown = f.next()?.parse().ok()?;
         let has_no_cosmetic: bool = f.next()?.parse().ok()?;
         let has_no_elements: bool = f.next()?.parse().ok()?;
         let has_specific: bool = f.next()?.parse().ok()?;
@@ -75,14 +74,7 @@ impl Filters {
         use_scriptlets(&mut full);
         Some(Self {
             generation: Some(key),
-            requests: RequestRules {
-                full,
-                unknown: if has_unknown {
-                    Some(engine("unknown")?)
-                } else {
-                    None
-                },
-            },
+            requests: RequestRules { full },
             page_exceptions: PageExceptions {
                 all: if has_no_cosmetic {
                     Some(engine("no-cosmetic")?)
@@ -117,7 +109,6 @@ impl Filters {
         let write = || -> std::io::Result<()> {
             std::fs::create_dir_all(cache)?;
             let full = self.requests.full.serialize();
-            let unknown = self.requests.unknown.as_ref().map(Engine::serialize);
             let hosts = self.hosts.serialize();
             let host_guards = self.host_guards.as_ref().map(Engine::serialize);
             let exceptions = &self.page_exceptions;
@@ -125,7 +116,8 @@ impl Filters {
             let kept = apps.map(|rules| rules.serialized().map(Some));
             let compiled = [
                 ("full", Some(full)),
-                ("unknown", unknown),
+                // Kept by versions that judged a request without a page apart.
+                ("unknown", None),
                 ("hosts", Some(hosts)),
                 ("host-guards", host_guards),
                 (
@@ -176,11 +168,10 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.host_guards.is_some(),
-                self.requests.unknown.is_some(),
                 exceptions.all.is_some(),
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),

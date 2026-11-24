@@ -138,7 +138,7 @@ impl Diagnostics {
             Some((decoded, tail))
         }
         let (full, rest) = engine(rest)?;
-        let (unknown, mut rest) = engine(rest)?;
+        let mut rest = rest;
         let mut apps = [&[][..]; 4];
         for kept in &mut apps {
             let (size, tail) = rest.split_at_checked(4)?;
@@ -156,10 +156,7 @@ impl Diagnostics {
             return None;
         }
         Some(Self {
-            rules: RequestRules {
-                full: full?,
-                unknown,
-            },
+            rules: RequestRules { full: full? },
             apps,
             index: entries.to_vec(),
         })
@@ -167,18 +164,13 @@ impl Diagnostics {
 
     fn write(&self, path: &Path, generation: u64) -> std::io::Result<()> {
         let full = self.rules.full.serialize();
-        let unknown = self
-            .rules
-            .unknown
-            .as_ref()
-            .map_or_else(Vec::new, Engine::serialize);
         // Empty, as no compiled engine is, where no list has such a rule.
         let apps = self
             .apps
             .as_ref()
             .map(AppRules::serialized)
             .unwrap_or_default();
-        let compiled = [full, unknown].into_iter().chain(apps);
+        let compiled = [full].into_iter().chain(apps);
         let size = 40
             + compiled.clone().map(|part| 4 + part.len()).sum::<usize>()
             + self.index.len() * size_of::<Entry>();
@@ -322,7 +314,7 @@ mod tests {
     }
 
     #[test]
-    fn diagnostics_without_a_source_keep_real_context_unknown_across_cache_loads() {
+    fn diagnostics_without_a_source_apply_no_rule_for_a_named_page_across_cache_loads() {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
         std::fs::create_dir_all(paths.rules()).unwrap();
@@ -342,12 +334,12 @@ mod tests {
             )
             .unwrap()
         };
-        let possible_exception = || {
+        let exception_for_a_page = |page| {
             check(
                 &paths,
                 None,
                 "https://ads.example/allowed/p.gif",
-                "",
+                page,
                 "image",
             )
             .unwrap()
@@ -360,7 +352,8 @@ mod tests {
             assert!(neutral.blocked);
             assert_eq!(neutral.rule.as_deref(), Some("||ads.example^"));
             assert_eq!(neutral.source.as_deref(), Some("rules"));
-            assert!(!possible_exception().blocked);
+            assert!(exception_for_a_page("").blocked);
+            assert!(!exception_for_a_page("https://reader.example/").blocked);
             assert!(
                 check(
                     &paths,
