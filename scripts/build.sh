@@ -66,6 +66,13 @@ fi
 host_tag="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
 bin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$host_tag/bin"
 
+# A panic's location names the source file, of a crate in Cargo's home
+# or of this checkout: paths of the machine that built it, which would
+# make one build of a release differ from another's (F-Droid's), and
+# carry its user's name. Named from fixed roots instead.
+cargo_home="${CARGO_HOME:-$HOME/.cargo}"
+export RUSTFLAGS="${RUSTFLAGS:+$RUSTFLAGS }--remap-path-prefix=$cargo_home=/cargo --remap-path-prefix=$PWD=/adblocker"
+
 target_args=()
 for target in "${TARGETS[@]}"; do
     clang="$bin/${target}${API}-clang"
