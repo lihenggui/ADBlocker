@@ -1,7 +1,8 @@
 name: Set up the build environment
 description: >
-  Sets up Rust stable, a JDK and Gradle. The Android SDK and NDK come
-  with the runner image.
+  Sets up the Rust release of rust-toolchain.toml, the NDK of
+  scripts/ndk-version, a JDK and Gradle. The Android SDK comes with the
+  runner image.
 
 runs:
   using: composite
@@ -9,19 +10,25 @@ runs:
     - name: Install the Rust toolchain
       shell: bash
       run: |
-        rustup toolchain install stable --profile minimal \
+        channel="$(sed -n 's/^channel = "\(.*\)"$/\1/p' rust-toolchain.toml)"
+        rustup toolchain install "$channel" --profile minimal \
           --component rustfmt,clippy \
           --target aarch64-linux-android --target x86_64-linux-android
-        rustup default stable
 
     - name: Cache Rust build output
       uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
 
-    # scripts/build.sh uses $ANDROID_NDK_HOME as it is; the image points it at
-    # an older NDK than the newest one it carries.
-    - name: Select the newest NDK
+    # The image points $ANDROID_NDK_HOME at an NDK of its own choosing,
+    # which scripts/build.sh would take.
+    - name: Install the NDK
       shell: bash
-      run: echo "ANDROID_NDK_HOME=$ANDROID_NDK_LATEST_HOME" >>"$GITHUB_ENV"
+      run: |
+        version="$(<scripts/ndk-version)"
+        ndk="$ANDROID_HOME/ndk/$version"
+        if [[ ! -d "$ndk" ]]; then
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --install "ndk;$version" >/dev/null
+        fi
+        echo "ANDROID_NDK_HOME=$ndk" >>"$GITHUB_ENV"
 
     - name: Set up the JDK
       uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0

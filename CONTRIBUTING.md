@@ -10,10 +10,11 @@ library the app builds, and reports VPN mode unavailable. With
 `ADBLOCKER_NATIVE_ONLY=1` it stops after the native components, for a
 build that runs Gradle on its own, as F-Droid's does. It needs:
 
-- Rust stable with the targets `aarch64-linux-android` and
-  `x86_64-linux-android`
-- the Android SDK (`$ANDROID_HOME`, or `~/Android/Sdk`) with an NDK
-  (`$ANDROID_NDK_HOME`, or the newest in the SDK)
+- rustup, which installs the Rust release of `rust-toolchain.toml` with
+  the targets `aarch64-linux-android` and `x86_64-linux-android`
+- the Android SDK (`$ANDROID_HOME`, or `~/Android/Sdk`) with the NDK of
+  `scripts/ndk-version` (`sdkmanager "ndk;<version>"`), or another one in
+  `$ANDROID_NDK_HOME`, for a build that is not a release
 - JDK 21, for Gradle
 
 A release key is read from `android/keystore.properties` (`storeFile`,
@@ -225,6 +226,13 @@ stores that take only APK names. Publish both together with
 and the R8 mapping. The source archive carries the tagged code, vendored
 Rust dependencies, the AndroidX modules that supply native libraries, and
 build and dependency details in `release-info/`.
+
+A release is built again from its tag by others and compared byte for
+byte: F-Droid does, and publishes the APK signed here only when its own
+build is the same. That takes the same Rust release and NDK, the ones
+`rust-toolchain.toml` and `scripts/ndk-version` name, which
+`scripts/release.sh` insists on. A change to either changes `ndk:` and
+the Rust release in F-Droid's recipe for the app as well.
 
 On GitHub, run CI with device checks to test the module and VPN on an
 Android 15 emulator. The Release workflow runs these checks for the tagged
