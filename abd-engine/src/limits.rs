@@ -33,6 +33,9 @@ const EACH: usize = 6;
 /// listeners, the lists being read, the log, the tools of the rules.
 const SPARE: usize = 128;
 
+/// The most app identities remembered for having shown a page.
+pub(crate) const MAX_APPS_WITH_PAGES: usize = 4096;
+
 pub struct Limits {
     max: usize,
     /// For one app: no more than half, so that no app can leave the

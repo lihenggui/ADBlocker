@@ -128,8 +128,13 @@ The daemon forwards the original connection when the first TLS record
 contains only part of the ClientHello, the name is missing, or the user
 has allowed the site. Otherwise, it first checks whether a rule blocks
 the whole host. With URL filtering on, the daemon defers the decision
-when a web exception could apply. A connection that passes this check
-stays encrypted while URL filtering is off.
+when an exception names the host: the connection is decrypted and its
+requests are judged one by one. An exception counts for this only if a
+rule blocks the exception's own host whole. One that names no host, or
+a host that no rule blocks whole, does not keep a host from being
+refused. An exception for named pages counts once the app has made a
+request that shows a page. A connection that passes this check stays
+encrypted while URL filtering is off.
 
 The host check uses the visible server name (SNI) even when the hello
 carries Encrypted Client Hello (ECH). With GREASE ECH, the visible name
@@ -144,8 +149,8 @@ exclusion list, has an Extended Validation certificate, or was rejected by
 the app is judged by the domain rules, as with URL filtering off: none of
 its requests will be seen, so no web exception can apply to them. Where
 the app does not trust the local certificate, or the server cannot be
-verified, a host that a rule blocks is refused unless an exception names
-that host. Until
+verified, a host that a rule blocks is refused unless such an exception
+names it and needs no page. Until
 the exclusion lists have been read for the first time, every connection
 stays encrypted and is judged the same way.
 

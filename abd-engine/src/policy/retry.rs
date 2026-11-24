@@ -274,7 +274,14 @@ mod tests {
         /// What a connection, or a lookup, of the app is decided.
         fn decide(policy: &Policy, filters: &Filters, package: &str, host: &str) -> Verdict {
             let ready = Exclusions::default().assume_ready();
-            policy.decide_named(package, host, filters, &ready, &Allow::default(), false)
+            policy.decide_named(
+                package,
+                host,
+                filters.for_app(package),
+                &ready,
+                &Allow::default(),
+                false,
+            )
         }
 
         const PINNED: Verdict = Verdict::Passthrough(Reason::Pinned);

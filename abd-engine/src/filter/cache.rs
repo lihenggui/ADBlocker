@@ -25,6 +25,23 @@ use crate::list_files::MAX_COMPILED;
 /// The files of the rules for apps, in the order they are kept in.
 const APPS: [&str; 4] = ["app-blocks", "app-exceptions", "app-hosts", "app-guards"];
 
+fn read_apps(cache: &Path, remaining: &mut usize) -> Option<AppRules> {
+    let [blocks, exceptions, hosts, guards] = APPS.map(|name| {
+        let kept = files::read_bytes(&cache.join(name), *remaining).ok()?;
+        *remaining -= kept.len();
+        Some(kept)
+    });
+    AppRules::compiled([&blocks?, &exceptions?, &hosts?, &guards?])
+}
+
+fn optional_engine(present: bool, read: impl FnOnce() -> Option<Engine>) -> Option<Option<Engine>> {
+    if present {
+        Some(Some(read()?))
+    } else {
+        Some(None)
+    }
+}
+
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
     pub(super) fn read_cache(cache: &Path, key: u64) -> Option<Self> {
@@ -37,27 +54,17 @@ impl Filters {
             return None;
         }
         let (rules, host_rules) = (f.next()?.parse().ok()?, f.next()?.parse().ok()?);
-        let any_host_guard = f.next()?.parse().ok()?;
+        let guards_incomplete = f.next()?.parse().ok()?;
+        let has_page_guards: bool = f.next()?.parse().ok()?;
+        let has_app_guards: bool = f.next()?.parse().ok()?;
+        let has_app_page_guards: bool = f.next()?.parse().ok()?;
         let has_no_cosmetic: bool = f.next()?.parse().ok()?;
         let has_no_elements: bool = f.next()?.parse().ok()?;
         let has_specific: bool = f.next()?.parse().ok()?;
-        // Absent from what was kept before there were rules for apps:
-        // those of its lists were not compiled.
         let has_apps: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
         let apps = if has_apps {
-            let mut kept = APPS.map(|name| {
-                let kept = files::read_bytes(&cache.join(name), remaining).ok()?;
-                remaining -= kept.len();
-                Some(kept)
-            });
-            let [blocks, exceptions, hosts, guards] = kept.each_mut().map(Option::take);
-            Some(AppRules::compiled([
-                &blocks?,
-                &exceptions?,
-                &hosts?,
-                &guards?,
-            ])?)
+            Some(read_apps(cache, &mut remaining)?)
         } else {
             None
         };
@@ -76,16 +83,8 @@ impl Filters {
             generation: Some(key),
             requests: RequestRules { full },
             page_exceptions: PageExceptions {
-                all: if has_no_cosmetic {
-                    Some(engine("no-cosmetic")?)
-                } else {
-                    None
-                },
-                element: if has_no_elements {
-                    Some(engine("no-element-hiding")?)
-                } else {
-                    None
-                },
+                all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
+                element: optional_engine(has_no_elements, || engine("no-element-hiding"))?,
                 specific: if has_specific {
                     Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
                 } else {
@@ -94,57 +93,65 @@ impl Filters {
             },
             hosts: engine("hosts")?,
             host_guards: engine("host-guards")?,
-            any_host_guard,
+            page_host_guards: optional_engine(has_page_guards, || engine("page-host-guards"))?,
+            app_host_guards: optional_engine(has_app_guards, || engine("app-host-guards"))?,
+            app_page_host_guards: optional_engine(has_app_page_guards, || {
+                engine("app-page-host-guards")
+            })?,
+            guards_incomplete,
             apps,
             rules,
             host_rules,
         })
     }
 
+    fn compiled_files(&self) -> impl Iterator<Item = (&'static str, Option<Vec<u8>>)> {
+        let exceptions = &self.page_exceptions;
+        let specific = exceptions.specific.as_ref();
+        let kept = self.apps.as_ref().map(|rules| rules.serialized().map(Some));
+        APPS.into_iter().zip(kept.unwrap_or_default()).chain([
+            ("full", Some(self.requests.full.serialize())),
+            // Kept by versions that judged a request without a page apart.
+            ("unknown", None),
+            ("hosts", Some(self.hosts.serialize())),
+            ("host-guards", Some(self.host_guards.serialize())),
+            (
+                "page-host-guards",
+                self.page_host_guards.as_ref().map(Engine::serialize),
+            ),
+            (
+                "app-host-guards",
+                self.app_host_guards.as_ref().map(Engine::serialize),
+            ),
+            (
+                "app-page-host-guards",
+                self.app_page_host_guards.as_ref().map(Engine::serialize),
+            ),
+            (
+                "no-cosmetic",
+                exceptions.all.as_ref().map(Engine::serialize),
+            ),
+            (
+                "no-element-hiding",
+                exceptions.element.as_ref().map(Engine::serialize),
+            ),
+            (
+                "no-specific-cosmetic",
+                specific.map(|(engine, _)| engine.serialize()),
+            ),
+            (
+                "generic-css",
+                specific.map(|(_, engine)| engine.serialize()),
+            ),
+        ])
+    }
+
     /// Keeps the engines for next time. Not being able to is no error.
     pub(super) fn write_cache(&self, cache: &Path, key: u64) {
         let write = || -> std::io::Result<()> {
             std::fs::create_dir_all(cache)?;
-            let full = self.requests.full.serialize();
-            let hosts = self.hosts.serialize();
-            let host_guards = Some(self.host_guards.serialize());
             let exceptions = &self.page_exceptions;
-            let apps = self.apps.as_ref();
-            let kept = apps.map(|rules| rules.serialized().map(Some));
-            let compiled = [
-                ("full", Some(full)),
-                // Kept by versions that judged a request without a page apart.
-                ("unknown", None),
-                ("hosts", Some(hosts)),
-                ("host-guards", host_guards),
-                (
-                    "no-cosmetic",
-                    exceptions.all.as_ref().map(Engine::serialize),
-                ),
-                (
-                    "no-element-hiding",
-                    exceptions.element.as_ref().map(Engine::serialize),
-                ),
-                (
-                    "no-specific-cosmetic",
-                    exceptions
-                        .specific
-                        .as_ref()
-                        .map(|(engine, _)| engine.serialize()),
-                ),
-                (
-                    "generic-css",
-                    exceptions
-                        .specific
-                        .as_ref()
-                        .map(|(_, engine)| engine.serialize()),
-                ),
-            ];
-            let compiled: Vec<_> = APPS
-                .into_iter()
-                .zip(kept.unwrap_or_default())
-                .chain(compiled)
-                .collect();
+            let compiled: Vec<_> = self.compiled_files().collect();
             let total: usize = compiled
                 .iter()
                 .filter_map(|(_, data)| data.as_ref())
@@ -165,14 +172,17 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
-                self.any_host_guard,
+                self.guards_incomplete,
+                self.page_host_guards.is_some(),
+                self.app_host_guards.is_some(),
+                self.app_page_host_guards.is_some(),
                 exceptions.all.is_some(),
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),
-                apps.is_some(),
+                self.apps.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };

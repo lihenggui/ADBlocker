@@ -90,6 +90,7 @@ struct Setup {
     allow: &'static str,
     /// The original destination port and the test socket it maps to.
     plaintext: Option<(u16, SocketAddr)>,
+    additional_name: Option<&'static str>,
 }
 
 impl Default for Setup {
@@ -107,6 +108,7 @@ impl Default for Setup {
             cosmetic: false,
             allow: "",
             plaintext: None,
+            additional_name: None,
         }
     }
 }
@@ -128,7 +130,8 @@ async fn rig(setup: Setup) -> Rig {
     root.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
     let root_cert = root.self_signed(&root_key).unwrap();
     let leaf_key = KeyPair::generate().unwrap();
-    let mut leaf = CertificateParams::new(vec![HOST.to_owned()]).unwrap();
+    let names = std::iter::once(HOST).chain(setup.additional_name);
+    let mut leaf = CertificateParams::new(names.map(str::to_owned).collect::<Vec<_>>()).unwrap();
     if setup.ev {
         // certificatePolicies naming 2.23.140.1.1, as an Extended
         // Validation certificate does.
@@ -396,6 +399,16 @@ impl Rig {
         alpn: &[&str],
         ech: Option<EchMode>,
     ) -> std::io::Result<tokio_rustls::client::TlsStream<TcpStream>> {
+        self.handshake_to(HOST, trust, alpn, ech).await
+    }
+
+    async fn handshake_to(
+        &self,
+        host: &'static str,
+        trust: Trust,
+        alpn: &[&str],
+        ech: Option<EchMode>,
+    ) -> std::io::Result<tokio_rustls::client::TlsStream<TcpStream>> {
         let builder = rustls::ClientConfig::builder_with_provider(provider());
         let mut config = match ech {
             Some(mode) => builder.with_ech(mode),
@@ -406,7 +419,7 @@ impl Rig {
         .with_no_client_auth();
         config.alpn_protocols = alpn.iter().map(|p| p.as_bytes().to_vec()).collect();
         let tcp = TcpStream::connect(self.proxy).await?;
-        let name = ServerName::try_from(HOST).unwrap();
+        let name = ServerName::try_from(host).unwrap();
         TlsConnector::from(Arc::new(config))
             .connect(name, tcp)
             .await
@@ -1103,6 +1116,128 @@ async fn full_mode_defers_host_checks_to_honor_request_exceptions() {
 }
 
 #[tokio::test]
+async fn page_exceptions_defer_tls_and_lookup_blocks_after_the_app_shows_a_page() {
+    const ALLOWED: &str = "files.test";
+    let rig = rig(Setup {
+        rules: "||site.test^\n@@||site.test^$script,domain=files.test\n",
+        additional_name: Some(ALLOWED),
+        ..Setup::default()
+    })
+    .await;
+
+    assert!(rig.handshake(Trust::System, H1).await.is_err());
+    assert_eq!(rig.hits(), 0);
+    assert_eq!(rig.dials.load(Relaxed), 0);
+    assert_eq!(rig.count(Counter::HostsBlocked), 1);
+    assert_eq!(rig.count(Counter::Decrypted), 0);
+    assert!(rig.ctx.blocks_udp_host(UID, HOST));
+
+    let page = "https://files.test/index.html";
+    let tls = rig
+        .handshake_to(ALLOWED, Trust::System, H1, None)
+        .await
+        .unwrap();
+    let (mut tx, conn) = hyper::client::conn::http1::handshake(TokioIo::new(tls))
+        .await
+        .unwrap();
+    tokio::spawn(conn);
+    let request = Request::get("/start")
+        .header(HOST_HEADER, ALLOWED)
+        .header(REFERER, page)
+        .body(Empty::<Bytes>::new())
+        .unwrap();
+    let response = tx.send_request(request).await.unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    response.into_body().collect().await.unwrap();
+    assert!(!rig.ctx.blocks_udp_host(UID, HOST));
+
+    for (path, referer, expected) in [
+        ("/asset.js", Some(page), StatusCode::OK),
+        ("/asset.js", None, StatusCode::FORBIDDEN),
+        (
+            "/asset.js",
+            Some("https://other.test/"),
+            StatusCode::FORBIDDEN,
+        ),
+        ("/asset.png", Some(page), StatusCode::FORBIDDEN),
+    ] {
+        let (status, _, real) = rig.get(Trust::System, H1, path, referer).await.unwrap();
+        assert_eq!(status, expected);
+        assert!(!real);
+    }
+    assert_eq!(rig.hits(), 2);
+    assert_eq!(rig.count(Counter::HostsBlocked), 2);
+    assert_eq!(rig.count(Counter::Decrypted), 5);
+    assert_eq!(rig.count(Counter::RequestsBlocked), 3);
+}
+
+#[tokio::test]
+async fn fetch_site_on_a_judged_request_records_the_app_even_when_blocked() {
+    let (rig, server) = plain_rig(Setup {
+        rules: "||ads.example^\n@@|https://ads.example/$script,domain=files.test\n",
+        ..Setup::default()
+    })
+    .await;
+    tokio::spawn(async move {
+        let (tcp, _) = server.accept().await.unwrap();
+        let service = service_fn(|_: Request<Incoming>| async {
+            Ok::<_, hyper::Error>(Response::new(Empty::<Bytes>::new()))
+        });
+        hyper::server::conn::http1::Builder::new()
+            .serve_connection(TokioIo::new(tcp), service)
+            .await
+            .unwrap();
+    });
+
+    let tcp = TcpStream::connect(rig.proxy).await.unwrap();
+    let (mut tx, conn) = hyper::client::conn::http1::handshake(TokioIo::new(tcp))
+        .await
+        .unwrap();
+    tokio::spawn(conn);
+    let send = |fetch_site| {
+        let mut request = Request::get("/asset.js").header(HOST_HEADER, "ads.example");
+        if fetch_site {
+            request = request.header("sec-fetch-site", "cross-site");
+        }
+        request.body(Empty::<Bytes>::new()).unwrap()
+    };
+    let first = tx.send_request(send(false)).await.unwrap();
+    assert_eq!(first.status(), StatusCode::FORBIDDEN);
+    first.into_body().collect().await.unwrap();
+    assert!(!rig.ctx.services.policy.has_shown_page(PACKAGE));
+
+    let selection = &rig.ctx.selection.apps;
+    let active = std::mem::take(&mut *selection.write().unwrap());
+    let unselected = tx.send_request(send(true)).await.unwrap();
+    assert_eq!(unselected.status(), StatusCode::OK);
+    unselected.into_body().collect().await.unwrap();
+    assert!(!rig.ctx.services.policy.has_shown_page(PACKAGE));
+
+    *selection.write().unwrap() = active;
+    assert!(rig.ctx.blocks_udp_host(UID, "ads.example"));
+    let selected = tx.send_request(send(true)).await.unwrap();
+    assert_eq!(selected.status(), StatusCode::FORBIDDEN);
+    selected.into_body().collect().await.unwrap();
+    assert!(!rig.ctx.blocks_udp_host(UID, "ads.example"));
+}
+
+#[tokio::test]
+async fn a_full_page_history_defers_early_blocks_for_an_app_it_could_not_keep() {
+    let rig = rig(Setup {
+        rules: "||site.test^\n@@||site.test/ok.js$domain=files.test\n",
+        ..Setup::default()
+    })
+    .await;
+    let limit = limits::MAX_APPS_WITH_PAGES;
+    for app in 1..limit {
+        rig.ctx.services.policy.note_page(&format!("com.app{app}"));
+    }
+    assert!(rig.ctx.blocks_udp_host(UID, HOST));
+    rig.ctx.services.policy.note_page("com.last");
+    assert!(!rig.ctx.blocks_udp_host(UID, HOST));
+}
+
+#[tokio::test]
 async fn a_pinned_host_is_judged_by_its_domain_rules_in_full_mode() {
     let rig = rig(Setup {
         rules: "||site.test^\n@@||site.test/pass^$image\n",
@@ -1138,7 +1273,7 @@ async fn a_pinned_host_its_app_now_accepts_is_decrypted_from_its_next_process_on
     let verdict = rig.ctx.services.policy.decide_named(
         PACKAGE,
         HOST,
-        &rig.ctx.filters(),
+        rig.ctx.app_filters(&rig.ctx.filters(), PACKAGE),
         &exclusions,
         &Allow::default(),
         false,
@@ -1206,8 +1341,8 @@ async fn a_pinned_host_its_domain_rules_block_is_refused_with_a_try_pending() {
 #[tokio::test]
 async fn an_app_not_made_to_trust_us_is_refused_a_host_that_no_exception_names() {
     let unnamed = rig(Setup {
-        // The exception names no host: it keeps every host from being
-        // refused before a request, and no request of this app is seen.
+        // This exception has only a path, so the host can be refused
+        // without asking the server.
         rules: "||site.test^\n@@/pass^$image\n",
         trusting: Trusting::No,
         ..Setup::default()
@@ -1215,6 +1350,7 @@ async fn an_app_not_made_to_trust_us_is_refused_a_host_that_no_exception_names()
     .await;
     assert!(unnamed.handshake(Trust::System, H1).await.is_err());
     assert_eq!(unnamed.hits(), 0);
+    assert_eq!(unnamed.dials.load(Relaxed), 0);
     assert_eq!(unnamed.count(Counter::HostsBlocked), 1);
     assert_eq!(unnamed.count(Counter::Passed), 0);
 
@@ -1227,6 +1363,19 @@ async fn an_app_not_made_to_trust_us_is_refused_a_host_that_no_exception_names()
     .await;
     assert!(named.get(Trust::ServerOnly, H1, "/", None).await.unwrap().2);
     assert_eq!(named.count(Counter::HostsBlocked), 0);
+
+    // A page exception leaves the host open only while requests can be read.
+    let page_only = rig(Setup {
+        rules: "||site.test^\n@@||site.test/pass^$image,domain=files.test\n",
+        trusting: Trusting::No,
+        ..Setup::default()
+    })
+    .await;
+    page_only.ctx.services.policy.note_page(PACKAGE);
+    assert!(!page_only.ctx.blocks_udp_host(UID, HOST));
+    assert!(page_only.handshake(Trust::System, H1).await.is_err());
+    assert_eq!(page_only.dials.load(Relaxed), 0);
+    assert_eq!(page_only.count(Counter::HostsBlocked), 1);
 }
 
 #[tokio::test]
@@ -1956,7 +2105,7 @@ async fn tls_and_udp_host_checks_preserve_trust_precedence_and_mode_specific_blo
                 ctx.services.policy.decide(
                     PACKAGE,
                     &hello,
-                    &filters,
+                    ctx.app_filters(&filters, PACKAGE),
                     &exclusions,
                     &allow,
                     domain_only

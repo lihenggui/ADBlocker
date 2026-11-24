@@ -42,7 +42,7 @@ use crate::allow::Allow;
 use crate::apps::{PER_USER_RANGE, PERSONAL_APP_UIDS};
 use crate::clienthello::{self, Hello, Peeked};
 use crate::exclusions::Exclusions;
-use crate::filter::Filters;
+use crate::filter::{AppFilters, Filters};
 use crate::limits::{self, Limits};
 use crate::live::Hub;
 use crate::paths::Paths;
@@ -381,6 +381,10 @@ impl Ctx {
         self.lists.filters.read().unwrap().clone()
     }
 
+    fn app_filters<'a>(&self, filters: &'a Filters, package: &str) -> AppFilters<'a> {
+        filters.for_app_with_pages(package, self.services.policy.has_shown_page(package))
+    }
+
     fn package(&self, uid: u32) -> Option<String> {
         self.selection.apps.read().unwrap().get(&uid).cloned()
     }
@@ -404,7 +408,7 @@ impl Ctx {
         let blocked = self.services.policy.decide_named(
             &package,
             host,
-            &self.filters(),
+            self.app_filters(&self.filters(), &package),
             &exclusions,
             &allow,
             !self.selection.url_filtering.load(Relaxed),
@@ -437,7 +441,7 @@ impl Ctx {
     fn hands_on(&self, app: &TcpStream, peer: (u32, &str, &str), reason: Reason) -> bool {
         let (uid, package, host) = peer;
         let filters = self.filters();
-        let filters = filters.for_app(package);
+        let filters = self.app_filters(&filters, package);
         // The user may have trusted the host, or taken the app out, while
         // the server was asked: neither is blocked any more.
         let judged =
@@ -551,7 +555,7 @@ async fn inspect_tls(
     match ctx.services.policy.decide(
         &package,
         &hello,
-        &filters,
+        ctx.app_filters(&filters, &package),
         &exclusions,
         &allow,
         !url_filtering,

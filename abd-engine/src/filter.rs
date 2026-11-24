@@ -18,8 +18,8 @@
 //! A request that names no page is taken as AdGuard takes one without a
 //! referrer: a rule for named pages is not for it, block or exception, and
 //! it is in the first party of what it asks for.
-//! For a connection that stays encrypted, only an unconditional block with
-//! no possible network exception may be applied.
+//! Only a whole-host block can refuse a connection before its requests
+//! are read. An exception that names the host can keep it open.
 
 use std::borrow::Cow;
 use std::collections::HashSet;
@@ -34,10 +34,10 @@ use adblock::url_parser::{RequestUrl, parse_url};
 use anyhow::Result;
 
 pub(crate) use self::app_rules::{AppRules, named as app_rule};
-use self::host_rules::{HostRules, host_only};
+use self::host_rules::{AppHostBlocks, HostRules, host_only};
 use self::page_exceptions::PageExceptions;
 pub use crate::list_files::{ListFiles, MAX_LIST};
-use crate::list_files::{exceeds_budget, read_lists, readable_paths};
+use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 
 mod app_rules;
 mod cache;
@@ -51,9 +51,15 @@ pub struct Filters {
     hosts: Engine,
     /// The hosts that exceptions name.
     host_guards: Engine,
-    /// Whether an exception names no host, and so may allow a request to
-    /// any.
-    any_host_guard: bool,
+    /// The hosts that exceptions for named pages name. `None` when no
+    /// list has one.
+    page_host_guards: Option<Engine>,
+    /// The same two kinds for the hosts that only a rule for apps blocks
+    /// whole, each for the apps of that rule.
+    app_host_guards: Option<Engine>,
+    app_page_host_guards: Option<Engine>,
+    /// The budget left guards out: no host may be refused early.
+    guards_incomplete: bool,
     /// `None` when no list has a rule for an app.
     apps: Option<AppRules>,
     pub rules: usize,
@@ -86,7 +92,12 @@ impl ListFiles {
         if let Some(kept) = cache.and_then(|dir| Filters::read_cache(dir, self.generation)) {
             return Ok(kept);
         }
-        let built = Filters::build(read_lists(&self.paths), Some(self.generation), debug)?;
+        let built = Filters::build(
+            read_lists(&self.paths),
+            Some(self.generation),
+            debug,
+            MAX_LISTS,
+        )?;
         if let Some(dir) = cache {
             built.write_cache(dir, self.generation);
         }
@@ -353,6 +364,7 @@ impl Filters {
                         .filter(|entry| entry.as_ref().err().is_none_or(exceeds_budget)),
                     None,
                     debug,
+                    MAX_LISTS,
                 )
             }
         }
@@ -362,13 +374,21 @@ impl Filters {
         entries: impl Iterator<Item = std::io::Result<(&'a Path, String)>>,
         generation: Option<u64>,
         debug: bool,
+        guard_budget: usize,
     ) -> Result<Self> {
         crate::public_suffix::install();
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
         let rules_count = lists.iter().map(|(_, text)| text.lines().count()).sum();
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
-        let host_rules = HostRules::project(texts(), &disabled);
+        let mut app_blocks = AppHostBlocks::new();
+        let apps = AppRules::project_with_hosts(texts(), debug, |host, apps| {
+            app_blocks
+                .entry(host.to_ascii_lowercase())
+                .or_default()
+                .push(format!("^${}{}", app_rules::SOURCE, apps));
+        });
+        let host_rules = HostRules::project(texts(), &disabled, &app_blocks, guard_budget);
         let mut requests = RequestRules::build_with_permissions(
             lists.iter().map(|(path, text)| {
                 let permissions =
@@ -385,19 +405,30 @@ impl Filters {
             page_exceptions: PageExceptions::build(texts()),
             hosts: Engine::new_with_filter_set(host_rules.whole),
             host_guards: Engine::new_with_filter_set(host_rules.guards),
-            any_host_guard: host_rules.any_host,
-            apps: AppRules::project(texts(), debug),
+            page_host_guards: host_rules.page_guards.map(Engine::new_with_filter_set),
+            app_host_guards: host_rules.app_guards.map(Engine::new_with_filter_set),
+            app_page_host_guards: host_rules.app_page_guards.map(Engine::new_with_filter_set),
+            guards_incomplete: host_rules.guards_incomplete,
+            apps,
             rules: rules_count,
             host_rules: host_rules.count,
         })
     }
 
     /// The rules as they apply to `app`, which the engine names by its
-    /// package or its shared UID's group.
+    /// package or its shared UID's group. Nothing is known here of the
+    /// requests it has made, so it is taken to have pages.
     pub fn for_app(&self, app: &str) -> AppFilters<'_> {
+        self.for_app_with_pages(app, true)
+    }
+
+    /// As [`Filters::for_app`], for an app known to have shown a page or
+    /// not (`Policy::has_shown_page`).
+    pub(crate) fn for_app_with_pages(&self, app: &str, has_shown_page: bool) -> AppFilters<'_> {
         AppFilters {
             filters: self,
             app: self.apps.as_ref().zip(AppRules::scope(app)),
+            has_shown_page,
         }
     }
 
@@ -406,6 +437,7 @@ impl Filters {
         AppFilters {
             filters: self,
             app: None,
+            has_shown_page: true,
         }
     }
 
@@ -493,32 +525,56 @@ impl Filters {
 pub struct AppFilters<'a> {
     filters: &'a Filters,
     app: Option<(&'a AppRules, app_rules::Scope)>,
+    /// An exception for named pages can only apply to a request that shows
+    /// one, and so only to an app that has.
+    has_shown_page: bool,
+}
+
+/// Whether no exception among `guards` names the host of `request`.
+fn unguarded(guards: &Engine, request: &Request) -> bool {
+    guards
+        .check_network_request_subset(request, false, true)
+        .exception
+        .is_none()
 }
 
 impl AppFilters<'_> {
-    /// A full-mode early block must leave room for any web exception.
+    /// Before a request can be read, leave room for exceptions that name
+    /// the host. Only apps that have shown a page need guards for named pages.
     pub fn blocks_host(&self, host: &str) -> bool {
-        !self.filters.any_host_guard && self.blocks_unread(host)
+        Filters::host_request(host).is_some_and(|mut request| {
+            self.blocks_unguarded(&mut request)
+                && (!self.has_shown_page || self.unguarded_for_pages(&mut request))
+        })
+    }
+
+    fn unguarded_for_pages(&self, request: &mut Request) -> bool {
+        let filters = self.filters;
+        filters
+            .page_host_guards
+            .as_ref()
+            .is_none_or(|guards| unguarded(guards, request))
+            && filters.app_page_host_guards.as_ref().is_none_or(|guards| {
+                self.app
+                    .as_ref()
+                    .is_none_or(|(_, scope)| scope.unguarded(request, guards))
+            })
     }
 
     /// For a connection of an app none of whose requests can be read: the
-    /// block of its host stands unless an exception names that host. One
-    /// that names no host says nothing of this one, and if it counted here
-    /// no host would be refused such an app.
+    /// block of its host stands unless an exception names that host and
+    /// needs no page.
     pub fn blocks_unread(&self, host: &str) -> bool {
-        Filters::host_request(host).is_some_and(|mut request| {
-            self.blocks_whole(&mut request)
-                && self
-                    .filters
-                    .host_guards
-                    .check_network_request_subset(&request, false, true)
-                    .exception
-                    .is_none()
-                && self
-                    .app
-                    .as_ref()
-                    .is_none_or(|(rules, scope)| rules.unguarded(&mut request, scope))
-        })
+        Filters::host_request(host).is_some_and(|mut request| self.blocks_unguarded(&mut request))
+    }
+
+    fn blocks_unguarded(&self, request: &mut Request) -> bool {
+        !self.filters.guards_incomplete
+            && self.blocks_whole(request)
+            && unguarded(&self.filters.host_guards, request)
+            && self.app.as_ref().is_none_or(|(rules, scope)| {
+                rules.unguarded(request, scope, self.filters.app_host_guards.as_ref())
+            })
     }
 
     /// Domain mode uses only explicit whole-domain blocks and exceptions.
@@ -1026,10 +1082,10 @@ mod tests {
     }
 
     #[test]
-    fn a_destination_unscoped_exception_defers_only_full_mode_host_checks() {
+    fn an_exception_without_a_host_applies_only_when_the_request_is_read() {
         let f =
             filters("||ads.example^\n||pass.example^\n@@||pass.example^\n@@/downloads/$image\n");
-        assert!(!f.blocks_host("ads.example"));
+        assert!(f.blocks_host("ads.example"));
         assert!(f.blocks_domain("ads.example"));
         assert!(!f.blocks_domain("pass.example"));
         assert!(
@@ -1045,8 +1101,8 @@ mod tests {
     #[test]
     fn a_disabled_exception_cannot_mask_a_block_by_host_or_request() {
         let f = filters(
-            "||ads.example^\n@@/allowed^$3p,script,domain=reader.example\n\
-                         @@/allowed^$script,third-party,from=reader.example,badfilter\n",
+            "||ads.example^\n@@||ads.example/allowed^$3p,script,domain=reader.example\n\
+             @@||ads.example/allowed^$script,third-party,from=reader.example,badfilter\n",
         );
         assert!(f.blocks_host("ads.example"));
         for source in ["", "https://reader.example/"] {
@@ -1348,13 +1404,373 @@ mod tests {
     }
 
     #[test]
+    fn early_blocks_use_only_the_guards_the_app_can_need() {
+        let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+        for (key, (exception, without_page, with_page, unread)) in [
+            (
+                "@@|https://$xmlhttprequest,domain=files.example",
+                [true, true],
+                [true, true],
+                [true, true],
+            ),
+            (
+                "@@||ads.example/ok.js$domain=news.example",
+                [true, true],
+                [false, true],
+                [true, true],
+            ),
+            (
+                "@@/consent.$script",
+                [true, true],
+                [true, true],
+                [true, true],
+            ),
+            (
+                "@@||ads.example/ok.js",
+                [false, true],
+                [false, true],
+                [false, true],
+            ),
+            (
+                "@@||ads.example/ok.js$domain=~news.example",
+                [false, true],
+                [false, true],
+                [false, true],
+            ),
+            (
+                "@@|https://ads.example/|",
+                [false, true],
+                [false, true],
+                [false, true],
+            ),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let list = format!("||ads.example^\n||other.example^\n{exception}\n");
+            std::fs::write(dir.path().join("list.txt"), list).unwrap();
+            let built = Filters::load(&[dir.path()], false).unwrap();
+            let key = key as u64;
+            built.write_cache(cache.path(), key);
+            let kept = Filters::read_cache(cache.path(), key).unwrap();
+            for filters in [built, kept] {
+                let native = filters.for_app_with_pages("com.native", false);
+                let browser = filters.for_app_with_pages("com.browser", true);
+                for (i, host) in ["ads.example", "other.example"].into_iter().enumerate() {
+                    assert_eq!(
+                        native.blocks_host(host),
+                        without_page[i],
+                        "{exception} {host}"
+                    );
+                    assert_eq!(
+                        browser.blocks_host(host),
+                        with_page[i],
+                        "{exception} {host}"
+                    );
+                    assert_eq!(
+                        filters.blocks_host(host),
+                        with_page[i],
+                        "{exception} {host}"
+                    );
+                    assert_eq!(browser.blocks_unread(host), unread[i], "{exception} {host}");
+                    assert!(browser.blocks_domain(host), "{exception} {host}");
+                }
+            }
+        }
+    }
+
+    const DESTINATION_PROJECTIONS: &[(&str, &str, &str)] = &[
+        ("@@||google.*/imgres?", "@@||google.*^", "google.co.uk"),
+        ("@@||pornhub.*/signup", "@@||pornhub.*^", "pornhub.com"),
+        (
+            "@@||ebay.*/makeOffer/$document,subdocument",
+            "@@||ebay.*^",
+            "www.ebay.de",
+        ),
+        (
+            "@@||cdn*.downdetector.com/*/javascript*/adscript.js",
+            "@@||cdn*.downdetector.com^",
+            "cdn42.downdetector.com",
+        ),
+        (
+            "@@||animetake*.*^$script,1p",
+            "@@||animetake*.*^",
+            "animetake42.net",
+        ),
+        (
+            "@@||s*.rea.reastatic.net/rs/rui_advertorial.js",
+            "@@||s*.rea.reastatic.net^",
+            "s42.rea.reastatic.net",
+        ),
+        ("@@||i*.gmx.com/image", "@@||i*.gmx.com^", "i42.gmx.com"),
+        (
+            "@@||notebookcheck*/fileadmin/scripts/pagecall_dfp_async.js",
+            "@@||notebookcheck*^",
+            "notebookcheck.net",
+        ),
+        (
+            "@@://www.googleadservices.com^|",
+            "@@||www.googleadservices.com^",
+            "www.googleadservices.com",
+        ),
+        (
+            "@@://www.exoclick.com/ads.js|",
+            "@@||www.exoclick.com^",
+            "www.exoclick.com",
+        ),
+        (
+            "@@doubleclick.net/ads/preferences/",
+            "@@||doubleclick.net^",
+            "doubleclick.net",
+        ),
+        (
+            "@@weather.gov/xml/$document",
+            "@@||weather.gov^",
+            "weather.gov",
+        ),
+        (
+            "@@app.arizonawildcats.com/preferences",
+            "@@||app.arizonawildcats.com^",
+            "app.arizonawildcats.com",
+        ),
+        (
+            "@@://xhamster.$script,~third-party",
+            "@@||xhamster.*^",
+            "xhamster.com",
+        ),
+        (
+            "@@|https:///ovh.webshark.pl/adserver/*/main_script.js?advertise_check=1",
+            "@@||ovh.webshark.pl^",
+            "ovh.webshark.pl",
+        ),
+        ("@@/wp-content/themes/mts_ad_sense/*$1p", "", "ads.example"),
+        (
+            "@@/wp-content/plugins/blockalyzer-adblock-counter/*$image,script,~third-party,domain=~gaytube.com|~elsewhere.example",
+            "",
+            "ads.example",
+        ),
+        (
+            "@@|/wp-content/plugins/*/assets/fuckadblock.js",
+            "",
+            "ads.example",
+        ),
+        ("@@||192.168.$~3p", "", "ads.example"),
+        ("@@ads.js", "", "ads.js"),
+        ("@@main.js?x", "", "main.js"),
+        ("@@||*^", "", "ads.example"),
+    ];
+
+    #[test]
+    fn exceptions_guard_only_the_hosts_they_name() {
+        for &(exception, guard, host) in DESTINATION_PROJECTIONS {
+            let parsed = network(exception).unwrap();
+            assert!(
+                host_rules::guards_exception(exception, &parsed),
+                "{exception}"
+            );
+            let mut projected = String::new();
+            host_rules::project_guard(exception, &parsed, &mut projected);
+            assert_eq!(projected.trim_end(), guard, "{exception}");
+            let filters = filters(&format!("||{host}^\n||unrelated.example^\n{exception}\n"));
+            for has_shown_page in [false, true] {
+                let app = filters.for_app_with_pages("com.app", has_shown_page);
+                assert_eq!(
+                    app.blocks_host(host),
+                    guard.is_empty(),
+                    "{exception} on {host}"
+                );
+                assert!(app.blocks_host("unrelated.example"), "{exception}");
+            }
+        }
+    }
+
+    const WHOLE_HOST_GUARD_CASES: &[(&str, &str, &str, Option<&str>)] = &[
+        (
+            "ads.example",
+            "@@||ads.example/ok.js",
+            "ads.example",
+            Some("cdn.ads.example"),
+        ),
+        (
+            "janapi.jd.com",
+            "@@||jd.com/adclick?$~third-party",
+            "jd.com",
+            None,
+        ),
+        (
+            "janapi.jd.com",
+            "@@||create.jd.com/ad/",
+            "create.jd.com",
+            None,
+        ),
+        (
+            "janapi.jd.com",
+            "@@||media.jd.com/static/*/ad",
+            "media.jd.com",
+            None,
+        ),
+        (
+            "erebor.douban.com",
+            "@@||douban.com/popup/login?",
+            "douban.com",
+            None,
+        ),
+        (
+            "doubleclick.net",
+            "@@doubleclick.net/ads/preferences/",
+            "doubleclick.net",
+            Some("googleads.g.doubleclick.net"),
+        ),
+        ("e.qq.com", "@@||qq.com/bossweb/jifen/", "qq.com", None),
+        ("e.qq.com", "@@||qq.com/cgi-bin/*?sid=ads", "qq.com", None),
+        ("e.qq.com", "@@||qq.com^*?ADTAG=", "qq.com", None),
+        (
+            "e.qq.com",
+            "@@||adnet.qq.com^$~third-party",
+            "adnet.qq.com",
+            None,
+        ),
+        (
+            "e.qq.com",
+            "@@||sdk.e.qq.com/ok",
+            "sdk.e.qq.com",
+            Some("cdn.sdk.e.qq.com"),
+        ),
+    ];
+
+    #[test]
+    fn a_plain_host_guard_needs_a_whole_host_block_for_its_own_host() {
+        for &(blocked, exception, named, guarded_below) in WHOLE_HOST_GUARD_CASES {
+            let lists = [
+                (Path::new("a-exceptions.txt"), format!("{exception}\n")),
+                (
+                    Path::new("b-blocks.txt"),
+                    format!("||{blocked}^\n||unrelated.example^\n"),
+                ),
+            ];
+            let filters = Filters::build(lists.into_iter().map(Ok), None, true, MAX_LISTS).unwrap();
+            let request = Filters::host_request(named).unwrap();
+            assert_eq!(
+                unguarded(&filters.host_guards, &request),
+                guarded_below.is_none(),
+                "{exception}"
+            );
+            for has_shown_page in [false, true] {
+                let app = filters.for_app_with_pages("com.app", has_shown_page);
+                let refused = blocked != named || guarded_below.is_none();
+                assert_eq!(
+                    app.blocks_host(blocked),
+                    refused,
+                    "{exception} on {blocked}"
+                );
+                assert!(!app.blocks_host(named), "{exception} on {named}");
+                assert!(app.blocks_host("unrelated.example"), "{exception}");
+                if let Some(host) = guarded_below {
+                    assert!(app.blocks_domain(host), "{exception} on {host}");
+                    assert!(!app.blocks_host(host), "{exception} on {host}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_disabled_parent_block_does_not_keep_a_guard_for_its_subdomains() {
+        let filters = filters(
+            "||jd.com^\n||janapi.jd.com^\n||unrelated.example^\n\
+             @@||jd.com/adclick?\n||jd.com^$badfilter\n",
+        );
+        for has_shown_page in [false, true] {
+            let app = filters.for_app_with_pages("com.app", has_shown_page);
+            assert!(app.blocks_host("janapi.jd.com"));
+            assert!(!app.blocks_host("jd.com"));
+            assert!(app.blocks_host("unrelated.example"));
+        }
+    }
+
+    #[test]
+    fn a_plain_guard_covers_the_named_host_and_its_subdomains() {
+        let filters = filters("||qq.com^\n||qq.com.example^\n@@||qq.com^*?ADTAG=\n");
+        assert!(!filters.blocks_host("qq.com"));
+        assert!(!filters.blocks_host("e.qq.com"));
+        assert!(filters.blocks_host("qq.com.example"));
+    }
+
+    #[test]
+    fn a_web_guard_for_an_app_block_keeps_the_apps_and_page_requirement() {
+        let cache = tempfile::tempdir().unwrap();
+        for (key, needs_page) in [false, true].into_iter().enumerate() {
+            let condition = if needs_page {
+                "$domain=files.example"
+            } else {
+                ""
+            };
+            let built = filters(&format!(
+                "||qq.com^$app=com.reader\n||e.qq.com^\n@@||qq.com/ok{condition}\n"
+            ));
+            built.write_cache(cache.path(), key as u64);
+            let kept = Filters::read_cache(cache.path(), key as u64).unwrap();
+            for filters in [built, kept] {
+                for has_shown_page in [false, true] {
+                    let reader = filters.for_app_with_pages("com.reader", has_shown_page);
+                    assert_eq!(
+                        reader.blocks_host("e.qq.com"),
+                        needs_page && !has_shown_page
+                    );
+                    assert_eq!(reader.blocks_unread("e.qq.com"), needs_page);
+                    let other = filters.for_app_with_pages("com.other", has_shown_page);
+                    assert!(other.blocks_host("e.qq.com"));
+                    assert!(filters.blocks_host("e.qq.com"));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn an_incomplete_guard_budget_leaves_every_host_for_later() {
+        let plain = "||ads.example^\n||unrelated.example^\n\
+                     @@/image^$to=ads.example\n@@||unblocked.example/ok.js\n";
+        let page = "@@||ads.example/ok.js$domain=news.example\n";
+        let build = |budget| {
+            Filters::build(
+                [plain, page]
+                    .map(|text| Ok((Path::new("list.txt"), text.to_owned())))
+                    .into_iter(),
+                None,
+                false,
+                budget,
+            )
+            .unwrap()
+        };
+        let total = 2 * "@@||ads.example^\n".len();
+        let complete = build(total);
+        assert!(complete.blocks_host("unrelated.example"));
+        let incomplete = build(total - 1);
+        let cache = tempfile::tempdir().unwrap();
+        incomplete.write_cache(cache.path(), 1);
+        let kept = Filters::read_cache(cache.path(), 1).unwrap();
+        for filters in [incomplete, kept] {
+            for has_shown_page in [false, true] {
+                let app = filters.for_app_with_pages("com.app", has_shown_page);
+                for host in ["ads.example", "unrelated.example"] {
+                    assert!(!app.blocks_host(host));
+                    assert!(!app.blocks_unread(host));
+                    assert!(app.blocks_domain(host));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn a_new_generation_removes_stale_optional_engines() {
         let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
         let list = dir.path().join("list.txt");
         std::fs::write(
             &list,
-            "||ads.example^$third-party\n@@||page.example^$document\n\
-             @@||images.example^$ehide\n@@||news.example^$shide\n##div[data-ad]\n",
+            "||ads.example^\n@@||page.example^$document\n\
+             @@||images.example^$ehide\n@@||news.example^$shide\n##div[data-ad]\n\
+             @@||ads.example/ok.js$domain=news.example\n\
+             ||whole-app.example^$app=com.reader\n@@||whole-app.example/ok\n\
+             @@||whole-app.example/ok.js$domain=news.example\n",
         )
         .unwrap();
         let load = || Filters::load_cached(&[dir.path()], cache.path()).unwrap();
@@ -1364,6 +1780,9 @@ mod tests {
             "no-element-hiding",
             "no-specific-cosmetic",
             "generic-css",
+            "page-host-guards",
+            "app-host-guards",
+            "app-page-host-guards",
         ];
         for name in optional {
             assert!(cache.path().join(name).is_file(), "{name}");

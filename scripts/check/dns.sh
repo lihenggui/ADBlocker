@@ -172,14 +172,14 @@ check_dns() {
 }
 
 # With URL filtering on, a host the app pins is not decrypted, so its
-# domain rule decides, for its lookups as for its connections. A generic
-# exception keeps any other host from being blocked early. The app pins
-# the host in its network security config, and refuses the certificate
+# domain rule decides, for its lookups as for its connections. An
+# exception that names the host keeps it from being blocked early. The app
+# pins the host in its network security config, and refuses the certificate
 # late enough after starting for the daemon to take it at its word. A try
 # of the host at the app's next start does not change how it is judged.
 check_pinned_lookup() {
     local host=example.net i
-    adb shell "echo '||$host^' >> $LIST; echo '@@/abd-check-any/\$image' >> $LIST; $ABD reload"
+    adb shell "echo '||$host^' >> $LIST; echo '@@||$host/abd-check-any/\$image' >> $LIST; $ABD reload"
     for ((i = 0; i < 30; i++)); do
         adb shell "$ABD check https://$host/" | grep -q '^blocked' && break
         sleep 1

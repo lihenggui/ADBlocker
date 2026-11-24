@@ -75,16 +75,16 @@ fn header<'a, B>(req: &'a Request<B>, name: &str) -> Option<&'a [u8]> {
 /// `Sec-Fetch-Dest`, which it sends over HTTPS only: over HTTP it asks for
 /// an upgrade when it goes to a page, and names no page that led there
 /// when the user did.
-fn is_document<B>(req: &Request<B>) -> bool {
+fn is_document<B>(req: &Request<B>, has_told_page: bool) -> bool {
     match header(req, "sec-fetch-dest") {
         Some(dest) => dest == b"document",
-        None => header(req, "upgrade-insecure-requests") == Some(b"1") && told_page(req).is_none(),
+        None => header(req, "upgrade-insecure-requests") == Some(b"1") && !has_told_page,
     }
 }
 
 /// What the request says of the page that made it.
 fn page_of<'a, B>(req: &Request<B>, told: Option<&'a adblock::url_parser::RequestUrl>) -> Page<'a> {
-    if is_document(req) {
+    if is_document(req, told.is_some()) {
         return Page::Itself;
     }
     match told {
@@ -94,6 +94,16 @@ fn page_of<'a, B>(req: &Request<B>, told: Option<&'a adblock::url_parser::Reques
             cross_site: header(req, "sec-fetch-site") == Some(b"cross-site"),
         },
     }
+}
+
+/// Whether the request is one of an app with pages: it names its page, is
+/// one, or carries what only a browser's engine sends. An exception for
+/// named pages can apply to such an app, and to no other.
+fn shows_page<B>(req: &Request<B>, page: &Page<'_>) -> bool {
+    !matches!(page, Page::Unnamed { .. })
+        || ["sec-fetch-site", "sec-fetch-mode", "sec-fetch-dest"]
+            .iter()
+            .any(|name| req.headers().contains_key(*name))
 }
 
 /// The page a request says it was made by, if it says.
@@ -199,19 +209,17 @@ fn evaluate<'a, B>(
     url: &str,
     kind: &'static str,
 ) -> RequestDecision<'a> {
-    let page = told_page(req);
+    let told = told_page(req);
+    let page = page_of(req, told.as_ref().map(|(_, page)| page));
+    let shows_page = shows_page(req, &page);
     let blocked = filters
-        .check_with_page(
-            url,
-            page_of(req, page.as_ref().map(|(_, page)| page)),
-            kind,
-            req.method().as_str(),
-        )
+        .check_with_page(url, page, kind, req.method().as_str())
         .blocked;
     RequestDecision {
         blocked,
         kind,
-        page: page.map(|(value, _)| value),
+        page: told.map(|(value, _)| value),
+        shows_page,
     }
 }
 
@@ -219,6 +227,8 @@ pub struct RequestDecision<'a> {
     pub blocked: bool,
     pub kind: &'static str,
     pub page: Option<&'a str>,
+    /// Whether the request shows that its app has pages, named or not.
+    pub(super) shows_page: bool,
 }
 
 fn record_request(ctx: &Ctx, package: &str, host: &str, url: &str, decision: RequestDecision<'_>) {
@@ -226,6 +236,7 @@ fn record_request(ctx: &Ctx, package: &str, host: &str, url: &str, decision: Req
         blocked,
         kind,
         page,
+        ..
     } = decision;
     ctx.services
         .live
@@ -254,7 +265,7 @@ pub(super) async fn serve<'a>(
     let selected = ctx.is_package(*uid, package);
     let url_filtering = ctx.selection.url_filtering.load(Relaxed);
     let filters = ctx.filters();
-    let for_app = filters.for_app(package);
+    let for_app = ctx.app_filters(&filters, package);
     if let Some(response) = guard_site(shared, req.version(), selected, url_filtering) {
         return Ok(response);
     }
@@ -276,6 +287,9 @@ pub(super) async fn serve<'a>(
     {
         if url_filtering {
             let decision = evaluate(&for_app, &req, url, kind);
+            if decision.shows_page {
+                ctx.services.policy.note_page(package);
+            }
             if decision.blocked {
                 record_request(ctx, package, host, url, decision);
                 return Ok(empty(StatusCode::FORBIDDEN));
