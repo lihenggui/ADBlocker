@@ -285,10 +285,30 @@ class RootModuleRepositoryTest {
     }
 
     @Test
-    fun givenAnInstallerFails_whenInstalling_thenWhatItPrintedIsTheFailure() = runTest {
-        installer = { CommandResult(false, 1, "! Unsupported architecture: riscv64", "") }
+    fun givenAnInstallerFails_whenInstalling_thenWhatItSaidWasWrongIsTheFailure() = runTest {
+        installer = {
+            val printed = listOf(
+                "- Installing with root alone",
+                "- Extracting module files",
+                "Archive:  /data/app/~~x==/li.mercury.adblocker-y==/base.apk",
+                "  inflating: /data/adb/.adblocker-direct.AbCdEf/module/module.prop",
+                "! Could not install the app. Remove .zip from the end of the file name and install the .apk file.",
+                "! Could not stop the installed module",
+            )
+            CommandResult(false, 1, printed.joinToString("\n"), "")
+        }
         val failure = assertFailsWith<AbdException.CommandFailed> { module.installBundled() }
-        assertEquals("! Unsupported architecture: riscv64", failure.message)
+        assertEquals(
+            "Could not install the app. Remove .zip from the end of the file name and install the .apk file.\nCould not stop the installed module",
+            failure.message,
+        )
+    }
+
+    @Test
+    fun givenAnInstallerFailsWithoutSayingWhy_whenInstalling_thenNothingItPrintedIsPassedOn() = runTest {
+        installer = { CommandResult(false, 1, "unzip: can't open /data/app/~~x==/li.mercury.adblocker-y==/base.apk", "") }
+        val failure = assertFailsWith<AbdException.CommandFailed> { module.installBundled() }
+        assertEquals("The installer failed", failure.message)
     }
 
     @Test
