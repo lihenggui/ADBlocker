@@ -12,11 +12,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-#![cfg_attr(
-    target_os = "android",
-    allow(unsafe_code, reason = "read the Android SDK level")
-)]
-
 use std::fs::File;
 use std::io;
 use std::path::Path;
@@ -37,19 +32,7 @@ pub(super) fn open_with_backup(primary: &Path, backup: &Path) -> io::Result<Comm
 }
 
 pub(super) fn uses_resilient_atomic_file() -> bool {
-    #[cfg(target_os = "android")]
-    {
-        let mut sdk = [0; libc::PROP_VALUE_MAX as usize];
-        // SAFETY: the property name is NUL-terminated and the output buffer
-        // has the capacity required by bionic, including its terminator.
-        let len = unsafe {
-            libc::__system_property_get(c"ro.build.version.sdk".as_ptr(), sdk.as_mut_ptr().cast())
-        };
-        sdk.get(..len as usize)
-            .and_then(|value| std::str::from_utf8(value).ok())
-            .and_then(|value| value.parse::<u32>().ok())
-            .is_some_and(|sdk| sdk >= 34)
-    }
-    #[cfg(not(target_os = "android"))]
-    false
+    crate::properties::get(c"ro.build.version.sdk")
+        .and_then(|value| value.parse::<u32>().ok())
+        .is_some_and(|sdk| sdk >= 34)
 }

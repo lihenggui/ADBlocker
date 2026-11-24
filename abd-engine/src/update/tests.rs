@@ -507,6 +507,29 @@ async fn a_download_can_finish_for_a_default_list_after_sources_becomes_absent()
     assert!(paths.lists().join(file_name(FIRST)).exists());
 }
 
+#[tokio::test]
+async fn downloading_the_default_lists_does_not_save_them_as_a_choice() {
+    let (_dir, paths) = data();
+    let sources = paths.sources();
+    std::fs::remove_file(&sources).unwrap();
+    let fetch = |_| std::future::ready(Ok(Bytes::from_static(b"||default.example^\n")));
+    let tally = fetch_all(
+        &sources,
+        &format!("{FIRST}\n"),
+        &paths.lists(),
+        Some(&paths.list_info()),
+        &fetch,
+        &mut |_| {},
+    )
+    .await
+    .unwrap();
+    assert_eq!(tally.updated, 1);
+    assert!(paths.lists().join(file_name(FIRST)).exists());
+    // Defaults that change later, with the catalog or the device's
+    // language, still reach a selection nobody made.
+    assert!(!sources.exists());
+}
+
 #[test]
 fn rejects_an_error_page_in_place_of_a_list() {
     assert!(looks_like_a_list(b"[Adblock Plus 2.0]\n||ads.example^\n"));

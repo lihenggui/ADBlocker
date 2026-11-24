@@ -18,10 +18,10 @@ package li.mercury.adblocker.core.data.repository
 
 import android.content.Context
 import android.os.Build
-import androidx.core.app.LocaleManagerCompat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.root.RootShell
+import li.mercury.adblocker.core.engine.systemLanguageTags
 import li.mercury.adblocker.core.model.DeviceCheck
 import li.mercury.adblocker.core.model.DeviceCheckKind
 import javax.inject.Inject
@@ -33,7 +33,8 @@ import javax.inject.Inject
 interface DeviceRepository {
     suspend fun check(kind: DeviceCheckKind): DeviceCheck
 
-    fun regionCode(): String?
+    /** The language tags of the device's locales, in the user's order. */
+    fun languageTags(): List<String>
 }
 
 internal class RootDeviceRepository @Inject constructor(
@@ -41,7 +42,7 @@ internal class RootDeviceRepository @Inject constructor(
     private val rootShell: RootShell,
     private val module: ModuleRepository,
 ) : DeviceRepository {
-    override fun regionCode(): String? = LocaleManagerCompat.getSystemLocales(context)[0]?.country?.takeIf { it.isNotEmpty() }
+    override fun languageTags(): List<String> = systemLanguageTags(context)
 
     override suspend fun check(kind: DeviceCheckKind): DeviceCheck = when (kind) {
         DeviceCheckKind.Root -> try {

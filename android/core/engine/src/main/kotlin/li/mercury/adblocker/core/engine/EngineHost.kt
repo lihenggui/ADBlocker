@@ -159,7 +159,7 @@ class EngineHost @Inject internal constructor(
         if (handle == 0L) {
             check(api.available) { "no engine in this build" }
             val dir = File(context.filesDir, "engine").apply { mkdirs() }
-            handle = api.open(dir.absolutePath, userCa.systemRoots(), callbacks)
+            handle = api.open(dir.absolutePath, userCa.systemRoots(), systemLanguageTags(context).toTypedArray(), callbacks)
             if (handle == 0L) throw EngineExit(1, "the engine could not open")
         }
         handle
@@ -198,7 +198,7 @@ class EngineHost @Inject internal constructor(
 interface EngineApi {
     val available: Boolean
 
-    fun open(dataDir: String, roots: Array<ByteArray>, callbacks: Callbacks): Long
+    fun open(dataDir: String, roots: Array<ByteArray>, languages: Array<String>, callbacks: Callbacks): Long
 
     fun command(handle: Long, args: Array<String>, stdin: ByteArray?): Result
 
@@ -221,7 +221,7 @@ internal class NativeEngineApi @Inject constructor() : EngineApi {
         }
     }
 
-    override fun open(dataDir: String, roots: Array<ByteArray>, callbacks: Callbacks) = Engine.open(dataDir, roots, callbacks)
+    override fun open(dataDir: String, roots: Array<ByteArray>, languages: Array<String>, callbacks: Callbacks) = Engine.open(dataDir, roots, languages, callbacks)
 
     override fun command(handle: Long, args: Array<String>, stdin: ByteArray?) = Engine.command(handle, args, stdin)
 

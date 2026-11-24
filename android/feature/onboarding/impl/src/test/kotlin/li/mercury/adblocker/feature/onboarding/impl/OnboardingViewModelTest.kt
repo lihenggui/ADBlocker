@@ -76,7 +76,7 @@ class OnboardingViewModelTest {
     private val done = mutableListOf<String>()
 
     private var root = false
-    private var region: String? = "CN"
+    private var languages = listOf("zh-Hans-CN")
     private var switchResult = FilterMethodSwitch.Complete
     private var vpnFails = false
     private var vpnAfterStart = VpnState.On
@@ -84,12 +84,12 @@ class OnboardingViewModelTest {
     private var suspendDownload = false
     private var downloadCancelled = false
     private val userData = TestUserDataRepository()
-    private val subscriptions = FilterCatalog.setupLists("CN").toMutableMap()
+    private val subscriptions = FilterCatalog.setupLists(listOf("zh-Hans-CN")).toMutableMap()
     private val browser = InstalledApp("com.example.browser", "Browser", AppIconSource("com.example.browser", "test"), isSystem = false)
     private val ordinaryApp = InstalledApp("com.example.notes", "Notes", AppIconSource("com.example.notes", "test"), isSystem = false)
 
     private val device = object : DeviceRepository {
-        override fun regionCode() = region
+        override fun languageTags() = languages
 
         override suspend fun check(kind: DeviceCheckKind) = DeviceCheck(
             kind,
@@ -352,22 +352,30 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun onlyTheMatchingRegionalListIsSelected() {
-        val china = FilterCatalog.entries.first { it.id == "easylist_china" }.url
-        val japan = FilterCatalog.entries.first { it.id == "japanese_filters" }.url
+    fun givenDeviceLanguages_whenSuggestingLists_thenOnlyTheirRegionalListsAreSelected() {
+        fun url(id: String) = FilterCatalog.entries.first { it.id == id }.url
+        val china = url("easylist_china")
+        val japan = url("japanese_filters")
+        val chinese = FilterCatalog.setupLists(listOf("zh-Hans-CN"))
 
-        assertEquals(true, FilterCatalog.setupLists("CN")[china])
-        assertEquals(null, FilterCatalog.setupLists("CN")[japan])
-        assertEquals(false, FilterCatalog.setupLists("JP")[china])
-        assertEquals(true, FilterCatalog.setupLists("JP")[japan])
-        assertEquals(false, FilterCatalog.setupLists("US")[china])
-        assertEquals(FilterCatalog.setupLists("US"), FilterCatalog.setupLists(null))
+        assertEquals(true, chinese[china])
+        assertEquals(true, chinese[url("adguard_chinese")])
+        assertEquals(true, chinese[url("awavenue")])
+        assertEquals(null, chinese[japan])
+        assertEquals(false, FilterCatalog.setupLists(listOf("ja-JP"))[china])
+        assertEquals(true, FilterCatalog.setupLists(listOf("ja-JP"))[japan])
+        assertEquals(true, FilterCatalog.setupLists(listOf("en-US", "ja-JP"))[japan])
+        // A region is not a language.
+        assertEquals(null, FilterCatalog.setupLists(listOf("en-JP"))[japan])
+        assertEquals(true, FilterCatalog.setupLists(listOf("pt-BR"))[url("easylist_portuguese")])
+        assertEquals(false, FilterCatalog.setupLists(listOf("en-US"))[china])
+        assertEquals(FilterCatalog.setupLists(listOf("en-US")), FilterCatalog.setupLists(emptyList()))
     }
 
     @Test
     fun deferredRootSetupRetainsTheChosenRegionalList() = runTest {
         root = true
-        region = "JP"
+        languages = listOf("ja-JP")
         leaveTheCheck()
         repeat(3) { viewModel.next() }
 
@@ -384,7 +392,7 @@ class OnboardingViewModelTest {
 
     @Test
     fun setupWithNoAppsSavesTheListsWithoutStartingTheVpn() = runTest {
-        region = "JP"
+        languages = listOf("ja-JP")
         leaveTheCheck()
         repeat(3) { viewModel.next() }
         viewModel.startVpn()

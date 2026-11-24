@@ -38,6 +38,7 @@ mod handoff;
 mod lifecycle;
 mod mounts;
 mod paths;
+mod properties;
 
 mod rules;
 mod sockdiag;
@@ -71,6 +72,10 @@ fn main() -> Result<()> {
     if args == ["unhook"] {
         return unhook();
     }
+    // Before any command reads the default lists, so that the daemon and
+    // every command see the same ones. A device without a locale has the
+    // general defaults.
+    abd_engine::catalog::set_device_languages(properties::locale().as_deref());
     // So must leaving the user's store as Android has it, which every app
     // reads: first at each start, and last on uninstall, after which
     // nothing of ours runs. Filtering goes on whatever becomes of it.

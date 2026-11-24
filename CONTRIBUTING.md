@@ -75,8 +75,10 @@ the detector tests with `./gradlew :lint:test` from `android/`.
 
 `config/filter-catalog.json` supplies both the Android subscription
 catalog and the engine's standalone defaults. Keep subscription IDs stable
-and put regional suggestions in `regions`. The engine uses only
-`defaultEnabled` entries when no subscription configuration exists.
+and give each regional list the primary language subtags it serves in
+`defaultLanguages`. When no subscription configuration exists, the engine
+uses the `defaultEnabled` entries and the entries for the device's
+languages, and setup suggests the same.
 
 `cargo deny` is installed with `cargo install --locked cargo-deny`; what it
 holds the dependencies to is in `deny.toml`.
