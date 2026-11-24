@@ -307,12 +307,21 @@ first-party. A browser that withholds its page still says whether the
 request is to another site, and that decides the party. The HTTP method,
 URL and available resource type still inform the decision.
 
+For plaintext HTTP and decrypted HTTPS, the engine takes the resource type
+from `Sec-Fetch-Dest` or a recognized file extension, in that order. A
+request whose type is unknown is first checked as `other`. If it goes
+upstream and the response's `Content-Type` identifies a resource type, the
+engine checks the request again with that type. A block at either check
+returns an empty `403` response. An HTML response leaves the request type
+unchanged.
+
 A `$replace` rule searches the text of a response with a regular
 expression and substitutes the replacement for each match. With URL
 filtering on, a matching `$replace` rule takes precedence over
 request-level blocks. A matching `$jsonprune` rule removes items from a
 JSON or JSONP response and leaves request blocking in effect. The engine
-applies `$jsonprune` before `$replace`. It can rewrite an eligible
+applies `$jsonprune` before `$replace` and uses the same resource type for
+response rules. It can rewrite an eligible
 uncompressed text response up to 2 MiB. It takes these rules from the
 user's custom rules and catalog lists marked as trusted for response
 rules.

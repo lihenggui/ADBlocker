@@ -57,7 +57,7 @@ use decrypt::{Peer, mitm};
 use plaintext::{HTTP_LOOK_TIME, plaintext_http, serve_plaintext};
 use upstream::{reset, splice};
 
-pub use request::{RequestDecision, evaluate_request};
+pub use request::{RequestDecision, RequestKind, evaluate_request};
 pub use upstream::{Event, Ipv6Health};
 
 /// Where a connection was going, and for whom. There is none but of an

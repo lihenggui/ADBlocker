@@ -39,6 +39,7 @@ mod list_files;
 mod list_url;
 pub mod live;
 pub mod malformed;
+mod media_type;
 pub mod mitm;
 pub mod paths;
 pub mod pause;

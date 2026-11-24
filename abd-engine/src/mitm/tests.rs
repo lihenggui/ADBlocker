@@ -27,7 +27,7 @@ use tokio::sync::mpsc;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 use super::plaintext::HTTP_LOOK;
-use super::request::{address, kind};
+use super::request::{address, kind, response_kind};
 use super::upstream::{HANDSHAKE_TIME, LINGER_TIME, no_way};
 
 use http_body_util::Empty;
@@ -587,6 +587,40 @@ async fn a_cleartext_url_block_returns_forbidden_without_dialing() {
     assert!(response.starts_with("HTTP/1.1 403 "), "{response}");
     assert_eq!(rig.count(Counter::RequestsBlocked), 1);
     assert_eq!(rig.dials.load(Relaxed), 0);
+}
+
+#[tokio::test]
+async fn a_cleartext_image_is_blocked_without_waiting_for_its_body() {
+    let (rig, server) = plain_rig(Setup {
+        rules: "||ads.example/creative$image\n",
+        ..Setup::default()
+    })
+    .await;
+    let upstream = tokio::spawn(async move {
+        let (mut tcp, _) = server.accept().await.unwrap();
+        let mut request = String::new();
+        let mut reader = tokio::io::BufReader::new(&mut tcp);
+        use tokio::io::AsyncBufReadExt as _;
+        loop {
+            let mut line = String::new();
+            assert_ne!(reader.read_line(&mut line).await.unwrap(), 0);
+            if line == "\r\n" {
+                break;
+            }
+            request.push_str(&line);
+        }
+        assert!(request.starts_with("GET /creative HTTP/1.1\r\n"));
+        tcp.write_all(b"HTTP/1.1 200 OK\r\nContent-Type: image/png\r\nContent-Length: 10\r\n\r\n")
+            .await
+            .unwrap();
+        std::future::pending::<()>().await;
+    });
+    let response = plain_response(plain_request(&rig, "/creative").await).await;
+    assert!(response.starts_with("HTTP/1.1 403 "), "{response}");
+    assert!(response.ends_with("\r\n\r\n"), "{response}");
+    assert_eq!(rig.count(Counter::RequestsBlocked), 1);
+    assert_eq!(rig.count(Counter::RequestsAllowed), 0);
+    upstream.abort();
 }
 
 #[tokio::test]
@@ -2466,13 +2500,67 @@ fn a_request_is_of_the_kind_the_browser_says_or_its_name_suggests() {
         }
         kind(&req.body(()).unwrap())
     };
-    assert_eq!(with(Some("script"), "/a"), "script");
-    assert_eq!(with(Some("empty"), "/api"), "xmlhttprequest");
-    assert_eq!(with(Some("iframe"), "/frame"), "subdocument");
-    // A native app says nothing.
-    assert_eq!(with(None, "/static/app.js"), "script");
-    assert_eq!(with(None, "/img/logo.png"), "image");
-    assert_eq!(with(None, "/v1/feed"), "other");
+    use RequestKind::{Assumed, Known};
+    assert_eq!(with(Some("script"), "/a"), Known("script"));
+    assert_eq!(with(Some("empty"), "/api.png"), Known("xmlhttprequest"));
+    assert_eq!(with(Some("iframe"), "/frame"), Known("subdocument"));
+    assert_eq!(with(None, "/static/app.js"), Known("script"));
+    assert_eq!(with(None, "/img/logo.png"), Known("image"));
+    assert_eq!(with(None, "/v1/feed"), Assumed);
+}
+
+#[test]
+fn a_single_recognized_response_media_type_identifies_the_resource() {
+    use hyper::header::{CONTENT_TYPE, HeaderValue};
+
+    for (mime, resource) in [
+        ("Image/PNG; Q=1", "image"),
+        ("text/css", "stylesheet"),
+        ("text/javascript", "script"),
+        ("application/javascript", "script"),
+        ("application/x-javascript", "script"),
+        ("application/ecmascript", "script"),
+        ("text/ecmascript", "script"),
+        ("video/mp4", "media"),
+        ("audio/mpeg", "media"),
+        ("application/vnd.apple.mpegurl", "media"),
+        ("application/x-mpegurl", "media"),
+        ("application/dash+xml", "media"),
+        ("font/woff2", "font"),
+        ("application/font-woff", "font"),
+        ("application/x-font-ttf", "font"),
+        ("application/vnd.ms-fontobject", "font"),
+        ("application/json", "xmlhttprequest"),
+        ("text/json", "xmlhttprequest"),
+        ("application/problem+json", "xmlhttprequest"),
+        ("application/xml", "xmlhttprequest"),
+        ("text/xml", "xmlhttprequest"),
+        ("application/x-protobuf", "xmlhttprequest"),
+        ("application/grpc", "xmlhttprequest"),
+        ("application/grpc+proto", "xmlhttprequest"),
+    ] {
+        let mut headers = hyper::HeaderMap::new();
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static(mime));
+        assert_eq!(
+            response_kind(&headers),
+            Some(RequestKind::Known(resource)),
+            "{mime}"
+        );
+    }
+    let mut headers = hyper::HeaderMap::new();
+    assert_eq!(response_kind(&headers), None);
+    for mime in [
+        "application/octet-stream",
+        "text/html",
+        "image/",
+        "image/png, text/html",
+    ] {
+        headers.insert(CONTENT_TYPE, HeaderValue::from_static(mime));
+        assert_eq!(response_kind(&headers), None, "{mime}");
+    }
+    headers.insert(CONTENT_TYPE, HeaderValue::from_static("image/png"));
+    headers.append(CONTENT_TYPE, HeaderValue::from_static("text/html"));
+    assert_eq!(response_kind(&headers), None);
 }
 
 #[test]
@@ -2584,27 +2672,180 @@ fn replacement_fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>>
         // These bytes are opaque when any non-identity encoding is declared.
         resp = resp.header("content-encoding", "gzip");
     }
-    let mime = if path == "json" {
-        "application/json"
-    } else if path == "binary" {
-        "application/octet-stream"
-    } else {
-        "text/plain"
+    let mime = match path {
+        "json" => "application/json",
+        "binary" => "application/octet-stream",
+        "image" => "image/png",
+        "html" => "text/html",
+        _ => "text/plain",
     };
-    let body = if path == "json" {
-        r#"{"ad":true,"keep":"original"}"#.to_owned()
-    } else {
-        format!("original {asked}")
+    let body = match path {
+        "json" => r#"{"ad":true,"keep":"original"}"#.to_owned(),
+        "image" => "image\0payload\r\n".to_owned(),
+        "html" => "<html><body>original</body></html>".to_owned(),
+        _ => format!("original {asked}"),
     };
     Some(
         resp.header("content-type", mime)
             .header("content-length", body.len())
+            .header("x-request-encoding", asked)
             .body(Full::new(Bytes::from(body)))
             .unwrap(),
     )
 }
 
 const REPLACEMENT_RULES: &str = "||site.test/replace/$replace=/original/changed/\n";
+
+async fn only_watch_event(watcher: &mut crate::live::Joined) -> serde_json::Value {
+    let mut out = Vec::new();
+    {
+        let mut feed = std::pin::pin!(crate::live::feed(watcher, &mut out));
+        // The response has arrived and all its events are already queued.
+        std::future::poll_fn(|cx| {
+            assert!(feed.as_mut().poll(cx).is_pending());
+            std::task::Poll::Ready(())
+        })
+        .await;
+    }
+    serde_json::from_slice(&out).unwrap()
+}
+
+#[tokio::test]
+async fn an_image_response_supplies_the_missing_type_for_the_final_verdict() {
+    for (rules, dest, status, kind) in [
+        (
+            "||site.test/replace/image$image,domain=page.test,method=POST\n",
+            None,
+            StatusCode::FORBIDDEN,
+            "image",
+        ),
+        (
+            "||site.test/replace/image$image,app=com.app\n",
+            None,
+            StatusCode::FORBIDDEN,
+            "image",
+        ),
+        (
+            "||site.test/replace/image$image\n@@||site.test/replace/image$image\n",
+            None,
+            StatusCode::OK,
+            "image",
+        ),
+        (
+            "||site.test/replace/image$image,important\n@@||site.test/replace/image$image\n",
+            None,
+            StatusCode::FORBIDDEN,
+            "image",
+        ),
+        (
+            "||site.test/replace/image$image\n",
+            Some("empty"),
+            StatusCode::OK,
+            "xmlhttprequest",
+        ),
+        ("", None, StatusCode::OK, "image"),
+    ] {
+        let rig = rig(Setup {
+            rules,
+            alpn: BOTH,
+            ..Setup::default()
+        })
+        .await;
+        let mut watcher = rig.ctx.services.live.join(None).unwrap();
+        let path = "/replace/image";
+        let page = "https://page.test/article";
+        let (headers, actual, body, real) = rig
+            .request_response(Trust::System, BOTH, path, Some(page), |req| {
+                let req = req.method(Method::POST).header(ACCEPT_ENCODING, "gzip, br");
+                match dest {
+                    Some(dest) => req.header("sec-fetch-dest", dest),
+                    None => req,
+                }
+            })
+            .await
+            .unwrap();
+        assert_eq!(actual, status, "{rules}");
+        assert!(!real);
+        assert_eq!(rig.hits(), 1);
+        let blocked = status == StatusCode::FORBIDDEN;
+        assert_eq!(rig.count(Counter::RequestsBlocked), u64::from(blocked));
+        assert_eq!(rig.count(Counter::RequestsAllowed), u64::from(!blocked));
+        if blocked {
+            assert!(body.is_empty());
+            assert!(!headers.contains_key("etag"));
+        } else {
+            assert_eq!(body.as_bytes(), b"image\0payload\r\n");
+            assert_eq!(headers["etag"], "\"fixture\"");
+            assert_eq!(headers["x-request-encoding"], "gzip, br");
+        }
+        let event = only_watch_event(&mut watcher).await;
+        assert_eq!(
+            event["verdict"],
+            if blocked { "blocked" } else { "allowed" }
+        );
+        assert_eq!(event["kind"], kind);
+        assert_eq!(event["url"], format!("https://{HOST}{path}"));
+        assert_eq!(event["page"], page);
+        assert_eq!(event["app"], PACKAGE);
+    }
+}
+
+#[tokio::test]
+async fn html_from_a_request_of_assumed_type_does_not_identify_a_page() {
+    let rig = rig(Setup {
+        rules: "||site.test/replace/html$document,subdocument\nsite.test##body\n",
+        cosmetic: true,
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, body, _) = rig
+        .get_response(Trust::System, H1, "/replace/html", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "<html><body>original</body></html>");
+}
+
+#[tokio::test]
+async fn a_response_type_selects_rewrites_and_their_exceptions() {
+    for (rules, encoding, body) in [
+        (
+            "||site.test/replace/json$xmlhttprequest,replace=/original/changed/\n",
+            "identity",
+            r#"{"ad":true,"keep":"changed"}"#,
+        ),
+        (
+            r"||site.test/replace/json$xmlhttprequest,jsonprune=\$.ad",
+            "identity",
+            r#"{"keep":"original"}"#,
+        ),
+        (
+            "||site.test/replace/json$xmlhttprequest,replace=/original/changed/\n@@||site.test/replace/json$xmlhttprequest,replace\n",
+            "gzip, br",
+            r#"{"ad":true,"keep":"original"}"#,
+        ),
+        (
+            "||site.test/replace/json$script,replace=/original/changed/\n",
+            "identity",
+            r#"{"ad":true,"keep":"original"}"#,
+        ),
+    ] {
+        let rig = rig(Setup {
+            rules,
+            ..Setup::default()
+        })
+        .await;
+        let (headers, status, actual, _) = rig
+            .request_response(Trust::System, H1, "/replace/json", None, |req| {
+                req.header(ACCEPT_ENCODING, "gzip, br")
+            })
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(headers["x-request-encoding"], encoding, "{rules}");
+        assert_eq!(actual, body, "{rules}");
+    }
+}
 
 #[tokio::test]
 async fn a_decrypted_text_response_is_replaced_and_the_origin_is_asked_for_identity() {

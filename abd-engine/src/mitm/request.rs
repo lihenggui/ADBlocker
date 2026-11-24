@@ -20,9 +20,11 @@ use std::sync::atomic::Ordering::Relaxed;
 use bytes::Bytes;
 use http_body_util::{BodyExt, Full, combinators::BoxBody};
 use hyper::body::Incoming;
-use hyper::header::{ACCEPT_ENCODING, CONTENT_LENGTH, HOST, ORIGIN, RANGE, REFERER, UPGRADE};
+use hyper::header::{
+    ACCEPT_ENCODING, CONTENT_LENGTH, HOST, HeaderValue, ORIGIN, RANGE, REFERER, UPGRADE,
+};
 use hyper::http::uri::{Authority, PathAndQuery};
-use hyper::{Method, Request, Response, StatusCode};
+use hyper::{HeaderMap, Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 
 use super::upstream::{LINGER_TIME, Upstream};
@@ -35,37 +37,85 @@ use crate::tls::Tls;
 
 type Body = BoxBody<Bytes, hyper::Error>;
 
-/// What kind of resource a request is for, as the filter options name them.
-pub(super) fn kind<B>(req: &Request<B>) -> &'static str {
+/// Whether the request identified its resource type or was judged as `other`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum RequestKind {
+    Known(&'static str),
+    Assumed,
+}
+
+impl RequestKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Known(kind) => kind,
+            Self::Assumed => "other",
+        }
+    }
+}
+
+pub(super) fn kind<B>(req: &Request<B>) -> RequestKind {
     let h = |n: &str| {
         req.headers()
             .get(n)
             .and_then(|v| v.to_str().ok())
             .unwrap_or("")
     };
-    match h("sec-fetch-dest") {
+    RequestKind::Known(match h("sec-fetch-dest") {
         "document" => "document",
         "iframe" | "frame" => "subdocument",
-        "script" | "worker" | "sharedworker" | "serviceworker" => "script",
-        "style" => "stylesheet",
-        "image" => "image",
-        "font" => "font",
-        "audio" | "video" | "track" => "media",
+        "script" | "worker" | "sharedworker" | "serviceworker" => SCRIPT,
+        "style" => STYLESHEET,
+        "image" => IMAGE,
+        "font" => FONT,
+        "audio" | "video" | "track" => MEDIA,
         "object" | "embed" => "object",
-        "empty" => "xmlhttprequest",
+        "empty" => XHR,
         _ => {
             let path = req.uri().path();
             let ext = path.rsplit_once('.').map_or("", |(_, e)| e);
             match ext {
-                "js" | "mjs" => "script",
-                "css" => "stylesheet",
-                "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "ico" | "avif" => "image",
-                "woff" | "woff2" | "ttf" | "otf" => "font",
-                "mp4" | "webm" | "m3u8" | "ts" | "mp3" | "m4a" => "media",
-                _ => "other",
+                "js" | "mjs" => SCRIPT,
+                "css" => STYLESHEET,
+                "png" | "jpg" | "jpeg" | "gif" | "webp" | "svg" | "ico" | "avif" => IMAGE,
+                "woff" | "woff2" | "ttf" | "otf" => FONT,
+                "mp4" | "webm" | "m3u8" | "ts" | "mp3" | "m4a" => MEDIA,
+                _ => return RequestKind::Assumed,
             }
         }
-    }
+    })
+}
+
+const IMAGE: &str = "image";
+const STYLESHEET: &str = "stylesheet";
+const SCRIPT: &str = "script";
+const MEDIA: &str = "media";
+const FONT: &str = "font";
+const XHR: &str = "xmlhttprequest";
+const RESPONSE_KINDS: &[&str] = &[IMAGE, STYLESHEET, SCRIPT, MEDIA, FONT, XHR];
+
+pub(super) fn response_kind(headers: &HeaderMap) -> Option<RequestKind> {
+    let mime = crate::media_type::read(headers)?.to_ascii_lowercase();
+    let (group, subtype) = mime.split_once('/')?;
+    let kind = match (group, subtype) {
+        ("image", _) => IMAGE,
+        ("text", "css") => STYLESHEET,
+        ("text" | "application", "javascript" | "ecmascript") | ("application", "x-javascript") => {
+            SCRIPT
+        }
+        ("video" | "audio", _)
+        | ("application", "vnd.apple.mpegurl" | "x-mpegurl" | "dash+xml") => MEDIA,
+        ("font", _) | ("application", "vnd.ms-fontobject") => FONT,
+        ("application", subtype)
+            if subtype.starts_with("font-") || subtype.starts_with("x-font-") =>
+        {
+            FONT
+        }
+        ("text" | "application", "json" | "xml") | ("application", "x-protobuf") => XHR,
+        ("application", subtype) if subtype.starts_with("grpc") => XHR,
+        (_, subtype) if subtype.ends_with("+json") => XHR,
+        _ => return None,
+    };
+    Some(RequestKind::Known(kind))
 }
 
 fn header<'a, B>(req: &'a Request<B>, name: &str) -> Option<&'a [u8]> {
@@ -108,10 +158,10 @@ fn shows_page<B>(req: &Request<B>, page: &Page<'_>) -> bool {
 }
 
 /// The page a request says it was made by, if it says.
-fn told_page<B>(req: &Request<B>) -> Option<(&str, adblock::url_parser::RequestUrl)> {
+fn told_page<B>(req: &Request<B>) -> Option<(&HeaderValue, adblock::url_parser::RequestUrl)> {
     [REFERER, ORIGIN].into_iter().find_map(|name| {
-        let value = req.headers().get(name)?.to_str().ok()?;
-        Some((value, crate::filter::parse_http_page(value)?))
+        let value = req.headers().get(name)?;
+        Some((value, crate::filter::parse_http_page(value.to_str().ok()?)?))
     })
 }
 
@@ -201,70 +251,167 @@ pub fn evaluate_request<'a, B>(
     req: &'a Request<B>,
     url: &str,
 ) -> RequestDecision<'a> {
-    evaluate(filters, req, url, kind(req)).0
-}
-
-fn evaluate<'a, B>(
-    filters: &AppFilters<'_>,
-    req: &'a Request<B>,
-    url: &str,
-    kind: &'static str,
-) -> (RequestDecision<'a>, Vec<Arc<ResponseAction>>) {
     let told = told_page(req);
-    let page = page_of(req, told.as_ref().map(|(_, page)| page));
-    let shows_page = shows_page(req, &page);
-    let method = req.method().as_str();
-    let actions = if permits_rewrite(req) {
-        filters.response_actions(url, page, kind, method)
-    } else {
-        Vec::new()
-    };
-    // Only replacement rules take precedence after the connection passes host filtering.
-    let blocked = !actions
-        .iter()
-        .any(|action| action.kind() == ActionKind::Replace)
-        && filters.check_with_page(url, page, kind, method).blocked;
-    (
-        RequestDecision {
-            blocked,
-            kind,
-            page: told.map(|(value, _)| value),
-            shows_page,
-        },
-        actions,
-    )
+    let metadata = RequestMetadata::new(req, req.method(), told.as_ref().map(|(v, p)| (*v, p)));
+    metadata.evaluate(filters, url, kind(req)).0
 }
 
+/// The policy inputs that must survive moving the request into the transport.
+struct RequestMetadata<'a, 't> {
+    page: Page<'a>,
+    told: Option<&'t str>,
+    shows_page: bool,
+    method: &'a str,
+    permits_rewrite: bool,
+}
+
+#[derive(Default)]
+struct RewritePlan {
+    actions: Vec<Arc<ResponseAction>>,
+    ask_for_identity: bool,
+}
+
+impl<'a, 't> RequestMetadata<'a, 't> {
+    fn new<B>(
+        req: &Request<B>,
+        method: &'a Method,
+        told: Option<(&'t HeaderValue, &'a adblock::url_parser::RequestUrl)>,
+    ) -> Self {
+        let page = page_of(req, told.map(|(_, page)| page));
+        Self {
+            page,
+            told: told.and_then(|(value, _)| value.to_str().ok()),
+            shows_page: shows_page(req, &page),
+            method: method.as_str(),
+            permits_rewrite: permits_rewrite(req),
+        }
+    }
+
+    fn evaluate(
+        &self,
+        filters: &AppFilters<'_>,
+        url: &str,
+        kind: RequestKind,
+    ) -> (RequestDecision<'t>, RewritePlan) {
+        let matched = self
+            .permits_rewrite
+            .then(|| filters.response_matches(url, self.page, self.method))
+            .flatten();
+        let actions = matched
+            .as_ref()
+            .map_or_else(Vec::new, |m| m.actions(kind.as_str()));
+        // Only replacement rules take precedence after the connection passes host filtering.
+        let blocked = !actions
+            .iter()
+            .any(|action| action.kind() == ActionKind::Replace)
+            && filters
+                .check_with_page(url, self.page, kind.as_str(), self.method)
+                .blocked;
+        let ask_for_identity = !actions.is_empty()
+            || (!blocked
+                && kind == RequestKind::Assumed
+                && matched.is_some_and(|m| {
+                    RESPONSE_KINDS
+                        .iter()
+                        .any(|kind| !m.actions(kind).is_empty())
+                }));
+        (
+            RequestDecision {
+                blocked,
+                kind,
+                page: self.told,
+            },
+            RewritePlan {
+                actions,
+                ask_for_identity,
+            },
+        )
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct RequestDecision<'a> {
     pub blocked: bool,
-    pub kind: &'static str,
+    pub kind: RequestKind,
     pub page: Option<&'a str>,
-    /// Whether the request shows that its app has pages, named or not.
-    pub(super) shows_page: bool,
 }
 
-fn record_request(ctx: &Ctx, package: &str, host: &str, url: &str, decision: RequestDecision<'_>) {
-    let RequestDecision {
-        blocked,
-        kind,
-        page,
-        ..
-    } = decision;
-    ctx.services
-        .live
-        .request(package, host, blocked, url, page, kind);
-    let count = if blocked {
-        Counter::RequestsBlocked
-    } else {
-        Counter::RequestsAllowed
-    };
-    ctx.services.stats.count(Some(package), count);
-    trace!(ctx, "request {package} [{kind}] {url} blocked={blocked}");
+struct MatchedRequest<'a> {
+    shared: &'a Shared,
+    filters: &'a AppFilters<'a>,
+    url: &'a str,
+    host: &'a str,
+    metadata: RequestMetadata<'a, 'a>,
+}
+
+impl MatchedRequest<'_> {
+    fn evaluate(&self, kind: RequestKind) -> (RequestDecision<'_>, RewritePlan) {
+        self.metadata.evaluate(self.filters, self.url, kind)
+    }
+
+    fn record(&self, decision: RequestDecision<'_>) {
+        let Shared { ctx, package, .. } = self.shared;
+        let Self { host, url, .. } = self;
+        let RequestDecision {
+            blocked,
+            kind,
+            page,
+        } = decision;
+        let kind = kind.as_str();
+        ctx.services
+            .live
+            .request(package, host, blocked, url, page, kind);
+        let count = if blocked {
+            Counter::RequestsBlocked
+        } else {
+            Counter::RequestsAllowed
+        };
+        ctx.services.stats.count(Some(package), count);
+        trace!(ctx, "request {package} [{kind}] {url} blocked={blocked}");
+    }
+
+    fn blocked(&self, decision: RequestDecision<'_>) -> Response<Body> {
+        self.record(decision);
+        empty(StatusCode::FORBIDDEN)
+    }
+}
+
+/// If forwarding ends without a response head, keep the request-side verdict.
+struct PendingVerdict<'a> {
+    request: &'a MatchedRequest<'a>,
+    decision: Option<RequestDecision<'a>>,
+}
+
+impl PendingVerdict<'_> {
+    fn finish(
+        mut self,
+        inferred: RequestKind,
+        actions: &mut Vec<Arc<ResponseAction>>,
+    ) -> Option<Response<Body>> {
+        let request = self.request;
+        // As in AdGuard, the request has already been sent before its response reveals the type.
+        let (decision, selected) = request.evaluate(inferred);
+        self.decision = None;
+        if decision.blocked {
+            return Some(request.blocked(decision));
+        }
+        *actions = selected.actions;
+        request.record(decision);
+        None
+    }
+}
+
+impl Drop for PendingVerdict<'_> {
+    fn drop(&mut self) {
+        if let Some(decision) = self.decision {
+            self.request.record(decision);
+        }
+    }
 }
 
 pub(super) async fn serve<'a>(
     shared: &Shared,
-    mut req: Request<Incoming>,
+    req: Request<Incoming>,
     upstream: impl Future<Output = anyhow::Result<&'a Upstream>>,
 ) -> anyhow::Result<Response<Body>> {
     let Shared {
@@ -291,72 +438,99 @@ pub(super) async fn serve<'a>(
     } else {
         target.as_ref().map_or("", |(url, _)| url.as_str())
     };
-    let matched = if let Some((url, host)) = &target
-        && selected
+    let filtered = target.as_ref().filter(|(_, host)| {
+        selected
         // `guard_site` found a decrypted request's site untrusted, and it
         // can name no other (`address`).
         && (https.is_some() || !ctx.lists.allow.read().unwrap().covers(host))
+    });
+    if !url_filtering
+        && let Some((_, host)) = filtered
+        && for_app.blocks_domain(host)
     {
-        if url_filtering {
-            let (decision, actions) = evaluate(&for_app, &req, url, kind);
-            if decision.shows_page {
-                ctx.services.policy.note_page(package);
-            }
-            if decision.blocked {
-                record_request(ctx, package, host, url, decision);
-                return Ok(empty(StatusCode::FORBIDDEN));
-            }
-            Some((url, host, decision, actions))
-        } else {
-            if for_app.blocks_domain(host) {
-                ctx.services
-                    .stats
-                    .count(Some(package), Counter::HostsBlocked);
-                ctx.services.live.host_blocked(package, host);
-                return Ok(empty(StatusCode::FORBIDDEN));
-            }
-            None
+        ctx.services
+            .stats
+            .count(Some(package), Counter::HostsBlocked);
+        ctx.services.live.host_blocked(package, host);
+        return Ok(empty(StatusCode::FORBIDDEN));
+    }
+    let filtered = filtered.filter(|_| url_filtering);
+    let told = filtered
+        .and_then(|_| told_page(&req))
+        .map(|(value, page)| (value.clone(), page));
+    let method = req.method().clone();
+    let matched = filtered.map(|(url, host)| MatchedRequest {
+        shared,
+        filters: &for_app,
+        url,
+        host,
+        metadata: RequestMetadata::new(&req, &method, told.as_ref().map(|(v, p)| (v, p))),
+    });
+    let (judged, mut rewrite) = if let Some(request) = &matched {
+        let (decision, rewrite) = request.evaluate(kind);
+        if request.metadata.shows_page {
+            ctx.services.policy.note_page(package);
         }
+        if decision.blocked {
+            return Ok(request.blocked(decision));
+        }
+        (Some((request, decision)), rewrite)
     } else {
-        None
+        (None, RewritePlan::default())
     };
     // An error opening the upstream ends the connection before any HTTP response.
     let upstream = upstream.await?;
-    let actions = if let Some((url, host, decision, actions)) = matched {
-        record_request(ctx, package, host, url, decision);
-        actions
-    } else {
-        Vec::new()
-    };
-    let hiding = hiding_for(shared, &filters, &req, url, kind);
-    if hiding.is_some() || !actions.is_empty() {
-        let plain = hyper::header::HeaderValue::from_static("identity");
-        req.headers_mut().insert(ACCEPT_ENCODING, plain);
-    }
-
-    let resp = match forward_with_upgrade(shared, upstream, req).await {
-        Ok(r) => r,
-        Err(e) => {
-            trace!(ctx, "error   {package} {url}: {e}");
-            return Ok(empty(StatusCode::BAD_GATEWAY));
+    let pending = judged.and_then(|(request, decision)| match decision.kind {
+        RequestKind::Known(_) => {
+            request.record(decision);
+            None
         }
-    };
-    Ok(hide(&filters, crate::rewrite::wrap(resp, actions), hiding).await)
+        RequestKind::Assumed => Some(PendingVerdict {
+            request,
+            decision: Some(decision),
+        }),
+    });
+    let hiding = hiding_for(shared, &filters, &req, url, kind.as_str());
+    rewrite.ask_for_identity |= hiding.is_some();
+    let response = forward_response(shared, upstream, req, url, rewrite, pending).await;
+    Ok(hide(&filters, response, hiding).await)
 }
 
-async fn forward_with_upgrade(
+async fn forward_response(
     shared: &Shared,
     upstream: &Upstream,
     mut req: Request<Incoming>,
-) -> Result<Response<Incoming>, hyper::Error> {
+    url: &str,
+    mut rewrite: RewritePlan,
+    pending: Option<PendingVerdict<'_>>,
+) -> Response<Body> {
+    if rewrite.ask_for_identity {
+        req.headers_mut()
+            .insert(ACCEPT_ENCODING, HeaderValue::from_static("identity"));
+    }
     // A WebSocket starts as a request asking to switch protocols; once the
     // server agrees the two connections are joined and no longer read.
     let connect_tunnel = shared.https.is_none() && req.method() == Method::CONNECT;
     let app_upgrade = (connect_tunnel || req.headers().contains_key(UPGRADE))
         .then(|| hyper::upgrade::on(&mut req));
-    let mut resp = forward(upstream, req).await?;
+    let mut resp = match forward(upstream, req).await {
+        Ok(response) => response,
+        Err(e) => {
+            let Shared { ctx, package, .. } = shared;
+            trace!(ctx, "error   {package} {url}: {e}");
+            return empty(StatusCode::BAD_GATEWAY);
+        }
+    };
+    // A protocol switch has no response representation to classify.
+    if let Some(pending) = pending
+        && resp.status() != StatusCode::SWITCHING_PROTOCOLS
+        && let Some(kind) = response_kind(resp.headers())
+        && let Some(blocked) = pending.finish(kind, &mut rewrite.actions)
+    {
+        return blocked;
+    }
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
-    Ok(resp)
+    crate::rewrite::wrap(resp, rewrite.actions)
 }
 
 fn guard_site(

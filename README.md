@@ -50,9 +50,11 @@ filter every app by domain only. See
 
 With URL filtering on, a host that a list blocks but also allows for
 some paths stays reachable: the engine checks each request on the
-connection instead of refusing it. When a site or app requires a
-certificate ADBlocker cannot use, HTTPS stays encrypted and only domain
-rules apply.
+connection instead of refusing it. The engine checks the resource type
+from `Sec-Fetch-Dest` or the URL's file extension. If neither identifies
+the type, it checks again when the server's `Content-Type` identifies it.
+When a site or app requires a certificate ADBlocker cannot use, HTTPS
+stays encrypted and only domain rules apply.
 
 ADBlocker refuses QUIC for selected apps so they can retry over TCP, where
 the usual HTTPS rules apply. Apps that only support QUIC may fail to connect.

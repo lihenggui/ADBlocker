@@ -22,7 +22,6 @@ use std::sync::Arc;
 
 use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions};
-use adblock::request::Request;
 use serde::{Deserialize, Serialize};
 
 use super::app_patterns::{Condition, Patterns, Prepared, Scope};
@@ -458,14 +457,11 @@ impl ResponseRules {
     /// suppress only their own kind.
     pub(super) fn actions(
         &self,
-        request: &Request,
+        tokens: &str,
         kind: &str,
         scope: Option<&Scope<'_>>,
         skip_prune: bool,
     ) -> Vec<Arc<ResponseAction>> {
-        let Some(tokens) = self.engine.get_csp_directives(request) else {
-            return Vec::new();
-        };
         let mut matched: Vec<_> = tokens
             .split(',')
             .filter_map(|token| {
@@ -474,6 +470,9 @@ impl ResponseRules {
                 rule.qualifiers.matches(kind, scope).then_some((id, rule))
             })
             .collect();
+        if matched.is_empty() {
+            return Vec::new();
+        }
         matched.sort_unstable_by_key(|(id, _)| *id);
         let mut seen = vec![false; self.compiled.len()];
         let mut skip_prune = skip_prune;
@@ -514,8 +513,23 @@ fn compile_with_budget(spec: &ActionSpec, remaining: &mut usize) -> Option<Arc<R
     Some(Arc::new(action))
 }
 
+/// The matching URL conditions before applying type qualifiers and exceptions.
+pub(crate) struct ResponseMatches<'a> {
+    rules: &'a ResponseRules,
+    tokens: String,
+    scope: Option<&'a Scope<'a>>,
+    skip_prune: bool,
+}
+
+impl ResponseMatches<'_> {
+    pub(crate) fn actions(&self, kind: &str) -> Vec<Arc<ResponseAction>> {
+        self.rules
+            .actions(&self.tokens, kind, self.scope, self.skip_prune)
+    }
+}
+
 impl super::AppFilters<'_> {
-    /// Resolve page exceptions before asking for actions in the request context.
+    #[cfg(test)]
     pub(crate) fn response_actions(
         &self,
         url: &str,
@@ -523,17 +537,30 @@ impl super::AppFilters<'_> {
         kind: &str,
         method: &str,
     ) -> Vec<Arc<ResponseAction>> {
-        let Some(rules) = &self.filters.responses else {
-            return Vec::new();
-        };
+        self.response_matches(url, page, method)
+            .map_or_else(Vec::new, |matched| matched.actions(kind))
+    }
+
+    /// Resolve page exceptions before looking up the URL in the request context.
+    pub(crate) fn response_matches(
+        &self,
+        url: &str,
+        page: Page<'_>,
+        method: &str,
+    ) -> Option<ResponseMatches<'_>> {
+        let rules = self.filters.responses.as_ref()?;
         let exceptions = self.filters.page_exceptions.response(url, page, method);
         if exceptions.all {
-            return Vec::new();
+            return None;
         }
-        RequestRules::request_with_page(url, page, "document", method)
-            .map_or_else(Vec::new, |request| {
-                rules.actions(&request, kind, self.scope.as_ref(), exceptions.prune)
-            })
+        let request = RequestRules::request_with_page(url, page, "document", method)?;
+        let tokens = rules.engine.get_csp_directives(&request)?;
+        Some(ResponseMatches {
+            rules,
+            tokens,
+            scope: self.scope.as_ref(),
+            skip_prune: exceptions.prune,
+        })
     }
 }
 

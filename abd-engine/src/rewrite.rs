@@ -27,7 +27,7 @@ use std::time::Instant;
 use bytes::Bytes;
 use http_body_util::{BodyExt, combinators::BoxBody};
 use hyper::body::{Body, Frame};
-use hyper::header::{ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH, CONTENT_TYPE, ETAG};
+use hyper::header::{ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH, ETAG};
 use hyper::{Response, StatusCode};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::task::JoinHandle;
@@ -56,37 +56,25 @@ impl Slots {
 
 /// Types whose bodies a response rule can treat as text.
 fn text_type(value: &str) -> bool {
-    let mime = value
-        .split(';')
-        .next()
-        .unwrap_or_default()
-        .trim()
-        .to_ascii_lowercase();
+    let mime = value.to_ascii_lowercase();
     let Some((group, subtype)) = mime.split_once('/') else {
         return false;
     };
-    !group.is_empty()
-        && !subtype.is_empty()
-        && [group, subtype].into_iter().all(|token| {
-            token
-                .bytes()
-                .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^_`|~".contains(&b))
-        })
-        && (group == "text"
-            || subtype.ends_with("+json")
-            || subtype.ends_with("+xml")
-            || group == "application"
-                && matches!(
-                    subtype,
-                    "json"
-                        | "javascript"
-                        | "x-javascript"
-                        | "xml"
-                        | "xhtml+xml"
-                        | "x-www-form-urlencoded"
-                        | "vnd.apple.mpegurl"
-                        | "x-mpegurl"
-                ))
+    group == "text"
+        || subtype.ends_with("+json")
+        || subtype.ends_with("+xml")
+        || group == "application"
+            && matches!(
+                subtype,
+                "json"
+                    | "javascript"
+                    | "x-javascript"
+                    | "xml"
+                    | "xhtml+xml"
+                    | "x-www-form-urlencoded"
+                    | "vnd.apple.mpegurl"
+                    | "x-mpegurl"
+            )
 }
 
 /// Require a whole, unencoded response whose declared size can fit.
@@ -109,14 +97,7 @@ fn takes<B>(response: &Response<B>) -> bool {
                 .and_then(|value| value.parse::<usize>().ok())
                 .is_some_and(|size| size <= MAX_REWRITE_BODY)
         })
-        && {
-            let mut types = headers.get_all(CONTENT_TYPE).iter();
-            types
-                .next()
-                .and_then(|value| value.to_str().ok())
-                .is_some_and(text_type)
-                && types.next().is_none()
-        }
+        && crate::media_type::read(headers).is_some_and(text_type)
 }
 
 /// Leave the response intact if it cannot be collected right away.

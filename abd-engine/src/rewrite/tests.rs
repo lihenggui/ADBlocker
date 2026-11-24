@@ -18,7 +18,7 @@ use std::task::Poll;
 
 use http_body_util::Full;
 use hyper::HeaderMap;
-use hyper::header::HeaderValue;
+use hyper::header::{CONTENT_TYPE, HeaderValue};
 
 use super::*;
 use crate::limits::MAX_REWRITE_RESULT;
