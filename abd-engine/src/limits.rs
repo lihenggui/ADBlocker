@@ -43,6 +43,18 @@ pub(crate) const MAX_RESPONSE_RULES: usize = 1024;
 pub(crate) const MAX_RESPONSE_REGEX_BYTES: usize = 32 << 20;
 /// The largest response rule retained or compiled.
 pub(crate) const MAX_RESPONSE_RULE: usize = 8 << 10;
+/// The longest `$jsonprune` expression, unescaped. A rule with a longer
+/// one is invalid.
+pub(crate) const MAX_JSON_PATH: usize = 4 << 10;
+/// The most paths nested in the filters of one expression. A rule with
+/// more is invalid.
+pub(crate) const MAX_JSON_PATH_NESTING: usize = 8;
+/// How deep below the root a document is walked. What lies deeper is left
+/// as it is.
+pub(crate) const MAX_JSON_DEPTH: usize = 64;
+/// The most items one expression may visit in one document. Past it the
+/// response is passed on unchanged.
+pub(crate) const MAX_JSON_VISITS: usize = 250_000;
 /// The most heap used by one response NFA. Counted Unicode repetitions
 /// expand into UTF-8 transitions for each repetition.
 pub(crate) const MAX_RESPONSE_REGEX: usize = 512 << 10;

@@ -29,7 +29,7 @@ use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
 use crate::filter::{AppFilters, Filters, Hiding, Page};
 use crate::relay;
-use crate::response_action::ResponseAction;
+use crate::response_action::{ActionKind, ResponseAction};
 use crate::stats::Counter;
 use crate::tls::Tls;
 
@@ -219,8 +219,11 @@ fn evaluate<'a, B>(
     } else {
         Vec::new()
     };
-    // Response rules override request blocks only after the connection passes host filtering.
-    let blocked = actions.is_empty() && filters.check_with_page(url, page, kind, method).blocked;
+    // Only replacement rules take precedence after the connection passes host filtering.
+    let blocked = !actions
+        .iter()
+        .any(|action| action.kind() == ActionKind::Replace)
+        && filters.check_with_page(url, page, kind, method).blocked;
     (
         RequestDecision {
             blocked,

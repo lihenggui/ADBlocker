@@ -311,7 +311,7 @@ async fn held_work(
             began.send(()).ok()?;
             wait.blocking_recv().ok()?;
             report.send(check()).ok()?;
-            replace(input, actions, check)
+            apply_actions(input, actions, check)
         },
     ));
     tokio::time::timeout(REWRITE_WORK, started)
@@ -390,4 +390,21 @@ async fn a_worker_that_panics_returns_the_original() {
         "original"
     );
     assert_eq!(slots.responses.available_permits(), 1);
+}
+
+#[tokio::test]
+async fn a_collected_json_body_is_pruned_before_replacement() {
+    let prune = ActionSpec::Prune("$.ad".to_owned()).compile().unwrap();
+    let mut actions = action("ad|original", "changed", false);
+    actions.insert(0, Arc::new(prune));
+    let body = stream([data(r#"{"ad":tr"#), data(r#"ue,"keep":"original"}"#)]);
+    let response = Response::builder()
+        .header(CONTENT_TYPE, "application/json")
+        .body(body)
+        .unwrap();
+    let response = wrap_with(response, actions, &Slots::new(1));
+    assert_eq!(
+        response.into_body().collect().await.unwrap().to_bytes(),
+        r#"{"keep":"changed"}"#
+    );
 }

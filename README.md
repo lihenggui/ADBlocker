@@ -227,7 +227,9 @@ does not name is on, and `#` before its address turns it off. Updates add missin
 an existing selection. An empty exclusion selection keeps decryption off.
 Custom rules go in `rules/*.txt`, in the syntax of the filter lists.
 A matching `$replace` rule can override a request block and rewrite the
-text response when URL filtering is on. A rule ending in `$app=` and a
+text response when URL filtering is on. A matching `$jsonprune` rule
+removes items from a JSON or JSONP response and leaves request blocking
+in effect. A rule ending in `$app=` and a
 package name, such as
 `||ads.example^$app=com.reader`, applies in that app only. Run
 `abd update` or `abd reload` after a change.

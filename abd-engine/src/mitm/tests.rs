@@ -2584,12 +2584,18 @@ fn replacement_fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>>
         // These bytes are opaque when any non-identity encoding is declared.
         resp = resp.header("content-encoding", "gzip");
     }
-    let mime = if path == "binary" {
+    let mime = if path == "json" {
+        "application/json"
+    } else if path == "binary" {
         "application/octet-stream"
     } else {
         "text/plain"
     };
-    let body = format!("original {asked}");
+    let body = if path == "json" {
+        r#"{"ad":true,"keep":"original"}"#.to_owned()
+    } else {
+        format!("original {asked}")
+    };
     Some(
         resp.header("content-type", mime)
             .header("content-length", body.len())
@@ -2748,4 +2754,90 @@ async fn a_page_is_replaced_before_the_cosmetic_style_is_inserted() {
     assert_eq!(status, StatusCode::OK);
     assert!(body.contains("<body>replaced</body>"));
     assert!(body.contains("<style>.ad{display:none!important}"));
+}
+
+const PRUNE_RULES: &str = r"||site.test/replace/json$jsonprune=\$.ad";
+
+#[tokio::test]
+async fn jsonprune_removes_items_from_a_decrypted_response() {
+    for alpn in [H1, BOTH] {
+        let rig = rig(Setup {
+            rules: PRUNE_RULES,
+            alpn,
+            ..Setup::default()
+        })
+        .await;
+        let (headers, status, body, _) = rig
+            .get_response(Trust::System, alpn, "/replace/json", None)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, r#"{"keep":"original"}"#);
+        assert!(!headers.contains_key("etag"));
+    }
+}
+
+#[tokio::test]
+async fn a_pruning_action_does_not_override_a_request_block() {
+    let rig = rig(Setup {
+        rules: r"||site.test/replace/json
+||site.test/replace/json$jsonprune=\$.ad",
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/replace/json", None)
+        .await
+        .unwrap();
+    assert_eq!((status, body.as_str()), (StatusCode::FORBIDDEN, ""));
+    assert_eq!(rig.hits(), 0);
+    assert_eq!(rig.count(Counter::RequestsBlocked), 1);
+}
+
+#[tokio::test]
+async fn the_decrypted_body_is_pruned_before_being_replaced() {
+    let rig = rig(Setup {
+        rules: r"||site.test/replace/json$jsonprune=\$.ad
+||site.test/replace/$replace=/original/changed/
+||site.test/replace/json$replace=/ad/advertisement/",
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/replace/json", None)
+        .await
+        .unwrap();
+    assert_eq!(
+        (status, body.as_str()),
+        (StatusCode::OK, r#"{"keep":"changed"}"#)
+    );
+}
+
+#[test]
+fn only_replacement_actions_override_request_blocking() {
+    let dir = tempfile::tempdir().unwrap();
+    let rules = dir.path().join("rules");
+    std::fs::create_dir(&rules).unwrap();
+    let request = Request::builder().uri("/replace/json").body(()).unwrap();
+    for (actions, blocked) in [
+        (PRUNE_RULES, true),
+        ("||site.test/replace/json$replace=/original/changed/", false),
+    ] {
+        std::fs::write(
+            rules.join("user.txt"),
+            format!("||site.test/replace/json\n{actions}\n"),
+        )
+        .unwrap();
+        let filters = Filters::load(&[&rules], false).unwrap();
+        assert_eq!(
+            evaluate_request(
+                &filters.for_app("com.app"),
+                &request,
+                "https://site.test/replace/json"
+            )
+            .blocked,
+            blocked,
+            "{actions}"
+        );
+    }
 }

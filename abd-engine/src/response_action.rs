@@ -22,11 +22,13 @@ use regex_automata::util::{iter::Searcher, syntax};
 use regex_automata::{Input, MatchKind};
 use serde::{Deserialize, Serialize};
 
+use crate::jsonpath::{self, Path};
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
 
 /// The cache representation and identity of an action.
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(crate) enum ActionSpec {
+    Prune(String),
     Replace {
         pattern: String,
         replacement: String,
@@ -37,6 +39,7 @@ pub(crate) enum ActionSpec {
 
 /// A compiled action that can safely be shared among concurrent jobs.
 pub(crate) enum ResponseAction {
+    Prune(Path),
     Replace {
         regex: Regex,
         parts: Vec<Replacement>,
@@ -49,10 +52,17 @@ pub(crate) enum Replacement {
     Group(usize),
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub(crate) enum ActionKind {
+    Prune,
+    Replace,
+}
+
 impl ActionSpec {
     /// Reject a pattern that cannot be searched within the per-expression limit.
     pub(crate) fn compile(&self) -> Option<ResponseAction> {
         match self {
+            Self::Prune(expression) => Path::parse(expression).map(ResponseAction::Prune),
             Self::Replace {
                 pattern,
                 replacement,
@@ -183,11 +193,19 @@ fn replacement_parts(replacement: &str) -> Vec<Replacement> {
 }
 
 impl ResponseAction {
+    pub(crate) fn kind(&self) -> ActionKind {
+        match self {
+            Self::Prune(_) => ActionKind::Prune,
+            Self::Replace { .. } => ActionKind::Replace,
+        }
+    }
+
     /// Heap used by the compiled matcher. Search scratch space belongs to
     /// the blocking job, so an idle action keeps none of it.
     pub(crate) fn regex_bytes(&self) -> usize {
         match self {
             Self::Replace { regex, .. } => regex.memory_usage(),
+            Self::Prune(_) => 0,
         }
     }
 
@@ -197,6 +215,7 @@ impl ResponseAction {
             return None;
         }
         match self {
+            Self::Prune(path) => jsonpath::prune(path, input, within_budget),
             Self::Replace { regex, parts } => {
                 let mut output = Vec::new();
                 let mut end = 0;

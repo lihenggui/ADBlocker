@@ -65,6 +65,7 @@ impl Filters {
         let has_apps: bool = f.next()?.parse().ok()?;
         let has_no_content: bool = f.next()?.parse().ok()?;
         let has_responses: bool = f.next()?.parse().ok()?;
+        let has_urlblock: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
         let actions = if has_responses {
             let kept = files::read_bytes(&cache.join("response-actions"), remaining).ok()?;
@@ -99,6 +100,7 @@ impl Filters {
             page_exceptions: PageExceptions {
                 all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
                 content: optional_engine(has_no_content, || engine("no-content"))?,
+                urlblock: optional_engine(has_urlblock, || engine("no-urlblock"))?,
                 element: optional_engine(has_no_elements, || engine("no-element-hiding"))?,
                 specific: if has_specific {
                     Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
@@ -130,6 +132,10 @@ impl Filters {
             (
                 "no-content",
                 exceptions.content.as_ref().map(Engine::serialize),
+            ),
+            (
+                "no-urlblock",
+                exceptions.urlblock.as_ref().map(Engine::serialize),
             ),
             (
                 "response-rules",
@@ -200,7 +206,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.guards_incomplete,
@@ -213,6 +219,7 @@ impl Filters {
                 self.apps.is_some(),
                 exceptions.content.is_some(),
                 self.responses.is_some(),
+                exceptions.urlblock.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };
