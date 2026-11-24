@@ -535,6 +535,18 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun givenNothingIsInUseAndAModuleWaitsInTheManager_whenShown_thenTheWaitingModuleIsKnown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        staged = true
+        showSettings()
+
+        val service = viewModel.uiState.value.service
+        assertEquals(ModuleState.NotInstalled, service.module)
+        assertTrue(service.stagedInManager)
+        assertEquals(null, service.installedByApp)
+    }
+
+    @Test
     fun givenTheAppsInstallationRunsAndAModuleWaitsInTheManager_whenShown_thenTheWaitingModuleIsKnown() = runTest {
         userData.setFilterMethod(FilterMethod.Root)
         moduleInstalled = true

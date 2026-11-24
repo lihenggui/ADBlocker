@@ -383,7 +383,9 @@ it, and it can be in either of two places.
   failed update, is offered for update in Settings.
 - A module flashed in Magisk or APatch waits for a restart. Opened before
   it, the app sets up its own copy, which filters until the manager's takes
-  over at the restart.
+  over at the restart. Where the manager has an update waiting for a module
+  that is in use, or has marked it for removal, the app installs nothing
+  over it: that module goes on until the restart.
 - Both keep their data in `/data/adb/adblocker`, so the selection, the
   lists and the authority carry over from one to the other.
 - The app removes a module it installed, from **Settings › Remove root
