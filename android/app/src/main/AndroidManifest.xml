@@ -79,6 +79,15 @@
             </intent-filter>
         </receiver>
 
+        <!-- Sent by the system to this app alone, after a new version of it is installed. -->
+        <receiver
+            android:name=".AppUpdatedReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+
         <!-- WorkManager is set up by the application, with Hilt's worker factory. -->
         <provider
             android:name="androidx.startup.InitializationProvider"
