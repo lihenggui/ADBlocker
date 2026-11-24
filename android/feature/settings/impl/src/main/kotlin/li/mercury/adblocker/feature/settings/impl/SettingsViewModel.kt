@@ -80,7 +80,11 @@ data class ServiceInfo(
     val module: ModuleState? = null,
     /** Whether the app made the installation in use, which it can then remove; null when unknown or none is in use. */
     val installedByApp: Boolean? = null,
-    /** A module flashed in a root manager waits for the next restart to take over. */
+    /**
+     * A module flashed in a root manager waits for the next restart to take
+     * over. For a module in use that needs the restart, false means the
+     * manager has it marked for removal instead.
+     */
     val stagedInManager: Boolean = false,
     val rootManager: String? = null,
     val setup: RootTask = RootTask.Idle,
@@ -185,8 +189,9 @@ class SettingsViewModel @Inject constructor(
         val inUse = state == ModuleState.Ready || state == ModuleState.Mismatched
         val byApp = if (inUse) suspendRunCatching { module.isInstalledByApp() }.getOrNull() else null
         // What waits replaces the app's installation at the restart, or is all there is until then.
-        val mayWait = byApp == true || state == ModuleState.NotInstalled
-        val staged = state == ModuleState.NeedsRestart || (mayWait && suspendRunCatching { module.isStagedInManager() }.getOrDefault(false))
+        // For a module that needs the restart it tells an update waiting from a removal.
+        val mayWait = byApp == true || state == ModuleState.NotInstalled || state == ModuleState.NeedsRestart
+        val staged = mayWait && suspendRunCatching { module.isStagedInManager() }.getOrDefault(state == ModuleState.NeedsRestart)
         return Installation(state, byApp, staged)
     }
 

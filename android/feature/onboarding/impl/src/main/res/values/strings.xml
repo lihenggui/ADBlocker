@@ -59,6 +59,7 @@
     <string name="feature_onboarding_done_text">The chosen apps are now filtered. If an app stops working, pause filtering on the Overview page.</string>
     <string name="feature_onboarding_failed_title">Setup failed</string>
     <string name="feature_onboarding_failed_text">Root mode could not be set up. Network access of apps is not affected.</string>
+    <string name="feature_onboarding_restart_to_update">Restart the device to finish the module update, then open ADBlocker again.</string>
     <string name="feature_onboarding_try_again">Try again</string>
     <string name="feature_onboarding_finish">Done</string>
     <string name="feature_onboarding_check_after_root">Checked after root access is granted</string>

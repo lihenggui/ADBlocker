@@ -76,7 +76,13 @@ internal fun ColumnScope.Install(state: OnboardingUiState, onRetry: () -> Unit, 
             is InstallState.Done -> stringResource(R.string.feature_onboarding_done_text)
 
             // The app's own words for what went wrong; the installer's below them.
-            is InstallState.Failed -> if (install.failure == LoadFailure.Failed) stringResource(R.string.feature_onboarding_failed_text) else failureText(install.failure)
+            // Setup installs this app's root mode or keeps one of its version, so only an older
+            // module that a root manager holds until a restart rejects a command as outdated.
+            is InstallState.Failed -> when (install.failure) {
+                LoadFailure.Failed -> stringResource(R.string.feature_onboarding_failed_text)
+                LoadFailure.ModuleOutdated -> stringResource(R.string.feature_onboarding_restart_to_update)
+                else -> failureText(install.failure)
+            }
 
             else -> null
         },

@@ -108,8 +108,8 @@ internal fun RootRowItem(row: RootRow, index: Int, count: Int) {
     )
 }
 
-/** Nothing runs before root mode is set up, or while only a module waiting for a restart is there. */
-private fun ServiceInfo.hasService() = module != ModuleState.NotInstalled && module != ModuleState.NeedsRestart
+/** Nothing runs before root mode is set up, whatever waits in a root manager for a restart. */
+private fun ServiceInfo.hasService() = module != ModuleState.NotInstalled
 
 private fun ServiceInfo.turnedOff(): Boolean = status.valueOrNull?.let { !it.running && it.bootGuard != null } == true
 
@@ -224,6 +224,13 @@ internal fun installationRow(service: ServiceInfo, onRemove: () -> Unit): RootRo
             stringResource(R.string.feature_settings_root_remove_failed),
             AdbIcons.Delete,
             onRemove.takeUnless { service.busy },
+        )
+
+        // A module in use that the root manager changes at the restart: nothing here can, and the app does not restart the phone.
+        service.module == ModuleState.NeedsRestart -> RootRow(
+            inManager,
+            stringResource(if (service.stagedInManager) R.string.feature_settings_root_restart_to_update else R.string.feature_settings_root_marked_removal),
+            AdbIcons.Info,
         )
 
         service.stagedInManager -> RootRow(inManager, stringResource(R.string.feature_settings_root_flashed_pending_text), AdbIcons.Info)

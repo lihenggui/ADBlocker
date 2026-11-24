@@ -122,7 +122,9 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRoot
     val pending = state.userData.rootSwitchPending
     val cancelling = state.userData.rootSwitchCancelling
     // An installation of root mode, left by a cancelled switch for example, is removed here.
-    val installation = if (pending || service.rootAvailable != true) null else installationRow(service, onRemoveRootMode)
+    // A module that needs a restart is said on the Root mode row itself.
+    val restartFirst = service.module == ModuleState.NeedsRestart
+    val installation = if (pending || restartFirst || service.rootAvailable != true) null else installationRow(service, onRemoveRootMode)
     val methodRows = 2 + (if (pending) 1 else 0) + (if (installation != null) 1 else 0)
 
     SectionHeader(stringResource(R.string.feature_settings_method))
@@ -151,6 +153,13 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRoot
 
                                 service.switchingToRoot -> R.string.feature_settings_root_setting_up
 
+                                // A switch would fail until the root manager has applied its change at a restart.
+                                restartFirst -> if (service.stagedInManager) {
+                                    R.string.feature_settings_method_root_restart_first
+                                } else {
+                                    R.string.feature_settings_root_marked_removal
+                                }
+
                                 pending -> when (service.module) {
                                     ModuleState.NoRoot -> R.string.feature_settings_method_root_missing
                                     ModuleState.Unavailable, null -> R.string.feature_settings_module_check_again
@@ -167,7 +176,7 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRoot
                 leading = { Icon(AdbIcons.Security, contentDescription = null, Modifier.size(20.dp)) },
                 // Chosen after a confirmation once root is there; otherwise looked for again.
                 onClick = when {
-                    service.checkingRoot || service.busy || cancelling -> null
+                    service.checkingRoot || service.busy || cancelling || restartFirst -> null
 
                     // Trying again sets up root mode where it has to.
                     pending -> when (service.module) {

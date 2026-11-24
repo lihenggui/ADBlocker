@@ -68,6 +68,7 @@
     <string name="feature_overview_service_running_since">Running for %1$s</string>
     <string name="feature_overview_service_stopped">Not running</string>
     <string name="feature_overview_updating">Updating root mode…</string>
+    <string name="feature_overview_restart_to_update">Restart the device to finish the module update.</string>
     <plurals name="feature_overview_paused_for_hours">
         <item quantity="one">Paused for %1$d hour. Apps connect without filtering.</item>
         <item quantity="other">Paused for %1$d hours. Apps connect without filtering.</item>
