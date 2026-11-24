@@ -97,10 +97,17 @@ rm -f "\$0"
 EOF
 }
 
+# Takes the app's module out of its place in one step, then deletes it: a
+# deletion cut short leaves the whole module there or none of it, not a
+# part that can neither run nor be uninstalled.
+drop_direct() {
+    rm -rf "$DIRECT.gone" && mv "$DIRECT" "$DIRECT.gone" && rm -rf "$DIRECT.gone"
+}
+
 # Replaces the module the app installed before, or installs the first.
 replace_direct() {
     if [ -e "$DIRECT" ]; then
-        stop_installed && rm -rf "$DIRECT" || abort "! Could not replace the installed module"
+        stop_installed && drop_direct || abort "! Could not replace the installed module"
     fi
     mv "$MODPATH" "$DIRECT" || abort "! Could not install the module"
     write_launcher || ui_print "! Could not register for boot; the app starts the daemon after a restart"
@@ -177,6 +184,12 @@ remove() {
         echo "! The module is in the root manager"
         return 1
     fi
+    # Part of a module can only be replaced: setting it up again stops what
+    # may run of it with the new one's program, and can then be removed.
+    if [ ! -f "$DIRECT/uninstall.sh" ] || [ ! -x "$DIRECT/bin/abd" ]; then
+        echo "! The module is incomplete; set it up again to remove it"
+        return 1
+    fi
     # Stopped first, and nothing removed otherwise: uninstall.sh goes on
     # when the daemon cannot be stopped, and what follows would delete the
     # one program that can stop it.
@@ -191,8 +204,16 @@ remove() {
 # this boot. The module stays while its data could not be removed, for the
 # removal to be tried again.
 uninstall() {
-    sh "$DIRECT/uninstall.sh" || return 1
-    rm -rf "$DIRECT" "$LAUNCHER" || return 1
+    if [ -f "$DIRECT/uninstall.sh" ]; then
+        sh "$DIRECT/uninstall.sh" || return 1
+    else
+        # Only at boot, with the app gone, is a module without its
+        # uninstaller removed. Nothing runs and no app has the stores then:
+        # the key goes first, and all of the data with it.
+        rm -rf "$DATA/ca"
+        rm -rf "$DATA" || return 1
+    fi
+    drop_direct && rm -f "$LAUNCHER" || return 1
     if [ -e "$DATA" ]; then
         leave_cleanup || echo "! What apps still use of the data stays in $DATA"
     fi

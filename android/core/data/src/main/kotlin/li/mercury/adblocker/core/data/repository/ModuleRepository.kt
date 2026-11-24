@@ -214,6 +214,8 @@ internal class RootModuleRepository(
             fi
             if [ ! -e $MODULE_DIR ] && [ ! -L $MODULE_DIR ]; then
                 echo $ABSENT
+            elif [ $MODULE_DIR = $DIRECT_DIR ] && { [ ! -x $DAEMON ] || ! grep -q '^versionCode=-*[0-9]' $MODULE_PROP 2>/dev/null; }; then
+                echo $ABSENT
             else
                 if [ -e $MODULE_DIR/remove ]; then echo $REMOVAL; fi
                 [ -x $DAEMON ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP && { stat -c "$STAT_PREFIX$STAT_FORMAT" $DAEMON 2>/dev/null || true; }
@@ -221,6 +223,9 @@ internal class RootModuleRepository(
             """.trimIndent(),
             label = "module state",
         )
+        // Part of a module in the app's own directory, without a daemon to
+        // run or a version to read, counts as none: setting up replaces it.
+        // In a root manager's directory it is the manager's to put right.
         if (!result.isSuccess) return Found(ModuleState.Unavailable)
         val probe = result.output.trim().lines().map(String::trim)
         val held = probe.takeWhile { it == PENDING || it == REMOVAL }
