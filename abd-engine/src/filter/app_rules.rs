@@ -346,7 +346,9 @@ impl AppRules {
                 .exception
                 .is_none();
         }
-        if !web_rule {
+        // The rule that decided: the app's where no web rule matched, and
+        // where its `$important` block stands against a web exception.
+        if !web_rule || own.important {
             check.rule = own.filter.and_then(|rule| rule.raw_line).map(shown);
         }
         check
@@ -455,6 +457,20 @@ mod tests {
         assert!(blocked(&f, "com.reader", "https://ads.example/"));
         assert!(!blocked(&f, "com.other", "https://ads.example/"));
         assert!(blocked(&f, "com.reader", "https://web.example/"));
+
+        let f = filters("||x.example^\n@@||x.example^\n||x.example^$important,app=com.reader\n");
+        let check = f.for_app("com.reader").check_with_page(
+            "https://x.example/",
+            None,
+            false,
+            "other",
+            "GET",
+        );
+        assert!(check.blocked);
+        assert_eq!(
+            check.rule.as_deref(),
+            Some("||x.example^$important,app=com.reader")
+        );
     }
 
     #[test]
