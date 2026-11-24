@@ -34,7 +34,7 @@ import java.nio.file.Path;
 import java.security.cert.CertificateFactory;
 
 public class Engine {
-    private native long open(String dir, byte[][] roots, Callbacks callbacks);
+    private native long open(String dir, byte[][] roots, String[] languages, Callbacks callbacks);
     private native Result command(long handle, String[] args, byte[] input);
     private native long stream(long handle, String[] args, Sink sink);
     private native int start(long handle, int tunFd, boolean ipv6, String[] resolvers);
@@ -51,7 +51,8 @@ public class Engine {
         var callbacks = new Callbacks();
         String dir = work.resolve("state").toString();
 
-        check(engine.open(dir, new byte[0][], callbacks) == 0, "no upstream roots");
+        String[] languages = {"zh-Hans-CN"};
+        check(engine.open(dir, new byte[0][], languages, callbacks) == 0, "no upstream roots");
         var unopened = engine.command(0, new String[]{"status", "--json"}, null);
         check(unopened.exit() == 1 && unopened.stdout().length == 0, "closed command status");
         check(new String(unopened.stderr(), StandardCharsets.UTF_8).equals("the engine is not open\n"), "closed command error");
@@ -62,11 +63,12 @@ public class Engine {
 
         engine.rejectDescriptor(0, 9, new String[0]);
 
-        long handle = engine.open(dir, new byte[][]{trustAnchor}, callbacks);
+        long handle = engine.open(dir, new byte[][]{trustAnchor}, languages, callbacks);
         check(handle != 0, "engine with usable upstream roots");
         try {
             engine.rejectDescriptor(handle, 8, null);
             engine.rejectDescriptor(handle, 7, new String[0]);
+            check(engine.run(handle, "lists", "--json").contains("easylistchina.txt"), "the lists of the device's language are defaults");
             engine.run(handle, "app", "add", "com.example.news");
             check(callbacks.uidCalls > 0, "UID callback exercised");
             check(engine.run(handle, "status", "--json").contains("\"url_filtering\":true"), "URL filtering on by default");
