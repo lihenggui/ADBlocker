@@ -307,13 +307,20 @@ first-party. A browser that withholds its page still says whether the
 request is to another site, and that decides the party. The HTTP method,
 URL and available resource type still inform the decision.
 
+A `$replace` rule searches the text of a response with a regular
+expression and substitutes the replacement for each match. With URL
+filtering on, a matching rule takes precedence over request-level blocks.
+The engine can rewrite an eligible uncompressed text response up to
+2 MiB. It takes these rules from the user's custom rules and catalog
+lists marked as trusted for response rules.
+
 A rule can name the apps it is for with AdGuard's `$app=` option:
 `||ads.example^$app=com.reader` blocks the host in that app only, and
 `$app=~com.reader` in every app but that one. An exception with the
 option allows in the named apps what a rule for every app blocks. These
 rules apply to lookups, to connections that stay encrypted and to
-decrypted requests alike. A rule that names both an app and a page is not
-applied.
+decrypted requests alike. A blocking rule that names both an app and a
+page is left out. A response rule can match both.
 The apps of a shared UID are not told apart, and no rule for apps applies
 to them.
 

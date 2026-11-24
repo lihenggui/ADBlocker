@@ -18,6 +18,8 @@ use std::path::Path;
 
 use anyhow::{Context as _, Result, ensure};
 
+pub(crate) use crate::catalog::Trust;
+
 /// The longest address taken.
 pub(crate) const MAX_URL: usize = 1024;
 
@@ -39,7 +41,7 @@ const MAX_NAME: usize = 100;
 /// be taken for the other's, and deleted with it.
 pub fn file_name(url: &str) -> String {
     let base = base_file_name(url);
-    if trusted_scriptlets(url) {
+    if trusted_download(url) {
         format!("{}.trusted.txt", base.trim_end_matches(".txt"))
     } else {
         base
@@ -87,16 +89,24 @@ pub fn split(url: &str) -> Result<(&str, u16, &str)> {
     Ok((host, port, path))
 }
 
-pub(crate) fn trusted_scriptlets(url: &str) -> bool {
-    crate::catalog::trusted_scriptlet_urls().contains(&url)
+pub(crate) fn trusted_download(url: &str) -> bool {
+    Trust::Scriptlets.urls().contains(&url) || Trust::ResponseRules.urls().contains(&url)
 }
 
-pub(crate) fn trusted_list_file(path: &Path) -> bool {
+/// Copies made before response-rule trust stay usable for ordinary filtering
+/// until fetched again from the trusted address.
+pub(crate) fn untrusted_file_name(url: &str) -> Option<String> {
+    (Trust::ResponseRules.urls().contains(&url) && !Trust::Scriptlets.urls().contains(&url))
+        .then(|| base_file_name(url))
+}
+
+pub(crate) fn trusted_list_file(path: &Path, trust: Trust) -> bool {
     // User rules live in a separate directory. A custom URL cannot produce
     // the reserved suffix, even if its base filename hash collides.
     path.parent().and_then(Path::file_name) == Some("lists".as_ref())
         && path.file_name().is_some_and(|name| {
-            crate::catalog::trusted_scriptlet_urls()
+            trust
+                .urls()
                 .iter()
                 .any(|url| name == file_name(url).as_str())
         })

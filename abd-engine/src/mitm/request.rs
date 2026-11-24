@@ -29,6 +29,7 @@ use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
 use crate::filter::{AppFilters, Filters, Hiding, Page};
 use crate::relay;
+use crate::response_action::ResponseAction;
 use crate::stats::Counter;
 use crate::tls::Tls;
 
@@ -200,7 +201,7 @@ pub fn evaluate_request<'a, B>(
     req: &'a Request<B>,
     url: &str,
 ) -> RequestDecision<'a> {
-    evaluate(filters, req, url, kind(req))
+    evaluate(filters, req, url, kind(req)).0
 }
 
 fn evaluate<'a, B>(
@@ -208,19 +209,27 @@ fn evaluate<'a, B>(
     req: &'a Request<B>,
     url: &str,
     kind: &'static str,
-) -> RequestDecision<'a> {
+) -> (RequestDecision<'a>, Vec<Arc<ResponseAction>>) {
     let told = told_page(req);
     let page = page_of(req, told.as_ref().map(|(_, page)| page));
     let shows_page = shows_page(req, &page);
-    let blocked = filters
-        .check_with_page(url, page, kind, req.method().as_str())
-        .blocked;
-    RequestDecision {
-        blocked,
-        kind,
-        page: told.map(|(value, _)| value),
-        shows_page,
-    }
+    let method = req.method().as_str();
+    let actions = if permits_rewrite(req) {
+        filters.response_actions(url, page, kind, method)
+    } else {
+        Vec::new()
+    };
+    // Response rules override request blocks only after the connection passes host filtering.
+    let blocked = actions.is_empty() && filters.check_with_page(url, page, kind, method).blocked;
+    (
+        RequestDecision {
+            blocked,
+            kind,
+            page: told.map(|(value, _)| value),
+            shows_page,
+        },
+        actions,
+    )
 }
 
 pub struct RequestDecision<'a> {
@@ -279,14 +288,14 @@ pub(super) async fn serve<'a>(
     } else {
         target.as_ref().map_or("", |(url, _)| url.as_str())
     };
-    let decision = if let Some((url, host)) = &target
+    let matched = if let Some((url, host)) = &target
         && selected
         // `guard_site` found a decrypted request's site untrusted, and it
         // can name no other (`address`).
         && (https.is_some() || !ctx.lists.allow.read().unwrap().covers(host))
     {
         if url_filtering {
-            let decision = evaluate(&for_app, &req, url, kind);
+            let (decision, actions) = evaluate(&for_app, &req, url, kind);
             if decision.shows_page {
                 ctx.services.policy.note_page(package);
             }
@@ -294,7 +303,7 @@ pub(super) async fn serve<'a>(
                 record_request(ctx, package, host, url, decision);
                 return Ok(empty(StatusCode::FORBIDDEN));
             }
-            Some((url, host, decision))
+            Some((url, host, decision, actions))
         } else {
             if for_app.blocks_domain(host) {
                 ctx.services
@@ -310,25 +319,41 @@ pub(super) async fn serve<'a>(
     };
     // An error opening the upstream ends the connection before any HTTP response.
     let upstream = upstream.await?;
-    if let Some((url, host, decision)) = decision {
+    let actions = if let Some((url, host, decision, actions)) = matched {
         record_request(ctx, package, host, url, decision);
+        actions
+    } else {
+        Vec::new()
+    };
+    let hiding = hiding_for(shared, &filters, &req, url, kind);
+    if hiding.is_some() || !actions.is_empty() {
+        let plain = hyper::header::HeaderValue::from_static("identity");
+        req.headers_mut().insert(ACCEPT_ENCODING, plain);
     }
-    let hiding = hiding_for(shared, &filters, &mut req, url, kind);
 
-    // A WebSocket starts as a request asking to switch protocols; once the
-    // server agrees the two connections are joined and no longer read.
-    let connect_tunnel = https.is_none() && req.method() == Method::CONNECT;
-    let app_upgrade = (connect_tunnel || req.headers().contains_key(UPGRADE))
-        .then(|| hyper::upgrade::on(&mut req));
-    let mut resp = match forward(upstream, req).await {
+    let resp = match forward_with_upgrade(shared, upstream, req).await {
         Ok(r) => r,
         Err(e) => {
             trace!(ctx, "error   {package} {url}: {e}");
             return Ok(empty(StatusCode::BAD_GATEWAY));
         }
     };
+    Ok(hide(&filters, crate::rewrite::wrap(resp, actions), hiding).await)
+}
+
+async fn forward_with_upgrade(
+    shared: &Shared,
+    upstream: &Upstream,
+    mut req: Request<Incoming>,
+) -> Result<Response<Incoming>, hyper::Error> {
+    // A WebSocket starts as a request asking to switch protocols; once the
+    // server agrees the two connections are joined and no longer read.
+    let connect_tunnel = shared.https.is_none() && req.method() == Method::CONNECT;
+    let app_upgrade = (connect_tunnel || req.headers().contains_key(UPGRADE))
+        .then(|| hyper::upgrade::on(&mut req));
+    let mut resp = forward(upstream, req).await?;
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
-    Ok(hide(&filters, resp, hiding).await)
+    Ok(resp)
 }
 
 fn guard_site(
@@ -400,7 +425,7 @@ fn target_of<'s>(
 fn hiding_for(
     shared: &Shared,
     filters: &Filters,
-    req: &mut Request<Incoming>,
+    req: &Request<Incoming>,
     url: &str,
     kind: &str,
 ) -> Option<Hiding> {
@@ -411,16 +436,15 @@ fn hiding_for(
     let whole_page = matches!(kind, "document" | "subdocument")
         && req.method() == hyper::Method::GET
         && !req.headers().contains_key(RANGE);
-    let hiding =
-        (shared.https.is_some() && whole_page && shared.ctx.selection.cosmetic.load(Relaxed))
-            .then(|| filters.hiding(url))
-            .filter(|hiding| hiding.any());
-    if hiding.is_some() {
-        let plain = hyper::header::HeaderValue::from_static("identity");
-        req.headers_mut().insert(ACCEPT_ENCODING, plain);
-    }
+    (shared.https.is_some() && whole_page && shared.ctx.selection.cosmetic.load(Relaxed))
+        .then(|| filters.hiding(url))
+        .filter(|hiding| hiding.any())
+}
 
-    hiding
+fn permits_rewrite<B>(req: &Request<B>) -> bool {
+    !matches!(*req.method(), Method::HEAD | Method::CONNECT)
+        && !req.headers().contains_key(RANGE)
+        && !req.headers().contains_key(UPGRADE)
 }
 
 async fn forward(
@@ -462,13 +486,13 @@ fn join_upgrade(
 
 async fn hide(
     filters: &Arc<Filters>,
-    resp: Response<Incoming>,
+    resp: Response<Body>,
     hiding: Option<Hiding>,
 ) -> Response<Body> {
     use crate::cosmetic::{ByName, Inject, Inline, Prefix, Preparation};
 
     let Some(mut hiding) = hiding.filter(|_| crate::cosmetic::takes(&resp)) else {
-        return resp.map(BodyExt::boxed);
+        return resp;
     };
     let (mut parts, body) = resp.into_parts();
     // The generic style is decided using the original policy, before

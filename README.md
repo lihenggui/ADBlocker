@@ -225,8 +225,10 @@ decrypted, one a line. Until the filter lists are chosen, there is no
 the system language (`persist.sys.locale`). One of these that `sources`
 does not name is on, and `#` before its address turns it off. Updates add missing bundled exclusion sources to
 an existing selection. An empty exclusion selection keeps decryption off.
-Custom rules go in `rules/*.txt`, in the syntax of the filter lists. A
-rule ending in `$app=` and a package name, such as
+Custom rules go in `rules/*.txt`, in the syntax of the filter lists.
+A matching `$replace` rule can override a request block and rewrite the
+text response when URL filtering is on. A rule ending in `$app=` and a
+package name, such as
 `||ads.example^$app=com.reader`, applies in that app only. Run
 `abd update` or `abd reload` after a change.
 

@@ -36,13 +36,19 @@ use anyhow::Result;
 pub(crate) use self::app_rules::{AppRules, named as app_rule};
 use self::host_rules::{AppHostBlocks, HostRules, host_only};
 use self::page_exceptions::PageExceptions;
+use self::response_rules::ResponseRules;
+use crate::apps::{Identity, valid_package};
 pub use crate::list_files::{ListFiles, MAX_LIST};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
+use crate::list_url::{Trust, trusted_list_file};
 
 mod app_rules;
 mod cache;
 mod host_rules;
 mod page_exceptions;
+mod response_rules;
+
+pub(crate) use response_rules::check as response_rule;
 
 pub struct Filters {
     pub generation: Option<u64>,
@@ -62,6 +68,7 @@ pub struct Filters {
     guards_incomplete: bool,
     /// `None` when no list has a rule for an app.
     apps: Option<AppRules>,
+    responses: Option<ResponseRules>,
     pub rules: usize,
     pub host_rules: usize,
 }
@@ -116,6 +123,19 @@ fn option_name(option: &str) -> &str {
     name.trim_start_matches('~')
 }
 
+fn app_names(names: &str) -> Option<String> {
+    names
+        .split('|')
+        .all(|name| valid_package(name.strip_prefix('~').unwrap_or(name)))
+        .then(|| names.to_ascii_lowercase())
+}
+
+fn app_package(app: &str) -> Option<&str> {
+    Identity::parse(app)
+        .filter(|identity| !identity.is_group())
+        .map(|identity| identity.package)
+}
+
 fn source_option(option: &str) -> bool {
     matches!(
         option_name(option),
@@ -137,6 +157,9 @@ fn domain_named(domains: &[u64], name: &str) -> bool {
 }
 
 fn network(line: &str) -> Option<NetworkFilter<'_>> {
+    if response_rules::is_response_rule(line) {
+        return None;
+    }
     crate::public_suffix::install();
     let options = ParseOptions {
         rule_types: RuleTypes::NetworkOnly,
@@ -222,6 +245,9 @@ impl RequestRules {
         for (text, permissions) in lists {
             let mut normalized = String::with_capacity(text.len());
             for line in text.lines() {
+                if response_rules::is_response_rule(line) {
+                    continue;
+                }
                 let line = network_line(line);
                 // Reject unsafe calls before their helpers can consume
                 // the page's script budget. This also sees raw controls
@@ -392,7 +418,7 @@ impl Filters {
         let mut requests = RequestRules::build_with_permissions(
             lists.iter().map(|(path, text)| {
                 let permissions =
-                    PermissionMask::from_bits(u8::from(crate::list_url::trusted_list_file(path)));
+                    PermissionMask::from_bits(u8::from(trusted_list_file(path, Trust::Scriptlets)));
                 (text.as_str(), permissions)
             }),
             debug,
@@ -410,6 +436,11 @@ impl Filters {
             app_page_host_guards: host_rules.app_page_guards.map(Engine::new_with_filter_set),
             guards_incomplete: host_rules.guards_incomplete,
             apps,
+            responses: ResponseRules::build(lists.iter().filter_map(|(path, text)| {
+                let user_rule = path.parent().and_then(Path::file_name) == Some("rules".as_ref());
+                (user_rule || trusted_list_file(path, Trust::ResponseRules))
+                    .then_some(text.as_str())
+            })),
             rules: rules_count,
             host_rules: host_rules.count,
         })
@@ -418,16 +449,21 @@ impl Filters {
     /// The rules as they apply to `app`, which the engine names by its
     /// package or its shared UID's group. Nothing is known here of the
     /// requests it has made, so it is taken to have pages.
-    pub fn for_app(&self, app: &str) -> AppFilters<'_> {
+    pub fn for_app<'a>(&'a self, app: &'a str) -> AppFilters<'a> {
         self.for_app_with_pages(app, true)
     }
 
     /// As [`Filters::for_app`], for an app known to have shown a page or
     /// not (`Policy::has_shown_page`).
-    pub(crate) fn for_app_with_pages(&self, app: &str, has_shown_page: bool) -> AppFilters<'_> {
+    pub(crate) fn for_app_with_pages<'a>(
+        &'a self,
+        app: &'a str,
+        has_shown_page: bool,
+    ) -> AppFilters<'a> {
         AppFilters {
             filters: self,
             app: self.apps.as_ref().zip(AppRules::scope(app)),
+            app_name: app,
             has_shown_page,
         }
     }
@@ -437,6 +473,7 @@ impl Filters {
         AppFilters {
             filters: self,
             app: None,
+            app_name: "",
             has_shown_page: true,
         }
     }
@@ -525,6 +562,7 @@ impl Filters {
 pub struct AppFilters<'a> {
     filters: &'a Filters,
     app: Option<(&'a AppRules, app_rules::Scope)>,
+    app_name: &'a str,
     /// An exception for named pages can only apply to a request that shows
     /// one, and so only to an app that has.
     has_shown_page: bool,

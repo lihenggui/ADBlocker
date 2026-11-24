@@ -53,7 +53,8 @@ whom, and whether it is one to carry at all (`capture::admitted`,
   (`capture::as_app`). Routing, VPNs, netd's per-app firewall and counters,
   and other modules' rules all go by these. Do not create one any other
   way, and keep nothing between the two halves of `as_app`.
-- Bodies are streamed, never buffered whole.
+- Bodies are streamed except for eligible responses matched by response
+  rules. Up to 2 MiB of an original body can be held whole.
 - `Hooks::dial` exists so that the tests can connect without root. Do not
   give `conduct` another way to reach the network.
 - A handshake the client ends with an alert about our certificate pins the
@@ -152,17 +153,20 @@ and `dns/rules.rs` its lookups.
 
 ## Filtering
 
-- Two engines (`filter.rs`): the full one for decrypted requests, and one
-  holding only the rules that block a host whatever the request, for
-  connections that stay encrypted.
+- The full engine (`filter.rs`) judges decrypted requests. A separate
+  engine holds the rules that block a host whatever the request, for
+  connections that stay encrypted. Another engine matches response rules
+  from trusted lists and the user's own rules. A matching response rule
+  takes precedence over a request-level block.
 - Preserve unknown page origin in both request matching and diagnostics.
 - The lists come from the network: untrusted input. They select what is
-  blocked, and what is hidden where the user turned that on, and nothing
-  else. `abd-engine/src/update/` never replaces a list with what does not look like one.
+  blocked, and what is hidden where the user turned that on. Only trusted
+  lists and the user's own rules can rewrite a text response.
+  `abd-engine/src/update/` never replaces a list with what does not look like one.
 
 ## Hiding
 
-`cosmetic.rs` is the one place where what a server sent is changed.
+`cosmetic.rs` puts styles and scripts into pages after any response rewrite.
 
 - Only with `cosmetic on` in the settings, which is off until the user says
   so; only a whole page in HTML that came unpacked, of a request that was

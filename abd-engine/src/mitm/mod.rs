@@ -381,7 +381,7 @@ impl Ctx {
         self.lists.filters.read().unwrap().clone()
     }
 
-    fn app_filters<'a>(&self, filters: &'a Filters, package: &str) -> AppFilters<'a> {
+    fn app_filters<'a>(&self, filters: &'a Filters, package: &'a str) -> AppFilters<'a> {
         filters.for_app_with_pages(package, self.services.policy.has_shown_page(package))
     }
 

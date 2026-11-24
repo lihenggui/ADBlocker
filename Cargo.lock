@@ -40,6 +40,7 @@ dependencies = [
  "libc",
  "psl",
  "rcgen",
+ "regex-automata",
  "ring",
  "rustc-hash",
  "rustls",

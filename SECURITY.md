@@ -104,6 +104,17 @@ and do not cover every sensitive site. Updates can add entries.
 ADBlocker keeps existing protections when an update omits an entry or a
 download fails.
 
+### Rewriting text responses
+
+With URL filtering on, ADBlocker can rewrite uncompressed text responses
+up to 2 MiB in decrypted HTTPS and plaintext HTTP traffic. Only the user's
+custom rules and the AdGuard and uBlock Origin lists marked for response
+rewriting in the subscription catalog can supply these rules. A matching
+rule can override a request block and change text the app displays or
+code it runs. Whole-host refusals happen before the engine reads a
+request. The engine applies response rules before it adds cosmetic
+styles or scripts.
+
 ### Hiding page elements
 
 **Hide page elements** is off by default. With it on (`abd cosmetic on`),

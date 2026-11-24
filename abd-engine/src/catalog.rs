@@ -38,6 +38,8 @@ struct List<'a> {
     default_languages: Vec<&'a str>,
     #[serde(default)]
     trusted_scriptlets: bool,
+    #[serde(default)]
+    trusted_response_rules: bool,
 }
 
 const DATA: &str = include_str!("../../config/filter-catalog.json");
@@ -82,14 +84,24 @@ fn defaults_for(languages: &[String]) -> String {
 static SOURCES: OnceLock<String> = OnceLock::new();
 static EXCLUSIONS: LazyLock<String> = LazyLock::new(|| source_text(catalog().https_exclusions));
 
-static TRUSTED: LazyLock<Vec<&str>> = LazyLock::new(|| {
+pub(crate) enum Trust {
+    Scriptlets,
+    ResponseRules,
+}
+
+static SCRIPTLETS: LazyLock<Vec<&str>> =
+    LazyLock::new(|| trusted_urls(|list| list.trusted_scriptlets));
+static RESPONSES: LazyLock<Vec<&str>> =
+    LazyLock::new(|| trusted_urls(|list| list.trusted_response_rules));
+
+fn trusted_urls(takes: impl Fn(&List<'_>) -> bool) -> Vec<&'static str> {
     catalog()
         .lists
         .into_iter()
-        .filter(|entry| entry.trusted_scriptlets)
-        .map(|entry| entry.url)
+        .filter(takes)
+        .map(|list| list.url)
         .collect()
-});
+}
 
 /// Makes the lists for `tags`, the device's language tags, defaults
 /// besides the general ones. The host calls it once, before anything reads
@@ -100,8 +112,13 @@ pub fn set_device_languages<'a>(tags: impl IntoIterator<Item = &'a str>) -> bool
     SOURCES.set(defaults_for(&languages)).is_ok()
 }
 
-pub(crate) fn trusted_scriptlet_urls() -> &'static [&'static str] {
-    &TRUSTED
+impl Trust {
+    pub(crate) fn urls(self) -> &'static [&'static str] {
+        match self {
+            Self::Scriptlets => &SCRIPTLETS,
+            Self::ResponseRules => &RESPONSES,
+        }
+    }
 }
 
 /// What compiled lists depend on here: the catalog, and the defaults it

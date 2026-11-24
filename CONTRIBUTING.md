@@ -81,7 +81,8 @@ and give each regional list the primary language subtags it serves in
 uses the `defaultEnabled` entries and the entries for the device's
 languages, and setup suggests the same. A saved configuration that does
 not name one of these has it on, so a list added here as a default reaches
-existing installations.
+existing installations. Set `trustedResponseRules` for publisher lists
+whose response rules may override request blocks and rewrite text responses.
 
 `cargo deny` is installed with `cargo install --locked cargo-deny`; what it
 holds the dependencies to is in `deny.toml`.

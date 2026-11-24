@@ -33,14 +33,20 @@ pub fn check(text: &str) -> RulesCheck {
             continue;
         }
         rules += 1;
-        let kind = match parse_filter(line, false, ParseOptions::default()) {
-            Ok(ParsedLine::Network(_)) => continue,
-            Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => IssueKind::Cosmetic,
-            // What adblock-rust sets aside as AdGuard's HTML filtering.
-            Err(FilterParseError::Unsupported) if line.contains("$$") => IssueKind::Cosmetic,
-            // A rule for apps, which is rewritten for adblock-rust.
-            Err(_) if crate::filter::app_rule(line).is_some() => continue,
-            Err(_) => IssueKind::Invalid,
+        let kind = match crate::filter::response_rule(line) {
+            Some(true) => continue,
+            Some(false) => IssueKind::Invalid,
+            None => match parse_filter(line, false, ParseOptions::default()) {
+                Ok(ParsedLine::Network(_)) => continue,
+                Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
+                    IssueKind::Cosmetic
+                }
+                // What adblock-rust sets aside as AdGuard's HTML filtering.
+                Err(FilterParseError::Unsupported) if line.contains("$$") => IssueKind::Cosmetic,
+                // A rule for apps, which is rewritten for adblock-rust.
+                Err(_) if crate::filter::app_rule(line).is_some() => continue,
+                Err(_) => IssueKind::Invalid,
+            },
         };
         issues.push(Issue {
             line: n + 1,

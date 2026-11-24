@@ -48,6 +48,8 @@ mod protocol_types;
 mod public_suffix;
 pub mod quic;
 pub mod relay;
+mod response_action;
+mod rewrite;
 mod rule_text;
 pub mod rulecheck;
 pub mod runtime;

@@ -104,7 +104,7 @@ impl ListFiles {
         paths.sort();
         let mut hasher = std::hash::DefaultHasher::new();
         env!("CARGO_PKG_VERSION").hash(&mut hasher);
-        8u32.hash(&mut hasher); // Compiled rule policy, input budget and cache format.
+        11u32.hash(&mut hasher); // Compiled rule policy, input budget and cache format.
         crate::catalog::cache_identity().hash(&mut hasher);
         for file in &paths {
             file.hash(&mut hasher);

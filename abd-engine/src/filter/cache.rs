@@ -18,6 +18,7 @@ use std::path::Path;
 
 use adblock::Engine;
 
+use super::response_rules::ResponseRules;
 use super::{AppRules, Filters, PageExceptions, RequestRules, use_scriptlets};
 use crate::files;
 use crate::list_files::MAX_COMPILED;
@@ -62,7 +63,16 @@ impl Filters {
         let has_no_elements: bool = f.next()?.parse().ok()?;
         let has_specific: bool = f.next()?.parse().ok()?;
         let has_apps: bool = f.next()?.parse().ok()?;
+        let has_no_content: bool = f.next()?.parse().ok()?;
+        let has_responses: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
+        let actions = if has_responses {
+            let kept = files::read_bytes(&cache.join("response-actions"), remaining).ok()?;
+            remaining -= kept.len();
+            Some(kept)
+        } else {
+            None
+        };
         let apps = if has_apps {
             Some(read_apps(cache, &mut remaining)?)
         } else {
@@ -77,6 +87,10 @@ impl Filters {
             engine.deserialize(&compiled).ok()?;
             Some(engine)
         };
+        let responses = match actions {
+            Some(actions) => Some(ResponseRules::cached(engine("response-rules")?, &actions)?),
+            None => None,
+        };
         let mut full = engine("full")?;
         use_scriptlets(&mut full);
         Some(Self {
@@ -84,6 +98,7 @@ impl Filters {
             requests: RequestRules { full },
             page_exceptions: PageExceptions {
                 all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
+                content: optional_engine(has_no_content, || engine("no-content"))?,
                 element: optional_engine(has_no_elements, || engine("no-element-hiding"))?,
                 specific: if has_specific {
                     Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
@@ -100,6 +115,7 @@ impl Filters {
             })?,
             guards_incomplete,
             apps,
+            responses,
             rules,
             host_rules,
         })
@@ -111,6 +127,18 @@ impl Filters {
         let kept = self.apps.as_ref().map(|rules| rules.serialized().map(Some));
         APPS.into_iter().zip(kept.unwrap_or_default()).chain([
             ("full", Some(self.requests.full.serialize())),
+            (
+                "no-content",
+                exceptions.content.as_ref().map(Engine::serialize),
+            ),
+            (
+                "response-rules",
+                self.responses.as_ref().map(|r| r.engine.serialize()),
+            ),
+            (
+                "response-actions",
+                self.responses.as_ref().and_then(ResponseRules::serialized),
+            ),
             // Kept by versions that judged a request without a page apart.
             ("unknown", None),
             ("hosts", Some(self.hosts.serialize())),
@@ -172,7 +200,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.guards_incomplete,
@@ -183,6 +211,8 @@ impl Filters {
                 exceptions.element.is_some(),
                 exceptions.specific.is_some(),
                 self.apps.is_some(),
+                exceptions.content.is_some(),
+                self.responses.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };
