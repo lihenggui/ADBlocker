@@ -344,7 +344,12 @@ fn updating_delivers_progress_and_the_summary_before_ending() {
     let paths = session.engine.paths();
     // A malformed source fails before any network access, but still
     // gives the app each stage of an update.
-    std::fs::write(paths.sources(), "not-an-https-address\n").unwrap();
+    // The defaults are named as turned off: one the file leaves out is on.
+    let off: String = abd_engine::catalog::default_sources()
+        .lines()
+        .map(|url| format!("#{url}\n"))
+        .collect();
+    std::fs::write(paths.sources(), format!("not-an-https-address\n{off}")).unwrap();
     std::fs::write(paths.exclusion_sources(), "").unwrap();
     let (tell, told) = mpsc::channel();
     assert_ne!(

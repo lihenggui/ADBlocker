@@ -29,18 +29,25 @@ pub(crate) enum ListKind {
 }
 
 impl ListKind {
+    /// The selection in effect. Rollback can restore the file's absence
+    /// during a download: the defaults are still subscribed then.
+    pub(super) fn sources(self, file: &Path, bundled: &str) -> Result<String> {
+        match self {
+            Self::Filter => sources::selection(file, bundled),
+            Self::HttpsExclusion => sources::text_or(file, bundled),
+        }
+    }
+
     pub(super) fn start_sources(self, file: &Path, bundled: &str) -> Result<String> {
-        let Some(mut configured) = sources::text_of(file)? else {
+        if matches!(self, Self::Filter) {
             // Filter defaults stay unsaved so that they follow the catalog
             // and the device's languages until the user chooses.
-            if matches!(self, Self::HttpsExclusion) {
-                files::replace(file, bundled.as_bytes())?;
-            }
+            return self.sources(file, bundled);
+        }
+        let Some(mut configured) = sources::text_of(file)? else {
+            files::replace(file, bundled.as_bytes())?;
             return Ok(bundled.to_owned());
         };
-        if matches!(self, Self::Filter) {
-            return Ok(configured);
-        }
         // Exclusions added to the catalog must also reach installations that
         // already have a sources file. An explicitly empty selection still
         // leaves decryption disabled.

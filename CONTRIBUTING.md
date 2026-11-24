@@ -78,7 +78,9 @@ catalog and the engine's standalone defaults. Keep subscription IDs stable
 and give each regional list the primary language subtags it serves in
 `defaultLanguages`. When no subscription configuration exists, the engine
 uses the `defaultEnabled` entries and the entries for the device's
-languages, and setup suggests the same.
+languages, and setup suggests the same. A saved configuration that does
+not name one of these has it on, so a list added here as a default reaches
+existing installations.
 
 `cargo deny` is installed with `cargo install --locked cargo-deny`; what it
 holds the dependencies to is in `deny.toml`.

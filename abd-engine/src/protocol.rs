@@ -855,7 +855,10 @@ mod tests {
     fn subscriptions(paths: &Paths) {
         std::fs::write(
             paths.sources(),
-            format!("# The filter lists\n{EASYLIST}\n{CHINA}\n#{ADTIDY}\n"),
+            format!(
+                "# The filter lists\n{EASYLIST}\n{CHINA}\n#{ADTIDY}\n{}",
+                crate::sources::tests::defaults_off(&[EASYLIST])
+            ),
         )
         .unwrap();
         info(paths, EASYLIST, "EasyList", 72410, 1_763_531_000, None);
