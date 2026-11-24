@@ -134,9 +134,6 @@ interface ModuleRepository {
      * the module is marked for removal in a root manager.
      */
     suspend fun turnOnAgain(): Boolean
-
-    /** Restarts the device, as a module flashed in Magisk or APatch needs before it runs. */
-    suspend fun restartDevice()
 }
 
 // A singleton, so that the bundled daemon is hashed once, and the installed one
@@ -315,11 +312,6 @@ internal class RootModuleRepository(
         return startDaemon()
     }
 
-    override suspend fun restartDevice() {
-        // The shell may not live to say how it went.
-        rootShell.run("svc power reboot || reboot", label = "reboot", timeoutSeconds = REBOOT_TIMEOUT_SECONDS)
-    }
-
     private suspend fun disabledOrRemoved(): Boolean = rootShell.run("$LOCATE; [ -e $MODULE_DIR/disable ] || [ -e $MODULE_DIR/remove ]", label = "module switch").isSuccess
 
     private fun bundledVersionCode(): Long = context.packageManager.getPackageInfo(context.packageName, 0).longVersionCode
@@ -339,7 +331,6 @@ internal class RootModuleRepository(
 
         /** Removing waits for the daemon to stop, and for the packet filter's locks. */
         const val REMOVE_TIMEOUT_SECONDS = 120
-        const val REBOOT_TIMEOUT_SECONDS = 30
 
         /** What the probe of the module prints first for a module waiting for a restart, and for none in use. */
         const val PENDING = "pending"

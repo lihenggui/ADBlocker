@@ -112,7 +112,6 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, modifier: Modifier = Modifi
         onRetryInstall = viewModel::install,
         onFinish = viewModel::finish,
         modifier = modifier,
-        onRestart = viewModel::restartDevice,
         onStartVpn = {
             if (!state.willStartVpn) {
                 viewModel.startVpn()
@@ -143,7 +142,6 @@ internal fun OnboardingScreen(
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
     onFilteringScope: (FilteringScope) -> Unit = {},
-    onRestart: () -> Unit = {},
     onStartVpn: () -> Unit = {},
     onRetryApps: () -> Unit = {},
 ) {
@@ -187,7 +185,7 @@ internal fun OnboardingScreen(
                             OnboardingStep.About -> if (vpn) AboutVpn(onNext) else Certificate(state.acknowledged, onAcknowledge, onNext)
                             OnboardingStep.Apps -> Apps(state, onTogglePick, onFilteringScope, onNext, onRetryApps)
                             OnboardingStep.Lists -> Lists(state, onToggleList, onNext)
-                            OnboardingStep.Install -> if (vpn) StartVpn(state, onStartVpn, onFinish) else Install(state, onRetryInstall, onFinish, onRestart)
+                            OnboardingStep.Install -> if (vpn) StartVpn(state, onStartVpn, onFinish) else Install(state, onRetryInstall, onFinish)
                         }
                     }
                 }

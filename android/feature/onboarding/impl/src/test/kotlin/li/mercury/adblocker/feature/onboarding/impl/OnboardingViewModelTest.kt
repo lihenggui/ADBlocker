@@ -102,6 +102,7 @@ class OnboardingViewModelTest {
     }
 
     private var configuredApps = emptySet<String>()
+    private var configuredWork: WorkSelection? = null
     private var configuredScope: FilteringScope? = null
     private var workApp: InstalledApp? = null
     private var workUnavailable = false
@@ -120,6 +121,7 @@ class OnboardingViewModelTest {
 
         override suspend fun configure(packages: Set<String>, work: WorkSelection) {
             configuredApps = packages
+            configuredWork = work
             done += "configure apps"
         }
     }
@@ -179,16 +181,22 @@ class OnboardingViewModelTest {
         )
     }
 
+    /** A module flashed in a root manager that waits for a restart, as Magisk and APatch leave it. */
+    private var moduleState = ModuleState.NeedsRestart
+    private var installerFailure: String? = null
+
     private val viewModel by lazy { newViewModel() }
 
     private fun newViewModel() = OnboardingViewModel(
         device = device,
         module = object : ModuleRepository by unexpected() {
-            override suspend fun state() = ModuleState.NeedsRestart
+            override suspend fun state() = moduleState
 
-            override suspend fun restartDevice() {
-                assertTrue(userData.userData.value.onboardingDone)
-                done += "restart"
+            override suspend fun installBundled(): Boolean {
+                done += "install"
+                installerFailure?.let { throw AbdException.CommandFailed(it) }
+                moduleState = ModuleState.Ready
+                return true
             }
         },
         apps = apps,
@@ -196,11 +204,6 @@ class OnboardingViewModelTest {
         userData = userData,
         scheduler = object : ListUpdateScheduler by unexpected() {
             override suspend fun updateSoon() = Unit
-
-            override suspend fun updateRootSoon() {
-                assertTrue(userData.userData.value.onboardingDone)
-                done += "schedule root update"
-            }
         },
         methods = methods,
         vpn = vpn,
@@ -289,8 +292,8 @@ class OnboardingViewModelTest {
         assertEquals(setOf(browser.appKey, work.appKey), viewModel.uiState.value.picks)
         viewModel.next()
         viewModel.next()
-        assertEquals(setOf(browser.appKey, work.appKey), userData.userData.value.pendingApps)
-        assertFalse(userData.userData.value.pendingPreserveWorkApps)
+        assertEquals(setOf(browser.appKey, work.appKey), configuredApps)
+        assertEquals(WorkSelection.Replace, configuredWork)
     }
 
     @Test
@@ -338,7 +341,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun givenIncompleteRootInventory_whenSetupIsDeferred_thenWorkPreservationIsRemembered() = runTest {
+    fun givenIncompleteRootInventory_whenRootModeIsSetUp_thenTheSavedWorkAppsAreKept() = runTest {
         root = true
         workUnavailable = true
         leaveTheCheck()
@@ -347,8 +350,8 @@ class OnboardingViewModelTest {
 
         viewModel.next()
         viewModel.next()
-        assertEquals(setOf(browser.appKey), userData.userData.value.pendingApps)
-        assertTrue(userData.userData.value.pendingPreserveWorkApps)
+        assertEquals(setOf(browser.appKey), configuredApps)
+        assertEquals(WorkSelection.Keep, configuredWork)
     }
 
     @Test
@@ -373,7 +376,7 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun deferredRootSetupRetainsTheChosenRegionalList() = runTest {
+    fun givenAModuleWaitingForARestart_whenSettingUp_thenRootModeIsSetUpAndFiltersNow() = runTest {
         root = true
         languages = listOf("ja-JP")
         leaveTheCheck()
@@ -381,13 +384,40 @@ class OnboardingViewModelTest {
 
         val china = FilterCatalog.entries.first { it.id == "easylist_china" }.url
         val japan = FilterCatalog.entries.first { it.id == "japanese_filters" }.url
-        val saved = userData.userData.value
-        assertEquals(setOf(china), saved.pendingDisabledLists)
-        assertTrue(japan in saved.pendingEnabledLists)
-        assertTrue(saved.pendingApps.isEmpty())
+        assertEquals(listOf("install", "configure lists", "configure apps", "update"), done)
+        assertEquals(false, subscriptions[china])
+        assertEquals(true, subscriptions[japan])
+        assertEquals(InstallState.Done(active = true, apps = 0), viewModel.uiState.value.install)
+        assertTrue(userData.userData.value.pendingApps.isEmpty())
+    }
 
-        viewModel.restartDevice()
-        assertEquals(listOf("schedule root update", "restart"), done)
+    @Test
+    fun givenRootModeReady_whenSettingUp_thenNothingIsInstalled() = runTest {
+        root = true
+        moduleState = ModuleState.Ready
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(listOf("configure lists", "configure apps", "update"), done)
+        assertTrue(viewModel.uiState.value.install is InstallState.Done)
+    }
+
+    @Test
+    fun givenTheInstallerFails_whenSettingUp_thenOnlyWhatItSaidIsShownAndItCanBeTriedAgain() = runTest {
+        root = true
+        moduleState = ModuleState.NotInstalled
+        installerFailure = "Not enough free space"
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(InstallState.Failed(LoadFailure.Failed, detail = "Not enough free space"), viewModel.uiState.value.install)
+        assertEquals(listOf("install"), done)
+        assertEquals(OnboardingStep.Lists, viewModel.uiState.value.previousStep)
+
+        installerFailure = null
+        viewModel.install()
+        assertEquals(listOf("install", "install", "configure lists", "configure apps", "update"), done)
+        assertTrue(viewModel.uiState.value.install is InstallState.Done)
     }
 
     @Test

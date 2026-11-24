@@ -20,7 +20,7 @@
     <string name="feature_onboarding_welcome_text">使用浏览器广告拦截器的订阅规则，过滤所选应用的网络请求。</string>
     <string name="feature_onboarding_start">开始</string>
     <string name="feature_onboarding_fact_private">不向设备外发送任何数据。应用仅在 VPN 模式下联网，且只连接所选应用的目标地址与订阅源。</string>
-    <string name="feature_onboarding_fact_methods">支持 root 模块与 VPN 两种过滤方式。</string>
+    <string name="feature_onboarding_fact_methods">支持 root 模式与 VPN 模式两种过滤方式。</string>
     <string name="feature_onboarding_fact_chosen">只过滤所选应用，不读取其他应用的连接。</string>
     <string name="feature_onboarding_check_title">设备检查</string>
     <string name="feature_onboarding_check_text">检查此设备能否运行 ADBlocker。</string>
@@ -38,7 +38,7 @@
     <string name="feature_onboarding_continue">继续</string>
     <string name="feature_onboarding_cert_title">按网址过滤</string>
     <string name="feature_onboarding_cert_text">在支持的情况下，对已过滤应用应用网址规则，包括 HTTPS 内的请求。如只需拦截整个域名，可在“设置”中关闭按网址过滤。</string>
-    <string name="feature_onboarding_cert_key">私钥在此设备上生成和保存，仅 root 可读，卸载时删除。</string>
+    <string name="feature_onboarding_cert_key">私钥在此设备上生成和保存，仅 root 可读，移除 root 模式时删除。</string>
     <string name="feature_onboarding_cert_notice">先使用系统信任的证书验证每个服务器。不为验证失败的服务器签发证书。</string>
     <string name="feature_onboarding_cert_browsers">被过滤的浏览器会跳过部分证书检查，例如证书透明度。</string>
     <string name="feature_onboarding_cert_ack">我已了解</string>
@@ -49,16 +49,13 @@
     </plurals>
     <string name="feature_onboarding_lists_title">订阅</string>
     <string name="feature_onboarding_lists_text">地区订阅按系统地区预选，可手动更改。</string>
-    <string name="feature_onboarding_install">安装</string>
-    <string name="feature_onboarding_installing_title">正在安装</string>
+    <string name="feature_onboarding_installing_title">正在设置</string>
     <plurals name="feature_onboarding_done_title">
         <item quantity="other">正在过滤 %1$d 个应用</item>
     </plurals>
     <string name="feature_onboarding_done_text">所选应用已开始过滤。如果应用无法正常工作，请在“概览”中暂停过滤。</string>
-    <string name="feature_onboarding_restart_title">需要重启</string>
-    <string name="feature_onboarding_restart_text">root 管理器会在下次开机时启动模块，届时开始过滤所选应用。</string>
-    <string name="feature_onboarding_failed_title">安装失败</string>
-    <string name="feature_onboarding_failed_text">无法安装模块。应用的网络连接不受影响。</string>
+    <string name="feature_onboarding_failed_title">设置失败</string>
+    <string name="feature_onboarding_failed_text">无法启用 root 模式。应用的网络连接不受影响。</string>
     <string name="feature_onboarding_try_again">重试</string>
     <string name="feature_onboarding_finish">完成</string>
     <string name="feature_onboarding_check_after_root">授予 root 权限后检查</string>
@@ -68,25 +65,22 @@
     <string name="feature_onboarding_check_kernel_ok">支持过滤所需的功能</string>
     <string name="feature_onboarding_check_kernel_unverified">启动过滤时检查</string>
     <string name="feature_onboarding_lists_hint">更多订阅可在“规则”中添加。</string>
-    <string name="feature_onboarding_step_module">安装模块</string>
+    <string name="feature_onboarding_step_module">启用 root 模式</string>
     <string name="feature_onboarding_step_apps">添加所选应用</string>
     <plurals name="feature_onboarding_step_lists">
         <item quantity="other">下载 %1$d 个订阅</item>
     </plurals>
     <string name="feature_onboarding_step_start">开始过滤</string>
-    <string name="feature_onboarding_install_progress">安装进度</string>
-    <string name="feature_onboarding_restart_note">KernelSU 无需重启即可启动模块；Magisk 和 APatch 需要重启。</string>
-    <string name="feature_onboarding_restart_now">立即重启</string>
-    <string name="feature_onboarding_later">稍后</string>
+    <string name="feature_onboarding_install_progress">设置进度</string>
     <string name="feature_onboarding_check_no_root_text">未检测到 root 权限。可使用 VPN 模式，或在授予 root 权限后使用 root 模式。</string>
-    <string name="feature_onboarding_check_unsupported_text">此设备无法运行 root 模块，可使用 VPN 模式。</string>
+    <string name="feature_onboarding_check_unsupported_text">此设备不支持 root 模式，可使用 VPN 模式。</string>
     <string name="feature_onboarding_check_root_not_detected">未检测到</string>
     <string name="feature_onboarding_check_root_again">重新检查 root</string>
     <string name="feature_onboarding_method">选择过滤方式</string>
     <string name="feature_onboarding_method_vpn">VPN 模式</string>
     <string name="feature_onboarding_method_vpn_text">无需 root 权限。按域名过滤所选应用，并占用系统 VPN。</string>
     <string name="feature_onboarding_method_root">root 模式</string>
-    <string name="feature_onboarding_method_root_no_root">可按网址过滤加密网站。需要 KernelSU、Magisk 或 APatch。</string>
+    <string name="feature_onboarding_method_root_no_root">可按网址过滤加密网站。需要 root 权限。</string>
     <string name="feature_onboarding_method_root_unsupported">可按网址过滤加密网站。此设备不支持。</string>
     <string name="feature_onboarding_vpn_title">VPN 模式说明</string>
     <string name="feature_onboarding_vpn_text">ADBlocker 在本机建立 VPN，仅所选应用的连接经过该 VPN。</string>
