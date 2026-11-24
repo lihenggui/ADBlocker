@@ -21,6 +21,7 @@ import li.mercury.adblocker.core.common.PERSONAL_APP_UIDS
 import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.AbdClient
 import li.mercury.adblocker.core.data.AbdException
+import li.mercury.adblocker.core.data.apps.AppPlatformInfo
 import li.mercury.adblocker.core.data.apps.InstalledAppsSource
 import li.mercury.adblocker.core.data.fixedAbdClient
 import li.mercury.adblocker.core.data.protocol.SharedUidGroup
@@ -81,6 +82,7 @@ internal class DefaultAppsRepository @Inject constructor(
     private val userData: UserDataRepository,
     private val changes: DataChanges,
     private val root: RootTransport,
+    private val platform: AppPlatformInfo,
 ) : AppsRepository {
     override suspend fun apps(): List<AppEntry> = inventory().apps
 
@@ -102,7 +104,8 @@ internal class DefaultAppsRepository @Inject constructor(
             AppInventory(emptyList())
         }
         val workEntries = work.apps.chosenEntries(selected, requested, settings.showSystemApps)
-        return AppInventory(personal.apps + workEntries, work.workUnavailable, personal.personalUnavailable)
+        val withheld = requested == null && platform.appListWithheld()
+        return AppInventory(personal.apps + workEntries, work.workUnavailable, personal.personalUnavailable, withheld)
     }
 
     private suspend fun chosenScopeInventory(
@@ -219,6 +222,7 @@ internal class DefaultAppsRepository @Inject constructor(
             apps = (grouped + work.apps).filter { settings.showSystemApps || !it.isSystem },
             workUnavailable = work.workUnavailable,
             personalUnavailable = available.personalUnavailable,
+            listWithheld = platform.appListWithheld(),
         )
     }
 

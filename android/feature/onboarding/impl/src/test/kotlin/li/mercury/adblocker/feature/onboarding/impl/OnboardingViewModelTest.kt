@@ -108,9 +108,19 @@ class OnboardingViewModelTest {
     private var workUnavailable = false
     private var personalUnavailable = false
     private var sharedUid = false
+    private var listWithheld = false
+    private var installedFails = false
 
     private val apps = object : AppsRepository by unexpected() {
-        override suspend fun installed(method: FilterMethod) = AppInventory(
+        override suspend fun installed(method: FilterMethod) = if (installedFails) {
+            throw IllegalStateException("package manager died")
+        } else if (listWithheld) {
+            AppInventory(emptyList(), listWithheld = true)
+        } else {
+            installedApps(method)
+        }
+
+        private fun installedApps(method: FilterMethod) = AppInventory(
             listOf(
                 ordinaryApp.copy(unavailableReason = AppUnavailableReason.SharedUid.takeIf { sharedUid && method == FilterMethod.Root }),
                 browser,
@@ -306,6 +316,32 @@ class OnboardingViewModelTest {
         viewModel.next()
         assertEquals(setOf(browser.appKey, work.appKey), configuredApps)
         assertEquals(WorkSelection.Replace, configuredWork)
+    }
+
+    @Test
+    fun givenTheSystemWithholdsTheAppList_whenItIsAllowedAndReadAgain_thenTheAppsAreListed() = runTest {
+        listWithheld = true
+        leaveTheCheck()
+        viewModel.next()
+        assertTrue(viewModel.uiState.value.appListWithheld)
+        assertEquals(emptyList(), viewModel.uiState.value.apps)
+
+        listWithheld = false
+        viewModel.loadApps()
+
+        assertFalse(viewModel.uiState.value.appListWithheld)
+        assertEquals(setOf(ordinaryApp.appKey, browser.appKey), viewModel.uiState.value.apps.map { it.appKey }.toSet())
+    }
+
+    @Test
+    fun givenTheVpnAppListCannotBeRead_whenTheAppsStepOpens_thenItIsUnavailableNotEmpty() = runTest {
+        installedFails = true
+        leaveTheCheck()
+        viewModel.next()
+
+        assertTrue(viewModel.uiState.value.personalEligibilityUnavailable)
+        viewModel.next()
+        assertEquals(OnboardingStep.Apps, viewModel.uiState.value.step)
     }
 
     @Test

@@ -76,6 +76,7 @@ import li.mercury.adblocker.core.ui.Pop
 import li.mercury.adblocker.core.ui.StepAction
 import li.mercury.adblocker.core.ui.StepPage
 import li.mercury.adblocker.core.ui.StepProgress
+import li.mercury.adblocker.core.ui.rememberAppListAccess
 import li.mercury.adblocker.core.ui.rememberPredictiveBackTransition
 import li.mercury.adblocker.feature.onboarding.impl.steps.Apps
 import li.mercury.adblocker.feature.onboarding.impl.steps.Check
@@ -99,12 +100,14 @@ fun OnboardingScreen(viewModel: OnboardingViewModel, modifier: Modifier = Modifi
         viewModel.notificationsAnswered(notificationsEnabled(context))
         askConsent()
     }
+    val allowAppList = rememberAppListAccess(state.step == OnboardingStep.Apps && state.appListWithheld, viewModel::loadApps)
     OnboardingScreen(
         state = state,
         onNext = viewModel::next,
         onBack = viewModel::back,
         onRetryChecks = viewModel::runChecks,
         onRetryApps = viewModel::loadApps,
+        onAllowAppList = allowAppList,
         onAcknowledge = viewModel::acknowledge,
         onTogglePick = viewModel::togglePick,
         onFilteringScope = viewModel::setFilteringScope,
@@ -144,6 +147,7 @@ internal fun OnboardingScreen(
     onFilteringScope: (FilteringScope) -> Unit = {},
     onStartVpn: () -> Unit = {},
     onRetryApps: () -> Unit = {},
+    onAllowAppList: () -> Unit = {},
 ) {
     // Keep the install screen in place while filtering starts.
     BackHandler(enabled = state.step != OnboardingStep.Welcome && state.previousStep == null) {}
@@ -183,7 +187,7 @@ internal fun OnboardingScreen(
                             OnboardingStep.Welcome -> Welcome(onNext)
                             OnboardingStep.Check -> Check(state, onNext, onRetryChecks)
                             OnboardingStep.About -> if (vpn) AboutVpn(onNext) else Certificate(state.acknowledged, onAcknowledge, onNext)
-                            OnboardingStep.Apps -> Apps(state, onTogglePick, onFilteringScope, onNext, onRetryApps)
+                            OnboardingStep.Apps -> Apps(state, onTogglePick, onFilteringScope, onNext, onRetryApps, onAllowAppList)
                             OnboardingStep.Lists -> Lists(state, onToggleList, onNext)
                             OnboardingStep.Install -> if (vpn) StartVpn(state, onStartVpn, onFinish) else Install(state, onRetryInstall, onFinish)
                         }

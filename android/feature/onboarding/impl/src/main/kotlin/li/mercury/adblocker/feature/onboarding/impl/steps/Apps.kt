@@ -39,12 +39,15 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.ui.AppIcon
+import li.mercury.adblocker.core.ui.AppListWithheld
 import li.mercury.adblocker.core.ui.ContentKind
 import li.mercury.adblocker.core.ui.FadeThrough
 import li.mercury.adblocker.core.ui.FilteringScopeChoice
+import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedToggleItem
 import li.mercury.adblocker.core.ui.StepAction
@@ -57,7 +60,14 @@ import li.mercury.adblocker.core.ui.R as UiR
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-internal fun ColumnScope.Apps(state: OnboardingUiState, onToggle: (String) -> Unit, onFilteringScope: (FilteringScope) -> Unit, onNext: () -> Unit, onRetry: () -> Unit) {
+internal fun ColumnScope.Apps(
+    state: OnboardingUiState,
+    onToggle: (String) -> Unit,
+    onFilteringScope: (FilteringScope) -> Unit,
+    onNext: () -> Unit,
+    onRetry: () -> Unit,
+    onAllowAppList: () -> Unit,
+) {
     var query by rememberSaveable { mutableStateOf("") }
     val all = state.filteringScope == FilteringScope.All
     val choices = if (all) state.apps.filter { it.profileSerial != null } else state.apps
@@ -77,8 +87,10 @@ internal fun ColumnScope.Apps(state: OnboardingUiState, onToggle: (String) -> Un
         },
     ) {
         FilteringScopeChoice(state.filteringScope, onFilteringScope)
+        // All apps needs no choice of personal apps, so it goes on without the list.
         val kind = when {
             state.appsLoading -> ContentKind.Loading
+            !all && state.appListWithheld -> ContentKind.Failure
             !all && choices.isEmpty() -> ContentKind.Empty
             else -> ContentKind.Content
         }
@@ -86,14 +98,19 @@ internal fun ColumnScope.Apps(state: OnboardingUiState, onToggle: (String) -> Un
             when (shown) {
                 ContentKind.Loading -> Box(Modifier.fillMaxWidth().padding(top = 48.dp), contentAlignment = Alignment.Center) { LoadingIndicator() }
 
-                ContentKind.Empty -> Column {
-                    Text(
-                        stringResource(R.string.feature_onboarding_apps_none),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 8.dp),
+                ContentKind.Failure -> AppListWithheld(onAllowAppList, onRetry, Modifier.padding(top = 8.dp))
+
+                // A list that could not be read is not an empty one.
+                ContentKind.Empty -> if (state.personalEligibilityUnavailable) {
+                    EligibilityUnavailable()
+                } else {
+                    Placeholder(
+                        icon = AdbIcons.Apps,
+                        title = stringResource(R.string.feature_onboarding_apps_none),
+                        text = stringResource(R.string.feature_onboarding_apps_none_text),
+                        modifier = Modifier.padding(top = 8.dp),
+                        prominent = true,
                     )
-                    if (state.personalEligibilityUnavailable) EligibilityUnavailable()
                 }
 
                 else -> Column {

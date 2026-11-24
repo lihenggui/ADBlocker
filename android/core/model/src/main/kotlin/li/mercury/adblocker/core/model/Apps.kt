@@ -117,11 +117,20 @@ enum class AppUnavailableReason {
     Unavailable,
 }
 
+/**
+ * The runtime permission that some systems, such as MIUI, HyperOS and others
+ * following the same Chinese industry standard, require before they list the
+ * installed apps.
+ */
+const val APP_LIST_PERMISSION = "com.android.permission.GET_INSTALLED_APPS"
+
 /** Apps that could be read and any incomplete parts of their inventory. */
 data class AppInventory<T>(
     val apps: List<T>,
     val workUnavailable: Boolean = false,
     val personalUnavailable: Boolean = false,
+    /** The system withholds the installed app list from ADBlocker until it is allowed to read it. */
+    val listWithheld: Boolean = false,
 )
 
 /** An installed app and whether, and how, it is filtered. */

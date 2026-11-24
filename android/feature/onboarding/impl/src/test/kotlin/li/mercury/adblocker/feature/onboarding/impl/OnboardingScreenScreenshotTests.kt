@@ -224,6 +224,35 @@ class OnboardingScreenScreenshotTests {
     }
 
     @Test
+    fun givenTheSystemWithholdsTheAppList_whenShownOnEachDevice_thenItAsksToAllowReadingIt() {
+        composeTestRule.captureMultiDevice("OnboardingAppsWithheld") { Onboarding(appsWithheld) }
+    }
+
+    @Test
+    fun givenTheSystemWithholdsTheAppList_whenShownInDarkTheme_thenItAsksToAllowReadingIt() {
+        capturePhone("OnboardingAppsWithheld", darkMode = true) { Onboarding(appsWithheld) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenTheSystemWithholdsTheAppList_whenShownInChinese_thenItAsksToAllowReadingIt() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OnboardingAppsWithheld") { Onboarding(appsWithheld) }
+    }
+
+    private val appsWithheld get() = vpn(OnboardingStep.Apps).copy(picks = emptySet(), appListWithheld = true)
+
+    @Test
+    fun givenNoAppsToFilter_whenTheAppsStepIsShown_thenItSaysSo() {
+        capturePhone("OnboardingAppsNone") { Onboarding(vpn(OnboardingStep.Apps).copy(picks = emptySet())) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenNoAppsToFilter_whenShownInChinese_thenItSaysSo() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OnboardingAppsNone") { Onboarding(vpn(OnboardingStep.Apps).copy(picks = emptySet())) }
+    }
+
+    @Test
     fun givenListsStep_whenShown_thenListsTheDefaults() {
         capturePhone("OnboardingLists") { Onboarding(OnboardingUiState(step = OnboardingStep.Lists)) }
     }

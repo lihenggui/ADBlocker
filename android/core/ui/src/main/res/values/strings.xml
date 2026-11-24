@@ -48,6 +48,10 @@
     <string name="core_ui_app_filtering_unavailable">Root filtering unavailable</string>
     <string name="core_ui_remove_app_selection">Remove selection</string>
     <string name="core_ui_personal_eligibility_unavailable">Couldn’t check which personal apps can be filtered.</string>
+    <string name="core_ui_app_list_withheld">Can’t see installed apps</string>
+    <string name="core_ui_app_list_withheld_text">The system hasn’t allowed ADBlocker to read the list of installed apps. Allow it to choose which apps to filter.</string>
+    <string name="core_ui_app_list_allow">Allow</string>
+    <string name="core_ui_app_list_check_again">Check again</string>
     <string name="core_ui_filtering_scope">Filtering scope</string>
     <string name="core_ui_scope_chosen">Chosen apps</string>
     <string name="core_ui_scope_all">All apps</string>

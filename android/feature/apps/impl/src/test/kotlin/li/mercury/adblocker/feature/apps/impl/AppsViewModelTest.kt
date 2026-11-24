@@ -70,8 +70,9 @@ class AppsViewModelTest {
         var installed = true
         var workUnavailable = false
         var unavailableReason: AppUnavailableReason? = null
+        var listWithheld = false
 
-        override suspend fun inventory() = AppInventory(apps(), workUnavailable)
+        override suspend fun inventory() = AppInventory(apps(), workUnavailable, listWithheld = listWithheld)
         var holding: CompletableDeferred<Unit>? = null
         var holdingReads: CompletableDeferred<Unit>? = null
         var reads = 0
@@ -135,6 +136,21 @@ class AppsViewModelTest {
 
         assertEquals(ReadState.Available(emptyMap<String, AppCount>()), viewModel.uiState.value.counts)
         assertTrue(shown().isFiltered)
+    }
+
+    @Test
+    fun givenTheSystemWithholdsTheAppList_whenAllowedAndReadAgain_thenTheListIsShown() = runTest {
+        daemon.listWithheld = true
+        showApps()
+        assertTrue(viewModel.uiState.value.listWithheld)
+        assertEquals(null, viewModel.uiState.value.failure)
+
+        daemon.listWithheld = false
+        viewModel.refresh()
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.listWithheld)
+        assertEquals(news, shown().app)
     }
 
     @Test

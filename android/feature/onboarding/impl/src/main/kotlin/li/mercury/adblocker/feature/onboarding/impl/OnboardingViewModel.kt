@@ -98,6 +98,8 @@ data class OnboardingUiState(
     val apps: List<InstalledApp> = emptyList(),
     val workInventoryUnavailable: Boolean = true,
     val personalEligibilityUnavailable: Boolean = false,
+    /** The system withholds the installed apps until ADBlocker is allowed to read them. */
+    val appListWithheld: Boolean = false,
     val picks: Set<String> = emptySet(),
     val filteringScope: FilteringScope = FilteringScope.Chosen,
     /** Waiting for the installed app list. */
@@ -223,10 +225,9 @@ class OnboardingViewModel @Inject constructor(
         val method = state.value.method
         state.update { it.copy(appsLoading = true) }
         loadingApps = viewModelScope.launch {
+            // A list that could not be read is unavailable, never an empty one.
             val inventory = suspendRunCatching { apps.installed(method) }
-                .getOrElse {
-                    AppInventory(emptyList(), workUnavailable = method == FilterMethod.Root, personalUnavailable = method == FilterMethod.Root)
-                }
+                .getOrElse { AppInventory(emptyList(), workUnavailable = method == FilterMethod.Root, personalUnavailable = true) }
             val sorted = inventory.apps.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER, InstalledApp::label))
             val available = sorted.filter(InstalledApp::canEnableFiltering).map(InstalledApp::appKey).toSet()
             state.update {
@@ -235,6 +236,7 @@ class OnboardingViewModel @Inject constructor(
                     appsLoading = false,
                     workInventoryUnavailable = inventory.workUnavailable,
                     personalEligibilityUnavailable = inventory.personalUnavailable,
+                    appListWithheld = inventory.listWithheld,
                     picks = rememberedPicks intersect available,
                 )
             }
