@@ -67,9 +67,10 @@
     <string name="feature_settings_root_remove_explain">过滤将停止，应用直接联网，不经过过滤。root 模式的证书颁发机构及其所选应用、订阅、规则、信任的网站和统计数据将被删除。主题等应用设置会保留。之后可在此处重新启用 root 模式。</string>
     <string name="feature_settings_root_remove_confirm">移除</string>
     <string name="feature_settings_root_removed">已移除 root 模式</string>
-    <string name="feature_settings_root_flashed">已作为模块安装在 root 管理器中</string>
+    <string name="feature_settings_root_flashed">已作为模块安装</string>
     <string name="feature_settings_root_flashed_in">已作为模块安装在 %1$s 中</string>
     <string name="feature_settings_root_flashed_text">如需移除 root 模式，请在其中移除模块并重启</string>
+    <string name="feature_settings_root_flashed_manager_text">如需移除 root 模式，请在 root 管理器中移除模块并重启</string>
     <string name="feature_settings_root_flashed_pending_text">下次重启后生效</string>
     <string name="feature_settings_pinned">不接受证书的域名</string>
     <string name="feature_settings_pinned_checking">正在检查域名…</string>
@@ -121,7 +122,7 @@
     <string name="feature_settings_method_vpn_text">当前使用 · 无需 root 权限</string>
     <string name="feature_settings_method_vpn_available">无需 root 权限 · 按域名过滤</string>
     <string name="feature_settings_method_root">root 模式</string>
-    <string name="feature_settings_method_root_text">当前使用 · 可在 HTTPS 内按网址过滤</string>
+    <string name="feature_settings_method_root_not_set_up">未启用 · 可在 HTTPS 内按网址过滤</string>
     <string name="feature_settings_method_root_checking">正在检查 root 权限</string>
     <string name="feature_settings_method_root_available">已授予 root 权限 · 可在 HTTPS 内按网址过滤</string>
     <string name="feature_settings_method_root_missing">未检测到 root 权限 · 重新检查</string>

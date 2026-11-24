@@ -208,8 +208,10 @@ private fun setupRow(state: SettingsUiState, actions: RootActions): RootRow? {
  */
 @Composable
 internal fun installationRow(service: ServiceInfo, onRemove: () -> Unit): RootRow? {
-    val inManager = service.rootManager?.let { stringResource(R.string.feature_settings_root_flashed_in, it) }
-        ?: stringResource(R.string.feature_settings_root_flashed)
+    val manager = service.rootManager
+    val inManager = if (manager != null) stringResource(R.string.feature_settings_root_flashed_in, manager) else stringResource(R.string.feature_settings_root_flashed)
+    // Without the manager's name the headline stays short, and the line under it says where to go.
+    val removeThere = stringResource(if (manager != null) R.string.feature_settings_root_flashed_text else R.string.feature_settings_root_flashed_manager_text)
     return when {
         service.removal == RootTask.Running -> RootRow(
             stringResource(R.string.feature_settings_root_remove),
@@ -233,7 +235,7 @@ internal fun installationRow(service: ServiceInfo, onRemove: () -> Unit): RootRo
             onRemove.takeUnless { service.busy },
         )
 
-        service.installedByApp == false -> RootRow(inManager, stringResource(R.string.feature_settings_root_flashed_text), AdbIcons.Info)
+        service.installedByApp == false -> RootRow(inManager, removeThere, AdbIcons.Info)
 
         else -> null
     }
@@ -264,7 +266,7 @@ internal fun RootMethodRows(busy: Boolean, onSwitchToVpn: () -> Unit) {
                 index = 0,
                 count = 2,
                 headline = stringResource(R.string.feature_settings_method_root),
-                supporting = { Text(stringResource(R.string.feature_settings_method_root_text)) },
+                supporting = { Text(stringResource(R.string.feature_settings_method_root_not_set_up)) },
                 leading = { Icon(AdbIcons.Security, contentDescription = null, Modifier.size(20.dp)) },
                 trailing = { Icon(AdbIcons.Check, contentDescription = null) },
             )
