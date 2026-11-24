@@ -139,58 +139,7 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRoot
                 trailing = { Icon(AdbIcons.Check, contentDescription = null) },
             )
 
-            1 -> SegmentedItem(
-                index = 1,
-                count = methodRows,
-                headline = stringResource(R.string.feature_settings_method_root),
-                supporting = {
-                    Text(
-                        stringResource(
-                            when {
-                                service.checkingRoot -> R.string.feature_settings_method_root_checking
-
-                                cancelling -> R.string.feature_settings_cancel_root_pending
-
-                                service.switchingToRoot -> R.string.feature_settings_root_setting_up
-
-                                // A switch would fail until the root manager has applied its change at a restart.
-                                restartFirst -> if (service.stagedInManager) {
-                                    R.string.feature_settings_method_root_restart_first
-                                } else {
-                                    R.string.feature_settings_root_marked_removal
-                                }
-
-                                pending -> when (service.module) {
-                                    ModuleState.NoRoot -> R.string.feature_settings_method_root_missing
-                                    ModuleState.Unavailable, null -> R.string.feature_settings_module_check_again
-                                    ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> R.string.feature_settings_switch_root_retry
-                                }
-
-                                service.rootAvailable == true -> R.string.feature_settings_method_root_available
-
-                                else -> R.string.feature_settings_method_root_missing
-                            },
-                        ),
-                    )
-                },
-                leading = { Icon(AdbIcons.Security, contentDescription = null, Modifier.size(20.dp)) },
-                // Chosen after a confirmation once root is there; otherwise looked for again.
-                onClick = when {
-                    service.checkingRoot || service.busy || cancelling || restartFirst -> null
-
-                    // Trying again sets up root mode where it has to.
-                    pending -> when (service.module) {
-                        ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> actions.onSwitchToRoot
-                        ModuleState.NoRoot, ModuleState.Unavailable, null -> actions.onCheckRoot
-                    }
-
-                    service.rootAvailable == true -> {
-                        onConfirmRoot
-                    }
-
-                    else -> actions.onCheckRoot
-                },
-            )
+            1 -> RootMethodRow(service, RootSwitch(pending, cancelling, restartFirst), methodRows, actions, onConfirmRoot)
 
             else -> if (installation != null) {
                 RootRowItem(installation, index = 2, count = methodRows)
@@ -204,6 +153,70 @@ private fun MethodRows(state: SettingsUiState, actions: VpnActions, onRemoveRoot
                 )
             }
         }
+    }
+}
+
+/** Where a switch to root mode stands, which the Root mode row says and acts on. */
+private class RootSwitch(val pending: Boolean, val cancelling: Boolean, val restartFirst: Boolean)
+
+/** The Root mode row: whether it can be chosen, and what choosing it does now. */
+@Composable
+private fun RootMethodRow(service: ServiceInfo, switch: RootSwitch, count: Int, actions: VpnActions, onConfirmRoot: () -> Unit) {
+    val pending = switch.pending
+    val cancelling = switch.cancelling
+    val restartFirst = switch.restartFirst
+    SegmentedItem(
+        index = 1,
+        count = count,
+        headline = stringResource(R.string.feature_settings_method_root),
+        supporting = { Text(stringResource(rootMethodText(service, switch))) },
+        leading = { Icon(AdbIcons.Security, contentDescription = null, Modifier.size(20.dp)) },
+        // Chosen after a confirmation once root is there; otherwise looked for again.
+        onClick = when {
+            service.checkingRoot || service.busy || cancelling || restartFirst -> null
+
+            // Trying again sets up root mode where it has to.
+            pending -> when (service.module) {
+                ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> actions.onSwitchToRoot
+                ModuleState.NoRoot, ModuleState.Unavailable, null -> actions.onCheckRoot
+            }
+
+            service.rootAvailable == true -> {
+                onConfirmRoot
+            }
+
+            else -> actions.onCheckRoot
+        },
+    )
+}
+
+private fun rootMethodText(service: ServiceInfo, switch: RootSwitch): Int {
+    val pending = switch.pending
+    val cancelling = switch.cancelling
+    val restartFirst = switch.restartFirst
+    return when {
+        service.checkingRoot -> R.string.feature_settings_method_root_checking
+
+        cancelling -> R.string.feature_settings_cancel_root_pending
+
+        service.switchingToRoot -> R.string.feature_settings_root_setting_up
+
+        // A switch would fail until the root manager has applied its change at a restart.
+        restartFirst -> if (service.stagedInManager) {
+            R.string.feature_settings_method_root_restart_first
+        } else {
+            R.string.feature_settings_root_marked_removal
+        }
+
+        pending -> when (service.module) {
+            ModuleState.NoRoot -> R.string.feature_settings_method_root_missing
+            ModuleState.Unavailable, null -> R.string.feature_settings_module_check_again
+            ModuleState.Ready, ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart -> R.string.feature_settings_switch_root_retry
+        }
+
+        service.rootAvailable == true -> R.string.feature_settings_method_root_available
+
+        else -> R.string.feature_settings_method_root_missing
     }
 }
 
