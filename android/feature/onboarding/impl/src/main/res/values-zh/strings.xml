@@ -60,7 +60,8 @@
     <string name="feature_onboarding_try_again">重试</string>
     <string name="feature_onboarding_finish">完成</string>
     <string name="feature_onboarding_check_after_root">授予 root 权限后检查</string>
-    <string name="feature_onboarding_apps_none">没有可过滤的应用。</string>
+    <string name="feature_onboarding_apps_none">没有可过滤的应用</string>
+    <string name="feature_onboarding_apps_none_text">已安装的联网应用会显示在这里。</string>
     <string name="feature_onboarding_check_root_granted">%1$s · 已授权</string>
     <string name="feature_onboarding_check_root_granted_plain">已授权</string>
     <string name="feature_onboarding_check_kernel_ok">支持过滤所需的功能</string>

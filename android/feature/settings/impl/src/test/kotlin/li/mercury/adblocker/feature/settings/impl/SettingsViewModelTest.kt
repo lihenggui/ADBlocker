@@ -94,6 +94,8 @@ class SettingsViewModelTest {
             labelRequests += packages
             return packages.associateWith { if (it == "com.example.news") "News" else it }
         }
+
+        override suspend fun appListWithheld() = false
     }
 
     private var rootAsked = 0

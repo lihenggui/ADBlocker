@@ -103,6 +103,10 @@ sets up root mode: filtering starts at once, without a restart, and again
 after every restart. Without root, it uses VPN mode and asks for VPN
 permission.
 
+Some systems, such as MIUI and HyperOS, show ADBlocker the installed apps
+only after it is allowed to read them. Setup and **Apps** ask for this
+permission and can open ADBlocker's system settings.
+
 Setup suggests the general lists and the regional lists for the
 languages of the device, such as EasyList China, AdGuard Chinese and
 AWAvenue Ads Rule for Chinese.

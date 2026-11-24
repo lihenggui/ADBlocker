@@ -101,6 +101,24 @@ class AppsScreenScreenshotTests {
     }
 
     @Test
+    fun givenTheSystemWithholdsTheAppList_whenShownOnEachDevice_thenItAsksToAllowReadingIt() {
+        composeTestRule.captureMultiDevice("AppsListWithheld") { Apps(withheld) }
+    }
+
+    @Test
+    fun givenTheSystemWithholdsTheAppList_whenShownInDarkTheme_thenItAsksToAllowReadingIt() {
+        capturePhone("AppsListWithheld", darkMode = true) { Apps(withheld) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenTheSystemWithholdsTheAppList_whenShownInChinese_thenItAsksToAllowReadingIt() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "AppsListWithheld") { Apps(withheld) }
+    }
+
+    private val withheld get() = AppsUiState(loading = false, listWithheld = true, counts = ReadState.Available(emptyMap()))
+
+    @Test
     fun givenAllApps_whenListed_thenIncludedAndExcludedAppsHaveExplicitActions() {
         val one = DemoData.entry(DemoApp.News)
         val two = DemoData.entry(DemoApp.Browser)

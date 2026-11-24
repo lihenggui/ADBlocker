@@ -58,6 +58,8 @@ data class AppsUiState(
     val entries: List<AppEntry> = emptyList(),
     val workInventoryUnavailable: Boolean = false,
     val personalEligibilityUnavailable: Boolean = false,
+    /** The system withholds the installed apps until ADBlocker is allowed to read them. */
+    val listWithheld: Boolean = false,
     /** Today's and the week's counts, by package. */
     val counts: ReadState<Map<String, AppCount>> = ReadState.Pending,
     val filter: AppFilter = AppFilter.Filtered,
@@ -133,6 +135,7 @@ class AppsViewModel @Inject constructor(
                     entries = shown,
                     workInventoryUnavailable = inventory.workUnavailable,
                     personalEligibilityUnavailable = inventory.personalUnavailable,
+                    listWithheld = inventory.listWithheld,
                     counts = counts,
                     filter = filter,
                 )

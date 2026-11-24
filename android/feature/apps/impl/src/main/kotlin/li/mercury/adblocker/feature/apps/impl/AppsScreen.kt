@@ -76,6 +76,7 @@ import li.mercury.adblocker.core.model.FilteredApp
 import li.mercury.adblocker.core.model.ReadState
 import li.mercury.adblocker.core.model.SharedAppMember
 import li.mercury.adblocker.core.ui.AppIcon
+import li.mercury.adblocker.core.ui.AppListWithheld
 import li.mercury.adblocker.core.ui.AppSnackbarHost
 import li.mercury.adblocker.core.ui.ContentKind
 import li.mercury.adblocker.core.ui.FadeThrough
@@ -91,6 +92,7 @@ import li.mercury.adblocker.core.ui.formatCount
 import li.mercury.adblocker.core.ui.message
 import li.mercury.adblocker.core.ui.pageMargin
 import li.mercury.adblocker.core.ui.profileAppLabel
+import li.mercury.adblocker.core.ui.rememberAppListAccess
 import li.mercury.adblocker.core.ui.rememberNow
 import li.mercury.adblocker.core.ui.segmentedColors
 import li.mercury.adblocker.core.ui.timeLeft
@@ -106,8 +108,10 @@ fun AppsScreen(
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     MessageEffect(viewModel.pendingMessages, viewModel::onMessageShown)
+    val allowAppList = rememberAppListAccess(state.listWithheld, viewModel::refresh)
     AppsScreen(
         state = state,
+        onAllowAppList = allowAppList,
         selectedPackage = selectedPackage,
         onFilter = viewModel::setFilter,
         onToggle = { entry, on -> viewModel.setFiltered(entry, on) },
@@ -129,6 +133,7 @@ internal fun AppsScreen(
     onOpenApp: (String) -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
+    onAllowAppList: () -> Unit = {},
 ) {
     val searchState = rememberSearchBarState()
     val query = rememberTextFieldState()
@@ -151,11 +156,13 @@ internal fun AppsScreen(
         },
         snackbarHost = { AppSnackbarHost() },
     ) { padding ->
-        FadeThrough(state, { ContentKind.of(it.loading, it.failure) }, Modifier.padding(padding).fillMaxSize(), Alignment.Center, "apps") { state ->
+        FadeThrough(state, { ContentKind.of(it.loading, it.failure, empty = it.listWithheld) }, Modifier.padding(padding).fillMaxSize(), Alignment.Center, "apps") { state ->
             when {
                 state.loading -> LoadingIndicator()
 
                 state.failure != null -> FailureView(state.failure, onRetry)
+
+                state.listWithheld -> AppListWithheld(onAllowAppList, onRetry)
 
                 else -> LazyColumn(
                     contentPadding = PaddingValues(start = margin, end = margin, bottom = 24.dp),

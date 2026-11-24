@@ -44,6 +44,10 @@
     <string name="core_ui_app_filtering_unavailable">无法使用 Root 过滤</string>
     <string name="core_ui_remove_app_selection">移除选择</string>
     <string name="core_ui_personal_eligibility_unavailable">无法检查哪些个人应用可以过滤。</string>
+    <string name="core_ui_app_list_withheld">看不到已安装的应用</string>
+    <string name="core_ui_app_list_withheld_text">系统未允许 ADBlocker 读取应用列表。\n允许后才能选择要过滤的应用。</string>
+    <string name="core_ui_app_list_allow">去允许</string>
+    <string name="core_ui_app_list_check_again">重新检查</string>
     <string name="core_ui_filtering_scope">过滤范围</string>
     <string name="core_ui_scope_chosen">选定应用</string>
     <string name="core_ui_scope_all">全部应用</string>

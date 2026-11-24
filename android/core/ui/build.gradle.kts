@@ -29,6 +29,7 @@ dependencies {
     api(projects.core.model)
 
     implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.lifecycle.runtimeCompose)
     implementation(libs.appiconloader)
     implementation(libs.coil.compose)
 

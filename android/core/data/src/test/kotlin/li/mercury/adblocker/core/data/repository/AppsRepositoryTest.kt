@@ -27,6 +27,7 @@ import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdClient
 import li.mercury.adblocker.core.data.AbdException
+import li.mercury.adblocker.core.data.apps.AppPlatformInfo
 import li.mercury.adblocker.core.data.apps.InstalledAppsSource
 import li.mercury.adblocker.core.data.protocol.AppEligibility
 import li.mercury.adblocker.core.data.protocol.SharedUidGroup
@@ -56,6 +57,9 @@ import kotlin.test.assertTrue
 class AppsRepositoryTest {
     private val added = mutableListOf<String>()
     private val changes = DataChanges()
+    private val platform = object : AppPlatformInfo by unexpected() {
+        override suspend fun appListWithheld() = false
+    }
 
     private fun repository(abd: AbdClient, method: FilterMethod = FilterMethod.Root) = DefaultAppsRepository(
         abd = abd,
@@ -64,6 +68,7 @@ class AppsRepositoryTest {
         userData = TestUserDataRepository(UserData(filterMethod = method)),
         changes = changes,
         root = RootTransport(RootShell(Dispatchers.Unconfined)),
+        platform = platform,
     )
 
     /** A daemon whose `app add` writes down what it was asked, and fails if [fails]. */
