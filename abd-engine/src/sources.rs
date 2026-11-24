@@ -91,10 +91,6 @@ const MOVED: [(&str, &str); 1] = [(
 )];
 
 fn moved(text: String) -> String {
-    let address = |line: &str| {
-        let line = line.trim();
-        line.strip_prefix('#').unwrap_or(line).to_owned()
-    };
     let has = |url: &str| text.lines().any(|line| address(line) == url);
     let pending: Vec<_> = MOVED.iter().filter(|(old, _)| has(old)).collect();
     if pending.is_empty() {
@@ -119,9 +115,42 @@ fn moved(text: String) -> String {
     out
 }
 
-/// The selection in effect: the sources file, or the defaults without one.
+/// The selection of filter lists in effect: what the sources file `file`
+/// holds and each of `default` that it does not name, or `default` while
+/// there is none.
+///
+/// A saved selection says what the user chose among the lists it names. A
+/// list that became a default after it was saved is on until they turn it
+/// off, as it is for a new installation.
+pub(crate) fn selection(file: &Path, default: &str) -> Result<String> {
+    let Some(mut text) = text_of(file)? else {
+        return Ok(default.to_owned());
+    };
+    let unnamed: Vec<&str> = {
+        let named: HashSet<&str> = text.lines().map(address).collect();
+        subscribed(default)
+            .filter(|url| !named.contains(url))
+            .collect()
+    };
+    if !unnamed.is_empty() && !text.is_empty() && !text.ends_with('\n') {
+        text.push('\n');
+    }
+    for url in unnamed {
+        text.push_str(url);
+        text.push('\n');
+    }
+    Ok(text)
+}
+
+/// The list a line of the sources file names, turned on or off.
+fn address(line: &str) -> &str {
+    let line = line.trim();
+    line.strip_prefix('#').unwrap_or(line)
+}
+
+/// The selection in effect for the lists of `paths`.
 pub fn configured(paths: &Paths) -> Result<String> {
-    text_or(&paths.sources(), crate::catalog::default_sources())
+    selection(&paths.sources(), crate::catalog::default_sources())
 }
 
 /// The sources, in the order of the file; those a new installation has if
@@ -218,8 +247,12 @@ pub fn edit(paths: &Paths, url: &str, change: Change) -> Result<bool> {
                 }
             }
         }
-        Change::Remove => lines.retain(|l| !is(l, url) && !is(l, &disabled)),
-        Change::Disable => {
+        // A default that the file does not name is on: one that is removed
+        // stays named, turned off.
+        Change::Remove if !subscribed(crate::catalog::default_sources()).any(|d| d == url) => {
+            lines.retain(|l| !is(l, url) && !is(l, &disabled));
+        }
+        Change::Remove | Change::Disable => {
             for line in &mut lines {
                 if is(line, url) {
                     *line = &disabled;
@@ -511,22 +544,57 @@ fn prune(dir: &Path, stale: impl Fn(&std::fs::DirEntry) -> bool) -> std::io::Res
 }
 
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use super::*;
     use crate::list_url::MAX_URL;
+
+    /// The lines that turn off each default but those of `named`, which
+    /// the file has lines of its own for.
+    pub(crate) fn defaults_off(named: &[&str]) -> String {
+        subscribed(crate::catalog::default_sources())
+            .filter(|url| !named.contains(url))
+            .map(|url| format!("#{url}\n"))
+            .collect()
+    }
 
     const A: &str = "https://a.example/list.txt";
     const B: &str = "https://b.example/other.txt";
 
     #[test]
+    fn a_default_that_a_saved_selection_does_not_name_is_on_until_it_is_turned_off() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        let defaults: Vec<_> = subscribed(crate::catalog::default_sources()).collect();
+        let (first, rest) = defaults.split_first().unwrap();
+        std::fs::write(paths.sources(), format!("{A}\n#{first}")).unwrap();
+        let on = |url: &str| read(&paths).iter().any(|s| s.url == url && s.enabled);
+        assert!(on(A) && !on(first));
+        assert!(rest.iter().all(|url| on(url)));
+        assert_eq!(read(&paths).len(), defaults.len() + 1);
+
+        // Removed, it is not a default the file does not name.
+        let removed = rest[0];
+        edit(&paths, removed, Change::Remove).unwrap();
+        assert!(!on(removed));
+        assert!(
+            std::fs::read_to_string(paths.sources())
+                .unwrap()
+                .contains(&format!("#{removed}\n"))
+        );
+        edit(&paths, A, Change::Remove).unwrap();
+        assert!(read(&paths).iter().all(|s| s.url != A));
+    }
+
+    #[test]
     fn a_confirmed_selection_disables_all_its_lists_without_resetting_other_subscriptions() {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
-        std::fs::write(paths.sources(), format!("# Lists\n{A}\n{B}\n")).unwrap();
+        let off = defaults_off(&[]);
+        std::fs::write(paths.sources(), format!("# Lists\n{A}\n{B}\n{off}")).unwrap();
         configure(&paths, &format!("#{A}")).unwrap();
         assert_eq!(
             std::fs::read_to_string(paths.sources()).unwrap(),
-            format!("# Lists\n#{A}\n{B}\n")
+            format!("# Lists\n#{A}\n{B}\n{off}")
         );
         let saved = std::fs::read_to_string(paths.sources()).unwrap();
         assert!(configure(&paths, &format!("#{B}\ninvalid")).is_err());
@@ -618,8 +686,9 @@ mod tests {
     fn a_disabled_source_stops_filtering_and_can_be_enabled_without_a_download() {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
+        let off = defaults_off(&[]);
         std::fs::create_dir_all(paths.lists()).unwrap();
-        std::fs::write(paths.sources(), format!("# Lists\n{A}\n{B}\n")).unwrap();
+        std::fs::write(paths.sources(), format!("# Lists\n{A}\n{B}\n{off}")).unwrap();
         let list = paths.lists().join(file_name(A));
         std::fs::write(&list, "||ads.example^\n").unwrap();
         write_info(
@@ -635,7 +704,7 @@ mod tests {
         assert!(edit(&paths, A, Change::Disable).unwrap());
         assert_eq!(
             std::fs::read_to_string(paths.sources()).unwrap(),
-            format!("# Lists\n#{A}\n{B}\n")
+            format!("# Lists\n#{A}\n{B}\n{off}")
         );
         assert!(!list.exists() && info(&paths.list_info(), A).is_some());
         assert!(
@@ -662,12 +731,12 @@ mod tests {
         );
         assert_eq!(
             std::fs::read_to_string(paths.sources()).unwrap(),
-            format!("# Lists\n{A}\n{B}\n")
+            format!("# Lists\n{A}\n{B}\n{off}")
         );
         // Twice is once.
         edit(&paths, A, Change::Enable).unwrap();
         edit(&paths, A, Change::Add).unwrap();
-        assert_eq!(read(&paths).len(), 2);
+        assert_eq!(read(&paths).iter().filter(|s| s.enabled).count(), 2);
 
         edit(&paths, A, Change::Disable).unwrap();
         edit(&paths, A, Change::Remove).unwrap();
@@ -704,9 +773,10 @@ mod tests {
         let (old, new) = MOVED[0];
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
-        std::fs::write(paths.sources(), format!("# Lists\n{A}\n#{old}\n")).unwrap();
+        let off = defaults_off(&[MOVED[0].1]);
+        std::fs::write(paths.sources(), format!("# Lists\n{A}\n#{old}\n{off}")).unwrap();
         assert_eq!(
-            read(&paths),
+            read(&paths)[..2],
             [
                 Source {
                     url: A.to_owned(),
@@ -721,12 +791,12 @@ mod tests {
         edit(&paths, new, Change::Enable).unwrap();
         assert_eq!(
             std::fs::read_to_string(paths.sources()).unwrap(),
-            format!("# Lists\n{A}\n{new}\n")
+            format!("# Lists\n{A}\n{new}\n{off}")
         );
 
-        std::fs::write(paths.sources(), format!("{old}\n#{new}\n")).unwrap();
+        std::fs::write(paths.sources(), format!("{old}\n#{new}\n{off}")).unwrap();
         assert_eq!(
-            read(&paths),
+            read(&paths)[..1],
             [Source {
                 url: new.to_owned(),
                 enabled: false

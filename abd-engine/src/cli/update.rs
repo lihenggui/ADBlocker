@@ -131,7 +131,8 @@ mod tests {
         ] {
             let dir = tempfile::tempdir().unwrap();
             let paths = Paths::new(dir.path());
-            std::fs::write(paths.sources(), "").unwrap();
+            let no_lists = crate::sources::tests::defaults_off(&[]);
+            std::fs::write(paths.sources(), no_lists).unwrap();
             std::fs::write(paths.exclusion_sources(), "").unwrap();
             std::fs::create_dir_all(paths.lists()).unwrap();
             let stale = paths

@@ -125,12 +125,6 @@ fn reason(e: &anyhow::Error) -> String {
     text
 }
 
-fn configured_sources(sources: &Path, default: &str) -> Result<String> {
-    // Rollback can restore the file's absence during a download. The
-    // defaults are still subscribed when that happens.
-    sources::text_or(sources, default)
-}
-
 /// Fetches every list named in `sources` (created with `default` if it is
 /// not there) into `dir` with `get`, and removes from `dir` the lists no
 /// longer named. With `info`, what is known of each list is kept there
@@ -286,7 +280,7 @@ impl Subscription<'_> {
         fetched: Result<Download, String>,
     ) -> Result<Commit> {
         let _lock = files::lock(self.sources)?;
-        let configured = configured_sources(self.sources, self.default)?;
+        let configured = self.kind.sources(self.sources, self.default)?;
         if !subscribed(&configured).any(|source| source == url) {
             return Ok(Commit::Finished(Outcome {
                 state: ListState::Unchanged,
@@ -354,7 +348,7 @@ impl Subscription<'_> {
 
     fn cleanup(self) -> Result<usize> {
         let lock = files::lock(self.sources)?;
-        let configured = configured_sources(self.sources, self.default)?;
+        let configured = self.kind.sources(self.sources, self.default)?;
         prune_unsubscribed(&configured, self.dir, self.info, &lock)
     }
 }
