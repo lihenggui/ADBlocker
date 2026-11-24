@@ -20,6 +20,7 @@ idna = "1.1.0"
 libc = "0.2.191"
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.154"
+regex = "1.13.2"
 regex-automata = "0.4.19"
 ring = "0.17.14"
 rustc-hash = "2.1.3"

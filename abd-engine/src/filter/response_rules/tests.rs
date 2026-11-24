@@ -16,6 +16,7 @@
 
 use std::path::Path;
 
+use super::super::rule_options::{option_value_end, regex_option_separator};
 use super::*;
 use crate::filter::{Filters, parse_http_page};
 use crate::list_url::{file_name, untrusted_file_name};
@@ -76,7 +77,7 @@ fn options_split_around_the_replacement_and_after_the_url_pattern() {
         let line = format!("{condition}${options_text}");
         assert_eq!(split(&line), Some((condition, options_text.as_str())));
         assert_eq!(options(&options_text).count(), 3);
-        assert_eq!(check(&line), Some(true), "{line}");
+        assert_eq!(check(&line, &mut Patterns::default()), Some(true), "{line}");
     }
     assert_eq!(
         split(r"||example.org/path\$name$replace=/X/Y/"),
@@ -139,7 +140,7 @@ fn rules_from_subscriptions_keep_their_conditions_and_actions() {
             kind.and_then(kind_bit).unwrap_or(0)
         );
         assert_eq!(parsed.qualifiers.exclude, 0);
-        assert_eq!(parsed.qualifiers.apps.as_deref(), apps);
+        assert_eq!(parsed.apps.as_deref(), apps);
         assert!(
             parsed.action
                 == Some(ActionSpec::Replace {
@@ -149,7 +150,7 @@ fn rules_from_subscriptions_keep_their_conditions_and_actions() {
                     single_line: false,
                 })
         );
-        assert_eq!(check(line), Some(true), "{line}");
+        assert_eq!(check(line, &mut Patterns::default()), Some(true), "{line}");
     }
     let flags = action(r"/(foo\,bar\$)/\$1\//is").unwrap();
     assert!(
@@ -210,7 +211,7 @@ fn changed(f: &Filters, url: &str, page: Page<'_>, kind: &str, app: &str) -> Str
 #[test]
 fn response_rules_match_the_real_kind_page_party_and_app() {
     let f = filters(
-        r"||example.org/qualified$replace=/X/Y/,xhr,~image,app=Com.Reader|~com.excluded,domain=page.org,3p,method=GET",
+        r"||example.org/qualified$replace=/X/Y/,xhr,~image,app=Com.Read*,domain=page.org,3p,method=GET",
     );
     let url = "https://example.org/qualified";
     let page = parse_http_page("https://page.org/").unwrap();
@@ -427,7 +428,9 @@ fn the_regex_budget_keeps_actions_in_rule_order_and_charges_each_once() {
     let budget = first_spec.compile().unwrap().regex_bytes();
     assert!(budget > 0);
     for lines in [[first, second, also_first], [also_first, second, first]] {
-        let f = ResponseRules::build_with_budget(lines.into_iter(), budget).unwrap();
+        let f =
+            ResponseRules::build_with_budget(lines.into_iter(), budget, &mut Patterns::default())
+                .unwrap();
         assert!(f.table.actions == [first_spec.clone()]);
         assert_eq!(f.table.rules.len(), 2);
     }
@@ -473,7 +476,7 @@ fn list_patterns_with_literal_braces_repetitions_and_commas_compile() {
         r"||a.example^$replace=/.{280\,400}.*/x/",
         r#"||a.example^$replace=/(^.{1\,150}\(\{).*?"bunch".*(}\);)/\$1\$2/,script"#,
     ] {
-        assert_eq!(check(rule), Some(true), "{rule}");
+        assert_eq!(check(rule, &mut Patterns::default()), Some(true), "{rule}");
     }
 }
 
@@ -483,7 +486,11 @@ fn unsupported_regex_constructs_are_never_approximated() {
         r"a(?=b)", r"a(?!b)", r"(?<=b)a", r"(a)\1", "(?>a)", "a++a", "a*+a", "a?+a", "a{2,3}+a",
     ] {
         let rule = format!("||example.org^$replace=/{pattern}/x/").replace("{2,3}", r"{2\,3}");
-        assert_eq!(check(&rule), Some(false), "{pattern}");
+        assert_eq!(
+            check(&rule, &mut Patterns::default()),
+            Some(false),
+            "{pattern}"
+        );
     }
 }
 
@@ -573,3 +580,31 @@ fn subscription_rules_compile_and_rewrite_the_intended_bytes() {
 }
 
 mod prune;
+
+#[test]
+fn response_patterns_and_their_exceptions_survive_the_cache_without_network_app_rules() {
+    let temp = tempfile::tempdir().unwrap();
+    let dir = temp.path().join("rules");
+    std::fs::create_dir(&dir).unwrap();
+    std::fs::write(
+        dir.join("user.txt"),
+        r"||example.org^$app=/^com\.reader[12]\$/,replace=/X/Y/
+@@||example.org/skip$app=COM.READER1*,replace",
+    )
+    .unwrap();
+    let cache = temp.path().join("cache");
+    let built = Filters::load_cached(&[&dir], &cache).unwrap();
+    let cached = Filters::read_cache(&cache, built.generation.unwrap()).unwrap();
+    for f in [built, cached] {
+        for (app, path, expected) in [
+            ("com.reader1", "/", "Y Z"),
+            ("com.reader1", "/skip", "X Z"),
+            ("com.reader2", "/skip", "Y Z"),
+            ("com.reader3", "/", "X Z"),
+            ("@com.reader1", "/", "X Z"),
+        ] {
+            let url = format!("https://example.org{path}");
+            assert_eq!(changed(&f, &url, Page::NONE, "other", app), expected);
+        }
+    }
+}

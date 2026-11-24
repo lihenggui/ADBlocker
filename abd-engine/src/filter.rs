@@ -33,20 +33,24 @@ use adblock::resources::{PermissionMask, Resource};
 use adblock::url_parser::{RequestUrl, parse_url};
 use anyhow::Result;
 
-pub(crate) use self::app_rules::{AppRules, named as app_rule};
+pub(crate) use self::app_patterns::Patterns;
+use self::app_patterns::Scope;
+pub(crate) use self::app_rules::{AppRules, has_app, named as app_rule, valid as valid_app_rule};
 use self::host_rules::{AppHostBlocks, HostRules, host_only};
 use self::page_exceptions::PageExceptions;
 use self::response_rules::ResponseRules;
-use crate::apps::{Identity, valid_package};
+use crate::apps::Identity;
 pub use crate::list_files::{ListFiles, MAX_LIST};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
 
+mod app_patterns;
 mod app_rules;
 mod cache;
 mod host_rules;
 mod page_exceptions;
 mod response_rules;
+mod rule_options;
 
 pub(crate) use response_rules::check as response_rule;
 
@@ -68,6 +72,7 @@ pub struct Filters {
     guards_incomplete: bool,
     /// `None` when no list has a rule for an app.
     apps: Option<AppRules>,
+    patterns: Patterns,
     responses: Option<ResponseRules>,
     pub rules: usize,
     pub host_rules: usize,
@@ -123,13 +128,6 @@ fn option_name(option: &str) -> &str {
     name.trim_start_matches('~')
 }
 
-fn app_names(names: &str) -> Option<String> {
-    names
-        .split('|')
-        .all(|name| valid_package(name.strip_prefix('~').unwrap_or(name)))
-        .then(|| names.to_ascii_lowercase())
-}
-
 fn app_package(app: &str) -> Option<&str> {
     Identity::parse(app)
         .filter(|identity| !identity.is_group())
@@ -157,7 +155,7 @@ fn domain_named(domains: &[u64], name: &str) -> bool {
 }
 
 fn network(line: &str) -> Option<NetworkFilter<'_>> {
-    if response_rules::is_response_rule(line) {
+    if response_rules::is_response_rule(line) || has_app(line) {
         return None;
     }
     crate::public_suffix::install();
@@ -245,7 +243,7 @@ impl RequestRules {
         for (text, permissions) in lists {
             let mut normalized = String::with_capacity(text.len());
             for line in text.lines() {
-                if response_rules::is_response_rule(line) {
+                if response_rules::is_response_rule(line) || has_app(line) {
                     continue;
                 }
                 let line = network_line(line);
@@ -282,7 +280,7 @@ impl RequestRules {
     /// named with them.
     pub(crate) fn check_for(
         &self,
-        apps: Option<(&AppRules, &str)>,
+        apps: Option<(&AppRules, Scope<'_>)>,
         url: &str,
         source: &str,
         kind: &str,
@@ -293,7 +291,7 @@ impl RequestRules {
         let Some(mut req) = Self::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
-        match apps.and_then(|(rules, app)| Some((rules, AppRules::scope(app)?))) {
+        match apps {
             Some((rules, scope)) => rules.check(&self.full, &rules.blocks, &mut req, &scope),
             None => self.check_request(&req),
         }
@@ -408,7 +406,8 @@ impl Filters {
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
         let mut app_blocks = AppHostBlocks::new();
-        let apps = AppRules::project_with_hosts(texts(), debug, |host, apps| {
+        let mut patterns = Patterns::default();
+        let apps = AppRules::project_with_hosts(texts(), debug, &mut patterns, |host, apps| {
             app_blocks
                 .entry(host.to_ascii_lowercase())
                 .or_default()
@@ -425,6 +424,15 @@ impl Filters {
             ParseOptions::default(),
         );
         use_scriptlets(&mut requests.full);
+        let responses = ResponseRules::build(
+            lists.iter().filter_map(|(path, text)| {
+                let user_rule = path.parent().and_then(Path::file_name) == Some("rules".as_ref());
+                (user_rule || trusted_list_file(path, Trust::ResponseRules))
+                    .then_some(text.as_str())
+            }),
+            &mut patterns,
+        );
+        patterns.report_dropped();
         Ok(Self {
             generation,
             requests,
@@ -436,11 +444,8 @@ impl Filters {
             app_page_host_guards: host_rules.app_page_guards.map(Engine::new_with_filter_set),
             guards_incomplete: host_rules.guards_incomplete,
             apps,
-            responses: ResponseRules::build(lists.iter().filter_map(|(path, text)| {
-                let user_rule = path.parent().and_then(Path::file_name) == Some("rules".as_ref());
-                (user_rule || trusted_list_file(path, Trust::ResponseRules))
-                    .then_some(text.as_str())
-            })),
+            patterns,
+            responses,
             rules: rules_count,
             host_rules: host_rules.count,
         })
@@ -462,8 +467,11 @@ impl Filters {
     ) -> AppFilters<'a> {
         AppFilters {
             filters: self,
-            app: self.apps.as_ref().zip(AppRules::scope(app)),
-            app_name: app,
+            scope: if self.apps.is_some() || self.responses.is_some() {
+                self.patterns.scope(app)
+            } else {
+                None
+            },
             has_shown_page,
         }
     }
@@ -472,8 +480,7 @@ impl Filters {
     fn for_any_app(&self) -> AppFilters<'_> {
         AppFilters {
             filters: self,
-            app: None,
-            app_name: "",
+            scope: None,
             has_shown_page: true,
         }
     }
@@ -561,8 +568,7 @@ impl Filters {
 /// The rules as they apply to one app.
 pub struct AppFilters<'a> {
     filters: &'a Filters,
-    app: Option<(&'a AppRules, app_rules::Scope)>,
-    app_name: &'a str,
+    scope: Option<Scope<'a>>,
     /// An exception for named pages can only apply to a request that shows
     /// one, and so only to an app that has.
     has_shown_page: bool,
@@ -577,6 +583,10 @@ fn unguarded(guards: &Engine, request: &Request) -> bool {
 }
 
 impl AppFilters<'_> {
+    fn app_rules(&self) -> Option<(&AppRules, &Scope<'_>)> {
+        self.filters.apps.as_ref().zip(self.scope.as_ref())
+    }
+
     /// Before a request can be read, leave room for exceptions that name
     /// the host. Only apps that have shown a page need guards for named pages.
     pub fn blocks_host(&self, host: &str) -> bool {
@@ -593,9 +603,9 @@ impl AppFilters<'_> {
             .as_ref()
             .is_none_or(|guards| unguarded(guards, request))
             && filters.app_page_host_guards.as_ref().is_none_or(|guards| {
-                self.app
+                self.scope
                     .as_ref()
-                    .is_none_or(|(_, scope)| scope.unguarded(request, guards))
+                    .is_none_or(|scope| scope.unguarded(request, guards))
             })
     }
 
@@ -610,7 +620,7 @@ impl AppFilters<'_> {
         !self.filters.guards_incomplete
             && self.blocks_whole(request)
             && unguarded(&self.filters.host_guards, request)
-            && self.app.as_ref().is_none_or(|(rules, scope)| {
+            && self.app_rules().is_none_or(|(rules, scope)| {
                 rules.unguarded(request, scope, self.filters.app_host_guards.as_ref())
             })
     }
@@ -622,7 +632,7 @@ impl AppFilters<'_> {
 
     fn blocks_whole(&self, request: &mut Request) -> bool {
         let hosts = &self.filters.hosts;
-        match &self.app {
+        match self.app_rules() {
             Some((rules, scope)) => rules.check(hosts, &rules.hosts, request, scope).blocked,
             None => hosts.check_network_request(request).should_block(),
         }
@@ -639,7 +649,7 @@ impl AppFilters<'_> {
         let Some(mut req) = RequestRules::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
-        match &self.app {
+        match self.app_rules() {
             Some((rules, scope)) => rules.check(&requests.full, &rules.blocks, &mut req, scope),
             None => requests.check_request(&req),
         }

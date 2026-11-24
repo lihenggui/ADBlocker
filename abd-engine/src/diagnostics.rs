@@ -25,7 +25,7 @@ use ring::digest::{SHA256, digest};
 
 use crate::{
     files,
-    filter::{self, AppRules, RequestRules},
+    filter::{self, AppRules, Patterns, RequestRules},
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     list_url,
     paths::Paths,
@@ -41,6 +41,7 @@ const MAX_INDEX: usize = 512 * 1024;
 struct Diagnostics {
     rules: RequestRules,
     apps: Option<AppRules>,
+    patterns: Patterns,
     index: Vec<Entry>,
 }
 
@@ -91,8 +92,12 @@ impl Diagnostics {
         }
         index.sort_unstable();
         index.dedup_by(|next, first| next[..16] == first[..16]);
+        let mut patterns = Patterns::default();
+        let apps = AppRules::project(lists.iter().map(String::as_str), true, &mut patterns);
+        patterns.report_dropped();
         Ok(Self {
-            apps: AppRules::project(lists.iter().map(String::as_str), true),
+            apps,
+            patterns,
             rules: RequestRules::build(lists, true, options),
             index,
         })
@@ -117,6 +122,11 @@ impl Diagnostics {
         files.get(number as usize).map(PathBuf::as_path)
     }
 
+    fn read_part(input: &[u8]) -> Option<(&[u8], &[u8])> {
+        let (size, rest) = input.split_at_checked(4)?;
+        rest.split_at_checked(u32::from_le_bytes(size.try_into().ok()?) as usize)
+    }
+
     fn read(path: &Path, generation: u64) -> Option<Self> {
         let data = files::read_bytes(path, MAX_COMPILED).ok()?;
         let (checksum, payload) = data.split_at_checked(32)?;
@@ -125,9 +135,7 @@ impl Diagnostics {
             return None;
         }
         fn engine(input: &[u8]) -> Option<(Option<Engine>, &[u8])> {
-            let (size, rest) = input.split_at_checked(4)?;
-            let (compiled, tail) =
-                rest.split_at_checked(u32::from_le_bytes(size.try_into().ok()?) as usize)?;
+            let (compiled, tail) = Diagnostics::read_part(input)?;
             let decoded = if compiled.is_empty() {
                 None
             } else {
@@ -141,16 +149,15 @@ impl Diagnostics {
         let mut rest = rest;
         let mut apps = [&[][..]; 4];
         for kept in &mut apps {
-            let (size, tail) = rest.split_at_checked(4)?;
-            (*kept, rest) =
-                tail.split_at_checked(u32::from_le_bytes(size.try_into().ok()?) as usize)?;
+            (*kept, rest) = Self::read_part(rest)?;
         }
         let apps = if apps[0].is_empty() {
             None
         } else {
             Some(AppRules::compiled(apps)?)
         };
-        let entries = rest;
+        let (patterns, entries) = Self::read_part(rest)?;
+        let patterns = Patterns::cached(patterns)?;
         let (entries, tail) = entries.as_chunks::<20>();
         if !tail.is_empty() || entries.len() > MAX_INDEX {
             return None;
@@ -158,6 +165,7 @@ impl Diagnostics {
         Some(Self {
             rules: RequestRules { full: full? },
             apps,
+            patterns,
             index: entries.to_vec(),
         })
     }
@@ -170,7 +178,10 @@ impl Diagnostics {
             .as_ref()
             .map(AppRules::serialized)
             .unwrap_or_default();
-        let compiled = [full].into_iter().chain(apps);
+        let compiled = [full]
+            .into_iter()
+            .chain(apps)
+            .chain([self.patterns.serialized()]);
         let size = 40
             + compiled.clone().map(|part| 4 + part.len()).sum::<usize>()
             + self.index.len() * size_of::<Entry>();
@@ -221,7 +232,10 @@ pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str
     let rules = paths.rules();
     let lists = paths.lists();
     let (files, diagnostics) = load(&[&lists, &rules], &paths.cache().join("diagnostic-v1"))?;
-    let apps = diagnostics.apps.as_ref().zip(app);
+    let apps = diagnostics
+        .apps
+        .as_ref()
+        .zip(app.and_then(|app| diagnostics.patterns.scope(app)));
     let result = diagnostics.rules.check_for(apps, url, page, kind, "GET");
     let source = result.rule.as_deref().and_then(|rule| {
         let file = diagnostics.source(&files, rule)?;
@@ -292,7 +306,7 @@ mod tests {
         std::fs::create_dir_all(paths.rules()).unwrap();
         std::fs::write(
             paths.user_rules(),
-            "||shop.example^$app=com.reader\n||ads.example^\n@@||ads.example^$app=com.reader\n",
+            "||shop.example^$app=com.read*\n||ads.example^\n@@||ads.example^$app=com.reader\n",
         )
         .unwrap();
         let shop = |app| check(&paths, app, "https://shop.example/a", "", "other").unwrap();
@@ -301,10 +315,7 @@ mod tests {
         for _ in 0..2 {
             let found = shop(Some("com.reader"));
             assert!(found.blocked);
-            assert_eq!(
-                found.rule.as_deref(),
-                Some("||shop.example^$app=com.reader")
-            );
+            assert_eq!(found.rule.as_deref(), Some("||shop.example^$app=com.read*"));
             assert_eq!(found.source.as_deref(), Some("rules"));
             assert!(!shop(Some("com.other")).blocked);
             assert!(!shop(None).blocked);

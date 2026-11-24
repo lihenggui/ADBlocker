@@ -19,7 +19,7 @@ use std::path::Path;
 use adblock::Engine;
 
 use super::response_rules::ResponseRules;
-use super::{AppRules, Filters, PageExceptions, RequestRules, use_scriptlets};
+use super::{AppRules, Filters, PageExceptions, Patterns, RequestRules, use_scriptlets};
 use crate::files;
 use crate::list_files::MAX_COMPILED;
 
@@ -67,6 +67,9 @@ impl Filters {
         let has_responses: bool = f.next()?.parse().ok()?;
         let has_urlblock: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
+        let patterns = files::read_bytes(&cache.join("app-patterns"), remaining).ok()?;
+        remaining -= patterns.len();
+        let patterns = Patterns::cached(&patterns)?;
         let actions = if has_responses {
             let kept = files::read_bytes(&cache.join("response-actions"), remaining).ok()?;
             remaining -= kept.len();
@@ -117,6 +120,7 @@ impl Filters {
             })?,
             guards_incomplete,
             apps,
+            patterns,
             responses,
             rules,
             host_rules,
@@ -128,6 +132,7 @@ impl Filters {
         let specific = exceptions.specific.as_ref();
         let kept = self.apps.as_ref().map(|rules| rules.serialized().map(Some));
         APPS.into_iter().zip(kept.unwrap_or_default()).chain([
+            ("app-patterns", Some(self.patterns.serialized())),
             ("full", Some(self.requests.full.serialize())),
             (
                 "no-content",

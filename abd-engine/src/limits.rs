@@ -36,6 +36,15 @@ const SPARE: usize = 128;
 /// The most app identities remembered for having shown a page.
 pub(crate) const MAX_APPS_WITH_PAGES: usize = 4096;
 
+/// Distinct wildcard and regex app entries kept in one list generation.
+pub(crate) const MAX_APP_PATTERNS: usize = 128;
+/// The longest quoted app expression, before compiling it.
+pub(crate) const MAX_APP_EXPRESSION: usize = 4 << 10;
+/// The heap limit for each app expression's compiled NFA and lazy DFA cache.
+pub(crate) const MAX_APP_REGEX: usize = 64 << 10;
+/// Packages whose pattern matches are remembered in one list generation.
+pub(crate) const MAX_APP_PATTERN_PACKAGES: usize = 4096;
+
 /// The most response rules kept from a generation of lists. The compiled
 /// expressions share `MAX_RESPONSE_REGEX_BYTES` and each NFA fits `MAX_RESPONSE_REGEX`.
 pub(crate) const MAX_RESPONSE_RULES: usize = 1024;

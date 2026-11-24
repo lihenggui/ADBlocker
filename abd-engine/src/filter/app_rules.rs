@@ -30,8 +30,10 @@ use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
+use super::app_patterns::{Patterns, Scope};
 use super::host_rules::{GuardCoverage, guards_exception, project_guard, whole_rule};
-use super::{Check, app_names, app_package, network, source_option};
+use super::rule_options::{network_condition, option_separator, options, unescaped};
+use super::{Check, network, option_name, source_option};
 
 /// An exception for every address, as a guard: the exception it stands
 /// for could not be narrowed to hosts.
@@ -49,16 +51,17 @@ pub(crate) struct AppRules {
     guards: Engine,
 }
 
-/// One app among the app rules, as the source of its requests.
-pub(crate) struct Scope(u64);
-
-impl Scope {
-    /// Whether none of `guards`, which are for apps, names the host of
-    /// `req` for this app.
+impl Scope<'_> {
+    /// Test a guard whose source condition names apps rather than pages.
     pub(super) fn unguarded(&self, req: &mut Request, guards: &Engine) -> bool {
-        swap_source(req, &mut Some(vec![self.0]), |req| {
-            super::unguarded(guards, req)
-        })
+        self.with_source(req, |req| super::unguarded(guards, req))
+    }
+
+    fn with_source<T>(&self, req: &mut Request, f: impl FnOnce(&Request) -> T) -> T {
+        let previous = req.source_hostname_hashes.replace(self.hashes.to_vec());
+        let result = f(req);
+        req.source_hostname_hashes = previous;
+        result
     }
 }
 
@@ -69,18 +72,32 @@ struct Scoped<'a> {
     apps: String,
 }
 
-fn name_hash(package: &str) -> u64 {
-    adblock::utils::fast_hash(&package.to_ascii_lowercase())
-}
-
-fn scoped(line: &str) -> Option<Scoped<'_>> {
-    if super::response_rules::is_response_rule(line) {
+fn app_options(line: &str) -> Option<(&str, &str)> {
+    if !line.contains("app") {
         return None;
     }
-    let (pattern, all) = line.trim().rsplit_once('$')?;
+    let at = option_separator(line)?;
+    let (pattern, suffix) = (&line[..at], &line[at + 1..]);
+    if !network_condition(line, pattern) {
+        return None;
+    }
+    options(suffix)
+        .any(|option| option_name(option) == "app")
+        .then_some((pattern, suffix))
+}
+
+pub(crate) fn has_app(line: &str) -> bool {
+    app_options(line.trim()).is_some()
+}
+
+fn scoped<'a>(line: &'a str, patterns: &mut Patterns) -> Option<(Scoped<'a>, u64, bool, String)> {
+    let (pattern, all) = app_options(line.trim())?;
+    if super::response_rules::is_response_rule(line) || unescaped(all, b'$').next().is_some() {
+        return None;
+    }
     let mut apps = None;
-    let mut options = Vec::new();
-    for option in all.split(',') {
+    let mut rest = Vec::new();
+    for option in options(all) {
         if let Some(names) = option.strip_prefix("app=") {
             // Two conditions on the app would have to hold together, and
             // the source condition holds when one of its names does.
@@ -90,14 +107,20 @@ fn scoped(line: &str) -> Option<Scoped<'_>> {
         } else if source_option(option) {
             return None;
         } else {
-            options.push(option);
+            rest.push(option);
         }
     }
-    Some(Scoped {
+    let prepared = patterns.prepare(apps?)?;
+    let rule = Scoped {
         pattern,
-        options,
-        apps: app_names(apps?)?,
-    })
+        options: rest,
+        apps: prepared.encoded.clone(),
+    };
+    let line = rule.for_apps(&rule.unscoped(), !rule.options.is_empty());
+    let parsed = network(&line)?;
+    let (id, bad) = (parsed.get_id(), parsed.is_badfilter());
+    patterns.keep(prepared);
+    Some((rule, id, bad, line))
 }
 
 impl Scoped<'_> {
@@ -117,13 +140,9 @@ impl Scoped<'_> {
         line
     }
 
-    fn for_apps(&self, rule: &str) -> String {
-        let separator = if rule.contains('$') { ',' } else { '$' };
+    fn for_apps(&self, rule: &str, has_options: bool) -> String {
+        let separator = if has_options { ',' } else { '$' };
         format!("{rule}{separator}{SOURCE}{}", self.apps)
-    }
-
-    fn line(&self) -> String {
-        self.for_apps(&self.unscoped())
     }
 
     fn whole_host(&self) -> Option<(String, &str)> {
@@ -131,7 +150,7 @@ impl Scoped<'_> {
             .is_empty()
             .then(|| whole_rule(self.pattern))
             .flatten()
-            .map(|(rule, host)| (self.for_apps(&rule), host))
+            .map(|(rule, host)| (self.for_apps(&rule, false), host))
     }
 
     fn guards(&self, out: &mut String) {
@@ -147,32 +166,29 @@ impl Scoped<'_> {
                 )
             });
         for guard in found.lines().chain(any_host.then_some(ANY_HOST)) {
-            out.push_str(&self.for_apps(guard));
+            out.push_str(&self.for_apps(guard, false));
             out.push('\n');
         }
     }
 }
 
-/// The rule with its app as a source, if it is one for apps that the
-/// engine applies.
-fn rewritten(line: &str) -> Option<String> {
-    let line = scoped(line)?.line();
-    network(&line).is_some().then_some(line)
-}
-
-/// The rule that an engine here names, as one for apps again: its apps
-/// are its last option.
-fn shown(rule: String) -> String {
+/// The rule that an engine names, with its app entries restored.
+fn shown(rule: String, patterns: &Patterns) -> String {
     match rule.rsplit_once(SOURCE) {
-        Some((rest, apps)) => format!("{rest}app={apps}"),
+        Some((rest, apps)) => format!("{rest}app={}", patterns.show(apps)),
         None => rule,
     }
 }
 
-/// How a rule for apps is named when it matched, if `line` is one that the
-/// engine applies: with its apps last and in lower case.
+/// How a rule for apps is named when it matched.
 pub(crate) fn named(line: &str) -> Option<String> {
-    rewritten(line).map(shown)
+    let mut patterns = Patterns::default();
+    let (_, _, _, projected) = scoped(line, &mut patterns)?;
+    Some(shown(projected, &patterns))
+}
+
+pub(crate) fn valid(line: &str, patterns: &mut Patterns) -> bool {
+    scoped(line, patterns).is_some()
 }
 
 fn engine(rules: String, debug: bool) -> Engine {
@@ -185,21 +201,14 @@ fn engine(rules: String, debug: bool) -> Engine {
     Engine::new_with_filter_set(set)
 }
 
-fn swap_source<T>(
-    req: &mut Request,
-    sources: &mut Option<Vec<u64>>,
-    f: impl FnOnce(&Request) -> T,
-) -> T {
-    std::mem::swap(&mut req.source_hostname_hashes, sources);
-    let result = f(req);
-    std::mem::swap(&mut req.source_hostname_hashes, sources);
-    result
-}
-
 impl AppRules {
     /// The app rules of `lists`, if they have any.
-    pub(crate) fn project<'a>(lists: impl Iterator<Item = &'a str>, debug: bool) -> Option<Self> {
-        Self::project_with_hosts(lists, debug, |_, _| {})
+    pub(crate) fn project<'a>(
+        lists: impl Iterator<Item = &'a str>,
+        debug: bool,
+        patterns: &mut Patterns,
+    ) -> Option<Self> {
+        Self::project_with_hosts(lists, debug, patterns, |_, _| {})
     }
 
     /// As [`AppRules::project`], telling `visit_host` each host that a rule
@@ -207,26 +216,22 @@ impl AppRules {
     pub(super) fn project_with_hosts<'a>(
         lists: impl Iterator<Item = &'a str>,
         debug: bool,
+        patterns: &mut Patterns,
         mut visit_host: impl FnMut(&str, &str),
     ) -> Option<Self> {
         let rules: Vec<_> = lists
             .flat_map(str::lines)
-            .filter_map(scoped)
-            .filter_map(|rule| {
-                let line = rule.line();
-                let parsed = network(&line)?;
-                Some((rule, (parsed.get_id(), parsed.is_badfilter()), line))
-            })
+            .filter_map(|line| scoped(line, patterns))
             .collect();
         if rules.is_empty() {
             return None;
         }
         let disabled: HashSet<u64> = rules
             .iter()
-            .filter_map(|(_, (id, bad), _)| bad.then_some(*id))
+            .filter_map(|(_, id, bad, _)| bad.then_some(*id))
             .collect();
         let [mut blocks, mut exceptions, mut hosts, mut guards] = [const { String::new() }; 4];
-        for (rule, (id, bad), line) in rules {
+        for (rule, id, bad, line) in rules {
             if bad || disabled.contains(&id) {
                 continue;
             }
@@ -280,12 +285,6 @@ impl AppRules {
         })
     }
 
-    /// `app`, as the engine names it, if it is one these rules can name: a
-    /// package, and not a shared UID's group.
-    pub(super) fn scope(app: &str) -> Option<Scope> {
-        app_package(app).map(|name| Scope(name_hash(name)))
-    }
-
     /// Judges `req` by the rules of `web` and those of the app together:
     /// a block of either is taken back by an exception of either, and an
     /// `$important` block by none. `blocks` is the engine of this that
@@ -295,7 +294,7 @@ impl AppRules {
         web: &Engine,
         blocks: &Engine,
         req: &mut Request,
-        scope: &Scope,
+        scope: &Scope<'_>,
     ) -> Check {
         let found = web.check_network_request(req);
         let web_rule = found.filter.is_some();
@@ -306,8 +305,7 @@ impl AppRules {
         if found.important {
             return check;
         }
-        let mut app = Some(vec![scope.0]);
-        let own = swap_source(req, &mut app, |req| {
+        let own = scope.with_source(req, |req| {
             let own = blocks.check_network_request_subset(req, false, false);
             let excepted = !own.important
                 && (web_rule || own.filter.is_some())
@@ -333,15 +331,23 @@ impl AppRules {
         // The rule that decided: the app's where no web rule matched, and
         // where its `$important` block stands against a web exception.
         if !web_rule || own.important {
-            check.rule = own.filter.and_then(|rule| rule.raw_line).map(shown);
+            check.rule = own
+                .filter
+                .and_then(|rule| rule.raw_line)
+                .map(|rule| shown(rule, scope.patterns));
         }
         check
     }
 
     /// Whether no exception of the app could apply to a request of `req`'s
     /// host.
-    pub(super) fn unguarded(&self, req: &mut Request, scope: &Scope, web: Option<&Engine>) -> bool {
-        swap_source(req, &mut Some(vec![scope.0]), |req| {
+    pub(super) fn unguarded(
+        &self,
+        req: &mut Request,
+        scope: &Scope<'_>,
+        web: Option<&Engine>,
+    ) -> bool {
+        scope.with_source(req, |req| {
             super::unguarded(&self.guards, req)
                 && web.is_none_or(|guards| super::unguarded(guards, req))
         })
@@ -514,15 +520,155 @@ mod tests {
     }
 
     #[test]
+    fn the_reference_app_examples_match_their_named_packages() {
+        for (entries, yes, no) in [
+            ("org.example.app", "org.example.app", "org.example.app1"),
+            (
+                "org.example.app1|org.example.app2",
+                "org.example.app2",
+                "org.other",
+            ),
+            ("~org.example.app", "org.other", "org.example.app"),
+            (
+                "~org.example.app1|~org.example.app2",
+                "org.other",
+                "org.example.app2",
+            ),
+            (
+                "org.example.*",
+                "ORG.EXAMPLE.utility",
+                "org.examples.utility",
+            ),
+            (
+                r"/org\.example\.[a-z0-9_]+/",
+                "x.org.example.app1",
+                "org.example.A",
+            ),
+            (
+                r"/^org\.example\.app\$\|^org\.example\.[ab].*/",
+                "org.example.beta",
+                "org.example.c",
+            ),
+            (
+                r"org.example.app|org.example.*|/org\.example\.[a-z]+/",
+                "x.org.example.abc",
+                "org.other",
+            ),
+            (
+                r"/com\..*\.music/",
+                "com.example.music",
+                "com.example.video",
+            ),
+            (
+                r"/^org\.example\.App\$/",
+                "org.example.App",
+                "org.example.app",
+            ),
+            (
+                r"/(?i)^org\.example\.App\$/",
+                "org.example.app",
+                "x.org.example.app",
+            ),
+            (
+                r"/[\/\,]\|^com\.reader\$/|com.viewer",
+                "com.reader",
+                "com.reader.lite",
+            ),
+            (r"~com.reader*|~/^com\.viewer\$/", "com.other", "com.viewer"),
+        ] {
+            let rule = format!("||baddomain.com^$app={entries}");
+            let f = filters(&rule);
+            let url = "https://baddomain.com/a";
+            assert!(blocked(&f, yes, url), "{rule} {yes}");
+            assert!(!blocked(&f, no, url), "{rule} {no}");
+        }
+    }
+
+    #[test]
+    fn a_pattern_block_and_its_app_and_page_guards_share_the_same_scope() {
+        let f = filters(
+            r"||graph.facebook.com^$app=com.vitastudio.*
+@@||graph.facebook.com/ok$app=/\.reader\$/
+@@||graph.facebook.com/browser$domain=page.example",
+        );
+        let host = "graph.facebook.com";
+        let url = "https://graph.facebook.com/";
+        assert!(
+            f.for_app_with_pages("com.vitastudio.game", false)
+                .blocks_host(host)
+        );
+        assert!(!f.for_app("com.vitastudio.game").blocks_host(host));
+        assert!(
+            !f.for_app_with_pages("com.vitastudio.reader", false)
+                .blocks_host(host)
+        );
+        assert!(!blocked(&f, "com.vitastudio.reader", &format!("{url}ok")));
+        assert!(blocked(&f, "com.vitastudio.reader", &format!("{url}ad")));
+        for other in [
+            "com.other",
+            "@com.vitastudio.game",
+            "42:@com.vitastudio.reader",
+        ] {
+            assert!(!f.for_app(other).blocks_host(host));
+            assert!(!blocked(&f, other, url));
+        }
+    }
+
+    #[test]
+    fn an_invalid_app_option_cannot_turn_into_a_web_block() {
+        let f = filters(r"||bad.example^$app=/bad$script");
+        let check = f.for_app("com.reader").check_with_page(
+            "https://bad.example/ad.js",
+            Page::NONE,
+            "script",
+            "GET",
+        );
+        assert!(!check.blocked);
+        assert!(!f.for_app("com.reader").blocks_host("bad.example"));
+    }
+
+    #[test]
+    fn exceeding_the_pattern_limit_drops_the_whole_rule_across_lists() {
+        use crate::limits::MAX_APP_PATTERNS;
+
+        let dir = tempfile::tempdir().unwrap();
+        let text: String = (0..MAX_APP_PATTERNS)
+            .map(|p| {
+                format!(
+                    "||ads.example^$app=com.p{p}.*
+"
+                )
+            })
+            .collect();
+        std::fs::write(dir.path().join("a.txt"), text).unwrap();
+        std::fs::write(
+            dir.path().join("b.txt"),
+            "||over.example^$app=com.reader|com.new.*
+\
+             ||reuse.example^$app=com.p0.*
+||plain.example^$app=com.reader",
+        )
+        .unwrap();
+        let f = Filters::load(&[dir.path()], true).unwrap();
+        assert!(!blocked(&f, "com.reader", "https://over.example/"));
+        assert!(!blocked(&f, "com.new.reader", "https://over.example/"));
+        assert!(blocked(&f, "com.p0.reader", "https://reuse.example/"));
+        assert!(blocked(&f, "com.reader", "https://plain.example/"));
+    }
+
+    #[test]
     fn rules_for_apps_are_kept_with_the_compiled_lists() {
         let dir = tempfile::tempdir().unwrap();
         let cache = tempfile::tempdir().unwrap();
-        let rules = "||ads.example^\n@@||ads.example^$app=com.member\n\
-                     ||shop.example^$app=com.reader\n";
+        let rules = r"||ads.example^
+@@||ads.example^$app=/^com\.member\$/
+||shop.example^$app=com.read*";
         std::fs::write(dir.path().join("list.txt"), rules).unwrap();
-        for _ in 0..2 {
-            let f = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
+        let built = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
+        let cached = Filters::read_cache(cache.path(), built.generation.unwrap()).unwrap();
+        for f in [built, cached] {
             assert!(f.for_app("com.reader").blocks_host("shop.example"));
+            assert!(!f.for_app("com.other").blocks_host("shop.example"));
             assert!(!f.for_app("com.member").blocks_host("ads.example"));
             assert!(f.for_app("@com.shared").blocks_host("ads.example"));
             assert!(f.for_app("com.reader").blocks_host("ads.example"));

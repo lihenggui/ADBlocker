@@ -26,6 +26,7 @@ pub use crate::rule_text::{count, is_comment};
 /// The rules of `text` that will not be applied, by line.
 pub fn check(text: &str) -> RulesCheck {
     crate::public_suffix::install();
+    let mut patterns = crate::filter::Patterns::default();
     let mut rules = 0;
     let mut issues = Vec::new();
     for (n, line) in text.lines().enumerate() {
@@ -33,9 +34,15 @@ pub fn check(text: &str) -> RulesCheck {
             continue;
         }
         rules += 1;
-        let kind = match crate::filter::response_rule(line) {
+        let kind = match crate::filter::response_rule(line, &mut patterns) {
             Some(true) => continue,
             Some(false) => IssueKind::Invalid,
+            None if crate::filter::has_app(line) => {
+                if crate::filter::valid_app_rule(line, &mut patterns) {
+                    continue;
+                }
+                IssueKind::Invalid
+            }
             None => match parse_filter(line, false, ParseOptions::default()) {
                 Ok(ParsedLine::Network(_)) => continue,
                 Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
@@ -43,8 +50,6 @@ pub fn check(text: &str) -> RulesCheck {
                 }
                 // What adblock-rust sets aside as AdGuard's HTML filtering.
                 Err(FilterParseError::Unsupported) if line.contains("$$") => IssueKind::Cosmetic,
-                // A rule for apps, which is rewritten for adblock-rust.
-                Err(_) if crate::filter::app_rule(line).is_some() => continue,
                 Err(_) => IssueKind::Invalid,
             },
         };
@@ -97,6 +102,41 @@ mod tests {
             ]
         );
         assert_eq!(check(text).rules, 11);
+    }
+
+    #[test]
+    fn app_patterns_are_checked_as_a_whole_for_network_and_response_rules() {
+        let invalid = [
+            "com.*.music",
+            "com.app|~com.other",
+            "com.*|~/other/",
+            "/[ab/",
+            r"/\w{100000}/",
+            "/a/b/",
+            "/a,b/",
+            "/a|b/",
+            "/a$script",
+            "/missing",
+            "com.reader||other",
+            "com.reader|",
+            "*",
+        ];
+        for value in invalid {
+            for rule in [
+                format!("||example.org^$app={value}"),
+                format!("||example.org^$replace=/X/Y/,app={value}"),
+            ] {
+                assert_eq!(kinds(&rule), [(1, IssueKind::Invalid)], "{rule}");
+            }
+        }
+        for rule in [
+            "||graph.facebook.com^$app=com.vitastudio.*",
+            r"||example.org^$app=/^com\.reader\$\|^org\.example\./,script",
+            r"/url$/$app=/^com\.reader\$/",
+            r"||example.org^$app=~/a\,b\/c\$\|reader/,replace=/X/Y/",
+        ] {
+            assert!(kinds(rule).is_empty(), "{rule}");
+        }
     }
 
     #[test]

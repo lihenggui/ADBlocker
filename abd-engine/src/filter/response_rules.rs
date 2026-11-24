@@ -21,11 +21,15 @@ use std::collections::{BTreeSet, HashMap};
 use std::sync::Arc;
 
 use adblock::Engine;
-use adblock::lists::{FilterParseError, FilterSet, ParseOptions, RuleTypes, parse_filter};
+use adblock::lists::{FilterSet, ParseOptions};
 use adblock::request::Request;
 use serde::{Deserialize, Serialize};
 
-use super::{Page, RequestRules, app_names, app_package, network};
+use super::app_patterns::{Condition, Patterns, Prepared, Scope};
+use super::rule_options::{
+    delimiter, network_condition, option_separator, options, unescape, unescaped,
+};
+use super::{Page, RequestRules, network};
 use crate::limits::{MAX_RESPONSE_REGEX_BYTES, MAX_RESPONSE_RULE, MAX_RESPONSE_RULES};
 use crate::response_action::{ActionKind, ActionSpec, ResponseAction};
 
@@ -57,21 +61,20 @@ fn kind_bit(kind: &str) -> Option<u16> {
 }
 
 /// Conditions that must hold for a match returned by the CSP query.
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 struct Qualifiers {
     /// Bits of `TYPES` that qualify, or zero when no positive type is given.
     include: u16,
     /// Bits of `TYPES` that disqualify even when a positive type matches.
     exclude: u16,
-    /// Lowercase package patterns, which can only match a known package.
-    apps: Option<String>,
+    /// The app condition can only match a known package.
+    apps: Option<Condition>,
 }
 
 /// Whether an option belongs to the qualifiers or to the network matcher.
 enum Qualifier {
     Taken,
     NetworkOption,
-    Invalid,
 }
 
 impl Qualifiers {
@@ -80,17 +83,6 @@ impl Qualifiers {
         // AdGuard's reference omits $all for $jsonprune, but its lists use it.
         if option == "all" {
             return Qualifier::Taken;
-        }
-        if let Some(names) = option.strip_prefix("app=") {
-            if self.apps.is_some() {
-                return Qualifier::Invalid;
-            }
-            self.apps = app_names(names);
-            return if self.apps.is_some() {
-                Qualifier::Taken
-            } else {
-                Qualifier::Invalid
-            };
         }
         let (name, negated) = option
             .strip_prefix('~')
@@ -107,57 +99,15 @@ impl Qualifiers {
     }
 
     /// Require a package identity for app options, even for negated names.
-    fn matches(&self, kind: &str, package: Option<&str>) -> bool {
+    fn matches(&self, kind: &str, scope: Option<&Scope<'_>>) -> bool {
         let bit = kind_bit(kind).unwrap_or(0);
         (self.include == 0 || self.include & bit != 0)
             && self.exclude & bit == 0
             && self
                 .apps
                 .as_ref()
-                .is_none_or(|names| package.is_some_and(|name| matches_app(names, name)))
+                .is_none_or(|condition| scope.is_some_and(|app| condition.matches(app)))
     }
-}
-
-/// An excluded package wins over an included one.
-fn matches_app(names: &str, package: &str) -> bool {
-    let mut positive = false;
-    let mut included = false;
-    for name in names.split('|') {
-        if let Some(name) = name.strip_prefix('~') {
-            if name.eq_ignore_ascii_case(package) {
-                return false;
-            }
-        } else {
-            positive = true;
-            included |= name.eq_ignore_ascii_case(package);
-        }
-    }
-    !positive || included
-}
-
-/// AdGuard quotes option separators with an immediately preceding backslash.
-fn unescaped(text: &str, byte: u8) -> impl DoubleEndedIterator<Item = usize> {
-    text.bytes().enumerate().filter_map(move |(i, b)| {
-        (b == byte && (i == 0 || text.as_bytes()[i - 1] != b'\\')).then_some(i)
-    })
-}
-
-/// Split options after skipping the two slash-delimited replacement fields.
-fn options(text: &str) -> impl Iterator<Item = &str> {
-    let mut remaining = Some(text);
-    std::iter::from_fn(move || {
-        let text = remaining?;
-        let start = text.strip_prefix("replace=/").map_or(0, |value| {
-            text.len() - value.len() + option_value_end(value)
-        });
-        let Some(comma) = unescaped(&text[start..], b',').next() else {
-            remaining = None;
-            return Some(text);
-        };
-        let end = start + comma;
-        remaining = Some(&text[end + 1..]);
-        Some(&text[..end])
-    })
 }
 
 fn action_kind(option: &str) -> Option<ActionKind> {
@@ -181,55 +131,7 @@ fn split(line: &str) -> Option<(&str, &str)> {
     if !options(suffix).any(|option| action_kind(option).is_some()) {
         return None;
     }
-    let parse = ParseOptions {
-        rule_types: RuleTypes::CosmeticOnly,
-        ..ParseOptions::default()
-    };
-    (!line[..at].contains('#')
-        || matches!(
-            parse_filter(line, false, parse),
-            Err(FilterParseError::Unsupported)
-        ))
-    .then_some((&line[..at], suffix))
-}
-
-/// A regular expression that forms the condition can contain dollar signs.
-fn regex_option_separator(line: &str) -> Option<usize> {
-    let pattern = line.strip_prefix("@@").unwrap_or(line);
-    let close = delimiter(pattern.strip_prefix('/')?)?;
-    let after = line.len() - pattern.len() + close + 2;
-    (line.as_bytes().get(after) == Some(&b'$')).then_some(after)
-}
-
-/// Find the last unquoted dollar outside a regular expression condition or
-/// a replacement value. The value parser checks dollar quoting separately.
-fn option_separator(line: &str) -> Option<usize> {
-    let mut cursor = regex_option_separator(line).unwrap_or(0);
-    let mut last = None;
-    let bytes = line.as_bytes();
-    while cursor < bytes.len() {
-        let byte = bytes[cursor];
-        cursor += 1;
-        if cursor >= 2 && bytes[cursor - 2] == b'\\' {
-            continue;
-        }
-        if byte == b'$' {
-            last = Some(cursor - 1);
-        } else if byte != b',' || last.is_none() {
-            continue;
-        }
-        if let Some(value) = line[cursor..].strip_prefix("replace=/") {
-            cursor = line.len() - value.len() + option_value_end(value);
-        } else if line[cursor..]
-            .strip_prefix("jsonprune")
-            .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-        {
-            // Keep malformed quoting in the response rule so it cannot
-            // turn into a block by moving the option separator.
-            return last;
-        }
-    }
-    last
+    network_condition(line, &line[..at]).then_some((&line[..at], suffix))
 }
 
 /// Response rules are excluded from the ordinary blocking and cosmetic engines.
@@ -237,74 +139,10 @@ pub(super) fn is_response_rule(line: &str) -> bool {
     split(line).is_some()
 }
 
-/// Skip both fields. uBlock accepts a raw comma within a field when
-/// it cannot begin another option.
-fn option_value_end(value: &str) -> usize {
-    let mut slashes = 0;
-    let mut escaped = false;
-    for (index, byte) in value.bytes().enumerate() {
-        match byte {
-            b',' if (index == 0 || value.as_bytes()[index - 1] != b'\\')
-                && starts_option(&value[index + 1..]) =>
-            {
-                return index;
-            }
-            b'/' if !escaped => {
-                slashes += 1;
-                if slashes == 2 {
-                    return index + 1;
-                }
-            }
-            _ => (),
-        }
-        escaped = byte == b'\\' && !escaped;
-    }
-    value.len()
-}
-
-/// A raw comma can separate an option with a name, a value or a noop.
-fn starts_option(tail: &str) -> bool {
-    let name = tail.strip_prefix('~').unwrap_or(tail);
-    let after =
-        name.trim_start_matches(|c: char| c.is_ascii_lowercase() || matches!(c, '1' | '3' | '-'));
-    (after.len() < name.len() && (after.is_empty() || after.starts_with(['=', ','])))
-        || (tail.starts_with('_') && {
-            let end = tail.trim_start_matches('_');
-            end.is_empty() || end.starts_with(',')
-        })
-}
-
-/// A slash is quoted when an odd number of backslashes precedes it.
-fn delimiter(part: &str) -> Option<usize> {
-    let mut escaped = false;
-    for (index, byte) in part.bytes().enumerate() {
-        match byte {
-            b'/' if !escaped => return Some(index),
-            b'\\' => escaped = !escaped,
-            _ => escaped = false,
-        }
-    }
-    None
-}
-
 /// Find the start of the flags after both slash-delimited fields.
 fn value_end(value: &str) -> Option<usize> {
     let first = delimiter(value)? + 1;
     Some(first + delimiter(&value[first..])? + 1)
-}
-
-/// Remove only the quoting of this layer and leave regex escapes intact.
-fn unescape(part: &str, chars: &[char]) -> String {
-    let mut iter = part.chars().peekable();
-    let mut output = String::with_capacity(part.len());
-    while let Some(ch) = iter.next() {
-        if ch == '\\' && iter.peek().is_some_and(|next| chars.contains(next)) {
-            output.push(iter.next().expect("peeked character"));
-        } else {
-            output.push(ch);
-        }
-    }
-    output
 }
 
 /// Decode a replacement after checking its quoting and optional flags.
@@ -348,6 +186,7 @@ struct Parsed {
     action: Option<ActionSpec>,
     kind: ActionKind,
     qualifiers: Qualifiers,
+    apps: Option<String>,
     exception: bool,
 }
 
@@ -361,6 +200,7 @@ impl Parsed {
         let mut qualifiers = Qualifiers::default();
         let mut rest = Vec::new();
         let mut found = None;
+        let mut apps = None;
         for option in options(options_text) {
             if let Some(kind) = action_kind(option) {
                 if found.is_some() {
@@ -383,11 +223,14 @@ impl Parsed {
                     _ => return None,
                 };
                 found = Some((kind, value));
+            } else if let Some(names) = option.strip_prefix("app=") {
+                if apps.replace(names.to_owned()).is_some() {
+                    return None;
+                }
             } else {
                 match qualifiers.take(option) {
                     Qualifier::Taken => (),
                     Qualifier::NetworkOption => rest.push(option.to_owned()),
-                    Qualifier::Invalid => return None,
                 }
             }
         }
@@ -404,11 +247,26 @@ impl Parsed {
             kind,
             action,
             qualifiers,
+            apps,
             exception,
         };
         let projected = parsed.project(0);
         network(&projected).filter(|rule| rule.is_csp() && !rule.is_badfilter())?;
         Some(parsed)
+    }
+
+    fn prepare_apps(&self, patterns: &mut Patterns) -> Option<Option<Prepared>> {
+        match &self.apps {
+            Some(names) => Some(Some(patterns.prepare(names)?)),
+            None => Some(None),
+        }
+    }
+
+    fn keep_apps(&mut self, patterns: &mut Patterns, prepared: Option<Prepared>) {
+        if let Some(prepared) = prepared {
+            self.qualifiers.apps = Some(Condition::new(&prepared.encoded));
+            patterns.keep(prepared);
+        }
     }
 
     /// Write a condition with a directive that indexes its entry in the table.
@@ -423,12 +281,22 @@ impl Parsed {
 }
 
 /// Distinguish an invalid response rule from a line belonging to another parser.
-pub(crate) fn check(line: &str) -> Option<bool> {
+pub(crate) fn check(line: &str, patterns: &mut Patterns) -> Option<bool> {
     let (pattern, options) = split(line)?;
-    Some(
-        Parsed::parse(pattern, options)
-            .is_some_and(|p| p.action.is_none_or(|action| action.compile().is_some())),
-    )
+    Some(Parsed::parse(pattern, options).is_some_and(|mut parsed| {
+        if !parsed
+            .action
+            .as_ref()
+            .is_none_or(|action| action.compile().is_some())
+        {
+            return false;
+        }
+        let Some(apps) = parsed.prepare_apps(patterns) else {
+            return false;
+        };
+        parsed.keep_apps(patterns, apps);
+        true
+    }))
 }
 
 /// What remains to be checked for a numbered condition returned by the engine.
@@ -464,13 +332,17 @@ pub(super) struct ResponseRules {
 
 impl ResponseRules {
     /// Keep the alphabetically first rules, subject to the count and memory budgets.
-    pub(super) fn build<'a>(sources: impl Iterator<Item = &'a str>) -> Option<Self> {
-        Self::build_with_budget(sources, MAX_RESPONSE_REGEX_BYTES)
+    pub(super) fn build<'a>(
+        sources: impl Iterator<Item = &'a str>,
+        patterns: &mut Patterns,
+    ) -> Option<Self> {
+        Self::build_with_budget(sources, MAX_RESPONSE_REGEX_BYTES, patterns)
     }
 
     fn build_with_budget<'a>(
         sources: impl Iterator<Item = &'a str>,
         mut budget: usize,
+        patterns: &mut Patterns,
     ) -> Option<Self> {
         let mut lines = BTreeSet::new();
         for line in sources.flat_map(str::lines).map(str::trim) {
@@ -481,7 +353,7 @@ impl ResponseRules {
                 }
             }
         }
-        let parsed: Vec<_> = lines
+        let mut parsed: Vec<_> = lines
             .into_iter()
             .filter_map(|line| {
                 let (pattern, options) = split(line)?;
@@ -491,25 +363,36 @@ impl ResponseRules {
         let mut ids = HashMap::new();
         let mut actions = Vec::new();
         let mut compiled = Vec::new();
-        for spec in parsed
-            .iter()
-            .filter(|p| !p.exception)
-            .filter_map(|p| p.action.as_ref())
-        {
-            ids.entry(spec).or_insert_with(|| {
+        parsed.retain_mut(|rule| {
+            if rule.exception {
+                return true;
+            }
+            let Some(apps) = rule.prepare_apps(patterns) else {
+                return false;
+            };
+            let spec = rule
+                .action
+                .as_ref()
+                .expect("a blocking response rule has an action");
+            let id = ids.entry(spec.clone()).or_insert_with(|| {
                 let action = compile_with_budget(spec, &mut budget)?;
                 let id = actions.len();
                 actions.push(spec.clone());
                 compiled.push(action);
                 Some(id)
             });
-        }
+            if id.is_none() {
+                return false;
+            }
+            rule.keep_apps(patterns, apps);
+            true
+        });
         if actions.is_empty() {
             return None;
         }
         let mut conditions = String::new();
         let mut rules = Vec::new();
-        for p in &parsed {
+        for mut p in parsed {
             let action = match &p.action {
                 Some(spec) => match ids.get(spec) {
                     Some(Some(id)) => RuleAction::One(*id),
@@ -517,10 +400,16 @@ impl ResponseRules {
                 },
                 None => RuleAction::All(p.kind),
             };
+            if p.exception {
+                let Some(apps) = p.prepare_apps(patterns) else {
+                    continue;
+                };
+                p.keep_apps(patterns, apps);
+            }
             conditions.push_str(&p.project(rules.len()));
             conditions.push('\n');
             rules.push(Rule {
-                qualifiers: p.qualifiers.clone(),
+                qualifiers: p.qualifiers,
                 action,
                 exception: p.exception,
             });
@@ -571,19 +460,18 @@ impl ResponseRules {
         &self,
         request: &Request,
         kind: &str,
-        app: &str,
+        scope: Option<&Scope<'_>>,
         skip_prune: bool,
     ) -> Vec<Arc<ResponseAction>> {
         let Some(tokens) = self.engine.get_csp_directives(request) else {
             return Vec::new();
         };
-        let package = app_package(app);
         let mut matched: Vec<_> = tokens
             .split(',')
             .filter_map(|token| {
                 let id = token.parse::<usize>().ok()?;
                 let rule = self.table.rules.get(id)?;
-                rule.qualifiers.matches(kind, package).then_some((id, rule))
+                rule.qualifiers.matches(kind, scope).then_some((id, rule))
             })
             .collect();
         matched.sort_unstable_by_key(|(id, _)| *id);
@@ -644,7 +532,7 @@ impl super::AppFilters<'_> {
         }
         RequestRules::request_with_page(url, page, "document", method)
             .map_or_else(Vec::new, |request| {
-                rules.actions(&request, kind, self.app_name, exceptions.prune)
+                rules.actions(&request, kind, self.scope.as_ref(), exceptions.prune)
             })
     }
 }

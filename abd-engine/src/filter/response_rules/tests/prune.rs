@@ -79,7 +79,7 @@ fn jsonprune_accepts_the_real_list_syntax() {
         r"||example.com/player$jsonprune=\$.state_machine.tracks[?(key-eq 'content_type' 'AD')]",
         r"||example.com/breaks$jsonprune=\$.adBreaks.*",
     ] {
-        assert_eq!(check(rule), Some(true), "{rule}");
+        assert_eq!(check(rule, &mut Patterns::default()), Some(true), "{rule}");
     }
 }
 
@@ -102,7 +102,7 @@ fn jsonprune_only_accepts_its_compatible_modifiers() {
         "xmlhttprequest",
     ] {
         let rule = format!(r"||example.org^${option},jsonprune=\$.ad");
-        assert_eq!(check(&rule), Some(true), "{rule}");
+        assert_eq!(check(&rule, &mut Patterns::default()), Some(true), "{rule}");
     }
     for option in [
         "strict-third-party",
@@ -121,7 +121,11 @@ fn jsonprune_only_accepts_its_compatible_modifiers() {
         "xhr=value",
     ] {
         let rule = format!(r"||example.org^${option},jsonprune=\$.ad");
-        assert_eq!(check(&rule), Some(false), "{rule}");
+        assert_eq!(
+            check(&rule, &mut Patterns::default()),
+            Some(false),
+            "{rule}"
+        );
     }
 }
 
@@ -258,11 +262,14 @@ fn jsonprune_cache_keeps_trust_and_page_exceptions() {
 #[test]
 fn adblock_rust_accepts_match_case_for_regex_conditions_only() {
     assert_eq!(
-        check(r"||example.org/Query$match-case,jsonprune=\$.ad"),
+        check(
+            r"||example.org/Query$match-case,jsonprune=\$.ad",
+            &mut Patterns::default()
+        ),
         Some(false)
     );
     let rule = r"/Query[0-9]+/$match-case,jsonprune=\$.ad";
-    assert_eq!(check(rule), Some(true));
+    assert_eq!(check(rule, &mut Patterns::default()), Some(true));
     let f = filters(rule);
     let input = r#"{"ad":1}"#;
     assert_eq!(
@@ -282,7 +289,7 @@ fn all_adds_no_content_type_restriction_to_response_rules() {
 /GetPlaybackResources?$replace=/original/changed/,all
 ";
     for rule in rules.lines() {
-        assert_eq!(check(rule), Some(true), "{rule}");
+        assert_eq!(check(rule, &mut Patterns::default()), Some(true), "{rule}");
     }
     let f = filters(rules);
     let page = parse_http_page("https://www.amazon.com/watch").unwrap();

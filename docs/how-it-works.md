@@ -317,7 +317,12 @@ uncompressed text response up to 2 MiB. It takes these rules from the
 user's custom rules and catalog lists marked as trusted for response
 rules.
 
-A rule can name the apps it is for with AdGuard's `$app=` option:
+A rule can name the apps it is for with AdGuard's `$app=` option.
+Entries separated by `|` can be package names, prefixes ending in `*`,
+or regular expressions enclosed in `/`. Names and prefixes ignore ASCII
+case. Regular expressions search the package name as written and are
+case-sensitive by default. Escape `/`, `$`, `,`, and `|` in an expression
+with a backslash. Prefix every entry with `~` to exclude matching apps.
 `||ads.example^$app=com.reader` blocks the host in that app only, and
 `$app=~com.reader` in every app but that one. An exception with the
 option allows in the named apps what a rule for every app blocks. These
