@@ -54,6 +54,8 @@ ndk_version="$(<scripts/ndk-version)"
 ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/$ndk_version}"
 [[ -d "$ANDROID_NDK_HOME" ]] ||
     die "Android NDK not found at $ANDROID_NDK_HOME; install ndk;$ndk_version or set ANDROID_NDK_HOME"
+[[ -f "$ANDROID_NDK_HOME/source.properties" ]] ||
+    die "$ANDROID_NDK_HOME is not an NDK: it has no source.properties"
 ndk_revision="$(sed -n 's/^Pkg.Revision *= *//p' "$ANDROID_NDK_HOME/source.properties")"
 if [[ "$ndk_revision" != "$ndk_version" ]]; then
     [[ "${ADBLOCKER_REQUIRE_RELEASE_SIGNING:-}" != 1 ]] ||
