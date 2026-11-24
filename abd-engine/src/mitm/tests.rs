@@ -2326,8 +2326,8 @@ fn a_page_gone_to_is_its_own_first_party_whatever_led_there() {
     }
     assert!(blocked("/other", Some("script"), news));
     assert!(!blocked("/own", Some("script"), news));
-    // Made by no page it names: neither first party nor third.
-    assert!(!blocked("/own", Some("script"), None));
+    // Made by no page it names: there is no other party to be the third.
+    assert!(blocked("/own", Some("script"), None));
     assert!(!blocked("/other", Some("script"), None));
 }
 

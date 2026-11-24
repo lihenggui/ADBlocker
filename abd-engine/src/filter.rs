@@ -15,6 +15,9 @@
 //! The compiled filter lists for host-level and request-level decisions.
 //!
 //! A parsed request can be judged by its URL and any source it identifies.
+//! A request that names no page is taken as AdGuard takes one without a
+//! referrer: a rule for named pages is not for it, block or exception, and
+//! it is in the first party of what it asks for.
 //! For a connection that stays encrypted, only an unconditional block with
 //! no possible network exception may be applied.
 
@@ -119,41 +122,6 @@ fn domain_named(domains: &[u64], name: &str) -> bool {
         .is_ok()
 }
 
-fn project_exception(out: &mut String, line: &str, rule: &NetworkFilter<'_>) {
-    let Some((pattern, _)) = line.rsplit_once('$') else {
-        return;
-    };
-    out.push_str(pattern);
-    let mut separator = '$';
-    for option in opts(line).filter(|option| !source_option(option) && option_name(option) != "to")
-    {
-        out.push(separator);
-        out.push_str(option);
-        separator = ',';
-    }
-    // adblock-rust may have indexed broad or exclusion-only destinations
-    // by source. Re-index them by the request's destination hashes so
-    // removing the unknown source condition cannot drop the exception.
-    let mut names = to_domains(line).filter(|entry| {
-        let (name, domains) = entry
-            .strip_prefix('~')
-            .map_or((*entry, rule.opt_to_domains.as_deref()), |name| {
-                (name, rule.opt_not_to_domains.as_deref())
-            });
-        domains.is_some_and(|domains| domain_named(domains, name))
-    });
-    if let Some(first) = names.next() {
-        out.push(separator);
-        out.push_str("from=");
-        out.push_str(first);
-        for name in names {
-            out.push('|');
-            out.push_str(name);
-        }
-    }
-    out.push('\n');
-}
-
 fn network(line: &str) -> Option<NetworkFilter<'_>> {
     crate::public_suffix::install();
     let options = ParseOptions {
@@ -199,46 +167,28 @@ fn is_network_exception(rule: &NetworkFilter<'_>) -> bool {
         && !rule.is_removeparam()
 }
 
-/// The full matcher and, if any rules depend on a source, the matcher for
-/// requests without one. A missing source cannot satisfy a block's
-/// source condition. It may satisfy either side of an exception, so its
-/// independently matchable destination, URL, type and method still apply.
+/// The matcher of requests.
 pub(crate) struct RequestRules {
     pub(crate) full: Engine,
-    pub(crate) unknown: Option<Engine>,
 }
 
 impl RequestRules {
     pub(crate) fn build(lists: Vec<String>, debug: bool, options: ParseOptions) -> Self {
         crate::public_suffix::install();
-        let disabled = badfilters(lists.iter().map(String::as_str));
         let sources = lists
             .iter()
             .map(|text| (text.as_str(), options.permissions));
-        Self::build_with_badfilters(sources, debug, options, &disabled)
+        Self::build_with_permissions(sources, debug, options)
     }
 
-    fn build_with_badfilters<'a>(
-        lists: impl Iterator<Item = (&'a str, PermissionMask)> + Clone,
+    fn build_with_permissions<'a>(
+        lists: impl Iterator<Item = (&'a str, PermissionMask)>,
         debug: bool,
         options: ParseOptions,
-        disabled: &HashSet<u64>,
     ) -> Self {
-        let has_context = lists.clone().any(|(text, _)| {
-            text.lines().any(|line| {
-                let line = line.trim();
-                opts(line).any(source_option) && network(line).is_some()
-            })
-        });
         let mut full = FilterSet::new(debug);
-        let mut unknown = FilterSet::new(debug);
-        let unknown_options = ParseOptions {
-            rule_types: RuleTypes::NetworkOnly,
-            ..options
-        };
         for (text, permissions) in lists {
             let mut normalized = String::with_capacity(text.len());
-            let mut projected = String::new();
             for line in text.lines() {
                 let line = network_line(line);
                 // Reject unsafe calls before their helpers can consume
@@ -252,21 +202,6 @@ impl RequestRules {
                 }
                 normalized.push_str(&line);
                 normalized.push('\n');
-                if has_context
-                    && let Some(rule) = network(&line)
-                    && !rule.is_badfilter()
-                    && !disabled.contains(&rule.get_id())
-                {
-                    let needs_source = rule.opt_domains.is_some()
-                        || rule.opt_not_domains.is_some()
-                        || !rule.mask.contains(Mask::FIRST_PARTY | Mask::THIRD_PARTY);
-                    if !needs_source {
-                        projected.push_str(&line);
-                        projected.push('\n');
-                    } else if is_network_exception(&rule) {
-                        project_exception(&mut projected, &line, &rule);
-                    }
-                }
             }
             full.add_filter_list(
                 normalized,
@@ -275,13 +210,9 @@ impl RequestRules {
                     ..options
                 },
             );
-            if has_context {
-                unknown.add_filter_list(projected, unknown_options);
-            }
         }
         Self {
             full: Engine::new_with_filter_set(full),
-            unknown: has_context.then(|| Engine::new_with_filter_set(unknown)),
         }
     }
 
@@ -299,59 +230,46 @@ impl RequestRules {
         kind: &str,
         method: &str,
     ) -> Check {
-        let known = parse_http_page(source).is_some();
-        let source = if known { source } else { "" };
-        let Ok(mut req) = Request::new(url, source, kind, method) else {
+        let page = parse_http_page(source);
+        let Some(mut req) = Self::request_with_page(url, page.as_ref(), false, kind, method) else {
             return Check::default();
         };
         match apps.and_then(|(rules, app)| Some((rules, AppRules::scope(app)?))) {
-            Some((rules, scope)) => {
-                let web = self.engine(&mut req, known);
-                rules.check(web, &rules.blocks, &mut req, &scope)
-            }
-            None => self.check_request(req, known),
+            Some((rules, scope)) => rules.check(&self.full, &rules.blocks, &mut req, &scope),
+            None => self.check_request(&req),
         }
     }
 
-    /// The request for `url` and whether the page that made it is known.
+    /// The request for `url`, made by the page `source` if it names one. A
+    /// document is its own page.
     fn request_with_page(
         url: &str,
         source: Option<&RequestUrl>,
         document: bool,
         kind: &str,
         method: &str,
-    ) -> Option<(Request, bool)> {
+    ) -> Option<Request> {
         let url = parse_url(url)?;
         let source = if document {
             Some(&url).filter(|page| is_http_page(page))
         } else {
             source
         };
-        let req = Request::preparsed(
+        Some(Request::preparsed(
             &url.url,
             url.hostname(),
+            // No page: no rule for named pages applies, and a rule for
+            // every page but some does.
             source.map_or("", RequestUrl::hostname),
             kind,
-            source.is_none_or(|source| source.domain() != url.domain()),
+            // Without a page there is no other party to be the third.
+            source.is_some_and(|source| source.domain() != url.domain()),
             method,
-        );
-        Some((req, source.is_some()))
+        ))
     }
 
-    /// The engine that judges `req`, which is made ready for it.
-    fn engine(&self, req: &mut Request, known: bool) -> &Engine {
-        if let (false, Some(unknown)) = (known, &self.unknown) {
-            // Only projected destination conditions use this index in
-            // the unknown-source engine.
-            req.source_hostname_hashes.clone_from(&req.hostname_hashes);
-            unknown
-        } else {
-            &self.full
-        }
-    }
-
-    fn check_request(&self, mut req: Request, known: bool) -> Check {
-        let r = self.engine(&mut req, known).check_network_request(&req);
+    fn check_request(&self, req: &Request) -> Check {
+        let r = self.full.check_network_request(req);
         Check {
             blocked: r.should_block(),
             rule: r.filter.and_then(|f| f.raw_line),
@@ -429,7 +347,7 @@ impl Filters {
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
         let host_rules = HostRules::project(texts(), &disabled);
-        let mut requests = RequestRules::build_with_badfilters(
+        let mut requests = RequestRules::build_with_permissions(
             lists.iter().map(|(path, text)| {
                 let permissions =
                     PermissionMask::from_bits(u8::from(crate::list_url::trusted_list_file(path)));
@@ -437,7 +355,6 @@ impl Filters {
             }),
             debug,
             ParseOptions::default(),
-            &disabled,
         );
         use_scriptlets(&mut requests.full);
         Ok(Self {
@@ -596,17 +513,13 @@ impl AppFilters<'_> {
         method: &str,
     ) -> Check {
         let requests = &self.filters.requests;
-        let Some((mut req, known)) =
-            RequestRules::request_with_page(url, source, document, kind, method)
+        let Some(mut req) = RequestRules::request_with_page(url, source, document, kind, method)
         else {
             return Check::default();
         };
         match &self.app {
-            Some((rules, scope)) => {
-                let web = requests.engine(&mut req, known);
-                rules.check(web, &rules.blocks, &mut req, scope)
-            }
-            None => requests.check_request(req, known),
+            Some((rules, scope)) => rules.check(&requests.full, &rules.blocks, &mut req, scope),
+            None => requests.check_request(&req),
         }
     }
 }
@@ -1117,7 +1030,7 @@ mod tests {
     }
 
     #[test]
-    fn a_missing_source_matches_only_independent_blocks_and_possible_exceptions() {
+    fn a_request_without_a_page_is_first_party_and_of_no_named_page() {
         let f = filters(
             "||third.example^$3p\n||first.example^$1p\n\
                          ||either.example^$3p\n||either.example^$1p\n\
@@ -1131,23 +1044,21 @@ mod tests {
                 .blocked
         };
         for no_page in ["", "not a source", "null", "about:blank"] {
+            assert!(!check("third.example/ads", no_page, "script", "GET"));
             for url in [
-                "third.example/ads",
                 "first.example/ads",
                 "either.example/ads",
+                // Every page but one: no page is not that one.
                 "context.example/ads",
             ] {
-                assert!(!check(url, no_page, "script", "GET"), "{url}");
+                assert!(check(url, no_page, "script", "GET"), "{url}");
             }
             assert!(check("ads.example/blocked", no_page, "script", "GET"));
             assert!(!check("ads.example/allowed/a.js", no_page, "script", "GET"));
-            assert!(!check(
-                "ads.example/reading/a.js",
-                no_page,
-                "script",
-                "POST"
-            ));
-            assert!(check("ads.example/reading/a.js", no_page, "script", "GET"));
+            // An exception for a page is for no request without one.
+            for method in ["POST", "GET"] {
+                assert!(check("ads.example/reading/a.js", no_page, "script", method));
+            }
             assert!(check("ads.example/allowed/a.png", no_page, "image", "GET"));
             assert!(check(
                 "neutral.example/promo/a.png",
@@ -1196,7 +1107,7 @@ mod tests {
     }
 
     #[test]
-    fn projected_exceptions_retain_broad_and_exclusion_only_destination_options() {
+    fn exceptions_for_a_page_keep_their_destinations_and_need_the_page() {
         let f = filters(
             "||ads.example.com^\n||ads.example.net^\n\
              @@*$from=reader.example,to=com,image\n\
@@ -1206,11 +1117,18 @@ mod tests {
             f.check(&format!("https://{host}/resource"), source, kind, "GET")
                 .blocked
         };
-        for source in ["", "https://reader.example/"] {
-            assert!(!check("ads.example.com", source, "image"));
-            assert!(check("ads.example.net", source, "image"));
-            assert!(check("ads.example.com", source, "script"));
-            assert!(!check("ads.example.net", source, "script"));
+        let source = "https://reader.example/";
+        assert!(!check("ads.example.com", source, "image"));
+        assert!(check("ads.example.net", source, "image"));
+        assert!(check("ads.example.com", source, "script"));
+        assert!(!check("ads.example.net", source, "script"));
+        for (host, kind) in [
+            ("ads.example.com", "image"),
+            ("ads.example.net", "image"),
+            ("ads.example.com", "script"),
+            ("ads.example.net", "script"),
+        ] {
+            assert!(check(host, "", kind), "{host} {kind}");
         }
         assert!(check(
             "ads.example.com",
@@ -1380,9 +1298,8 @@ mod tests {
             let started = std::time::Instant::now();
             let f = Filters::load_cached(&[Path::new(&dir)], Path::new(&cache)).unwrap();
             println!(
-                "{} lines, projected={}: {:?}, VmRSS={:?}",
+                "{} lines: {:?}, VmRSS={:?}",
                 f.rules,
-                f.requests.unknown.is_some(),
                 started.elapsed(),
                 rss()
             );
@@ -1415,7 +1332,6 @@ mod tests {
         let load = || Filters::load_cached(&[dir.path()], cache.path()).unwrap();
         let first = load();
         let optional = [
-            "unknown",
             "no-cosmetic",
             "no-element-hiding",
             "no-specific-cosmetic",
@@ -1425,10 +1341,12 @@ mod tests {
             assert!(cache.path().join(name).is_file(), "{name}");
         }
 
+        // What an earlier version kept for requests without a page.
+        std::fs::write(cache.path().join("unknown"), "kept").unwrap();
         std::fs::write(&list, "||ads.example^\n").unwrap();
         let second = load();
         assert_ne!(first.generation, second.generation);
-        for name in optional {
+        for name in optional.into_iter().chain(["unknown"]) {
             assert!(!cache.path().join(name).exists(), "{name}");
         }
         assert!(Filters::read_cache(cache.path(), first.generation.unwrap()).is_none());

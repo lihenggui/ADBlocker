@@ -17,8 +17,7 @@
 //! They are kept apart from the web rules, in engines where the source of
 //! a request is the app that made it: the option is rewritten as the
 //! source condition those engines index. The page a request came from is
-//! not a source there, so a block that also needs one is left out, and an
-//! exception that names one applies whatever the page.
+//! not a source there, so a rule that also needs one is left out.
 //!
 //! The members of a shared UID are not told apart, so none of these rules
 //! is applied to them: which app a rule would need to know is not known.
@@ -67,7 +66,6 @@ fn name_hash(package: &str) -> u64 {
 
 fn scoped(line: &str) -> Option<Scoped<'_>> {
     let (pattern, all) = line.trim().rsplit_once('$')?;
-    let exception = pattern.starts_with("@@");
     let mut apps = None;
     let mut options = Vec::new();
     for option in all.split(',') {
@@ -78,9 +76,7 @@ fn scoped(line: &str) -> Option<Scoped<'_>> {
                 return None;
             }
         } else if source_option(option) {
-            if !exception {
-                return None;
-            }
+            return None;
         } else {
             options.push(option);
         }
@@ -456,13 +452,13 @@ mod tests {
     }
 
     #[test]
-    fn a_block_that_needs_a_page_is_left_out_and_an_exception_does_not_need_it() {
+    fn a_rule_for_an_app_that_needs_a_page_is_left_out() {
         let f = filters(
             "||shop.example^$app=com.reader,third-party\n\
              ||ads.example^\n@@||ads.example^$app=com.reader,domain=news.example\n",
         );
         assert!(!blocked(&f, "com.reader", "https://shop.example/"));
-        assert!(!blocked(&f, "com.reader", "https://ads.example/"));
+        assert!(blocked(&f, "com.reader", "https://ads.example/"));
     }
 
     #[test]
