@@ -38,7 +38,8 @@ class RulesRepositoryTest {
     private val result = RuleCheckResult(blocked = false, rule = null, source = null)
     private val checks = mutableListOf<Triple<String, String?, String?>>()
     private val rules = object : RulesRepository by unexpected() {
-        override suspend fun checkUrl(url: String, page: String?, kind: String?): RuleCheckResult {
+        override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult {
+            assertNull(app)
             checks += Triple(url, page, kind)
             return result
         }
