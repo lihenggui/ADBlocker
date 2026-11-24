@@ -47,11 +47,19 @@ die() {
 }
 
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
-# The NDK: $ANDROID_NDK_HOME if set, else the newest one in the SDK.
-if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
-    ANDROID_NDK_HOME="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -1)"
+# The NDK of scripts/ndk-version, or $ANDROID_NDK_HOME. Native code built
+# with another NDK differs from a release's, which others build again and
+# compare (F-Droid): a release takes that one only.
+ndk_version="$(<scripts/ndk-version)"
+ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/$ndk_version}"
+[[ -d "$ANDROID_NDK_HOME" ]] ||
+    die "Android NDK not found at $ANDROID_NDK_HOME; install ndk;$ndk_version or set ANDROID_NDK_HOME"
+ndk_revision="$(sed -n 's/^Pkg.Revision *= *//p' "$ANDROID_NDK_HOME/source.properties")"
+if [[ "$ndk_revision" != "$ndk_version" ]]; then
+    [[ "${ADBLOCKER_REQUIRE_RELEASE_SIGNING:-}" != 1 ]] ||
+        die "a release is built with NDK $ndk_version, not $ndk_revision"
+    echo "warning: NDK $ndk_revision, not $ndk_version: the native code differs from a release's" >&2
 fi
-[[ -d "${ANDROID_NDK_HOME:-}" ]] || die "Android NDK not found; set ANDROID_NDK_HOME"
 
 host_tag="$(uname -s | tr '[:upper:]' '[:lower:]')-x86_64"
 bin="$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/$host_tag/bin"

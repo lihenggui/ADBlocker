@@ -1,0 +1,8 @@
+# The Rust release every build uses: a release is built again by others,
+# F-Droid among them, and compared byte for byte, which takes the same
+# compiler. Dependabot proposes the next one.
+[toolchain]
+channel = "1.100.0"
+profile = "minimal"
+components = ["rustfmt", "clippy"]
+targets = ["aarch64-linux-android", "x86_64-linux-android"]

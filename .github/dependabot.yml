@@ -17,6 +17,12 @@ updates:
     schedule:
       interval: weekly
 
+  # The Rust release of rust-toolchain.toml.
+  - package-ecosystem: rust-toolchain
+    directory: /
+    schedule:
+      interval: weekly
+
   # The app: its libraries, Gradle plugins and the build logic.
   - package-ecosystem: gradle
     directory: /android

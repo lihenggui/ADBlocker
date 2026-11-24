@@ -37,10 +37,8 @@ commit="$(git rev-parse --verify "refs/tags/$tag^{commit}")" || die "missing tag
 
 export ADBLOCKER_REQUIRE_RELEASE_SIGNING=1
 export ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
-if [[ -z "${ANDROID_NDK_HOME:-}" ]]; then
-    ANDROID_NDK_HOME="$(find "$ANDROID_HOME/ndk" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
-    export ANDROID_NDK_HOME
-fi
+# As scripts/build.sh takes it, which checks it.
+export ANDROID_NDK_HOME="${ANDROID_NDK_HOME:-$ANDROID_HOME/ndk/$(<scripts/ndk-version)}"
 tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
 [[ -x "$tools/apksigner" ]] || die 'apksigner is missing from the Android SDK'
 
