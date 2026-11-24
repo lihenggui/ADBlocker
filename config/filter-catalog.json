@@ -18,6 +18,14 @@
       "defaultEnabled": true
     },
     {
+      "id": "hagezi_light",
+      "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt",
+      "title": "HaGeZi Multi Light",
+      "descriptions": {"en": "Ad and tracking domains that apps use", "zh": "应用使用的广告和跟踪域名"},
+      "category": "Ads",
+      "defaultEnabled": true
+    },
+    {
       "id": "ublock",
       "trustedScriptlets": true,
       "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
