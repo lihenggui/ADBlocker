@@ -21,16 +21,24 @@ enum class ModuleState {
     /** Root has not been granted to the app. */
     NoRoot,
 
-    /** The module is not installed. */
+    /**
+     * No module is in use. One flashed in a root manager may wait for a
+     * restart to be applied; until then the app can set up its own, which
+     * the manager's replaces at that restart.
+     */
     NotInstalled,
 
     /** The module or the bundled package could not be verified. */
     Unavailable,
 
-    /** Installed or updated; takes effect after a restart (Magisk, APatch). */
+    /**
+     * A module is in use that is not this app's, and it cannot be replaced
+     * before a restart: a root manager has an update waiting for it, or has
+     * it marked for removal. Nothing can be installed until then.
+     */
     NeedsRestart,
 
-    /** The installed daemon differs from the one bundled in this app. */
+    /** The daemon in use differs from the one bundled in this app, and can be replaced with it. */
     Mismatched,
 
     /** The bundled daemon is installed. */

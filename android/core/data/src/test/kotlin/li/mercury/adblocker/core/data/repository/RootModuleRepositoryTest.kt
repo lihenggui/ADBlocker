@@ -171,12 +171,30 @@ class RootModuleRepositoryTest {
     }
 
     @Test
-    fun givenAModuleWaitingInTheManager_whenNoneIsInUse_thenARestartIsNeeded() = runTest {
+    fun givenAModuleWaitingInTheManager_whenNoneIsInUse_thenTheAppsOwnCanBeSetUpMeanwhile() = runTest {
         // What a manager keeps for a module it applies at the next boot.
         flashed.mkdirs()
         flashed.resolve("module.prop").writeText("versionCode=$bundledCode\n")
         pending.mkdirs()
+        assertEquals(ModuleState.NotInstalled, module.state())
+        assertTrue(module.isStagedInManager())
+
+        installer = {
+            installed(direct)
+            CommandResult(true, 0, "", "")
+        }
+        assertTrue(module.installBundled())
+        assertEquals(ModuleState.Ready, module.state())
+    }
+
+    @Test
+    fun givenAModuleInUseIsMarkedForRemovalInTheManager_whenItIsNotThisApps_thenARestartIsNeeded() = runTest {
+        installed(flashed, versionCode = bundledCode - 1).resolve("remove").writeText("")
         assertEquals(ModuleState.NeedsRestart, module.state())
+        assertFalse(module.isStagedInManager())
+        // This app's works until the manager removes it.
+        installed(flashed)
+        assertEquals(ModuleState.Ready, module.state())
     }
 
     @Test

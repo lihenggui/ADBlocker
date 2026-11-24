@@ -182,7 +182,9 @@ class SettingsViewModel @Inject constructor(
         // Only an installation in use has an origin.
         val inUse = state == ModuleState.Ready || state == ModuleState.Mismatched
         val byApp = if (inUse) suspendRunCatching { module.isInstalledByApp() }.getOrNull() else null
-        val staged = state == ModuleState.NeedsRestart || (byApp == true && suspendRunCatching { module.isStagedInManager() }.getOrDefault(false))
+        // What waits replaces the app's installation at the restart, or is all there is until then.
+        val mayWait = byApp == true || state == ModuleState.NotInstalled
+        val staged = state == ModuleState.NeedsRestart || (mayWait && suspendRunCatching { module.isStagedInManager() }.getOrDefault(false))
         return Installation(state, byApp, staged)
     }
 
@@ -464,7 +466,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     private companion object {
-        /** What a switch to root mode sets up first: nothing usable of this app's is in use. */
-        val NEEDS_SETUP = setOf(ModuleState.NotInstalled, ModuleState.Mismatched, ModuleState.NeedsRestart)
+        /**
+         * What a switch to root mode sets up first: nothing usable of this
+         * app's is in use. Not a module that needs a restart, which the
+         * installer leaves to the root manager.
+         */
+        val NEEDS_SETUP = setOf(ModuleState.NotInstalled, ModuleState.Mismatched)
     }
 }

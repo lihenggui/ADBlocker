@@ -53,9 +53,11 @@ import javax.inject.Singleton
  */
 interface ModuleRepository {
     /**
-     * Where the app stands with root and the module in use. A module a root
-     * manager has yet to apply needs a restart only while none that matches
-     * this app is in use.
+     * Where the app stands with root and the module in use. What waits in a
+     * root manager for a restart changes it only for a module in use that is
+     * not this app's: that one needs the restart, and cannot be replaced
+     * before it. With nothing in use the module is not installed, whatever
+     * waits; [isStagedInManager] says whether something does.
      */
     suspend fun state(): ModuleState
 
@@ -201,6 +203,7 @@ internal class RootModuleRepository(
             if [ ! -e $MODULE_DIR ] && [ ! -L $MODULE_DIR ]; then
                 echo $ABSENT
             else
+                if [ -e $MODULE_DIR/remove ]; then echo $REMOVAL; fi
                 [ -x $DAEMON ] && sed -n 's/^versionCode=/version /p' $MODULE_PROP && { stat -c "$STAT_PREFIX$STAT_FORMAT" $DAEMON 2>/dev/null || true; }
             fi
             """.trimIndent(),
@@ -208,16 +211,19 @@ internal class RootModuleRepository(
         )
         if (!result.isSuccess) return Found(ModuleState.Unavailable)
         val probe = result.output.trim().lines().map(String::trim)
-        val pending = probe.first() == PENDING
-        val inUse = if (pending) probe.drop(1) else probe
+        val held = probe.takeWhile { it == PENDING || it == REMOVAL }
+        val inUse = probe.drop(held.size)
 
-        // A module waiting in a root manager replaces the one in use at the
-        // next boot. Where none in use is this app's, that restart comes
-        // before anything else is installed.
-        fun orRestart(state: ModuleState) = if (pending) ModuleState.NeedsRestart else state
+        // A root manager replaces the module in use at the next restart, or
+        // removes it then. Until it has, the installer leaves that module
+        // alone: one that is not this app's stays so until the restart.
+        fun orRestart(state: ModuleState) = if (held.isNotEmpty()) ModuleState.NeedsRestart else state
         val code = when (val output = inUse.firstOrNull()) {
             null -> return Found(ModuleState.Unavailable)
-            ABSENT -> return Found(orRestart(ModuleState.NotInstalled))
+
+            // What waits is not in use: the app's own can be, until the restart.
+            ABSENT -> return Found(ModuleState.NotInstalled)
+
             else -> output.removePrefix("version ").toLongOrNull() ?: return Found(ModuleState.Unavailable)
         }
         if (code != bundledVersionCode()) return Found(orRestart(ModuleState.Mismatched), code)
@@ -336,6 +342,9 @@ internal class RootModuleRepository(
 
         /** What the probe of the module prints first for a module waiting for a restart, and for none in use. */
         const val PENDING = "pending"
+
+        /** And for a module in a root manager that is marked for removal there. */
+        const val REMOVAL = "removal"
         const val ABSENT = "absent"
     }
 }
