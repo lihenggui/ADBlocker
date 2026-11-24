@@ -197,7 +197,7 @@ The examples below abbreviate this path to `abd`.
 | `abd app pause <package> --minutes <n>` | Pause filtering for one app. Use `abd app resume <package>` to resume early. |
 | `abd pause [--minutes <n>]` | Pause filtering for all apps. Use `abd resume` to resume early. |
 | `abd url-filtering on\|off` | Enable or disable URL filtering for all filtered apps. |
-| `abd cosmetic on` | Hide matching elements on decrypted pages. This is off by default. Use `off` to disable it. |
+| `abd cosmetic on` | Hide matching elements on decrypted pages. On by default. Use `off` to disable it. |
 | `abd allow add <host>` | Exempt a host and its subdomains from blocking and decryption. Manage entries with `abd allow remove <host>` and `abd allow list`. |
 | `abd lists` | List the filter lists. |
 | `abd list add <url>` | Subscribe to a list. Use `remove`, `disable`, or `enable` with the same URL to manage it. |
@@ -296,11 +296,11 @@ Turn off **URL filtering** to keep HTTPS encrypted.
 
 ## Limitations
 
-- Blocking a banner can leave an empty space. Turn on **Hide page
-  elements** in Settings (`abd cosmetic on` in a root shell) to hide
-  elements named by your lists on decrypted pages. This also runs supported
-  uBlock Origin and AdGuard scriptlets, AdGuard CSS injection rules, and
-  procedural rules such as `:has-text()`.
+- **Hide page elements** hides elements named by your lists on decrypted
+  pages, such as empty ad frames. It is on by default and can be turned off
+  in Settings or with `abd cosmetic off` in a root shell. It also runs
+  supported uBlock Origin and AdGuard scriptlets and applies AdGuard CSS
+  injection rules and procedural rules such as `:has-text()`.
   Procedural rules also match elements a page adds later; generic CSS rules
   based only on a class or ID can miss them. See
   [how this changes a page](SECURITY.md#hiding-page-elements).

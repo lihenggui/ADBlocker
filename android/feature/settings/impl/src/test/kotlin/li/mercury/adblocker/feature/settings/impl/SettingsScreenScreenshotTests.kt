@@ -17,11 +17,18 @@
 package li.mercury.adblocker.feature.settings.impl
 
 import androidx.activity.ComponentActivity
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import li.mercury.adblocker.core.data.repository.ModuleUpdate
+import li.mercury.adblocker.core.designsystem.theme.ADBlockerTheme
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ModuleState
@@ -35,6 +42,8 @@ import li.mercury.adblocker.core.screenshottesting.DemoClockRule
 import li.mercury.adblocker.core.screenshottesting.DemoData
 import li.mercury.adblocker.core.screenshottesting.captureForDevice
 import li.mercury.adblocker.core.screenshottesting.captureMultiDevice
+import li.mercury.adblocker.core.ui.LocalSnackbarHostState
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -178,6 +187,37 @@ class SettingsScreenScreenshotTests {
     }
 
     @Test
+    fun givenRootSettings_whenElementHidingIsSwitchedOffAndOn_thenBothChoicesAreSentDirectly() {
+        verifyCosmeticSwitch(state)
+    }
+
+    @Test
+    fun givenVpnSettings_whenElementHidingIsSwitchedOffAndOn_thenBothChoicesAreSentDirectly() {
+        verifyCosmeticSwitch(vpnSetUp)
+    }
+
+    private fun verifyCosmeticSwitch(initial: SettingsUiState) {
+        val current = mutableStateOf(initial)
+        val changes = mutableListOf<Boolean>()
+        composeTestRule.setContent {
+            ADBlockerTheme(useDynamicColor = false) {
+                CompositionLocalProvider(LocalSnackbarHostState provides remember { SnackbarHostState() }) {
+                    Settings(current.value, onCosmetic = { on ->
+                        changes += on
+                        val status = ReadState.Available(DemoData.status.copy(cosmetic = on))
+                        current.value = initial.copy(service = initial.service.copy(status = status))
+                    })
+                }
+            }
+        }
+        val switch = composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_settings_cosmetic))
+        switch.performScrollTo().performClick()
+        switch.performClick()
+        composeTestRule.runOnIdle { assertEquals(listOf(false, true), changes) }
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_settings_cosmetic_security)).assertHasClickAction()
+    }
+
+    @Test
     fun givenDifferentDaemon_whenShown_thenOffersTheBundledModule() {
         composeTestRule.captureForDevice(
             "tablet_portrait",
@@ -185,11 +225,6 @@ class SettingsScreenScreenshotTests {
             "SettingsMismatched",
         ) { Settings(state.copy(service = state.service.copy(module = ModuleState.Mismatched))) }
         composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_settings_module_reinstall)).assertHasClickAction()
-    }
-
-    @Test
-    fun givenHidingOff_whenTurnedOn_thenExplainsWhatItChangesFirst() {
-        capturePhone("SettingsCosmeticSheet") { CosmeticSheet(onTurnOn = {}, onOpenSecurity = {}, onDismiss = {}) }
     }
 
     @Test
@@ -346,7 +381,7 @@ class SettingsScreenScreenshotTests {
     }
 
     @Composable
-    private fun Settings(state: SettingsUiState) {
+    private fun Settings(state: SettingsUiState, onCosmetic: (Boolean) -> Unit = {}) {
         SettingsScreen(
             state = state,
             onBack = {},
@@ -356,6 +391,7 @@ class SettingsScreenScreenshotTests {
             onWifiOnly = {},
             onShowSystemApps = {},
             onUrlFiltering = {},
+            onCosmetic = onCosmetic,
             onForgetAllPins = {},
             onExportLogs = {},
             rootActions = RootActions(onSetUp = {}, onRemove = {}),

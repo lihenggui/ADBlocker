@@ -90,8 +90,7 @@ commit.
   two boots in a row did not finish, or `null`. It stays turned off, in the root
   manager too, until it is started again; starting it clears this.
 - `cosmetic` (`status.json`): whether elements the lists name are hidden
-  on decrypted pages (`abd cosmetic on|off`). Off unless the user turned
-  it on: it changes the pages.
+  on decrypted pages. On by default (`abd cosmetic on|off`).
 - `url_filtering` (`status.json`): the global option, on by default
   (`abd url-filtering on|off`).
 - `verdict` (`watch.jsonl`): `blocked` (a filtered HTTP request, cleartext or
@@ -106,9 +105,9 @@ commit.
 - `kind`: what `mitm::kind` returns, such as `document`, `script`, `image`,
   `stylesheet`, `font`, `media`, `xmlhttprequest`, `websocket`, `other`.
 - `state` (`update.jsonl`): `fetching`, `updated`, `unchanged`, `failed`.
-- `kind` (`rules-check.json`): `cosmetic` (element hiding or scriptlets:
-  hiding is applied only while `cosmetic` is on, scriptlets never; the
-  check names them either way) or `invalid` (not a rule).
+- `kind` (`rules-check.json`): `cosmetic` identifies page rules flagged by
+  the check, including unsupported forms and scriptlets that require trusted
+  permissions. `invalid` identifies input that does not parse as a rule.
 - `source` (`check.json`): the address of the list the rule is in, `rules`
   for the user's own rules, or `null`.
 - A `{"dropped":n}` line in `watch.jsonl` says that `n` events were left

@@ -604,10 +604,8 @@ fn hiding_for(
     url: &str,
     kind: &str,
 ) -> Option<Hiding> {
-    // The style that hides what the lists name on this page, where the
-    // user has pages changed for it and this is the whole of a page. It
-    // is put into a page that is not packed: asked for so, one request in
-    // very many, rather than unpacked here from whatever a server sends.
+    // With element hiding enabled, ask for eligible documents unpacked
+    // so that injection can stream the page without decompressing it.
     let whole_page = matches!(kind, "document" | "subdocument")
         && req.method() == hyper::Method::GET
         && !req.headers().contains_key(RANGE);

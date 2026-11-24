@@ -42,9 +42,7 @@ pub struct Settings {
     /// Whether request-level rules apply to cleartext HTTP and eligible HTTPS.
     pub url_filtering: bool,
     pub scope: Scope,
-    /// Whether what the lists name is hidden on the pages that are
-    /// decrypted (`cosmetic.rs`): the one thing that changes what a
-    /// server sent.
+    /// Whether cosmetic rules can modify decrypted pages (`cosmetic.rs`).
     pub cosmetic: bool,
 }
 
@@ -53,10 +51,12 @@ impl Settings {
     /// program that runs the engine. URL filtering is on: what it needs
     /// before HTTPS is decrypted (usable exclusions, a verified server, an
     /// app that trusts the authority) is checked for each connection.
+    /// Page element hiding is on because it acts only on pages already
+    /// decrypted and filtered, within the limits in `cosmetic.rs`.
     pub const UNSAID: Self = Self {
         url_filtering: true,
         scope: Scope::Chosen,
-        cosmetic: false,
+        cosmetic: true,
     };
 
     /// What the file says, and `unsaid` for what it does not: the program
@@ -99,13 +99,12 @@ mod tests {
 
     const ON: Settings = Settings {
         url_filtering: true,
-        scope: crate::settings::Scope::Chosen,
-        cosmetic: false,
+        scope: Scope::Chosen,
+        cosmetic: true,
     };
     const OFF: Settings = Settings {
         url_filtering: false,
-        scope: crate::settings::Scope::Chosen,
-        cosmetic: false,
+        ..ON
     };
 
     fn read(file: &Path, unsaid: Settings) -> Settings {
@@ -133,6 +132,32 @@ mod tests {
         assert_eq!(read(&file, Settings::UNSAID), OFF);
         Settings::set(&file, URL_FILTERING, "on").unwrap();
         assert_eq!(read(&file, Settings::UNSAID), ON);
+    }
+
+    #[test]
+    fn no_cosmetic_line_means_on() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("settings");
+        assert!(read(&file, Settings::UNSAID).cosmetic);
+        assert!(!file.exists());
+        std::fs::write(&file, "scope all\nlater off\n").unwrap();
+        assert!(read(&file, Settings::UNSAID).cosmetic);
+    }
+
+    #[test]
+    fn explicit_cosmetic_off_stays_off() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("settings");
+        std::fs::write(&file, "cosmetic off\n").unwrap();
+        assert!(!read(&file, Settings::UNSAID).cosmetic);
+    }
+
+    #[test]
+    fn explicit_cosmetic_on_stays_on() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("settings");
+        std::fs::write(&file, "cosmetic on\n").unwrap();
+        assert!(read(&file, Settings::UNSAID).cosmetic);
     }
 
     #[test]

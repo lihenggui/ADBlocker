@@ -108,12 +108,8 @@
     <string name="feature_settings_url_filtering_off">已关闭按网址过滤</string>
     <string name="feature_settings_cancel">取消</string>
     <string name="feature_settings_cosmetic">隐藏页面元素</string>
-    <string name="feature_settings_cosmetic_text">在解密的页面中隐藏订阅指定的元素，例如空白广告位</string>
-    <string name="feature_settings_cosmetic_title">隐藏页面元素？</string>
-    <string name="feature_settings_cosmetic_explain">被过滤应用的每个解密页面都会在传输途中被修改，加入样式以隐藏订阅指定的元素。</string>
-    <string name="feature_settings_cosmetic_explain_break">订阅可能隐藏需要的内容，页面的外观或功能也可能改变。可随时在此关闭此设置。</string>
+    <string name="feature_settings_cosmetic_text">修改已解密的网页，隐藏过滤规则指定的元素，例如空白广告位。</string>
     <string name="feature_settings_cosmetic_security">对安全的影响</string>
-    <string name="feature_settings_cosmetic_turn_on">开启</string>
     <string name="feature_settings_pinned_text">这些应用自行校验这些域名的证书，因此相关连接仅按域名过滤。忘记某个域名后，下次连接时将重新尝试解密。</string>
     <string name="feature_settings_forget">忘记</string>
     <string name="feature_settings_forget_all">全部忘记</string>

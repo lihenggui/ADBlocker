@@ -303,6 +303,21 @@ class SettingsViewModelTest {
     }
 
     @Test
+    fun givenElementHidingIsOn_whenSwitchedOffAndBackOn_thenEachChoiceIsSavedImmediately() = runTest {
+        showSettings()
+
+        viewModel.setCosmetic(false)
+        runCurrent()
+        assertFalse(cosmetic)
+        assertEquals(false, viewModel.uiState.value.service.status.valueOrNull?.cosmetic)
+
+        viewModel.setCosmetic(true)
+        runCurrent()
+        assertTrue(cosmetic)
+        assertEquals(true, viewModel.uiState.value.service.status.valueOrNull?.cosmetic)
+    }
+
+    @Test
     fun givenElementHidingOn_whenSwitchingOffFails_thenItRestoresTheSettingAndShowsTheFailure() = runTest {
         val write = CompletableDeferred<Unit>()
         httpsWrite = write

@@ -111,12 +111,8 @@
     <string name="feature_settings_url_filtering_off">URL filtering is off</string>
     <string name="feature_settings_cancel">Cancel</string>
     <string name="feature_settings_cosmetic">Hide page elements</string>
-    <string name="feature_settings_cosmetic_text">Hides elements named by the filter lists, such as empty ad frames, on decrypted pages</string>
-    <string name="feature_settings_cosmetic_title">Hide page elements?</string>
-    <string name="feature_settings_cosmetic_explain">Each decrypted page of a filtered app is modified in transit to include styles that hide the elements named by the filter lists.</string>
-    <string name="feature_settings_cosmetic_explain_break">A list may hide wanted content, and pages may look or work differently. This setting can be turned off at any time.</string>
+    <string name="feature_settings_cosmetic_text">Modifies decrypted pages to hide elements named by filter rules, such as empty ad frames.</string>
     <string name="feature_settings_cosmetic_security">Security implications</string>
-    <string name="feature_settings_cosmetic_turn_on">Turn on</string>
     <string name="feature_settings_pinned_text">These apps check the certificates of these domains themselves, so the connections are filtered by domain only. After a domain is forgotten, decryption is retried at its next connection.</string>
     <string name="feature_settings_forget">Forget</string>
     <string name="feature_settings_forget_all">Forget all</string>

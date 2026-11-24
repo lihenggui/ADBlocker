@@ -292,7 +292,9 @@ expect() {
     fi
 }
 
-expect "URL filtering is on by default" '*"url_filtering":true*' "$(adb shell "$ABD status --json" | tr -d '\r')"
+default_status="$(adb shell "$ABD status --json" | tr -d '\r')"
+expect "URL filtering is on by default" '*"url_filtering":true*' "$default_status"
+expect "page element hiding is on by default" '*"cosmetic":true*' "$default_status"
 expect "a request is decrypted and let through, trusting the system store" "200 *ADBlocker*" "$(fetch https://example.com/)"
 expect "a request is decrypted, trusting what the user added" "200 *ADBlocker*" "$(fetch https://www.wikipedia.org/)"
 expect "a request is blocked by its path" "403 *ADBlocker*" "$(fetch https://example.com/blocked-by-check)"

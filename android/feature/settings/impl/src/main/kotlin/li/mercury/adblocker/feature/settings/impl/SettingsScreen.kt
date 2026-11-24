@@ -63,8 +63,7 @@ import li.mercury.adblocker.core.ui.pageMargin
 /** Where the source code lives, shown under About. */
 private const val SOURCE_URL = "https://github.com/lihenggui/ADBlocker"
 
-/** What turning on the hiding of page elements changes, in the security notes. */
-private const val SECURITY_URL = "$SOURCE_URL/blob/main/SECURITY.md#what-using-it-changes"
+private const val SECURITY_URL = "$SOURCE_URL/blob/main/SECURITY.md#hiding-page-elements"
 
 @Composable
 fun SettingsScreen(onBack: () -> Unit, onOpenHttps: () -> Unit, viewModel: SettingsViewModel, modifier: Modifier = Modifier) {
@@ -127,9 +126,9 @@ internal fun SettingsScreen(
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var choosingInterval by rememberSaveable { mutableStateOf(false) }
-    var explainingCosmetic by rememberSaveable { mutableStateOf(false) }
     var showingPinned by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
+    val openCosmeticSecurity = { context.startActivity(Intent(Intent.ACTION_VIEW, SECURITY_URL.toUri())) }
     val data = state.userData
     val service = state.service
     Scaffold(
@@ -150,7 +149,8 @@ internal fun SettingsScreen(
                     actions = vpnActions,
                     onRemoveRootMode = rootActions.onRemove,
                     onUrlFiltering = onUrlFiltering,
-                    onCosmetic = { on -> if (on) explainingCosmetic = true else onCosmetic(false) },
+                    onCosmetic = onCosmetic,
+                    onOpenCosmeticSecurity = openCosmeticSecurity,
                     onShowPins = { showingPinned = true },
                 )
             } else if (service.module == ModuleState.NotInstalled && service.vpnAvailable) {
@@ -171,7 +171,7 @@ internal fun SettingsScreen(
             AppListSettingsRows(service, data.showSystemApps, onFilteringScope, onShowSystemApps)
 
             if (!usesVpn) {
-                RootHttpsRows(service, onUrlFiltering) { on -> if (on) explainingCosmetic = true else onCosmetic(false) }
+                RootHttpsRows(service, onUrlFiltering, onCosmetic, openCosmeticSecurity)
                 ModuleService(state, rootActions) { showingPinned = true }
             }
 
@@ -179,26 +179,10 @@ internal fun SettingsScreen(
             Spacer(Modifier.height(32.dp))
         }
     }
-    if (explainingCosmetic) {
-        ExplainCosmeticFiltering(onCosmetic, onDismiss = { explainingCosmetic = false })
-    }
     val pinned = service.pinned.valueOrNull
     if (showingPinned && !pinned.isNullOrEmpty()) {
         PinnedSheet(pinned, service.pinnedLabels, onForget = onForgetPin, onForgetAll = onForgetAllPins) { showingPinned = false }
     }
-}
-
-@Composable
-private fun ExplainCosmeticFiltering(onCosmetic: (Boolean) -> Unit, onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    CosmeticSheet(
-        onTurnOn = {
-            onDismiss()
-            onCosmetic(true)
-        },
-        onOpenSecurity = { context.startActivity(Intent(Intent.ACTION_VIEW, SECURITY_URL.toUri())) },
-        onDismiss = onDismiss,
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)

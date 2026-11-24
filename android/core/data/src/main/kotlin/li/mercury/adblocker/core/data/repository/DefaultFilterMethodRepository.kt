@@ -366,7 +366,7 @@ internal class DefaultFilterMethodRepository(
         val personal = apps.chosen.filter { SavedAppKey(it).isTransferablePersonalPackage }
         val hasChoices: Boolean
             get() = personal.isNotEmpty() || apps.excluded.isNotEmpty() || apps.scope == FilteringScope.All ||
-                !rules.isNullOrEmpty() || !trusted.isNullOrEmpty() || urlFiltering == false || cosmetic == true ||
+                !rules.isNullOrEmpty() || !trusted.isNullOrEmpty() || urlFiltering == false || cosmetic == false ||
                 lists.orEmpty().any { !it.enabled || !FilterCatalog.canBeDefault(it.url) }
     }
 

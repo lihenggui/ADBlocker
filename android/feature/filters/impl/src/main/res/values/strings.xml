@@ -46,7 +46,7 @@
     <string name="feature_filters_list_rules">%1$s rules</string>
     <string name="feature_filters_list_last_error">Last error: %1$s</string>
     <string name="feature_filters_remove_list">Unsubscribe</string>
-    <string name="feature_filters_cosmetic_note">Lists in this category consist mostly of element hiding rules, which apply only when Hide page elements is on in Settings.</string>
+    <string name="feature_filters_cosmetic_note">Lists in this category mainly hide page elements. Turn off Hide page elements in Settings to disable these rules.</string>
     <string name="feature_filters_my_rules">My rules</string>
     <plurals name="feature_filters_rules_count">
         <item quantity="one">%1$d rule</item>
@@ -71,7 +71,7 @@
     <string name="feature_filters_import_supporting">In uBlock Origin or AdGuard syntax</string>
     <string name="feature_filters_export">Export rules</string>
     <string name="feature_filters_export_supporting">As a .txt file</string>
-    <string name="feature_filters_syntax_note">Element hiding rules (##) apply only when Hide page elements is on in Settings. Scriptlets are not supported. The editor marks both.</string>
+    <string name="feature_filters_syntax_note">Turn off Hide page elements in Settings to disable element hiding rules (##).</string>
     <string name="feature_filters_trusted_text">Connections to these sites are not decrypted or blocked. Intended for online banking, intranets and payment pages.</string>
     <string name="feature_filters_add_trusted">Add site</string>
     <string name="feature_filters_remove_trusted">Remove %1$s</string>
@@ -86,7 +86,7 @@
     <string name="feature_filters_kind_document">Page</string>
     <string name="feature_filters_kind_xhr">XHR</string>
     <string name="feature_filters_kind_other">Other</string>
-    <string name="feature_filters_issue_cosmetic">element hiding applies only when Hide page elements is on; scriptlets are not supported.</string>
+    <string name="feature_filters_issue_cosmetic">page rules apply to decrypted pages. Some forms are unsupported or require a trusted subscription.</string>
     <string name="feature_filters_issue_invalid">not a valid rule.</string>
     <string name="feature_filters_issue_line">Line %1$d</string>
     <plurals name="feature_filters_more_issues">
@@ -144,7 +144,7 @@
     <string name="feature_filters_syntax_app">$app= limits a rule to the named app.</string>
     <string name="feature_filters_syntax_path">Blocks matching URLs. * matches any text, and $image limits the rule to images.</string>
     <string name="feature_filters_syntax_exception">@@ allows requests that other rules would block.</string>
-    <string name="feature_filters_syntax_cosmetic">Hides page elements. Applies only when Hide page elements is on in Settings.</string>
+    <string name="feature_filters_syntax_cosmetic">Hides page elements. Turn off Hide page elements in Settings to disable this rule.</string>
     <string name="feature_filters_syntax_comment">A line that starts with ! is a comment.</string>
     <string name="feature_filters_import_too_large">The file exceeds the 16 MB limit for rules</string>
     <string name="feature_filters_schedule">updates %1$s</string>

@@ -350,8 +350,9 @@ to forward, then reuses that connection. The VPN has already connected
 before it answered the app (see below). Unsupported initial
 protocols pass through unchanged.
 
-The shared engine applies optional cosmetic rules to decrypted HTML in both
-root and VPN modes. It puts site CSS and a single script right after the
+The shared engine applies cosmetic rules to decrypted HTML by default in
+both root and VPN modes. **Hide page elements** can be turned off in Settings.
+The engine puts site CSS and a single script right after the
 page's `<head>` tag. The script runs matched uBlock Origin scriptlets
 and hands matched procedural actions to a throttled DOM observer.
 The rule reader maps compatible AdGuard `#%#//scriptlet(...)` calls and

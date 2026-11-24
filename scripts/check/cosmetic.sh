@@ -117,7 +117,8 @@ RULES
     ((i < 50)) || die "the local HTTPS fixture did not start"
 
     local fixture_abd="ABD_DATA=$cosmetic_stage/data $ABD"
-    adb shell "$fixture_abd app add $PACKAGE && $fixture_abd url-filtering on && $fixture_abd cosmetic on"
+    adb shell "$fixture_abd app add $PACKAGE"
+    adb shell "test ! -e $cosmetic_stage/data/settings" || die "the fixture should start without saved settings"
     adb shell "cat > $cosmetic_stage/daemon" <<'ANDROID'
 set -eu
 mount -o rprivate none /
@@ -138,6 +139,8 @@ ANDROID
         sleep .2
     done
     ((i < 50)) || die "the fixture daemon did not select the WebView app"
+    adb shell "$fixture_abd status --json" | jq -e '.cosmetic == true' >/dev/null ||
+        die "the fixture daemon did not enable element hiding by default"
 
     local result_file="/data/user/0/$PACKAGE/files/result" expected result cosmetic
     for cosmetic in true false; do

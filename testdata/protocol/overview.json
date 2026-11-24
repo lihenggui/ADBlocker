@@ -14,7 +14,7 @@
     "lists_updated": 1763531000,
     "url_filtering": true,
     "scope": "chosen",
-    "cosmetic": false,
+    "cosmetic": true,
     "boot_guard": null
   },
   "stats": {

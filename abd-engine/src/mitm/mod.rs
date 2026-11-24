@@ -167,8 +167,7 @@ pub struct Selection {
     pub url_filtering: AtomicBool,
     /// Whether the backend can open HTTPS when URL filtering is enabled.
     pub https_inspection_available: AtomicBool,
-    /// Whether what the lists name is hidden on decrypted pages
-    /// (`cosmetic.rs`): only where the user turned it on.
+    /// Whether what the lists name is hidden on decrypted pages (`cosmetic.rs`).
     pub cosmetic: AtomicBool,
 }
 

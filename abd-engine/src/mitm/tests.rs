@@ -84,8 +84,8 @@ struct Setup {
     )>,
     /// Whether the app is set to have its hosts judged only.
     domain_only: bool,
-    /// Whether what the lists name is hidden on pages.
-    cosmetic: bool,
+    /// The settings file, when the user has saved choices.
+    settings: Option<&'static str>,
     /// The hosts the user trusts, a line each.
     allow: &'static str,
     /// The original destination port and the test socket it maps to.
@@ -105,7 +105,7 @@ impl Default for Setup {
             exclusions: Exclusions::default().assume_ready(),
             before_first_server_handshake: None,
             domain_only: false,
-            cosmetic: false,
+            settings: None,
             allow: "",
             plaintext: None,
             additional_name: None,
@@ -274,6 +274,11 @@ async fn rig(setup: Setup) -> Rig {
     std::fs::create_dir(&rules).unwrap();
     std::fs::write(rules.join("list.txt"), setup.rules).unwrap();
     std::fs::write(dir.path().join("allow"), setup.allow).unwrap();
+    let settings_file = dir.path().join("settings");
+    if let Some(text) = setup.settings {
+        std::fs::write(&settings_file, text).unwrap();
+    }
+    let settings = Settings::try_read(&settings_file, Settings::UNSAID).unwrap();
     let (events, _) = mpsc::unbounded_channel();
     let trusting = setup.trusting;
     let made_to_trust = Arc::new(AtomicUsize::new(0));
@@ -294,7 +299,7 @@ async fn rig(setup: Setup) -> Rig {
             profile_tls: RwLock::default(),
             url_filtering: AtomicBool::new(!setup.domain_only),
             https_inspection_available: AtomicBool::new(true),
-            cosmetic: AtomicBool::new(setup.cosmetic),
+            cosmetic: AtomicBool::new(settings.cosmetic),
         },
         services: Services {
             tls,
@@ -1900,7 +1905,6 @@ async fn adguard_scriptlet_and_style_reach_the_page_like_their_matcher_forms() {
     for rules in [adguard, ublock] {
         let rig = rig(Setup {
             rules,
-            cosmetic: true,
             ..Setup::default()
         })
         .await;
@@ -1918,16 +1922,16 @@ async fn adguard_scriptlet_and_style_reach_the_page_like_their_matcher_forms() {
 }
 
 #[tokio::test]
-async fn what_the_lists_name_is_hidden_on_a_page_where_the_user_has_it_so() {
+async fn without_a_settings_file_matching_elements_are_hidden_on_decrypted_pages() {
     for alpn in [H1, BOTH] {
         let rig = rig(Setup {
             rules: HIDING,
             alpn,
-            cosmetic: true,
             ..Setup::default()
         })
         .await;
-        let (status, body, _) = rig.get(Trust::System, alpn, "/page", None).await.unwrap();
+        let (status, body, real) = rig.get(Trust::System, alpn, "/page", None).await.unwrap();
+        assert!(!real);
         // The style of this site only, where the head begins; and the
         // page asked for unpacked, to have it put in.
         assert_eq!(status, StatusCode::OK);
@@ -1949,7 +1953,6 @@ async fn the_script_runs_first_and_its_hash_only_changes_the_header_policy() {
     let rig = rig(Setup {
         rules: "site.test##+js(set-constant, fixture, 42)\nsite.test##div:has-text(Advert)\n",
         alpn: BOTH,
-        cosmetic: true,
         ..Setup::default()
     })
     .await;
@@ -1989,7 +1992,6 @@ async fn a_trusted_types_policy_keeps_css_and_a_missing_head_keeps_the_original_
     use hyper::header::CONTENT_SECURITY_POLICY;
     let rig = rig(Setup {
         rules: "site.test##+js(set-constant, fixture, 42)\nsite.test##.ad\n",
-        cosmetic: true,
         ..Setup::default()
     })
     .await;
@@ -2014,13 +2016,16 @@ async fn a_trusted_types_policy_keeps_css_and_a_missing_head_keeps_the_original_
 }
 
 #[tokio::test]
-async fn a_page_is_passed_on_as_it_came_unless_the_user_has_it_changed() {
+async fn with_cosmetic_off_a_decrypted_page_is_passed_on_byte_for_byte() {
     let rig = rig(Setup {
         rules: "site.test##.ad\nsite.test##+js(set-constant, fixture, 42)\nsite.test##div:has-text(Advert)\n",
+        settings: Some("cosmetic off\n"),
         ..Setup::default()
     })
     .await;
-    let (_, body, _) = rig.get(Trust::System, H1, "/page", None).await.unwrap();
+    let (status, body, real) = rig.get(Trust::System, H1, "/page", None).await.unwrap();
+    assert!(!real);
+    assert_eq!(status, StatusCode::OK);
     assert_eq!(
         body,
         "<!doctype html><html><head><title>t</title></head><body>gzip, br</body></html>"
@@ -2031,7 +2036,6 @@ async fn a_page_is_passed_on_as_it_came_unless_the_user_has_it_changed() {
 async fn a_page_the_lists_name_nothing_on_has_nothing_put_in() {
     let rig = rig(Setup {
         rules: "other.test##.banner\n##.ad-box\n",
-        cosmetic: true,
         ..Setup::default()
     })
     .await;
@@ -2051,7 +2055,6 @@ async fn what_goes_by_a_class_the_page_has_is_hidden_at_its_end() {
         let rig = rig(Setup {
             rules: "##.ad-box\n##.not-there\nsite.test##.ad\n",
             alpn,
-            cosmetic: true,
             ..Setup::default()
         })
         .await;
@@ -2072,7 +2075,6 @@ async fn what_goes_by_a_class_the_page_has_is_hidden_at_its_end() {
 async fn a_site_the_lists_except_from_such_rules_is_not_looked_through() {
     let rig = rig(Setup {
         rules: "##.ad-box\n@@||site.test^$generichide\n",
-        cosmetic: true,
         ..Setup::default()
     })
     .await;
@@ -2821,7 +2823,6 @@ async fn an_image_response_supplies_the_missing_type_for_the_final_verdict() {
 async fn html_from_a_request_of_assumed_type_does_not_identify_a_page() {
     let rig = rig(Setup {
         rules: "||site.test/replace/html$document,subdocument\nsite.test##body\n",
-        cosmetic: true,
         ..Setup::default()
     })
     .await;
@@ -3012,7 +3013,6 @@ async fn a_request_block_stands_when_no_response_action_applies() {
 async fn a_page_is_replaced_before_the_cosmetic_style_is_inserted() {
     let rig = rig(Setup {
         rules: "site.test##.ad\n||site.test/page$replace=/identity/replaced/,document\n||site.test/page$replace=/display:none/changed/,document\n",
-        cosmetic: true,
         ..Setup::default()
     }).await;
     let (_, status, body, _) = rig

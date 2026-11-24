@@ -72,6 +72,7 @@ internal fun VpnSettings(
     onRemoveRootMode: () -> Unit,
     onUrlFiltering: (Boolean) -> Unit,
     onCosmetic: (Boolean) -> Unit,
+    onOpenCosmeticSecurity: () -> Unit,
     onShowPins: () -> Unit,
 ) {
     var confirmingRoot by rememberSaveable { mutableStateOf(false) }
@@ -81,7 +82,7 @@ internal fun VpnSettings(
     val service = state.service
     MethodRows(state, actions, onRemoveRootMode = { removingRootMode = true }) { confirmingRoot = true }
     VpnSystemRows(state, context)
-    VpnHttpsRows(service, actions.onOpenHttps, onUrlFiltering, onCosmetic, onShowPins) { removingCertificate = true }
+    VpnHttpsRows(service, actions.onOpenHttps, onUrlFiltering, onCosmetic, onOpenCosmeticSecurity, onShowPins) { removingCertificate = true }
 
     if (confirmingRoot) {
         AlertDialog(
@@ -278,6 +279,7 @@ private fun VpnHttpsRows(
     onOpenHttps: () -> Unit,
     onUrlFiltering: (Boolean) -> Unit,
     onCosmetic: (Boolean) -> Unit,
+    onOpenCosmeticSecurity: () -> Unit,
     onShowPins: () -> Unit,
     onRemoveCertificate: () -> Unit,
 ) {
@@ -287,7 +289,7 @@ private fun VpnHttpsRows(
     val urlFiltering = service.status.valueOrNull?.urlFiltering
     val removable = installed
     val showPins = service.pinned is ReadState.Unavailable || service.pinned.valueOrNull?.isNotEmpty() == true
-    val rows = 3 + (if (removable) 1 else 0) + (if (showPins) 1 else 0)
+    val rows = 4 + (if (removable) 1 else 0) + (if (showPins) 1 else 0)
     SectionHeader(stringResource(R.string.feature_settings_https))
     SegmentedGroup(rows) { index ->
         when {
@@ -321,8 +323,10 @@ private fun VpnHttpsRows(
 
             index == 2 -> CosmeticRow(2, rows, service.status.valueOrNull?.cosmetic, service.busy, onCosmetic)
 
-            index == 3 && removable -> SegmentedItem(
-                index = 3,
+            index == 3 -> CosmeticSecurityRow(index, rows, onOpenCosmeticSecurity)
+
+            index == 4 && removable -> SegmentedItem(
+                index = index,
                 count = rows,
                 headline = stringResource(R.string.feature_settings_remove_certificate),
                 supporting = { Text(stringResource(R.string.feature_settings_remove_certificate_text)) },

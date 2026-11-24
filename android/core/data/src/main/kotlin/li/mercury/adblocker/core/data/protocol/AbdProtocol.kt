@@ -97,6 +97,7 @@ private class StatusDto(
     @SerialName("lists_updated") val listsUpdated: Long? = null,
     @SerialName("url_filtering") val urlFiltering: Boolean? = null,
     val scope: String = "chosen",
+    // Current daemons report the setting, which defaults to on. Older daemons may omit it.
     val cosmetic: Boolean? = null,
     @SerialName("boot_guard") val bootGuard: Long? = null,
 )

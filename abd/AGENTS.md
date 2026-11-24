@@ -160,7 +160,7 @@ and `dns/rules.rs` its lookups.
   takes precedence over a request-level block.
 - Preserve unknown page origin in both request matching and diagnostics.
 - The lists come from the network: untrusted input. They select what is
-  blocked, and what is hidden where the user turned that on. Only trusted
+  blocked, and what is hidden when page element hiding is on. Only trusted
   lists and the user's own rules can rewrite a text response.
   `abd-engine/src/update/` never replaces a list with what does not look like one.
 
@@ -168,9 +168,9 @@ and `dns/rules.rs` its lookups.
 
 `cosmetic.rs` puts styles and scripts into pages after any response rewrite.
 
-- Only with `cosmetic on` in the settings, which is off until the user says
-  so; only a whole page in HTML that came unpacked, of a request that was
-  for a document; only where the head of the page plainly begins
+- On by default and disabled by `cosmetic off` in the settings. It applies
+  only to whole, uncompressed HTML pages requested as documents and only
+  where the head of the page plainly begins
   (`cosmetic::place`). Anything else is passed on as it came: when in
   doubt, change nothing.
 - A selector from a list goes into a page only through `cosmetic::style`.

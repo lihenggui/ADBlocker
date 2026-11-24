@@ -180,17 +180,31 @@ class FilterMethodRepositoryTest {
     }
 
     @Test
-    fun givenAnUnconfiguredModuleWithBundledDefaults_whenChoosingVpn_thenNoVpnSettingsAreReplaced() = runTest {
+    fun givenAnUnconfiguredModuleWithElementHidingOnAndBundledDefaults_whenChoosingVpn_thenNoVpnSettingsAreReplaced() = runTest {
         fixture.userData.userData.value = UserData()
         val defaults = FilterCatalog.setupLists(listOf("zh")).filterValues { it } +
             ("https://filters.adtidy.org/extension/ublock/filters/224.txt" to true)
         val root = FakeAbd(lists = defaults).apply { failing += "rules get" }
-        val engine = FakeAbd(apps = setOf("com.example.saved")).apply { unreachable = AbdException.EngineMissing() }
+        val engine = FakeAbd(apps = setOf("com.example.saved"), cosmetic = false)
 
         assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
         assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
         assertEquals(setOf("com.example.saved"), engine.apps)
+        assertFalse(engine.cosmetic)
+        assertTrue(engine.ran.isEmpty())
+    }
+
+    @Test
+    fun givenOnlyElementHidingWasTurnedOffInRootMode_whenChoosingVpn_thenOffIsCarried() = runTest {
+        fixture.userData.userData.value = UserData()
+        val root = FakeAbd(cosmetic = false)
+        val engine = FakeAbd()
+
+        assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+        assertFalse(engine.cosmetic)
+        assertTrue("cosmetic off" in engine.ran)
     }
 
     @Test
@@ -389,7 +403,7 @@ class FilterMethodRepositoryTest {
 
     @Test
     fun givenRootUrlFilteringOn_whenSwitchingToVpn_thenThePreferenceIsCarried() = runTest {
-        val engine = FakeAbd(urlFiltering = false)
+        val engine = FakeAbd(urlFiltering = false, cosmetic = false)
         fixture.repository(FakeAbd(urlFiltering = true, cosmetic = true), engine).switchTo(FilterMethod.Vpn)
         assertTrue(engine.urlFiltering)
         assertTrue(engine.cosmetic)

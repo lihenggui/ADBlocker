@@ -58,7 +58,7 @@ internal class FilterMethodRepositoryFixture {
         trusted: List<String> = emptyList(),
         var rules: String = "",
         var urlFiltering: Boolean = true,
-        var cosmetic: Boolean = false,
+        var cosmetic: Boolean = true,
         var running: Boolean = true,
         var filteringScope: FilteringScope = FilteringScope.Chosen,
         var excluded: Set<String> = emptySet(),

@@ -134,6 +134,17 @@ internal fun CosmeticRow(index: Int, count: Int, cosmetic: Boolean?, busy: Boole
     )
 }
 
+@Composable
+internal fun CosmeticSecurityRow(index: Int, count: Int, onOpen: () -> Unit) {
+    SegmentedItem(
+        index = index,
+        count = count,
+        headline = stringResource(R.string.feature_settings_cosmetic_security),
+        trailing = { Icon(AdbIcons.OpenInNew, contentDescription = null) },
+        onClick = onOpen,
+    )
+}
+
 /** A setting's switch: the row handles the click; it shows the state, with a check while on. */
 @Composable
 internal fun SettingSwitch(checked: Boolean, enabled: Boolean = true) {
@@ -306,25 +317,32 @@ internal fun AppListSettingsRows(
 }
 
 @Composable
-internal fun RootHttpsRows(service: ServiceInfo, onUrlFiltering: (Boolean) -> Unit, onCosmetic: (Boolean) -> Unit) {
+internal fun RootHttpsRows(
+    service: ServiceInfo,
+    onUrlFiltering: (Boolean) -> Unit,
+    onCosmetic: (Boolean) -> Unit,
+    onOpenCosmeticSecurity: () -> Unit,
+) {
     // Whether anything is decrypted: a running daemon of a module
     // that knows the command says.
     val urlFiltering = service.status.valueOrNull?.urlFiltering
     SectionHeader(stringResource(R.string.feature_settings_https))
     val cosmetic = service.status.valueOrNull?.cosmetic
-    SegmentedGroup(2) { row ->
-        if (row == 1) {
-            // Turning it on changes pages: it is explained first. Off needs no word.
-            CosmeticRow(1, 2, cosmetic, service.busy, onCosmetic)
-        } else {
-            UrlFilteringRow(
+    val rows = 3
+    SegmentedGroup(rows) { index ->
+        when (index) {
+            0 -> UrlFilteringRow(
                 index = 0,
-                count = 2,
+                count = rows,
                 checked = urlFiltering == true,
                 enabled = urlFiltering != null && !service.busy,
                 text = if (urlFiltering == null) R.string.feature_settings_url_filtering_unknown else R.string.feature_settings_url_filtering_text,
                 onChange = onUrlFiltering,
             )
+
+            1 -> CosmeticRow(index, rows, cosmetic, service.busy, onCosmetic)
+
+            else -> CosmeticSecurityRow(index, rows, onOpenCosmeticSecurity)
         }
     }
 }

@@ -321,7 +321,7 @@ class SettingsViewModel @Inject constructor(
         write = daemon::setUrlFiltering,
     )
 
-    /** On, the elements the lists name are hidden on decrypted pages (SECURITY.md says what that changes). */
+    /** Saves the page element hiding choice and reconciles it with the daemon. */
     fun setCosmetic(on: Boolean) = changeHttps(on, DaemonStatus::cosmetic, { copy(cosmetic = it) }, write = daemon::setCosmetic)
 
     private fun changeHttps(

@@ -76,7 +76,7 @@ object DemoData {
             listsUpdated = ago(60 * 5),
             urlFiltering = true,
             // Off until the user turns it on: it changes the pages.
-            cosmetic = false,
+            cosmetic = true,
         )
 
     private val week = listOf(812L, 1_204L, 967L, 1_530L, 1_102L, 1_388L, 1_046L)

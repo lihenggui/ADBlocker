@@ -118,8 +118,9 @@ applies response rules before it adds cosmetic styles or scripts.
 
 ### Hiding page elements
 
-**Hide page elements** is off by default. With it on (`abd cosmetic on`),
-ADBlocker can change whole, uncompressed HTML documents it already decrypts.
+**Hide page elements** is on by default. ADBlocker can change whole,
+uncompressed HTML documents it already decrypts. You can turn it off in
+Settings or with `abd cosmetic off`.
 A list can hide legitimate content, change the DOM, or alter page behavior.
 
 - ADBlocker injects selectors as CSS and runs matching functions from a
@@ -292,9 +293,9 @@ connection falls back to TCP.
   it.
 - The engine limits concurrent connections, retained state and filter list
   input. Timeouts bound how long it waits for an app or a server.
-- Filter lists are fetched over HTTPS. They select what is blocked. With
-  **Hide page elements** on, they also select what is hidden and which
-  bundled scriptlets run in decrypted pages, as described in
+- Filter lists are fetched over HTTPS. They select what is blocked and,
+  while **Hide page elements** is enabled, what is hidden and which bundled
+  scriptlets run in decrypted pages, as described in
   [hiding page elements](#hiding-page-elements).
 - When the daemon stops, its lookup routes go with its process, and
   cleanup removes the lookup routing rules and disables TCP marking and

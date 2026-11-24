@@ -171,6 +171,7 @@ pause_personal_while_work_is_retained() {
 }
 
 vpn_files="/data/user/$profile_id/$ADMIN/files"
+# These body comparisons use cleartext HTTP, which is ineligible for page element hiding.
 vpn_target=http://192.0.2.17
 # Use the same routable address without asking DNS while lockdown is active.
 direct_ip=$(adb shell 'ping -c 1 -W 1 example.com 2>&1 || true' |

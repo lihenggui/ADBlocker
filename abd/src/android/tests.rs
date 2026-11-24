@@ -598,11 +598,7 @@ fn reported_shared_apps_are_inactive_while_retaining_their_choices() {
         "com.example.shared\n37:com.example.shared\ncom.example.unknown\n",
     )
     .unwrap();
-    let settings = abd_engine::settings::Settings {
-        url_filtering: true,
-        scope: Default::default(),
-        cosmetic: false,
-    };
+    let settings = abd_engine::settings::Settings::UNSAID;
     let mut listed = abd_engine::protocol::apps(&paths, settings, None, &BTreeSet::new(), 0);
     let work = Profile {
         id: 10,

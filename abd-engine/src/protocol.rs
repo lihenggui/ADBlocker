@@ -58,7 +58,7 @@ pub struct Status {
     /// not finish.
     /// Said by the program (`cli::Host`), not found in the files here.
     pub boot_guard: Option<u64>,
-    /// Whether what the lists name is hidden on decrypted pages.
+    /// Whether what the lists name is hidden on decrypted pages, on by default.
     pub cosmetic: bool,
 }
 
@@ -399,11 +399,7 @@ mod tests {
     use crate::policy::Reason;
 
     const NOW: u64 = 1_763_538_000;
-    const ON: Settings = Settings {
-        url_filtering: true,
-        scope: crate::settings::Scope::Chosen,
-        cosmetic: false,
-    };
+    const ON: Settings = Settings::UNSAID;
     const EASYLIST: &str = "https://easylist.to/easylist/easylist.txt";
     const CHINA: &str = "https://easylist-downloads.adblockplus.org/easylistchina.txt";
     const OLD_ADGUARD_CHINESE: &str = "https://filters.adtidy.org/extension/ublock/filters/224.txt";
@@ -701,8 +697,7 @@ mod tests {
         // What the user turned off comes first: it is the nearer to undo.
         let off = Settings {
             url_filtering: false,
-            scope: crate::settings::Scope::Chosen,
-            cosmetic: false,
+            ..ON
         };
         assert_eq!(said(off)[0], ("hosts", Some("url_filtering_off")));
     }
@@ -713,8 +708,7 @@ mod tests {
         std::fs::write(paths.apps(), "com.a\ncom.b\n").unwrap();
         let off = Settings {
             url_filtering: false,
-            scope: crate::settings::Scope::Chosen,
-            cosmetic: false,
+            ..ON
         };
         let said: Vec<_> = apps(&paths, off, None, &BTreeSet::new(), NOW)
             .into_iter()

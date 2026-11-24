@@ -45,7 +45,7 @@
     <string name="feature_filters_list_rules">%1$s 条规则</string>
     <string name="feature_filters_list_last_error">上次错误：%1$s</string>
     <string name="feature_filters_remove_list">取消订阅</string>
-    <string name="feature_filters_cosmetic_note">此类订阅主要包含元素隐藏规则，仅在“设置”中开启“隐藏页面元素”后生效。</string>
+    <string name="feature_filters_cosmetic_note">此类订阅主要包含元素隐藏规则。可在设置中关闭“隐藏页面元素”来停用这些规则。</string>
     <string name="feature_filters_my_rules">我的规则</string>
     <plurals name="feature_filters_rules_count">
         <item quantity="other">%1$d 条</item>
@@ -68,7 +68,7 @@
     <string name="feature_filters_import_supporting">uBlock Origin 或 AdGuard 语法</string>
     <string name="feature_filters_export">导出规则</string>
     <string name="feature_filters_export_supporting">保存为 .txt 文件</string>
-    <string name="feature_filters_syntax_note">元素隐藏规则（##）仅在“设置”中开启“隐藏页面元素”后生效。不支持脚本注入（scriptlet）。编辑器会标出这两类规则。</string>
+    <string name="feature_filters_syntax_note">在设置中关闭“隐藏页面元素”即可停用元素隐藏规则（##）。</string>
     <string name="feature_filters_trusted_text">不解密、不拦截与这些网站的连接。适用于网上银行、内网和支付页面。</string>
     <string name="feature_filters_add_trusted">添加网站</string>
     <string name="feature_filters_remove_trusted">移除 %1$s</string>
@@ -83,7 +83,7 @@
     <string name="feature_filters_kind_document">页面</string>
     <string name="feature_filters_kind_xhr">XHR</string>
     <string name="feature_filters_kind_other">其他</string>
-    <string name="feature_filters_issue_cosmetic">元素隐藏仅在开启“隐藏页面元素”后生效；不支持脚本注入。</string>
+    <string name="feature_filters_issue_cosmetic">页面规则适用于已解密的网页。部分写法不受支持，或仅限受信任的订阅使用。</string>
     <string name="feature_filters_issue_invalid">不是有效的规则。</string>
     <string name="feature_filters_issue_line">第 %1$d 行</string>
     <plurals name="feature_filters_more_issues">
@@ -135,7 +135,7 @@
     <string name="feature_filters_syntax_app">$app= 将规则限定为指定的应用。</string>
     <string name="feature_filters_syntax_path">拦截匹配的网址。* 匹配任意文字，$image 将规则限定为图片。</string>
     <string name="feature_filters_syntax_exception">@@ 放行其他规则会拦截的请求。</string>
-    <string name="feature_filters_syntax_cosmetic">隐藏页面元素。仅在“设置”中开启“隐藏页面元素”后生效。</string>
+    <string name="feature_filters_syntax_cosmetic">隐藏页面元素。可在设置中关闭“隐藏页面元素”来停用此规则。</string>
     <string name="feature_filters_syntax_comment">以 ! 开头的行是注释。</string>
     <string name="feature_filters_import_too_large">文件超过规则的 16 MB 上限</string>
     <string name="feature_filters_schedule">%1$s自动更新</string>

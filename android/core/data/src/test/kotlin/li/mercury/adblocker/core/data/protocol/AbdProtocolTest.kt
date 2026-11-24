@@ -60,8 +60,14 @@ class AbdProtocolTest {
         assertFalse(status.paused)
         assertNull(status.resumeAt)
         assertEquals(true, status.urlFiltering)
-        assertEquals(false, status.cosmetic)
+        assertEquals(true, status.cosmetic)
         assertNull(status.bootGuard)
+    }
+
+    @Test
+    fun givenElementHidingTurnedOff_whenStatusIsParsed_thenItStaysOff() {
+        val status = parseStatus(case("status.json").replace("\"cosmetic\": true", "\"cosmetic\": false"))
+        assertEquals(false, status.cosmetic)
     }
 
     @Test

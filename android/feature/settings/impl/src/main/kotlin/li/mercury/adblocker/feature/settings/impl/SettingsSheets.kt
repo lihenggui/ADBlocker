@@ -19,13 +19,10 @@ package li.mercury.adblocker.feature.settings.impl
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -36,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -48,30 +44,6 @@ import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.profileAppLabel
-
-/**
- * What turning on the hiding of page elements changes, before it is turned
- * on: the pages of the filtered apps are altered on their way, and may look
- * or work differently. With a link to the security notes.
- */
-@Composable
-internal fun CosmeticSheet(onTurnOn: () -> Unit, onOpenSecurity: () -> Unit, onDismiss: () -> Unit) {
-    AdaptiveSheet(onDismiss = onDismiss, title = stringResource(R.string.feature_settings_cosmetic_title)) {
-        Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(stringResource(R.string.feature_settings_cosmetic_explain), style = MaterialTheme.typography.bodyMedium)
-            Text(stringResource(R.string.feature_settings_cosmetic_explain_break), style = MaterialTheme.typography.bodyMedium)
-            TextButton(onClick = onOpenSecurity, contentPadding = ButtonDefaults.TextButtonWithIconContentPadding) {
-                Text(stringResource(R.string.feature_settings_cosmetic_security))
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Icon(AdbIcons.OpenInNew, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.feature_settings_cancel)) }
-                Button(onClick = onTurnOn) { Text(stringResource(R.string.feature_settings_cosmetic_turn_on)) }
-            }
-        }
-    }
-}
 
 /**
  * The hosts that apps would not accept our certificate for, by app, each to

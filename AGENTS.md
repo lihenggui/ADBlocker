@@ -61,6 +61,7 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
 - URL filtering is global and on by default in both methods
   (`Settings::UNSAID`). When on, all filtered apps can use request-level
   rules where available. The user can turn it off.
+  Page element hiding is on by default in both methods.
 - Verify upstream TLS against Android system roots before signing a leaf
   certificate. Keep HTTPS encrypted until the exclusion policy is ready.
   See SECURITY.md for the limits of local TLS inspection.
