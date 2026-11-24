@@ -22,9 +22,11 @@ import android.content.Intent
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import li.mercury.adblocker.core.common.di.ApplicationScope
 import li.mercury.adblocker.sync.work.UpdateScheduler
 import javax.inject.Inject
+import kotlin.time.Duration.Companion.seconds
 
 /**
  * Started when a new version of the app has been installed, which may
@@ -44,9 +46,13 @@ class AppUpdatedReceiver : BroadcastReceiver() {
         if (intent.action != Intent.ACTION_MY_PACKAGE_REPLACED) return
         // Reading the lists can outlast this call.
         val pending = goAsync()
+        val check = applicationScope.launch { updateScheduler.downloadMissing() }
+        // A root command is not stopped by cancelling its caller, so the
+        // receiver stops waiting rather than the check: a check that has not
+        // finished is not recorded, and the next start of the app runs it.
         applicationScope.launch {
             try {
-                updateScheduler.downloadMissing()
+                withTimeoutOrNull(UpdateScheduler.MISSING_LISTS_READ_TIMEOUT + 1.seconds) { check.join() }
             } finally {
                 pending.finish()
             }

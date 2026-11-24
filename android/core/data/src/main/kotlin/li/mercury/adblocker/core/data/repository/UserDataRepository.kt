@@ -79,6 +79,11 @@ interface UserDataRepository {
 
     /** Publishes the active method and clears the pending switch and its saved apps together. */
     suspend fun setFilterMethod(method: FilterMethod)
+
+    /** The version code of the app whose start last read the lists for one that was never downloaded. */
+    suspend fun listsCheckedVersion(): Long?
+
+    suspend fun setListsCheckedVersion(version: Long)
 }
 
 internal class DataStoreUserDataRepository @Inject constructor(
@@ -164,5 +169,11 @@ internal class DataStoreUserDataRepository @Inject constructor(
 
     override suspend fun setFilterMethod(method: FilterMethod) {
         source.setFilterMethod(method)
+    }
+
+    override suspend fun listsCheckedVersion() = source.listsCheckedVersion()
+
+    override suspend fun setListsCheckedVersion(version: Long) {
+        source.setListsCheckedVersion(version)
     }
 }

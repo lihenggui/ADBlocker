@@ -32,6 +32,7 @@ class TestUserDataRepository(initial: UserData = UserData()) : UserDataRepositor
     private var originalRootApps: Set<String>? = null
     private var handoffAttempt: String? = null
     private var handoffToFinish: String? = null
+    private var listsChecked: Long? = null
 
     override suspend fun setThemeMode(mode: ThemeMode) = userData.update { it.copy(themeMode = mode) }
 
@@ -111,5 +112,11 @@ class TestUserDataRepository(initial: UserData = UserData()) : UserDataRepositor
                 rootHandoffCleanupPending = handoffToFinish != null,
             )
         }
+    }
+
+    override suspend fun listsCheckedVersion() = listsChecked
+
+    override suspend fun setListsCheckedVersion(version: Long) {
+        listsChecked = version
     }
 }
