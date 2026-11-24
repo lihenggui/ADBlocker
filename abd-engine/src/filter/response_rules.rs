@@ -27,7 +27,7 @@ use serde::{Deserialize, Serialize};
 
 use super::{Page, RequestRules, app_names, app_package, network};
 use crate::limits::{MAX_RESPONSE_REGEX_BYTES, MAX_RESPONSE_RULE, MAX_RESPONSE_RULES};
-use crate::response_action::{ActionSpec, ResponseAction};
+use crate::response_action::{ActionKind, ActionSpec, ResponseAction};
 
 /// The order of these names defines the resource-type bits in the cache.
 const TYPES: &[&str] = &[
@@ -77,6 +77,10 @@ enum Qualifier {
 impl Qualifiers {
     /// Keep app and resource-type conditions out of the CSP rule.
     fn take(&mut self, option: &str) -> Qualifier {
+        // AdGuard's reference omits $all for $jsonprune, but its lists use it.
+        if option == "all" {
+            return Qualifier::Taken;
+        }
         if let Some(names) = option.strip_prefix("app=") {
             if self.apps.is_some() {
                 return Qualifier::Invalid;
@@ -156,19 +160,25 @@ fn options(text: &str) -> impl Iterator<Item = &str> {
     })
 }
 
-fn is_action(option: &str) -> bool {
-    option == "replace" || option.starts_with("replace=")
+fn action_kind(option: &str) -> Option<ActionKind> {
+    match option.split('=').next()? {
+        "jsonprune" => Some(ActionKind::Prune),
+        "replace" => Some(ActionKind::Replace),
+        _ => None,
+    }
 }
 
 /// Separate a network response rule from its options and leave cosmetic rules alone.
 fn split(line: &str) -> Option<(&str, &str)> {
     let line = line.trim();
-    if crate::rule_text::is_comment(line) || !line.contains("replace") {
+    if crate::rule_text::is_comment(line)
+        || !(line.contains("replace") || line.contains("jsonprune"))
+    {
         return None;
     }
     let at = option_separator(line)?;
     let suffix = &line[at + 1..];
-    if !options(suffix).any(is_action) {
+    if !options(suffix).any(|option| action_kind(option).is_some()) {
         return None;
     }
     let parse = ParseOptions {
@@ -210,6 +220,13 @@ fn option_separator(line: &str) -> Option<usize> {
         }
         if let Some(value) = line[cursor..].strip_prefix("replace=/") {
             cursor = line.len() - value.len() + option_value_end(value);
+        } else if line[cursor..]
+            .strip_prefix("jsonprune")
+            .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+        {
+            // Keep malformed quoting in the response rule so it cannot
+            // turn into a block by moving the option separator.
+            return last;
         }
     }
     last
@@ -311,11 +328,25 @@ fn action(value: &str) -> Option<ActionSpec> {
         })
 }
 
+/// Reject unsupported qualifiers before projecting away any app or type options.
+fn prune_option(option: &str) -> bool {
+    let (name, value) = option
+        .split_once('=')
+        .map_or((option, None), |(n, v)| (n, Some(v)));
+    match name {
+        "domain" | "from" | "app" => value.is_some_and(|v| !v.is_empty()),
+        "third-party" | "3p" | "first-party" | "1p" | "~third-party" | "~3p" | "~first-party"
+        | "~1p" | "all" | "important" | "match-case" | "xmlhttprequest" | "xhr" => value.is_none(),
+        _ => false,
+    }
+}
+
 /// A source rule before its condition and action are assigned cache indices.
 struct Parsed {
     pattern: String,
     options: Vec<String>,
     action: Option<ActionSpec>,
+    kind: ActionKind,
     qualifiers: Qualifiers,
     exception: bool,
 }
@@ -331,15 +362,27 @@ impl Parsed {
         let mut rest = Vec::new();
         let mut found = None;
         for option in options(options_text) {
-            if is_action(option) {
+            if let Some(kind) = action_kind(option) {
                 if found.is_some() {
                     return None;
                 }
-                found = Some(match option.strip_prefix("replace=") {
-                    Some(value) if !value.is_empty() => Some(action(value)?),
-                    _ if exception => None,
+                let value = match option.split_once('=') {
+                    Some((_, value)) if !value.is_empty() => Some(match kind {
+                        ActionKind::Replace => action(value)?,
+                        ActionKind::Prune => {
+                            if unescaped(value, b'$').next().is_some() {
+                                return None;
+                            }
+                            let expression = unescape(value, &[',', '$']);
+                            crate::jsonpath::Path::parse(&expression)?;
+                            ActionSpec::Prune(expression)
+                        }
+                    }),
+                    None if exception => None,
+                    Some((_, "")) if exception && kind == ActionKind::Replace => None,
                     _ => return None,
-                });
+                };
+                found = Some((kind, value));
             } else {
                 match qualifiers.take(option) {
                     Qualifier::Taken => (),
@@ -348,10 +391,18 @@ impl Parsed {
                 }
             }
         }
+        let (kind, action) = found?;
+        if kind == ActionKind::Prune
+            && options(options_text)
+                .any(|option| action_kind(option).is_none() && !prune_option(option))
+        {
+            return None;
+        }
         let parsed = Self {
             pattern: pattern.strip_prefix("@@").unwrap_or(pattern).to_owned(),
             options: rest,
-            action: found?,
+            kind,
+            action,
             qualifiers,
             exception,
         };
@@ -384,16 +435,22 @@ pub(crate) fn check(line: &str) -> Option<bool> {
 #[derive(Serialize, Deserialize)]
 struct Rule {
     qualifiers: Qualifiers,
-    /// The action index, absent only on an exception that takes back every action.
-    action: Option<usize>,
+    /// The action index or the kind suppressed by an unvalued exception.
+    action: RuleAction,
     exception: bool,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize)]
+enum RuleAction {
+    One(usize),
+    All(ActionKind),
 }
 
 /// The action specs and numbered conditions stored alongside the engine.
 #[derive(Serialize, Deserialize)]
 struct Table {
     actions: Vec<ActionSpec>,
-    /// In alphabetical rule order, which is also the order in which actions run.
+    /// In alphabetical rule order, preserved within each action kind.
     rules: Vec<Rule>,
 }
 
@@ -455,10 +512,10 @@ impl ResponseRules {
         for p in &parsed {
             let action = match &p.action {
                 Some(spec) => match ids.get(spec) {
-                    Some(Some(id)) => Some(*id),
+                    Some(Some(id)) => RuleAction::One(*id),
                     _ => continue,
                 },
-                None => None,
+                None => RuleAction::All(p.kind),
             };
             conditions.push_str(&p.project(rules.len()));
             conditions.push('\n');
@@ -489,8 +546,8 @@ impl ResponseRules {
             || table.actions.is_empty()
             || table.actions.len() > table.rules.len()
             || table.rules.iter().any(|rule| match rule.action {
-                Some(id) => id >= table.actions.len(),
-                None => !rule.exception,
+                RuleAction::One(id) => id >= table.actions.len(),
+                RuleAction::All(_) => !rule.exception,
             })
         {
             return None;
@@ -508,13 +565,14 @@ impl ResponseRules {
         })
     }
 
-    /// Return distinct actions in source rule order. A matching exception
-    /// with a value removes that action. One without a value removes all.
+    /// Resolve exceptions before applying any actions. Unvalued exceptions
+    /// suppress only their own kind.
     pub(super) fn actions(
         &self,
         request: &Request,
         kind: &str,
         app: &str,
+        skip_prune: bool,
     ) -> Vec<Arc<ResponseAction>> {
         let Some(tokens) = self.engine.get_csp_directives(request) else {
             return Vec::new();
@@ -530,24 +588,38 @@ impl ResponseRules {
             .collect();
         matched.sort_unstable_by_key(|(id, _)| *id);
         let mut seen = vec![false; self.compiled.len()];
+        let mut skip_prune = skip_prune;
+        let mut skip_replace = false;
         for (_, rule) in matched.iter().filter(|(_, rule)| rule.exception) {
-            let Some(id) = rule.action else {
-                return Vec::new();
-            };
-            seen[id] = true;
+            match rule.action {
+                RuleAction::One(id) => seen[id] = true,
+                RuleAction::All(ActionKind::Prune) => skip_prune = true,
+                RuleAction::All(ActionKind::Replace) => skip_replace = true,
+            }
         }
-        matched
-            .into_iter()
-            .filter(|(_, rule)| !rule.exception)
-            .filter_map(|(_, rule)| {
-                let id = rule.action?;
-                (!std::mem::replace(&mut seen[id], true)).then(|| self.compiled[id].clone())
-            })
-            .collect()
+        let mut prune = Vec::new();
+        let mut replace = Vec::new();
+        for (_, rule) in matched.into_iter().filter(|(_, rule)| !rule.exception) {
+            let RuleAction::One(id) = rule.action else {
+                continue;
+            };
+            let action = &self.compiled[id];
+            match action.kind() {
+                ActionKind::Prune if !skip_prune && !seen[id] => prune.push(action.clone()),
+                ActionKind::Replace if !skip_replace && !std::mem::replace(&mut seen[id], true) => {
+                    replace.push(action.clone());
+                }
+                _ => (),
+            }
+        }
+        // AdGuard does not specify an order between kinds. Prune JSON
+        // first so replacements can operate on the remaining text.
+        prune.extend(replace);
+        prune
     }
 }
 
-/// Charge each expression once, including the auxiliary compiled matchers.
+/// Charge the compiled regex heap once per distinct action.
 fn compile_with_budget(spec: &ActionSpec, remaining: &mut usize) -> Option<Arc<ResponseAction>> {
     let action = spec.compile()?;
     *remaining = remaining.checked_sub(action.regex_bytes())?;
@@ -566,16 +638,13 @@ impl super::AppFilters<'_> {
         let Some(rules) = &self.filters.responses else {
             return Vec::new();
         };
-        if self
-            .filters
-            .page_exceptions
-            .excepts_response(url, page, method)
-        {
+        let exceptions = self.filters.page_exceptions.response(url, page, method);
+        if exceptions.all {
             return Vec::new();
         }
         RequestRules::request_with_page(url, page, "document", method)
             .map_or_else(Vec::new, |request| {
-                rules.actions(&request, kind, self.app_name)
+                rules.actions(&request, kind, self.app_name, exceptions.prune)
             })
     }
 }

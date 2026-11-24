@@ -28,14 +28,22 @@ use super::{Page, RequestRules, is_network_exception, network, response_rules};
 pub(super) struct PageExceptions {
     pub(super) all: Option<Engine>,
     pub(super) content: Option<Engine>,
+    pub(super) urlblock: Option<Engine>,
     pub(super) element: Option<Engine>,
     pub(super) specific: Option<(Engine, Engine)>,
+}
+
+#[derive(Default)]
+pub(super) struct ResponseExceptions {
+    pub(super) all: bool,
+    pub(super) prune: bool,
 }
 
 impl PageExceptions {
     pub(super) fn build<'a>(lists: impl Iterator<Item = &'a str> + Clone) -> Self {
         let mut all = String::new();
         let mut content = String::new();
+        let mut urlblock = String::new();
         let mut element = String::new();
         let mut specific = String::new();
         for line in lists.clone().flat_map(str::lines).map(str::trim) {
@@ -48,6 +56,7 @@ impl PageExceptions {
             let options = options.split(',');
             let any = |names: &[&str]| options.clone().any(|option| names.contains(&option));
             let also_content = any(&["content"]) && !any(&["document", "doc"]);
+            let also_urlblock = any(&["urlblock"]);
             let target = if any(&["document", "doc"]) {
                 Some(&mut all)
             } else if any(&["elemhide", "ehide"])
@@ -59,33 +68,20 @@ impl PageExceptions {
             } else {
                 None
             };
-            if target.is_none() && !also_content {
+            if target.is_none() && !also_content && !also_urlblock {
                 continue;
             }
-            let mut projected = format!("{rule}$document");
-            for option in options {
-                if !matches!(
-                    option,
-                    "document"
-                        | "doc"
-                        | "content"
-                        | "elemhide"
-                        | "ehide"
-                        | "specifichide"
-                        | "shide"
-                        | "generichide"
-                        | "ghide"
-                ) {
-                    projected.push(',');
-                    projected.push_str(option);
-                }
-            }
+            let projected = document_exception(rule, options);
             if network(&projected)
                 .is_some_and(|rule| rule.is_badfilter() || is_network_exception(&rule))
             {
                 if let Some(target) = target {
                     target.push_str(&projected);
                     target.push('\n');
+                }
+                if also_urlblock {
+                    urlblock.push_str(&projected);
+                    urlblock.push('\n');
                 }
                 if also_content {
                     content.push_str(&projected);
@@ -107,23 +103,29 @@ impl PageExceptions {
         Self {
             all: (!all.is_empty()).then(|| compile(all, ParseOptions::default())),
             content: (!content.is_empty()).then(|| compile(content, ParseOptions::default())),
+            urlblock: (!urlblock.is_empty()).then(|| compile(urlblock, ParseOptions::default())),
             element: (!element.is_empty()).then(|| compile(element, ParseOptions::default())),
             specific,
         }
     }
 
-    pub(super) fn excepts_response(&self, url: &str, page: Page<'_>, method: &str) -> bool {
-        if self.all.is_none() && self.content.is_none() {
-            return false;
+    pub(super) fn response(&self, url: &str, page: Page<'_>, method: &str) -> ResponseExceptions {
+        if self.all.is_none() && self.content.is_none() && self.urlblock.is_none() {
+            return ResponseExceptions::default();
         }
         let (url, method) = match page {
             Page::Named(page) => (page.url.as_str(), "GET"),
             Page::Itself => (url, method),
-            Page::Unnamed { .. } => return false,
+            Page::Unnamed { .. } => return ResponseExceptions::default(),
         };
-        RequestRules::request_with_page(url, Page::Itself, "document", method).is_some_and(|page| {
-            Self::matches(self.all.as_ref(), &page) || Self::matches(self.content.as_ref(), &page)
-        })
+        RequestRules::request_with_page(url, Page::Itself, "document", method).map_or_else(
+            ResponseExceptions::default,
+            |page| ResponseExceptions {
+                all: Self::matches(self.all.as_ref(), &page)
+                    || Self::matches(self.content.as_ref(), &page),
+                prune: Self::matches(self.urlblock.as_ref(), &page),
+            },
+        )
     }
 
     pub(super) fn matches(engine: Option<&Engine>, page: &Request) -> bool {
@@ -134,6 +136,30 @@ impl PageExceptions {
                 .is_some()
         })
     }
+}
+
+/// Match page-specific modifiers through the same network options as a document exception.
+fn document_exception<'a>(rule: &str, options: impl Iterator<Item = &'a str>) -> String {
+    let mut projected = format!("{rule}$document");
+    for option in options {
+        if !matches!(
+            option,
+            "document"
+                | "doc"
+                | "content"
+                | "urlblock"
+                | "elemhide"
+                | "ehide"
+                | "specifichide"
+                | "shide"
+                | "generichide"
+                | "ghide"
+        ) {
+            projected.push(',');
+            projected.push_str(option);
+        }
+    }
+    projected
 }
 
 fn compile(text: String, options: ParseOptions) -> Engine {

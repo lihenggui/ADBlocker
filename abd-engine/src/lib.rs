@@ -33,6 +33,7 @@ pub mod exclusions;
 pub mod files;
 pub mod filter;
 mod host;
+mod jsonpath;
 pub mod limits;
 mod list_files;
 mod list_url;

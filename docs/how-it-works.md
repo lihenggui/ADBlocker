@@ -309,10 +309,13 @@ URL and available resource type still inform the decision.
 
 A `$replace` rule searches the text of a response with a regular
 expression and substitutes the replacement for each match. With URL
-filtering on, a matching rule takes precedence over request-level blocks.
-The engine can rewrite an eligible uncompressed text response up to
-2 MiB. It takes these rules from the user's custom rules and catalog
-lists marked as trusted for response rules.
+filtering on, a matching `$replace` rule takes precedence over
+request-level blocks. A matching `$jsonprune` rule removes items from a
+JSON or JSONP response and leaves request blocking in effect. The engine
+applies `$jsonprune` before `$replace`. It can rewrite an eligible
+uncompressed text response up to 2 MiB. It takes these rules from the
+user's custom rules and catalog lists marked as trusted for response
+rules.
 
 A rule can name the apps it is for with AdGuard's `$app=` option:
 `||ads.example^$app=com.reader` blocks the host in that app only, and

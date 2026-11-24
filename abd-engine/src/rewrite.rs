@@ -233,7 +233,7 @@ impl Drop for Work {
 }
 
 /// Keep intermediate results off the body until every action succeeds.
-fn replace(
+fn apply_actions(
     input: &[u8],
     actions: Vec<Arc<ResponseAction>>,
     within_budget: &dyn Fn() -> bool,
@@ -331,7 +331,7 @@ impl<B: Body<Data = Bytes> + Unpin> Rewrite<B> {
                 None,
             ));
         };
-        self.state = State::Rewriting(Work::start(collection, worker, replace));
+        self.state = State::Rewriting(Work::start(collection, worker, apply_actions));
         self.poll_work(cx)
     }
 
