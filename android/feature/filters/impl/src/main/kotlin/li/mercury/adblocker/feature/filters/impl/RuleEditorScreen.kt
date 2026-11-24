@@ -368,6 +368,7 @@ private fun SyntaxSheet(onDismiss: () -> Unit) {
     val examples = listOf(
         "||ads.example^" to R.string.feature_filters_syntax_host,
         "||track.example^\$third-party" to R.string.feature_filters_syntax_option,
+        "||ads.example^\$app=com.example.app" to R.string.feature_filters_syntax_app,
         "/banner/*/ad_\$image" to R.string.feature_filters_syntax_path,
         "@@||cdn.example/player.js^" to R.string.feature_filters_syntax_exception,
         "example.com##.ad-banner" to R.string.feature_filters_syntax_cosmetic,

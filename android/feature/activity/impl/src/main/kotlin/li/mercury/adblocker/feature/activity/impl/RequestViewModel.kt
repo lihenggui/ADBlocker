@@ -46,6 +46,8 @@ data class RequestUiState(
     /** The request is no longer kept, as after the process ended: the page closes. */
     val gone: Boolean = false,
     val trustSite: String? = request?.let { siteOf(it.host) },
+    /** The package a block for this app alone names; null when the host can only be blocked in every app. */
+    val blockPackage: String? = request?.identity?.rulePackage,
     val app: InstalledApp? = null,
     /** The current rules’ result for testing the recorded URL as a GET request. */
     val rule: RuleCheckResult? = null,
@@ -90,10 +92,20 @@ class RequestViewModel @AssistedInject constructor(
         }
     }
 
-    /** Blocks the request's host and every name below it. */
+    /** Blocks the request's host and every name below it, in every app. */
     fun blockHost() = act { request ->
         rules.blockDomain(request.host)
-        messages.show(UiMessage(R.string.feature_activity_blocked_host, listOf(request.host)))
+        messages.show(UiMessage(R.string.feature_activity_blocked_host_everywhere, listOf(request.host)))
+    }
+
+    /** Blocks the request's host and every name below it in the app that made the request, in each of its profiles. */
+    fun blockHostInApp() {
+        val app = initial.blockPackage ?: return
+        act { request ->
+            rules.blockDomain(request.host, app)
+            val label = uiState.value.app?.label ?: app
+            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(request.host, label)))
+        }
     }
 
     fun forgetPinned() = act { request ->

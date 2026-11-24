@@ -29,6 +29,8 @@ import li.mercury.adblocker.core.data.repository.ActivityFeed
 import li.mercury.adblocker.core.data.repository.ActivityRepository
 import li.mercury.adblocker.core.data.repository.AppsRepository
 import li.mercury.adblocker.core.data.repository.RulesRepository
+import li.mercury.adblocker.core.model.AppEntry
+import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.RequestEvent
 import li.mercury.adblocker.core.model.RuleCheckResult
 import li.mercury.adblocker.core.model.Verdict
@@ -60,10 +62,10 @@ class RequestViewModelTest {
         val apps = object : AppsRepository by unexpected() {
             override suspend fun app(packageName: String) = null
         }
-        val blocked = mutableListOf<String>()
+        val blocked = mutableListOf<Pair<String, String?>>()
         val rules = object : RulesRepository by unexpected() {
-            override suspend fun blockDomain(host: String) {
-                blocked += host
+            override suspend fun blockDomain(domain: String, app: String?) {
+                blocked += domain to app
             }
         }
         val viewModel = RequestViewModel(request.id, recorder, apps, rules)
@@ -72,14 +74,90 @@ class RequestViewModelTest {
 
         viewModel.blockHost()
         runCurrent()
-        assertEquals(listOf(request.host), blocked)
+        assertEquals(listOf<Pair<String, String?>>(request.host to null), blocked)
         assertTrue(viewModel.uiState.value.done)
 
         val message = viewModel.pendingMessages.first().single()
-        assertEquals(R.string.feature_activity_blocked_host, message.message.text)
+        assertEquals(R.string.feature_activity_blocked_host_everywhere, message.message.text)
         assertEquals(message, viewModel.pendingMessages.first().single())
         viewModel.onMessageShown(message.id)
         assertEquals(emptyList(), viewModel.pendingMessages.value)
+    }
+
+    @Test
+    fun givenAPersonalApp_whenTheHostIsBlockedInIt_thenTheRuleNamesItsPackageAndTheMessageItsLabel() = runTest {
+        val request = allowed("com.example.news")
+        val blocked = mutableListOf<Pair<String, String?>>()
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), blocking(blocked))
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals("com.example.news", viewModel.uiState.value.blockPackage)
+
+        viewModel.blockHostInApp()
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>("ads.example" to "com.example.news"), blocked)
+        assertTrue(viewModel.uiState.value.done)
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(R.string.feature_activity_blocked_host_in_app, message.text)
+        assertEquals(listOf<Any>("ads.example", "News"), message.args)
+    }
+
+    @Test
+    fun givenAWorkProfileApp_whenTheHostIsBlockedInIt_thenTheRuleNamesThePackageWithoutTheProfile() = runTest {
+        val request = allowed("com.example.news", profileSerial = 12)
+        val blocked = mutableListOf<Pair<String, String?>>()
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, null), blocking(blocked))
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+
+        viewModel.blockHostInApp()
+        runCurrent()
+
+        assertEquals(listOf<Pair<String, String?>>("ads.example" to "com.example.news"), blocked)
+        assertEquals(listOf<Any>("ads.example", "com.example.news"), viewModel.pendingMessages.value.single().message.args)
+    }
+
+    @Test
+    fun givenASharedUidGroup_whenOpened_thenTheHostCanOnlyBeBlockedInEveryApp() = runTest {
+        val request = allowed("@com.example.shared")
+        val blocked = mutableListOf<Pair<String, String?>>()
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, null), blocking(blocked))
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+        assertNull(viewModel.uiState.value.blockPackage)
+
+        viewModel.blockHostInApp()
+        runCurrent()
+
+        assertEquals(emptyList(), blocked)
+        assertFalse(viewModel.uiState.value.done)
+        assertTrue(viewModel.pendingMessages.value.isEmpty())
+    }
+
+    private fun allowed(packageName: String, profileSerial: Long? = null) = RequestEvent(1, Instant.EPOCH, packageName, Verdict.Allowed, "ads.example", null, null, null, null, profileSerial)
+
+    private suspend fun recorderOf(request: RequestEvent): ActivityRecorder {
+        val activity = object : ActivityRepository by unexpected() {
+            override fun feed(packageName: String?, buffer: ActivityBuffer?) = flowOf(ActivityFeed(listOf(request), 0))
+        }
+        val recorder = ActivityRecorder(activity, TestUserDataRepository())
+        assertTrue(recorder.requestStart())
+        recorder.record()
+        return recorder
+    }
+
+    private fun appsNaming(request: RequestEvent, label: String?) = object : AppsRepository by unexpected() {
+        override suspend fun app(packageName: String) = label?.let {
+            assertEquals(request.appKey, packageName)
+            AppEntry(InstalledApp(request.packageName, it, icon = null, isSystem = false), filter = null)
+        }
+    }
+
+    private fun blocking(blocked: MutableList<Pair<String, String?>>) = object : RulesRepository by unexpected() {
+        override suspend fun blockDomain(domain: String, app: String?) {
+            blocked += domain to app
+        }
     }
 
     @Test

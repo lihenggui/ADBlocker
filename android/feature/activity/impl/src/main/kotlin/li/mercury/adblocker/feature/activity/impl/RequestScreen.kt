@@ -93,6 +93,7 @@ fun RequestScreen(onClose: () -> Unit, viewModel: RequestViewModel, modifier: Mo
             state = state,
             onTrust = viewModel::trustSite,
             onBlock = viewModel::blockHost,
+            onBlockInApp = viewModel::blockHostInApp,
             onForget = viewModel::forgetPinned,
         )
         // Shown here only as a pane; in a sheet, the screen below shows it.
@@ -106,6 +107,7 @@ internal fun RequestContent(
     state: RequestUiState,
     onTrust: () -> Unit,
     onBlock: () -> Unit,
+    onBlockInApp: () -> Unit,
     onForget: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -127,8 +129,10 @@ internal fun RequestContent(
             verdict = request.verdict,
             reason = request.reason,
             trustSite = state.trustSite,
+            blockApp = state.blockPackage?.let { state.app?.label ?: it },
             onTrust = onTrust,
             onBlock = onBlock,
+            onBlockInApp = onBlockInApp,
             onForget = onForget,
             onCopy = {
                 scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(request.host, request.url ?: request.host))) }
@@ -214,8 +218,11 @@ private fun RequestActions(
     verdict: Verdict,
     reason: PassReason?,
     trustSite: String?,
+    /** The app's label when the host can be blocked in that app alone. */
+    blockApp: String?,
     onTrust: () -> Unit,
     onBlock: () -> Unit,
+    onBlockInApp: () -> Unit,
     onForget: () -> Unit,
     onCopy: () -> Unit,
 ) {
@@ -227,11 +234,13 @@ private fun RequestActions(
                 Text(stringResource(R.string.feature_activity_trust_site, trustSite))
             }
 
-            verdict == Verdict.Allowed -> Button(onClick = onBlock) {
-                Icon(AdbIcons.Block, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.feature_activity_block_host))
+            // The request's own app first; every app is the wider alternative.
+            verdict == Verdict.Allowed && blockApp != null -> {
+                BlockButton(stringResource(R.string.feature_activity_block_in_app, blockApp), onBlockInApp)
+                FilledTonalButton(onClick = onBlock) { Text(stringResource(R.string.feature_activity_block_in_all_apps)) }
             }
+
+            verdict == Verdict.Allowed -> BlockButton(stringResource(R.string.feature_activity_block_host), onBlock)
 
             reason == PassReason.Pinned -> FilledTonalButton(onClick = onForget) { Text(stringResource(R.string.feature_activity_forget)) }
         }
@@ -240,6 +249,15 @@ private fun RequestActions(
             Spacer(Modifier.size(ButtonDefaults.IconSpacing))
             Text(stringResource(R.string.feature_activity_copy))
         }
+    }
+}
+
+@Composable
+private fun BlockButton(label: String, onClick: () -> Unit) {
+    Button(onClick = onClick) {
+        Icon(AdbIcons.Block, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
+        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+        Text(label)
     }
 }
 

@@ -102,6 +102,26 @@ class RulesRepositoryTest {
     }
 
     @Test
+    fun givenAnApp_whenABlockRuleIsWritten_thenItNamesThePackageInLowerCase() {
+        assertEquals("||janapi.example^\$app=com.example.reader", blockRule("JanApi.example", app = "com.Example.Reader"))
+    }
+
+    @Test
+    fun givenAnApp_whenADomainIsBlocked_thenItsRuleIsAppendedOnce() = runTest {
+        val appended = mutableListOf<Pair<String, Boolean>>()
+        val abd = object : AbdClient by unexpected() {
+            override suspend fun appendUserRules(text: String, unique: Boolean) {
+                appended += text to unique
+            }
+        }
+        val repository = AbdRulesRepository(RuntimeEnvironment.getApplication(), abd, DataChanges(), DocumentWriter { _, _ -> }, StandardTestDispatcher(testScheduler))
+
+        repository.blockDomain("ads.example", app = "com.example.reader")
+
+        assertEquals(listOf("||ads.example^\$app=com.example.reader\n" to true), appended)
+    }
+
+    @Test
     fun aFileUpToTheLimitIsReadWhole() {
         val bytes = ByteArray(1_000) { 'a'.code.toByte() }
         assertEquals(1_000, readLimited(ByteArrayInputStream(bytes), max = 1_000).size)
