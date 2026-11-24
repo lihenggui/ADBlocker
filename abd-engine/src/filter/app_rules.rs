@@ -31,8 +31,7 @@ use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
 use super::host_rules::{GuardCoverage, guards_exception, project_guard, whole_rule};
-use super::{Check, network, source_option};
-use crate::apps::{Identity, valid_package};
+use super::{Check, app_names, app_package, network, source_option};
 
 /// An exception for every address, as a guard: the exception it stands
 /// for could not be narrowed to hosts.
@@ -75,6 +74,9 @@ fn name_hash(package: &str) -> u64 {
 }
 
 fn scoped(line: &str) -> Option<Scoped<'_>> {
+    if super::response_rules::is_response_rule(line) {
+        return None;
+    }
     let (pattern, all) = line.trim().rsplit_once('$')?;
     let mut apps = None;
     let mut options = Vec::new();
@@ -91,14 +93,11 @@ fn scoped(line: &str) -> Option<Scoped<'_>> {
             options.push(option);
         }
     }
-    let apps = apps?;
-    apps.split('|')
-        .all(|name| valid_package(name.strip_prefix('~').unwrap_or(name)))
-        .then(|| Scoped {
-            pattern,
-            options,
-            apps: apps.to_ascii_lowercase(),
-        })
+    Some(Scoped {
+        pattern,
+        options,
+        apps: app_names(apps?)?,
+    })
 }
 
 impl Scoped<'_> {
@@ -284,9 +283,7 @@ impl AppRules {
     /// `app`, as the engine names it, if it is one these rules can name: a
     /// package, and not a shared UID's group.
     pub(super) fn scope(app: &str) -> Option<Scope> {
-        Identity::parse(app)
-            .filter(|identity| !identity.is_group())
-            .map(|identity| Scope(name_hash(identity.package)))
+        app_package(app).map(|name| Scope(name_hash(name)))
     }
 
     /// Judges `req` by the rules of `web` and those of the app together:

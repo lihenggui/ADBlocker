@@ -12,14 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Compiles the page-level exceptions used during cosmetic filtering.
+//! Compiles the page-level exceptions for cosmetic filtering and response rules.
 
 use adblock::Engine;
 use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::lists::{FilterSet, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 use adblock::request::Request;
 
-use super::{is_network_exception, network};
+use super::{Page, RequestRules, is_network_exception, network, response_rules};
 
 /// adblock-rust handles generic-hide and cosmetic exceptions itself. It
 /// treats document exceptions as network exceptions and does not parse
@@ -27,6 +27,7 @@ use super::{is_network_exception, network};
 #[derive(Default)]
 pub(super) struct PageExceptions {
     pub(super) all: Option<Engine>,
+    pub(super) content: Option<Engine>,
     pub(super) element: Option<Engine>,
     pub(super) specific: Option<(Engine, Engine)>,
 }
@@ -34,34 +35,40 @@ pub(super) struct PageExceptions {
 impl PageExceptions {
     pub(super) fn build<'a>(lists: impl Iterator<Item = &'a str> + Clone) -> Self {
         let mut all = String::new();
+        let mut content = String::new();
         let mut element = String::new();
         let mut specific = String::new();
         for line in lists.clone().flat_map(str::lines).map(str::trim) {
             let Some((rule, options)) = line.rsplit_once('$') else {
                 continue;
             };
-            if !rule.starts_with("@@") {
+            if !rule.starts_with("@@") || response_rules::is_response_rule(line) {
                 continue;
             }
             let options = options.split(',');
             let any = |names: &[&str]| options.clone().any(|option| names.contains(&option));
+            let also_content = any(&["content"]) && !any(&["document", "doc"]);
             let target = if any(&["document", "doc"]) {
-                &mut all
+                Some(&mut all)
             } else if any(&["elemhide", "ehide"])
                 || (any(&["specifichide", "shide"]) && any(&["generichide", "ghide"]))
             {
-                &mut element
+                Some(&mut element)
             } else if any(&["specifichide", "shide"]) {
-                &mut specific
+                Some(&mut specific)
             } else {
-                continue;
+                None
             };
+            if target.is_none() && !also_content {
+                continue;
+            }
             let mut projected = format!("{rule}$document");
             for option in options {
                 if !matches!(
                     option,
                     "document"
                         | "doc"
+                        | "content"
                         | "elemhide"
                         | "ehide"
                         | "specifichide"
@@ -76,8 +83,14 @@ impl PageExceptions {
             if network(&projected)
                 .is_some_and(|rule| rule.is_badfilter() || is_network_exception(&rule))
             {
-                target.push_str(&projected);
-                target.push('\n');
+                if let Some(target) = target {
+                    target.push_str(&projected);
+                    target.push('\n');
+                }
+                if also_content {
+                    content.push_str(&projected);
+                    content.push('\n');
+                }
             }
         }
         let specific = (!specific.is_empty()).then(|| {
@@ -93,9 +106,24 @@ impl PageExceptions {
         });
         Self {
             all: (!all.is_empty()).then(|| compile(all, ParseOptions::default())),
+            content: (!content.is_empty()).then(|| compile(content, ParseOptions::default())),
             element: (!element.is_empty()).then(|| compile(element, ParseOptions::default())),
             specific,
         }
+    }
+
+    pub(super) fn excepts_response(&self, url: &str, page: Page<'_>, method: &str) -> bool {
+        if self.all.is_none() && self.content.is_none() {
+            return false;
+        }
+        let (url, method) = match page {
+            Page::Named(page) => (page.url.as_str(), "GET"),
+            Page::Itself => (url, method),
+            Page::Unnamed { .. } => return false,
+        };
+        RequestRules::request_with_page(url, Page::Itself, "document", method).is_some_and(|page| {
+            Self::matches(self.all.as_ref(), &page) || Self::matches(self.content.as_ref(), &page)
+        })
     }
 
     pub(super) fn matches(engine: Option<&Engine>, page: &Request) -> bool {

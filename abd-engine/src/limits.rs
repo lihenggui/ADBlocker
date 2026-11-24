@@ -36,6 +36,27 @@ const SPARE: usize = 128;
 /// The most app identities remembered for having shown a page.
 pub(crate) const MAX_APPS_WITH_PAGES: usize = 4096;
 
+/// The most response rules kept from a generation of lists. The compiled
+/// expressions share `MAX_RESPONSE_REGEX_BYTES` and each NFA fits `MAX_RESPONSE_REGEX`.
+pub(crate) const MAX_RESPONSE_RULES: usize = 1024;
+/// The combined compiled expression heap allowed in one generation.
+pub(crate) const MAX_RESPONSE_REGEX_BYTES: usize = 32 << 20;
+/// The largest response rule retained or compiled.
+pub(crate) const MAX_RESPONSE_RULE: usize = 8 << 10;
+/// The most heap used by one response NFA. Counted Unicode repetitions
+/// expand into UTF-8 transitions for each repetition.
+pub(crate) const MAX_RESPONSE_REGEX: usize = 512 << 10;
+/// The largest original response that can be rewritten on a phone.
+pub(crate) const MAX_REWRITE_BODY: usize = 2 << 20;
+/// The most bytes a replacement may produce.
+pub(crate) const MAX_REWRITE_RESULT: usize = 2 * MAX_REWRITE_BODY;
+/// The most time an upstream body can be held for rewriting.
+pub(crate) const REWRITE_WAIT: std::time::Duration = std::time::Duration::from_secs(10);
+/// The time allowed for a body to wait for replacement work.
+pub(crate) const REWRITE_WORK: std::time::Duration = std::time::Duration::from_secs(1);
+/// The most responses held for rewriting, and the most blocking jobs alive.
+pub(crate) const MAX_REWRITES: usize = 4;
+
 pub struct Limits {
     max: usize,
     /// For one app: no more than half, so that no app can leave the

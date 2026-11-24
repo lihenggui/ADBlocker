@@ -189,6 +189,9 @@ async fn rig(setup: Setup) -> Rig {
                             .body(Full::new(Bytes::new()))
                             .unwrap()));
                     }
+                    if let Some(response) = replacement_fixture(&req) {
+                        return std::future::ready(Ok(response));
+                    }
                     // `/big/<n>` is answered with n MiB, for the measurements.
                     let body = match req.uri().path().strip_prefix("/big/") {
                         Some(n) => Bytes::from(vec![0u8; n.parse::<usize>().unwrap() << 20]),
@@ -267,7 +270,9 @@ async fn rig(setup: Setup) -> Rig {
     if setup.server_trusted {
         roots.add(root_cert.der().clone()).unwrap();
     }
-    std::fs::write(dir.path().join("list.txt"), setup.rules).unwrap();
+    let rules = dir.path().join("rules");
+    std::fs::create_dir(&rules).unwrap();
+    std::fs::write(rules.join("list.txt"), setup.rules).unwrap();
     std::fs::write(dir.path().join("allow"), setup.allow).unwrap();
     let (events, _) = mpsc::unbounded_channel();
     let trusting = setup.trusting;
@@ -280,7 +285,7 @@ async fn rig(setup: Setup) -> Rig {
     let tls = Tls::new(Authority::open(&dir.path().join("ca")).unwrap(), roots);
     let ctx = Arc::new(Ctx {
         lists: Lists {
-            filters: RwLock::new(Arc::new(Filters::load(&[dir.path()], true).unwrap())),
+            filters: RwLock::new(Arc::new(Filters::load(&[&rules], true).unwrap())),
             exclusions: RwLock::new(Arc::new(setup.exclusions)),
             allow: RwLock::new(Arc::new(Allow::load(&dir.path().join("allow")))),
         },
@@ -446,6 +451,18 @@ impl Rig {
         path: &str,
         referer: Option<&str>,
     ) -> Result<(hyper::HeaderMap, StatusCode, String, bool)> {
+        self.request_response(trust, alpn, path, referer, |req| req)
+            .await
+    }
+
+    async fn request_response(
+        &self,
+        trust: Trust,
+        alpn: &[&str],
+        path: &str,
+        referer: Option<&str>,
+        customize: impl FnOnce(hyper::http::request::Builder) -> hyper::http::request::Builder,
+    ) -> Result<(hyper::HeaderMap, StatusCode, String, bool)> {
         let tls = self.handshake(trust, alpn).await?;
         let (_, session) = tls.get_ref();
         let real = session.peer_certificates().unwrap()[0] == self.server_leaf;
@@ -465,7 +482,7 @@ impl Rig {
                 .header("sec-fetch-dest", "document")
                 .header(ACCEPT_ENCODING, "gzip, br");
         }
-        let req = req.body(Empty::<Bytes>::new())?;
+        let req = customize(req).body(Empty::<Bytes>::new())?;
         let io = TokioIo::new(tls);
         let resp = if h2 {
             let (mut tx, conn) =
@@ -2548,4 +2565,187 @@ fn an_https_request_can_only_name_the_verified_site() {
     ] {
         assert!(address(&req, HOST, 443).is_none());
     }
+}
+
+fn replacement_fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>> {
+    let path = req.uri().path().strip_prefix("/replace/")?;
+    let asked = req
+        .headers()
+        .get(ACCEPT_ENCODING)
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("none");
+    let mut resp = Response::builder().header("etag", "\"fixture\"");
+    if path == "partial" {
+        resp = resp
+            .status(StatusCode::PARTIAL_CONTENT)
+            .header("content-range", "bytes 0-15/20");
+    }
+    if path == "packed" {
+        // These bytes are opaque when any non-identity encoding is declared.
+        resp = resp.header("content-encoding", "gzip");
+    }
+    let mime = if path == "binary" {
+        "application/octet-stream"
+    } else {
+        "text/plain"
+    };
+    let body = format!("original {asked}");
+    Some(
+        resp.header("content-type", mime)
+            .header("content-length", body.len())
+            .body(Full::new(Bytes::from(body)))
+            .unwrap(),
+    )
+}
+
+const REPLACEMENT_RULES: &str = "||site.test/replace/$replace=/original/changed/\n";
+
+#[tokio::test]
+async fn a_decrypted_text_response_is_replaced_and_the_origin_is_asked_for_identity() {
+    for alpn in [H1, BOTH] {
+        let rig = rig(Setup {
+            rules: REPLACEMENT_RULES,
+            alpn,
+            ..Setup::default()
+        })
+        .await;
+        let (headers, status, body, real) = rig
+            .request_response(Trust::System, alpn, "/replace/text", None, |req| {
+                req.header(ACCEPT_ENCODING, "gzip, br")
+            })
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(!real);
+        assert_eq!(body, "changed identity");
+        assert!(!headers.contains_key("content-length"));
+        assert!(!headers.contains_key("etag"));
+    }
+}
+
+#[tokio::test]
+async fn ineligible_responses_keep_their_original_headers_and_body() {
+    let rig = rig(Setup {
+        rules: REPLACEMENT_RULES,
+        ..Setup::default()
+    })
+    .await;
+    for (path, status) in [
+        ("packed", StatusCode::OK),
+        ("binary", StatusCode::OK),
+        ("partial", StatusCode::PARTIAL_CONTENT),
+    ] {
+        let (headers, actual, body, _) = rig
+            .get_response(Trust::System, H1, &format!("/replace/{path}"), None)
+            .await
+            .unwrap();
+        assert_eq!(actual, status);
+        assert_eq!(body, "original identity");
+        assert!(headers.contains_key("content-length"));
+        assert!(headers.contains_key("etag"));
+    }
+}
+
+#[tokio::test]
+async fn head_and_range_requests_keep_their_encoding_and_response_headers() {
+    let rig = rig(Setup {
+        rules: REPLACEMENT_RULES,
+        ..Setup::default()
+    })
+    .await;
+    let (headers, status, body, _) = rig
+        .request_response(Trust::System, H1, "/replace/text", None, |req| {
+            req.method("HEAD").header(ACCEPT_ENCODING, "gzip")
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.is_empty());
+    assert_eq!(headers["content-length"], "13");
+    assert!(headers.contains_key("etag"));
+    let (headers, status, body, _) = rig
+        .request_response(Trust::System, H1, "/replace/text", None, |req| {
+            req.header("range", "bytes=0-15")
+                .header(ACCEPT_ENCODING, "gzip")
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "original gzip");
+    assert!(headers.contains_key("etag"));
+}
+
+#[tokio::test]
+async fn response_rules_leave_unselected_apps_alone() {
+    let unselected = rig(Setup {
+        rules: REPLACEMENT_RULES,
+        uid: UID + 1,
+        ..Setup::default()
+    })
+    .await;
+    let (headers, status, body, real) = unselected
+        .get_response(Trust::ServerOnly, H1, "/replace/text", None)
+        .await
+        .unwrap();
+    assert!(real);
+    assert_eq!((status, body.as_str()), (StatusCode::OK, "original none"));
+    assert!(headers.contains_key("etag"));
+}
+
+#[tokio::test]
+async fn a_matching_response_rule_takes_precedence_over_a_request_block() {
+    let rig = rig(Setup {
+        rules: "||site.test/replace/\n||site.test/replace/text$replace=/original/changed/\n",
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/replace/text", None)
+        .await
+        .unwrap();
+    assert_eq!(
+        (status, body.as_str()),
+        (StatusCode::OK, "changed identity")
+    );
+    assert_eq!(rig.hits(), 1);
+    assert_eq!(rig.count(Counter::RequestsAllowed), 1);
+    assert_eq!(rig.count(Counter::RequestsBlocked), 0);
+}
+
+#[tokio::test]
+async fn a_request_block_stands_when_no_response_action_applies() {
+    for rules in [
+        "||site.test/replace/\n||site.test/replace/text$script,replace=/original/changed/\n",
+        "||site.test/replace/\n||site.test/replace/text$app=com.other,replace=/original/changed/\n",
+        "||site.test/replace/\n||site.test/replace/text$replace=/original/changed/\n@@||site.test/replace/text$replace\n",
+    ] {
+        let rig = rig(Setup {
+            rules,
+            ..Setup::default()
+        })
+        .await;
+        let (status, body, _) = rig
+            .get(Trust::System, H1, "/replace/text", None)
+            .await
+            .unwrap();
+        assert_eq!((status, body.as_str()), (StatusCode::FORBIDDEN, ""));
+        assert_eq!(rig.hits(), 0);
+        assert_eq!(rig.count(Counter::RequestsBlocked), 1);
+    }
+}
+
+#[tokio::test]
+async fn a_page_is_replaced_before_the_cosmetic_style_is_inserted() {
+    let rig = rig(Setup {
+        rules: "site.test##.ad\n||site.test/page$replace=/identity/replaced/,document\n||site.test/page$replace=/display:none/changed/,document\n",
+        cosmetic: true,
+        ..Setup::default()
+    }).await;
+    let (_, status, body, _) = rig
+        .get_response(Trust::System, H1, "/page", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("<body>replaced</body>"));
+    assert!(body.contains("<style>.ad{display:none!important}"));
 }

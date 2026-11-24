@@ -26,7 +26,7 @@ use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
 
 use super::MAX_SIZE;
-use crate::list_url::{split, trusted_scriptlets};
+use crate::list_url::{split, trusted_download};
 use crate::sources::Validator;
 
 const MAX_REDIRECTS: usize = 3;
@@ -127,7 +127,7 @@ pub(super) async fn get(
     tls: &TlsConnector,
     saved: Option<&Validator>,
 ) -> Result<Download> {
-    let trusted = trusted_scriptlets(url);
+    let trusted = trusted_download(url);
     let mut url = url.to_owned();
     for _ in 0..=MAX_REDIRECTS {
         match get_once(&url, tls, saved).await? {

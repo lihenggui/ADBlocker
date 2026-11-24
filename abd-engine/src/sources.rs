@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use crate::files;
 use crate::list_files::{MAX_LIST, check_budget, read_list};
 pub use crate::list_url::valid;
-use crate::list_url::{base_file_name, file_name};
+use crate::list_url::{base_file_name, file_name, untrusted_file_name};
 use crate::malformed::Malformed;
 use crate::paths::Paths;
 
@@ -286,38 +286,43 @@ fn withdraw(paths: &Paths, url: &str, selection: &str, keep_cached: bool) -> Res
     } else {
         0
     };
-    let mut parked = None;
+    let mut parked = Vec::new();
     // Withdraw the active copy before recording the choice, but keep enough
     // information to restore the file if saving the choice fails.
     let result = (|| -> std::io::Result<()> {
-        let active = copy_path(&dir, url);
-        let disabled = active.with_extension("disabled");
-        match std::fs::rename(&active, &disabled) {
-            Ok(()) => parked = Some((active, disabled)),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
-            Err(e) => return Err(e),
+        for active in copy_paths(&dir, url, "txt") {
+            let disabled = active.with_extension("disabled");
+            match std::fs::rename(&active, &disabled) {
+                Ok(()) => parked.push((active, disabled)),
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => (),
+                Err(e) => return Err(e),
+            }
         }
         files::replace(&paths.sources(), selection.as_bytes())
     })();
     if let Err(error) = result {
         let mut recovery = Ok(());
-        if let Some((active, disabled)) = parked
-            && let Err(restore) = std::fs::rename(disabled, active)
-        {
-            recovery = Err(restore);
+        for (active, disabled) in parked {
+            if let Err(restore) = std::fs::rename(disabled, active) {
+                recovery = Err(restore);
+            }
         }
         recovery.context("restoring lists after a failed subscription change")?;
         return Err(error.into());
     }
     if keep_cached {
-        if let Some((_, disabled)) = parked {
-            let bytes = disabled.metadata()?.len();
-            if bytes > MAX_DISABLED_BYTES.saturating_sub(occupied) {
+        let mut available = MAX_DISABLED_BYTES.saturating_sub(occupied);
+        for (_, disabled) in parked {
+            if let Some(left) = available.checked_sub(disabled.metadata()?.len()) {
+                available = left;
+            } else {
                 files::remove_if_present(&disabled)?;
             }
         }
     } else {
-        files::remove_if_present(&copy_path(&dir, url).with_extension("disabled"))?;
+        for disabled in copy_paths(&dir, url, "disabled") {
+            files::remove_if_present(&disabled)?;
+        }
     }
     if !has_disabled_copy(&dir, url) {
         files::remove_if_present(&info_file(&paths.list_info(), url))?;
@@ -325,22 +330,35 @@ fn withdraw(paths: &Paths, url: &str, selection: &str, keep_cached: bool) -> Res
     Ok(())
 }
 
-fn copy_path(dir: &Path, url: &str) -> PathBuf {
-    dir.join(file_name(url))
+/// Keep the copy under its untrusted name available until a fresh download
+/// is saved under the trusted name. Either copy follows subscription changes.
+fn copy_paths(dir: &Path, url: &str, extension: &str) -> impl Iterator<Item = PathBuf> {
+    std::iter::once(dir.join(file_name(url)).with_extension(extension))
+        .chain(untrusted_file_name(url).map(|name| dir.join(name).with_extension(extension)))
+}
+
+fn copy_path(dir: &Path, url: &str, extension: &str) -> PathBuf {
+    let mut copies = copy_paths(dir, url, extension);
+    let current = copies.next().expect("current list name");
+    if !current.is_file()
+        && let Some(untrusted) = copies.find(|path| path.is_file())
+    {
+        return untrusted;
+    }
+    current
 }
 
 pub(crate) fn has_disabled_copy(dir: &Path, url: &str) -> bool {
-    copy_path(dir, url).with_extension("disabled").is_file()
+    copy_path(dir, url, "disabled").is_file()
 }
 
 fn check_restore_budget(paths: &Paths, url: &str) -> std::io::Result<()> {
     let dir = paths.lists();
-    let active = copy_path(&dir, url);
+    let active = copy_path(&dir, url, "txt");
     let bytes = if active.is_file() {
         0
     } else {
-        active
-            .with_extension("disabled")
+        copy_path(&dir, url, "disabled")
             .metadata()
             .map_or(0, |metadata| metadata.len())
     };
@@ -372,12 +390,12 @@ fn disabled_bytes(dir: &Path) -> std::io::Result<u64> {
 }
 
 fn restore_copy(dir: &Path, url: &str) -> std::io::Result<bool> {
-    let active = copy_path(dir, url);
-    let disabled = active.with_extension("disabled");
+    let disabled = copy_path(dir, url, "disabled");
+    let active = disabled.with_extension("txt");
     if !disabled.try_exists()? {
         return Ok(false);
     }
-    if active.try_exists()? {
+    if copy_path(dir, url, "txt").try_exists()? {
         files::remove_if_present(&disabled)?;
         return Ok(false);
     }
@@ -432,12 +450,11 @@ pub fn info(dir: &Path, url: &str) -> Option<Info> {
 /// A file can outlive its metadata after an interrupted update, and a
 /// failed replacement can leave metadata without a usable copy.
 pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> Info {
-    let path = copy_path(dir, &source.url);
-    let path = if source.enabled {
-        path
-    } else {
-        path.with_extension("disabled")
-    };
+    let path = copy_path(
+        dir,
+        &source.url,
+        if source.enabled { "txt" } else { "disabled" },
+    );
     let copy = Some(path).filter(|path| {
         path.metadata()
             .is_ok_and(|meta| meta.is_file() && meta.len() <= MAX_LIST as u64)
@@ -506,15 +523,11 @@ pub fn prune_unsubscribed(
         {
             keep_info.insert(info_file(info, url));
         }
-        if !source.enabled {
-            let file = copy_path(dir, url).with_extension("disabled");
-            keep.extend(
-                file.file_name()
-                    .map(|name| name.to_string_lossy().into_owned()),
-            );
-            continue;
-        }
-        keep.insert(file_name(url));
+        let file = copy_path(dir, url, if source.enabled { "txt" } else { "disabled" });
+        keep.extend(
+            file.file_name()
+                .map(|name| name.to_string_lossy().into_owned()),
+        );
     }
     let removed = prune(dir, |entry| {
         let name = entry.file_name();
@@ -742,6 +755,33 @@ pub(crate) mod tests {
         edit(&paths, A, Change::Remove).unwrap();
         assert!(!has_disabled_copy(&paths.lists(), A));
         assert!(info(&paths.list_info(), A).is_none());
+    }
+
+    #[test]
+    fn a_copy_under_its_untrusted_name_keeps_filtering_until_refresh_and_both_copies_are_disabled_together()
+     {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        let url = "https://filters.adtidy.org/android/filters/11.txt";
+        std::fs::create_dir(paths.lists()).unwrap();
+        std::fs::write(paths.sources(), format!("{url}\n")).unwrap();
+        let old = paths.lists().join(untrusted_file_name(url).unwrap());
+        let new = paths.lists().join(file_name(url));
+        std::fs::write(&old, "||old.example^\n").unwrap();
+        {
+            let lock = files::lock(&paths.sources()).unwrap();
+            prune_unsubscribed(url, &paths.lists(), None, &lock).unwrap();
+        }
+        assert!(old.is_file());
+        assert_eq!(copy_path(&paths.lists(), url, "txt"), old);
+        std::fs::write(&new, "||fresh.example^\n").unwrap();
+        edit(&paths, url, Change::Disable).unwrap();
+        assert!(!old.exists() && !new.exists());
+        edit(&paths, url, Change::Enable).unwrap();
+        assert!(new.is_file() && !old.exists());
+        edit(&paths, url, Change::Remove).unwrap();
+        assert!(!old.with_extension("disabled").exists());
+        assert!(!new.with_extension("disabled").exists());
     }
 
     #[test]
