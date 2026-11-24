@@ -56,6 +56,7 @@
     <string name="feature_onboarding_done_text">所选应用已开始过滤。如果应用无法正常工作，请在“概览”中暂停过滤。</string>
     <string name="feature_onboarding_failed_title">设置失败</string>
     <string name="feature_onboarding_failed_text">无法启用 root 模式。应用的网络连接不受影响。</string>
+    <string name="feature_onboarding_restart_to_update">请重启设备以完成模块更新，然后重新打开 ADBlocker。</string>
     <string name="feature_onboarding_try_again">重试</string>
     <string name="feature_onboarding_finish">完成</string>
     <string name="feature_onboarding_check_after_root">授予 root 权限后检查</string>

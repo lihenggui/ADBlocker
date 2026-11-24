@@ -128,6 +128,7 @@ class OnboardingViewModelTest {
 
     private val lists = object : ListsRepository by unexpected() {
         override suspend fun configure(choices: Map<String, Boolean>) {
+            if (commandsRejected) throw AbdException.ModuleOutdated()
             subscriptions.putAll(choices)
             done += "configure lists"
         }
@@ -184,6 +185,10 @@ class OnboardingViewModelTest {
     /** Nothing in use, as also while a module flashed in Magisk or APatch waits for a restart. */
     private var moduleState = ModuleState.NotInstalled
     private var installerFailure: String? = null
+    private var installFailure: AbdException? = null
+
+    /** The module in use is older than the app and does not know what setup asks of it. */
+    private var commandsRejected = false
     private var startFailure: AbdException? = null
 
     private val viewModel by lazy { newViewModel() }
@@ -195,6 +200,7 @@ class OnboardingViewModelTest {
 
             override suspend fun installBundled(): Boolean {
                 done += "install"
+                installFailure?.let { throw it }
                 installerFailure?.let { throw AbdException.CommandFailed(it) }
                 moduleState = ModuleState.Ready
                 return true
@@ -423,6 +429,41 @@ class OnboardingViewModelTest {
         viewModel.install()
         assertEquals(listOf("start", "start", "configure lists", "configure apps", "update"), done)
         assertTrue(viewModel.uiState.value.install is InstallState.Done)
+    }
+
+    @Test
+    fun givenAModuleItsManagerHoldsForARestart_whenSettingUp_thenItIsUsedAsItIsWithoutInstalling() = runTest {
+        root = true
+        moduleState = ModuleState.NeedsRestart
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(listOf("start", "configure lists", "configure apps", "update"), done)
+        assertTrue(viewModel.uiState.value.install is InstallState.Done)
+    }
+
+    @Test
+    fun givenAnOlderModuleItsManagerHoldsForARestart_whenItRejectsSetup_thenSetupFailsAsOutdated() = runTest {
+        root = true
+        moduleState = ModuleState.NeedsRestart
+        commandsRejected = true
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(InstallState.Failed(LoadFailure.ModuleOutdated), viewModel.uiState.value.install)
+        assertEquals(listOf("start"), done)
+    }
+
+    @Test
+    fun givenADaemonThatDoesNotComeUpAfterInstalling_whenSettingUp_thenSetupFails() = runTest {
+        root = true
+        moduleState = ModuleState.NotInstalled
+        installFailure = AbdException.TimedOut()
+        leaveTheCheck()
+        repeat(3) { viewModel.next() }
+
+        assertEquals(InstallState.Failed(LoadFailure.TimedOut), viewModel.uiState.value.install)
+        assertEquals(listOf("install"), done)
     }
 
     @Test

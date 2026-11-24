@@ -124,6 +124,10 @@ class SettingsViewModelTest {
     private var installedByApp = true
     private var staged = false
     private var installerFailure: String? = null
+
+    /** A module in use that is not this app's, which a root manager changes only at the next restart. */
+    private var heldByManager = false
+    private var installFailure: AbdException? = null
     private var listRequestFailure: Exception? = null
     private var removalFailure: String? = null
     private var rootManager: String? = null
@@ -177,6 +181,7 @@ class SettingsViewModelTest {
         override suspend fun state(): ModuleState {
             moduleReadFailure?.let { throw it }
             return when {
+                heldByManager -> ModuleState.NeedsRestart
                 !moduleInstalled -> ModuleState.NotInstalled
                 moduleOutdated -> ModuleState.Mismatched
                 else -> ModuleState.Ready
@@ -185,6 +190,7 @@ class SettingsViewModelTest {
 
         override suspend fun installBundled(): Boolean {
             done += "install"
+            installFailure?.let { throw it }
             installerFailure?.let { throw AbdException.CommandFailed(it) }
             moduleInstalled = true
             moduleOutdated = false
@@ -472,6 +478,43 @@ class SettingsViewModelTest {
         assertEquals(RootTask.Idle, viewModel.uiState.value.service.setup)
         assertFalse(viewModel.uiState.value.service.vpnAvailable)
         assertEquals(R.string.feature_settings_module_installed, takeMessageText())
+    }
+
+    @Test
+    fun givenAModuleWithAnUpdateWaitingInItsManager_whenShown_thenItIsInUseAndTheUpdateIsKnown() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        heldByManager = true
+        staged = true
+        rootManager = "Magisk"
+        showSettings()
+
+        val service = viewModel.uiState.value.service
+        assertEquals(ModuleState.NeedsRestart, service.module)
+        assertTrue(service.stagedInManager)
+        assertFalse(service.vpnAvailable)
+        assertEquals(emptyList(), done)
+    }
+
+    @Test
+    fun givenAModuleMarkedForRemovalInItsManager_whenShown_thenNoUpdateIsSaidToWait() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        heldByManager = true
+        showSettings()
+
+        assertEquals(ModuleState.NeedsRestart, viewModel.uiState.value.service.module)
+        assertFalse(viewModel.uiState.value.service.stagedInManager)
+    }
+
+    @Test
+    fun givenADaemonThatDoesNotComeUp_whenSettingUp_thenTheRowShowsTheFailure() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        installFailure = AbdException.TimedOut()
+        showSettings()
+
+        viewModel.setUpRootMode()
+
+        assertEquals(RootTask.Failed, viewModel.uiState.value.service.setup)
+        assertTrue(viewModel.pendingMessages.value.none { it.message.text == R.string.feature_settings_module_installed })
     }
 
     @Test

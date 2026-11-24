@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -58,9 +59,11 @@ import li.mercury.adblocker.core.ui.FadeThrough
 import li.mercury.adblocker.core.ui.FailureView
 import li.mercury.adblocker.core.ui.LocalCompactWindow
 import li.mercury.adblocker.core.ui.MessageEffect
+import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.pageMargin
+import li.mercury.adblocker.core.ui.R as CoreUiR
 
 @Composable
 fun OverviewScreen(
@@ -165,6 +168,13 @@ internal fun OverviewScreen(
                         modifier = Modifier.padding(top = 8.dp),
                     )
                 }
+
+                OverviewUiState.RestartNeeded -> Placeholder(
+                    icon = AdbIcons.Warning,
+                    title = stringResource(CoreUiR.string.core_ui_failure_update_needed),
+                    text = stringResource(R.string.feature_overview_restart_to_update),
+                    action = { Button(onClick = onRetry) { Text(stringResource(CoreUiR.string.core_ui_retry)) } },
+                )
 
                 is OverviewUiState.Ready -> OverviewContent(
                     state = shown,

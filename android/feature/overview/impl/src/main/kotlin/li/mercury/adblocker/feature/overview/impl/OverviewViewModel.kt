@@ -60,6 +60,7 @@ import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterLevel
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.LoadFailure
+import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.StatsSummary
 import li.mercury.adblocker.core.model.VpnStatus
 import li.mercury.adblocker.core.ui.MessageQueue
@@ -74,6 +75,12 @@ sealed interface OverviewUiState {
 
     /** Root mode is being brought up to date with this app, and cannot be read until it is. */
     data object Updating : OverviewUiState
+
+    /**
+     * An older module in a root manager rejects what this app asks, and the
+     * manager replaces it only at the next restart: nothing in the app can.
+     */
+    data object RestartNeeded : OverviewUiState
 
     data class Ready(
         val status: DaemonStatus,
@@ -187,7 +194,17 @@ class OverviewViewModel @Inject constructor(
     private suspend fun load(): OverviewUiState {
         val updating = updater.state.value == ModuleUpdate.Updating
         // While root mode updates, a failed read is the update's doing: it is said once the update ends.
-        return read(updating).getOrElse { e -> if (updating) OverviewUiState.Updating else OverviewUiState.Failed(e.toLoadFailure()) }
+        return read(updating).getOrElse { e ->
+            val failure = e.toLoadFailure()
+            when {
+                updating -> OverviewUiState.Updating
+
+                // Settings has no update to offer for it, so the failure's own text would send the user there for nothing.
+                failure == LoadFailure.ModuleOutdated && suspendRunCatching { module.state() }.getOrNull() == ModuleState.NeedsRestart -> OverviewUiState.RestartNeeded
+
+                else -> OverviewUiState.Failed(failure)
+            }
+        }
     }
 
     private suspend fun read(updating: Boolean): Result<OverviewUiState> = suspendRunCatching("overview") {

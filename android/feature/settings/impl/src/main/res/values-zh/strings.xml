@@ -72,6 +72,8 @@
     <string name="feature_settings_root_flashed_text">如需移除 root 模式，请在其中移除模块并重启</string>
     <string name="feature_settings_root_flashed_manager_text">如需移除 root 模式，请在 root 管理器中移除模块并重启</string>
     <string name="feature_settings_root_flashed_pending_text">下次重启后生效</string>
+    <string name="feature_settings_root_restart_to_update">重启设备以完成更新</string>
+    <string name="feature_settings_root_marked_removal">已在 root 管理器中标记为移除 · 重启后移除</string>
     <string name="feature_settings_pinned">不接受证书的域名</string>
     <string name="feature_settings_pinned_checking">正在检查域名…</string>
     <string name="feature_settings_pinned_unavailable">无法读取域名列表</string>
@@ -123,6 +125,7 @@
     <string name="feature_settings_method_vpn_available">无需 root 权限 · 按域名过滤</string>
     <string name="feature_settings_method_root">root 模式</string>
     <string name="feature_settings_method_root_not_set_up">未启用 · 可在 HTTPS 内按网址过滤</string>
+    <string name="feature_settings_method_root_restart_first">请先重启设备以完成模块更新</string>
     <string name="feature_settings_method_root_checking">正在检查 root 权限</string>
     <string name="feature_settings_method_root_available">已授予 root 权限 · 可在 HTTPS 内按网址过滤</string>
     <string name="feature_settings_method_root_missing">未检测到 root 权限 · 重新检查</string>

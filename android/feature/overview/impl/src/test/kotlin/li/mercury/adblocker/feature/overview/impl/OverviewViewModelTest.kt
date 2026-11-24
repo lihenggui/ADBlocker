@@ -47,6 +47,7 @@ import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteredApp
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.LoadFailure
+import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.StatsSummary
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnState
@@ -123,6 +124,7 @@ class OverviewViewModelTest {
     private var snapshotFailure: Exception? = null
     private var started = false
     private var rootManager: String? = null
+    private var moduleState = ModuleState.Ready
     private var installing: CompletableDeferred<Unit>? = null
 
     private val module = object : ModuleRepository by unexpected() {
@@ -131,6 +133,8 @@ class OverviewViewModelTest {
         override suspend fun turnOnAgain() = started
 
         override suspend fun rootManager() = rootManager
+
+        override suspend fun state() = moduleState
 
         override suspend fun installBundled(): Boolean {
             installing?.await()
@@ -248,6 +252,24 @@ class OverviewViewModelTest {
         install.complete(Unit)
         runCurrent()
         assertEquals(false, (viewModel.uiState.value as OverviewUiState.Ready).updating)
+    }
+
+    @Test
+    fun givenAnOlderModuleItsManagerHoldsForARestart_whenItRejectsACommand_thenARestartIsWhatIsNeeded() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleState = ModuleState.NeedsRestart
+        snapshotFailure = AbdException.ModuleOutdated()
+        backgroundScope.launch(UnconfinedTestDispatcher(testScheduler)) { viewModel.uiState.collect {} }
+
+        assertEquals(OverviewUiState.RestartNeeded, viewModel.uiState.value)
+    }
+
+    @Test
+    fun givenAModuleItsManagerHoldsForARestart_whenItAnswers_thenItIsShownRunning() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        moduleState = ModuleState.NeedsRestart
+
+        assertTrue(shown().status.running)
     }
 
     @Test

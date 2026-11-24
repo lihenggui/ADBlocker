@@ -115,6 +115,17 @@ class OverviewScreenScreenshotTests {
     }
 
     @Test
+    fun givenAnOlderModuleItsManagerHoldsForARestart_whenShown_thenSaysToRestart() {
+        capturePhone("OverviewRestartNeeded") { Overview(OverviewUiState.RestartNeeded) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAnOlderModuleItsManagerHoldsForARestart_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewRestartNeeded") { Overview(OverviewUiState.RestartNeeded) }
+    }
+
+    @Test
     fun givenRootModeUpdating_whenShown_thenSaysSo() {
         capturePhone("OverviewUpdating") { Overview(OverviewUiState.Updating) }
     }

@@ -59,6 +59,7 @@
     <string name="feature_overview_service_running_since">已运行 %1$s</string>
     <string name="feature_overview_service_stopped">未运行</string>
     <string name="feature_overview_updating">正在更新 root 模式…</string>
+    <string name="feature_overview_restart_to_update">请重启设备以完成模块更新。</string>
     <plurals name="feature_overview_paused_for_hours">
         <item quantity="other">已暂停 %1$d 小时。期间应用直接联网，不经过过滤。</item>
     </plurals>

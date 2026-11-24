@@ -464,8 +464,12 @@ subscriptions that need to be downloaded again. Completing the switch
 discards the checkpoint.
 
 Settings switches in one action: where no module of the app's version is
-in use, it sets root mode up first, then hands over. A switch that does
-not finish stays pending, and trying it again in Settings does the same.
+in use, it sets root mode up first, then hands over. A module in use that
+a root manager updates or removes at the next restart cannot be replaced
+before it: Settings then offers no switch and says to restart first, and
+in root mode it shows that module as running, with what the restart
+does. A switch that does not finish stays pending, and trying it again in
+Settings does the same.
 Canceling it leaves root mode set up; Settings shows it under the method,
 with its removal, while the VPN is in use.
 

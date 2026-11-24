@@ -268,6 +268,40 @@ class SettingsScreenScreenshotTests {
         }
     }
 
+    private val heldForUpdate
+        get() = state.copy(service = state.service.copy(module = ModuleState.NeedsRestart, installedByApp = null, stagedInManager = true, rootManager = "Magisk"))
+
+    private val heldForRemoval
+        get() = heldForUpdate.copy(service = heldForUpdate.service.copy(stagedInManager = false))
+
+    @Test
+    fun givenAModuleWithAnUpdateWaitingInItsManager_whenShown_thenSaysARestartFinishesIt() {
+        captureTallPhone("SettingsRestartToUpdate") { Settings(heldForUpdate) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAModuleWithAnUpdateWaitingInItsManager_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_tall_zh", TALL_PHONE, "SettingsRestartToUpdate") { Settings(heldForUpdate) }
+    }
+
+    @Test
+    fun givenAModuleMarkedForRemovalInItsManager_whenShown_thenSaysARestartRemovesIt() {
+        captureTallPhone("SettingsMarkedForRemoval") { Settings(heldForRemoval) }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAModuleMarkedForRemovalInItsManager_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_tall_zh", TALL_PHONE, "SettingsMarkedForRemoval") { Settings(heldForRemoval) }
+    }
+
+    @Test
+    fun givenAModuleWithAnUpdateWaiting_whenTheVpnIsInUse_thenRootModeIsNotOfferedUntilARestart() {
+        val held = vpnSetUp.copy(service = vpnSetUp.service.copy(module = ModuleState.NeedsRestart, stagedInManager = true))
+        capturePhone("SettingsVpnRestartFirst") { Settings(held) }
+    }
+
     @Test
     fun givenAModuleFlashedAndWaitingForARestart_whenTheAppsCopyRuns_thenSaysWhenTheModuleTakesEffect() {
         captureTallPhone("SettingsFlashedPending") {

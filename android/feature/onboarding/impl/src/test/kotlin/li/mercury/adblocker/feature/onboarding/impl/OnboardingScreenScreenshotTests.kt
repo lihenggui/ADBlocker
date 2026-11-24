@@ -269,6 +269,13 @@ class OnboardingScreenScreenshotTests {
     }
 
     @Test
+    fun givenAnOlderModuleItsManagerHoldsForARestart_whenSetupFails_thenSaysToRestartAndOpenTheAppAgain() {
+        capturePhone("OnboardingRestartToUpdate") {
+            Onboarding(OnboardingUiState(step = OnboardingStep.Install, install = InstallState.Failed(LoadFailure.ModuleOutdated)))
+        }
+    }
+
+    @Test
     @Config(qualifiers = "en-rUS-w412dp-h915dp")
     fun givenDeviceCheck_whenPredictiveBackCancelsThenCommits_thenItPreviewsWelcomeWithoutLeavingEarly() {
         val uiState = mutableStateOf(OnboardingUiState(step = OnboardingStep.Check, checks = passed))

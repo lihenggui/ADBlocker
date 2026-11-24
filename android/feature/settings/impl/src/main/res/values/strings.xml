@@ -72,6 +72,8 @@
     <string name="feature_settings_root_flashed_text">To remove root mode, remove the module there and restart</string>
     <string name="feature_settings_root_flashed_manager_text">To remove root mode, remove the module in the root manager and restart</string>
     <string name="feature_settings_root_flashed_pending_text">Takes effect after the next restart</string>
+    <string name="feature_settings_root_restart_to_update">Restart the device to finish the update</string>
+    <string name="feature_settings_root_marked_removal">Marked for removal in the root manager · Restart to remove it</string>
     <string name="feature_settings_pinned">Domains that reject the certificate</string>
     <string name="feature_settings_pinned_checking">Checking domains…</string>
     <string name="feature_settings_pinned_unavailable">Domain list unavailable</string>
@@ -126,6 +128,7 @@
     <string name="feature_settings_method_vpn_available">No root needed · Filters by domain</string>
     <string name="feature_settings_method_root">Root mode</string>
     <string name="feature_settings_method_root_not_set_up">Not set up · Filters by URL inside HTTPS</string>
+    <string name="feature_settings_method_root_restart_first">Restart the device first to finish the module update</string>
     <string name="feature_settings_method_root_checking">Checking for root access</string>
     <string name="feature_settings_method_root_available">Root access granted · Filters by URL inside HTTPS</string>
     <string name="feature_settings_method_root_missing">Root access not detected · Check again</string>
