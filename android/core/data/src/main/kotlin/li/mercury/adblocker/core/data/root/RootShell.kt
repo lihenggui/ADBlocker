@@ -247,13 +247,18 @@ internal const val TIMED_OUT = 124
  */
 internal fun bounded(command: String, seconds: Int): String = "timeout $seconds sh -c ${command.shellQuoted()} </dev/null"
 
+/** How abd begins what it says of a command it does not know (abd/src/main.rs, abd-engine/src/cli/mod.rs). */
+private const val UNKNOWN_COMMAND = "abd: unknown command"
+
 /** The exception for an abd command that exited with [code]. */
 internal fun exitFailure(code: Int, output: String): AbdException = when (code) {
     // The shell could not find abd: no module.
     126, 127 -> AbdException.ModuleMissing()
 
-    // abd's usage error: a command or option it does not know.
-    2 -> AbdException.CommandRejected()
+    // abd's usage error. A command it does not know at all is one a newer
+    // app asks of an older module; the rest of what it prints can name what
+    // was asked about, and is not kept.
+    2 -> if (output.trimStart().startsWith(UNKNOWN_COMMAND)) AbdException.ModuleOutdated() else AbdException.CommandRejected()
 
     TIMED_OUT -> AbdException.TimedOut()
 

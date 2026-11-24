@@ -28,6 +28,7 @@ import li.mercury.adblocker.core.data.repository.AppsRepository
 import li.mercury.adblocker.core.data.repository.AutoStart
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.ModuleRepository
+import li.mercury.adblocker.core.data.repository.ModuleUpdater
 import li.mercury.adblocker.core.data.repository.PendingSetup
 import li.mercury.adblocker.core.data.repository.UserDataRepository
 import li.mercury.adblocker.core.model.FilterMethod
@@ -66,6 +67,7 @@ class MainActivityViewModelTest {
         var starts = 0
         val module = object : ModuleRepository by unexpected() {
             override suspend fun state() = ModuleState.Ready
+            override suspend fun needsUpdate() = false
             override suspend fun startUnasked(): Boolean {
                 starts++
                 return true
@@ -78,7 +80,7 @@ class MainActivityViewModelTest {
             }
         }
         val setup = PendingSetup(settings, module, apps, unexpected(), unexpected(), unexpected())
-        val viewModel = MainActivityViewModel(settings, setup, scheduler, AutoStart(settings, module))
+        val viewModel = MainActivityViewModel(settings, setup, scheduler, AutoStart(settings, module), ModuleUpdater(settings, module))
 
         viewModel.applyPendingSetup()
         runCurrent()
@@ -114,7 +116,7 @@ class MainActivityViewModelTest {
             }
         }
         val pendingSetup = PendingSetup(repository, unexpected(), unexpected(), unexpected(), unexpected(), unexpected())
-        val viewModel = MainActivityViewModel(repository, pendingSetup, unexpected(), AutoStart(repository, unexpected()))
+        val viewModel = MainActivityViewModel(repository, pendingSetup, unexpected(), AutoStart(repository, unexpected()), ModuleUpdater(repository, unexpected()))
         runCurrent()
         assertEquals(0, reads)
 

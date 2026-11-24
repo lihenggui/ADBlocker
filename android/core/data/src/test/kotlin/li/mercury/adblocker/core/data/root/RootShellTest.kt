@@ -41,9 +41,23 @@ import kotlin.test.assertTrue
 
 class RootShellTest {
     @Test
-    fun anUnknownCommandMeansTheModuleIsOlderThanTheApp() {
-        assertIs<AbdException.CommandRejected>(exitFailure(2, "usage"))
-        assertEquals(LoadFailure.Failed, exitFailure(2, "").toLoadFailure())
+    fun aRejectedCommandIsNotTakenForAnOlderModule() {
+        for (said in listOf("usage", "", "abd: not a host: \"unknown command\"", "abd: pause takes --minutes <n> or nothing")) {
+            val failure = exitFailure(2, said)
+            assertIs<AbdException.CommandRejected>(failure)
+            assertEquals(LoadFailure.Failed, failure.toLoadFailure(), said)
+        }
+    }
+
+    @Test
+    fun givenACommandAbdDoesNotKnow_whenItIsRejected_thenTheModuleIsOlderThanTheApp() {
+        val failure = exitFailure(2, "abd: unknown command: app eligibility --json\n\nusage: abd <command>, as root\n")
+        // Still a rejection to those that handle one.
+        assertIs<AbdException.CommandRejected>(failure)
+        assertIs<AbdException.ModuleOutdated>(failure)
+        assertEquals(LoadFailure.ModuleOutdated, failure.toLoadFailure())
+        // Only a usage error says so.
+        assertIs<AbdException.CommandFailed>(exitFailure(1, "abd: unknown command: x"))
     }
 
     @Test

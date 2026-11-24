@@ -24,6 +24,9 @@ enum class LoadFailure {
     /** The module is not installed. */
     ModuleMissing,
 
+    /** The installed module is older than the app: it does not know a command the app uses. */
+    ModuleOutdated,
+
     /** This build cannot filter without root. */
     EngineMissing,
 

@@ -80,7 +80,12 @@ Assembling `:app` needs the daemons in `../out/` (`../scripts/build.sh`).
   `AbdProtocolTest` and the daemon's own tests read. A change to an output
   changes its case and both sides in the same commit.
 - An exit code of 2 means the command or arguments were rejected. 126 and
-  127 mean the module is missing. Neither error is retried in a loop.
+  127 mean the module is missing. Neither error is retried in a loop. A
+  command abd does not know at all means a module older than the app
+  (`AbdException.ModuleOutdated`, a kind of rejection): the screens can
+  have `ModuleUpdater` install the app's own. Opened in root mode, the app
+  does that once by itself for a module that is older and on
+  (`ModuleRepository.needsUpdate`); it never turns a module on unasked.
 - `abd watch --json` and `abd update --json` are streams, each in its own
   `su --mount-master` process (`RootShell.stream`), ended by closing it.
   Nothing else holds a process open. One list update runs at a time in the

@@ -207,6 +207,42 @@ class RootModuleRepositoryTest {
     }
 
     @Test
+    fun givenAnOlderModuleThatIsOn_whenAskedWhetherToReplaceItUnasked_thenItIsToBeReplaced() = runTest {
+        installed(direct, versionCode = bundledCode - 1)
+        assertTrue(module.needsUpdate())
+        direct.deleteRecursively()
+        installed(flashed, versionCode = bundledCode - 1)
+        assertTrue(module.needsUpdate())
+    }
+
+    @Test
+    fun givenAModuleThatInstallingWouldTurnOn_whenAskedWhetherToReplaceItUnasked_thenItIsLeft() = runTest {
+        installed(direct, versionCode = bundledCode - 1).resolve("disable").writeText("")
+        assertFalse(module.needsUpdate())
+        direct.deleteRecursively()
+        installed(flashed, versionCode = bundledCode - 1).resolve("remove").writeText("")
+        assertFalse(module.needsUpdate())
+    }
+
+    @Test
+    fun givenAModuleThatIsNotOlder_whenAskedWhetherToReplaceItUnasked_thenItIsLeft() = runTest {
+        assertFalse(module.needsUpdate())
+        installed(direct)
+        assertFalse(module.needsUpdate())
+        // What a newer daemon wrote, this app's may not read.
+        installed(direct, versionCode = bundledCode + 1)
+        assertEquals(ModuleState.Mismatched, module.state())
+        assertFalse(module.needsUpdate())
+    }
+
+    @Test
+    fun givenAModuleWaitingInTheManager_whenAskedWhetherToReplaceTheOlderOneUnasked_thenItIsLeftToTheRestart() = runTest {
+        installed(flashed, versionCode = bundledCode - 1)
+        pending.mkdirs()
+        assertFalse(module.needsUpdate())
+    }
+
+    @Test
     fun givenAnUnreadableApk_whenVerifyingTheBundledDaemon_thenVerificationFails() {
         val apk = temporaryFolder.newFile("app.apk").apply { writeText("not a ZIP") }
 

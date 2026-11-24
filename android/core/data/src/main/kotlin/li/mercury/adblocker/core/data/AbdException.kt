@@ -31,8 +31,15 @@ sealed class AbdException(message: String) : Exception(message) {
     /** This build carries no engine for filtering without root. */
     class EngineMissing : AbdException("no engine in this build")
 
-    /** The installed abd does not know a command or option this app uses. */
-    class CommandRejected : AbdException("invalid abd command or arguments")
+    /** abd rejected a command or its arguments: an option it does not know, or a value that is not one. */
+    open class CommandRejected(message: String = "invalid abd command or arguments") : AbdException(message)
+
+    /**
+     * The installed abd does not know a command this app uses: the module is
+     * older than the app. A rejection like any other to whoever handles
+     * those, and to the screens a reason to bring the module up to date.
+     */
+    class ModuleOutdated : CommandRejected("abd does not know the command")
 
     /** A root command failed; the message carries what it printed. */
     class CommandFailed(message: String) : AbdException(message)
@@ -52,6 +59,7 @@ sealed class AbdException(message: String) : Exception(message) {
 fun Throwable.toLoadFailure(): LoadFailure = when (this) {
     is AbdException.NoRoot -> LoadFailure.NoRoot
     is AbdException.ModuleMissing -> LoadFailure.ModuleMissing
+    is AbdException.ModuleOutdated -> LoadFailure.ModuleOutdated
     is AbdException.EngineMissing -> LoadFailure.EngineMissing
     is AbdException.TimedOut -> LoadFailure.TimedOut
     else -> LoadFailure.Failed
