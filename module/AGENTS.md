@@ -34,8 +34,11 @@ and pid files in `/data/adb/adblocker`.
   start the daemon at boot (`direct.sh boot`); where nothing runs it, the
   app starts the daemon once the device has booted (`AutoStart`), with the
   same `service.sh`. `boot` does nothing while a root manager
-  has the module or the module is disabled. `remove` uninstalls, from the
-  app or at boot once the app is gone from `/data/system/packages.list`;
+  has the module or the module is disabled. `remove`, from the app, stops
+  the daemon and then uninstalls; where the daemon would not stop it
+  removes nothing, since the module's `abd` is what stops it. `boot`
+  uninstalls once the app is gone from `/data/system/packages.list`, with
+  nothing running to stop;
   a list that lacks what every device has says nothing. Where
   `uninstall.sh` had to leave the copies of the stores to the apps that use
   them, `remove` leaves a script in the launcher's place that deletes them

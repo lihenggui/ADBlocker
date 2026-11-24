@@ -24,6 +24,7 @@ if [ "$#" -eq 0 ]; then
     for scenario in install install-unsupported reinstall boot boot-implausible-list boot-unreadable-list \
         boot-app-gone boot-disabled boot-yields boot-pending-module remove remove-fails remove-refused \
         remove-leftover remove-leftover-reinstall remove-leftover-module started-by-another-name \
+        remove-not-stopped boot-app-gone-not-stopped \
         takeover update-module update-module-removal update-module-pending install-pending-module \
         module-uninstall; do
         sh "$0" "$scenario" || result=1
@@ -66,9 +67,11 @@ case "${0%/bin/abd}" in
     *) where=unknown ;;
 esac
 printf '%s %s\n' "$where" "$*" >>"$FIXTURE/calls"
-# The copies of the stores are kept while apps have them mounted.
 case "$SCENARIO:$*" in
+    # The copies of the stores are kept while apps have them mounted.
     remove-leftover*:'trust remove') exit 3 ;;
+    # A daemon that would not end.
+    *-not-stopped:module-stop) [ ! -e "$FIXTURE/installed" ] || exit 1 ;;
 esac
 EOF
 (cd "$archive" && zip -q -r "$fixture/module.zip" .)
@@ -148,6 +151,7 @@ installed_by_app() {
     direct_sh install "$fixture/module.zip" || fail "the installation failed"
     await_start direct
     forget_calls
+    touch "$fixture/installed"
 }
 
 # As a root manager leaves it: the files of an earlier version, and its own.
@@ -275,8 +279,9 @@ case "$SCENARIO" in
     remove)
         installed_by_app
         direct_sh remove || fail "the removal failed"
-        printf '%s\n' 'direct module-stop' 'direct unhook' 'direct trust remove' | cmp -s - "$fixture/calls" ||
-            fail "the module was not uninstalled"
+        # Stopped before anything is removed, then uninstalled, which stops again.
+        printf '%s\n' 'direct module-stop' 'direct module-stop' 'direct unhook' 'direct trust remove' |
+            cmp -s - "$fixture/calls" || fail "the module was not stopped and uninstalled"
         test ! -e "$direct" && test ! -e "$launcher" && test ! -e "$data" || fail "something of the module is left"
         ;;
     remove-fails)
@@ -290,6 +295,23 @@ case "$SCENARIO" in
         flashed
         if direct_sh remove; then fail "the data of the module in the manager was removed"; fi
         test ! -s "$fixture/calls" && test -d "$data" || fail "the module in the manager was touched"
+        ;;
+    remove-not-stopped)
+        installed_by_app
+        mkdir -p "$data/ca"
+        if direct_sh remove; then fail "a removal that left the daemon running succeeded"; fi
+        grep -q '^! The daemon could not be stopped' "$fixture/output" || fail "the removal did not say why"
+        printf '%s\n' 'direct module-stop' | cmp -s - "$fixture/calls" || fail "something was removed all the same"
+        test -x "$direct/bin/abd" && test -x "$launcher" && test -d "$data/ca" || fail "nothing is left to stop the daemon with"
+        ;;
+    boot-app-gone-not-stopped)
+        # At boot nothing runs: what the stopping says does not hold the removal up.
+        installed_by_app
+        mkdir -p "$data/ca"
+        printf '%s\n' 'com.android.shell 2000 0 /data/user/0/com.android.shell' >"$packages"
+        sh "$launcher" || fail "the launcher failed"
+        called 'direct trust remove' || fail "the authority stayed trusted"
+        test ! -e "$direct" && test ! -e "$data/ca" || fail "the module or its key is left"
         ;;
     remove-leftover)
         removed_with_leftover

@@ -170,14 +170,27 @@ app_removed() {
     esac
 }
 
-# The module stays while its data could not be removed, for the removal to
-# be tried again.
+# By the app, with the daemon running.
 remove() {
     # That one's data is the same data, and it is removed in the manager.
     if [ -e "$MODULE/bin/abd" ]; then
         echo "! The module is in the root manager"
         return 1
     fi
+    # Stopped first, and nothing removed otherwise: uninstall.sh goes on
+    # when the daemon cannot be stopped, and what follows would delete the
+    # one program that can stop it.
+    if ! "$DIRECT/bin/abd" module-stop; then
+        echo "! The daemon could not be stopped; nothing was removed"
+        return 1
+    fi
+    uninstall
+}
+
+# With nothing of the module running: stopped by remove, or not started at
+# this boot. The module stays while its data could not be removed, for the
+# removal to be tried again.
+uninstall() {
     sh "$DIRECT/uninstall.sh" || return 1
     rm -rf "$DIRECT" "$LAUNCHER" || return 1
     if [ -e "$DATA" ]; then
@@ -190,7 +203,7 @@ boot() {
     [ ! -e "$MODULE/bin/abd" ] || exit 0
     # Nothing is left to turn the daemon off, or to say what it does.
     if app_removed; then
-        remove
+        uninstall
         exit
     fi
     # Turned off by its boot guard, until the app turns it on again.
