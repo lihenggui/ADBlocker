@@ -93,7 +93,8 @@ internal fun Notice(notice: OverviewNotice, missing: MissingLists?, actions: Not
 private fun noticeTitle(notice: OverviewNotice, missing: MissingLists?): String = when (notice) {
     OverviewNotice.ListsMissing -> {
         val count = missing?.count ?: 0
-        pluralStringResource(R.plurals.feature_overview_lists_missing_title, count, count)
+        val title = if (missing?.failed == true) R.plurals.feature_overview_lists_failed_title else R.plurals.feature_overview_lists_pending_title
+        pluralStringResource(title, count, count)
     }
 
     OverviewNotice.Lockdown -> stringResource(R.string.feature_overview_lockdown_title)

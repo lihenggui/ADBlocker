@@ -206,15 +206,21 @@ class OverviewScreenScreenshotTests {
     }
 
     @Test
-    fun givenAnEnabledListNeverDownloaded_whenShown_thenSaysItFiltersNothingYet() {
+    fun givenAnEnabledListNeverDownloaded_whenShown_thenSaysItIsNotDownloadedYet() {
         capturePhone("OverviewListsPending") { Overview(listsMissing(failed = false)) }
-        composeTestRule.onNodeWithText("1 list has no rules yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("1 list not downloaded yet").assertIsDisplayed()
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAnEnabledListNeverDownloaded_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "OverviewListsPending") { Overview(listsMissing(failed = false)) }
     }
 
     @Test
     fun givenListsWhoseFirstDownloadFailed_whenShown_thenSaysTheDownloadFailed() {
         capturePhone("OverviewListsFailed") { Overview(listsMissing(failed = true)) }
-        composeTestRule.onNodeWithText("2 lists have no rules yet").assertIsDisplayed()
+        composeTestRule.onNodeWithText("2 lists failed to download").assertIsDisplayed()
     }
 
     @Test
