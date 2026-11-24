@@ -75,7 +75,7 @@ class RequestViewModel @AssistedInject constructor(
         emit(withApp)
         // Only a recorded URL can be tested against today’s rules.
         request.url?.let { url ->
-            val rule = suspendRunCatching { rules.checkUrl(url, request.page, request.kind) }
+            val rule = suspendRunCatching { rules.checkUrl(url, request.page, request.kind, request.appKey) }
             emit(withApp.copy(rule = rule.getOrNull(), ruleCheckUnavailable = rule.isFailure))
         }
     }.combine(done) { state, complete -> state.copy(done = complete) }

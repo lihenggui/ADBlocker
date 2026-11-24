@@ -101,7 +101,8 @@ interface AbdClient {
 
     suspend fun checkRules(text: String): RulesCheck
 
-    suspend fun check(url: String, page: String?, kind: String?): RuleCheckResult
+    /** How the rules treat a request; with [app], as `watch` names it, the rules for that app are considered too. */
+    suspend fun check(url: String, page: String?, kind: String?, app: String? = null): RuleCheckResult
 
     suspend fun setUserRules(text: String)
 
@@ -220,10 +221,14 @@ internal class DefaultAbdClient @Inject constructor(
 
     override suspend fun checkRules(text: String) = parseRulesCheck(abd("rules", "check", "--json", label = "rules check", input = text))
 
-    override suspend fun check(url: String, page: String?, kind: String?): RuleCheckResult {
+    override suspend fun check(url: String, page: String?, kind: String?, app: String?): RuleCheckResult {
         val args = buildList {
             add("check")
             add("--json")
+            if (app != null) {
+                add("--app")
+                add(app)
+            }
             add(url)
             if (page != null || kind != null) add(page.orEmpty())
             if (kind != null) add(kind)

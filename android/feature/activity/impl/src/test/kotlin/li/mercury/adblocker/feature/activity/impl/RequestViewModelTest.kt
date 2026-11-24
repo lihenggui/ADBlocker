@@ -130,8 +130,9 @@ class RequestViewModelTest {
         }
         var fail = true
         val rules = object : RulesRepository by unexpected() {
-            override suspend fun checkUrl(url: String, page: String?, kind: String?): RuleCheckResult {
+            override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult {
                 assertEquals(request.url, url)
+                assertEquals("com.example.news", app)
                 assertNull(page)
                 assertNull(kind)
                 if (fail) throw AbdException.TimedOut()

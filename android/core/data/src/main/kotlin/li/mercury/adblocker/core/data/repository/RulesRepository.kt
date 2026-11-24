@@ -47,8 +47,8 @@ interface RulesRepository {
     /** Which lines of [text] would not be applied, and why. */
     suspend fun check(text: String): RulesCheck
 
-    /** What the lists say about a request to [url]. */
-    suspend fun checkUrl(url: String, page: String?, kind: String?): RuleCheckResult
+    /** What the lists say about a request to [url], made by [app] when it is known. */
+    suspend fun checkUrl(url: String, page: String?, kind: String?, app: String? = null): RuleCheckResult
 
     /** Adds a rule that blocks [domain] and every name below it. */
     suspend fun blockDomain(domain: String)
@@ -91,7 +91,7 @@ internal class AbdRulesRepository @Inject constructor(
 
     override suspend fun check(text: String): RulesCheck = abd.checkRules(text)
 
-    override suspend fun checkUrl(url: String, page: String?, kind: String?): RuleCheckResult = abd.check(url, page, kind)
+    override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult = abd.check(url, page, kind, app)
 
     override suspend fun blockDomain(domain: String) {
         changes.changing { abd.appendUserRules("${blockRule(domain)}\n", unique = true) }
