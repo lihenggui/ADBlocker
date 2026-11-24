@@ -1,7 +1,8 @@
 # AGENTS.md: Android app
 
 The app is how most people use ADBlocker: it chooses the apps to filter,
-the lists and the rules, shows what was blocked, and installs the module.
+the lists and the rules, shows what was blocked, and sets up, updates and
+removes root mode.
 It follows the module structure of Now in Android, as Blocker and Big
 Brother do: convention plugins in `build-logic/`, versions in
 `gradle/libs.versions.toml`, Hilt, Compose with Material 3 Expressive, and
@@ -50,10 +51,15 @@ archive, where root managers look for them.
   (installing the certificate for the VPN method). Overview keeps its
   status, statistics and notices in dedicated files. Filters has separate
   search and tab composables. Settings keeps its rows and sheets beside
-  the screen host, and the app detail screen has separate troubleshooting
-  composables.
+  the screen host; its root mode rows (`RootModeRows.kt`) set root mode up,
+  update it and remove an installation the app made, say where it is
+  installed, and offer VPN mode while root mode is not set up. The app
+  detail screen has separate troubleshooting composables.
   `feature/onboarding/impl` hosts setup before the rest of the app and has
   no navigation key. The individual setup pages live in its `steps/` package.
+  With root, its last step sets up root mode and starts filtering at once,
+  also where a module waits in a root manager for a restart; no step asks
+  for a restart.
 - `sync/work`: the background list update (WorkManager), which runs
   `abd update`; the daemon has no timer of its own.
 
@@ -178,6 +184,9 @@ What the app relies on:
 ## User interface text
 
 - Every string goes in `values/strings.xml` and `values-zh/strings.xml`.
+- The interface calls the root component root mode, never a module, daemon
+  or service that the user installs. "Module" names only a module in a
+  root manager, where the user has to act.
 - Copy is short and factual: what happens, not how the daemon works. In
   Chinese, do not address the user with "你的".
 
