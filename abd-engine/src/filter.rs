@@ -30,8 +30,7 @@ use adblock::resources::{PermissionMask, Resource};
 use adblock::url_parser::{RequestUrl, parse_url};
 use anyhow::Result;
 
-use self::app_rules::AppRules;
-pub(crate) use self::app_rules::rewritten as app_rule;
+pub(crate) use self::app_rules::{AppRules, named as app_rule};
 use self::host_rules::{HostRules, host_only};
 use self::page_exceptions::PageExceptions;
 pub use crate::list_files::{ListFiles, MAX_LIST};
@@ -287,12 +286,31 @@ impl RequestRules {
     }
 
     pub(crate) fn check(&self, url: &str, source: &str, kind: &str, method: &str) -> Check {
+        self.check_for(None, url, source, kind, method)
+    }
+
+    /// As [`RequestRules::check`], with the rules of `apps` for the app
+    /// named with them.
+    pub(crate) fn check_for(
+        &self,
+        apps: Option<(&AppRules, &str)>,
+        url: &str,
+        source: &str,
+        kind: &str,
+        method: &str,
+    ) -> Check {
         let known = parse_http_page(source).is_some();
         let source = if known { source } else { "" };
-        let Ok(req) = Request::new(url, source, kind, method) else {
+        let Ok(mut req) = Request::new(url, source, kind, method) else {
             return Check::default();
         };
-        self.check_request(req, known)
+        match apps {
+            Some((rules, app)) => {
+                let web = self.engine(&mut req, known);
+                rules.check(web, &rules.blocks, &mut req, &rules.scope(app))
+            }
+            None => self.check_request(req, known),
+        }
     }
 
     /// The request for `url` and whether the page that made it is known.

@@ -22,6 +22,15 @@ use super::{AppRules, Filters, PageExceptions, RequestRules, use_scriptlets};
 use crate::files;
 use crate::list_files::MAX_COMPILED;
 
+/// The files of the rules for apps, in the order they are kept in.
+const APPS: [&str; 5] = [
+    "app-blocks",
+    "app-exceptions",
+    "app-hosts",
+    "app-guards",
+    "app-excepted",
+];
+
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
     pub(super) fn read_cache(cache: &Path, key: u64) -> Option<Self> {
@@ -88,13 +97,20 @@ impl Filters {
                 None
             },
             apps: if has_apps {
-                Some(AppRules::compiled(
-                    engine("app-blocks")?,
-                    engine("app-exceptions")?,
-                    engine("app-hosts")?,
-                    engine("app-guards")?,
-                    excepted(&cache.join("app-excepted"))?,
-                ))
+                let kept = APPS.map(|name| files::read_bytes(&cache.join(name), MAX_COMPILED));
+                let [
+                    Ok(blocks),
+                    Ok(exceptions),
+                    Ok(hosts),
+                    Ok(guards),
+                    Ok(excepted),
+                ] = &kept
+                else {
+                    return None;
+                };
+                Some(AppRules::compiled([
+                    blocks, exceptions, hosts, guards, excepted,
+                ])?)
             } else {
                 None
             },
@@ -113,19 +129,8 @@ impl Filters {
             let host_guards = self.host_guards.as_ref().map(Engine::serialize);
             let exceptions = &self.page_exceptions;
             let apps = self.apps.as_ref();
-            let [
-                app_blocks,
-                app_exceptions,
-                app_hosts,
-                app_guards,
-                app_excepted,
-            ] = app_rules(apps);
+            let kept = apps.map(|rules| rules.serialized().map(Some));
             let compiled = [
-                ("app-blocks", app_blocks),
-                ("app-exceptions", app_exceptions),
-                ("app-hosts", app_hosts),
-                ("app-guards", app_guards),
-                ("app-excepted", app_excepted),
                 ("full", Some(full)),
                 ("unknown", unknown),
                 ("hosts", Some(hosts)),
@@ -153,6 +158,11 @@ impl Filters {
                         .map(|(_, engine)| engine.serialize()),
                 ),
             ];
+            let compiled: Vec<_> = APPS
+                .into_iter()
+                .zip(kept.unwrap_or_default())
+                .chain(compiled)
+                .collect();
             let total: usize = compiled
                 .iter()
                 .filter_map(|(_, data)| data.as_ref())
@@ -187,27 +197,4 @@ impl Filters {
         };
         let _ = write();
     }
-}
-
-/// The rules for apps as they are kept, in the order of their files.
-fn app_rules(apps: Option<&AppRules>) -> [Option<Vec<u8>>; 5] {
-    let Some(rules) = apps else {
-        return Default::default();
-    };
-    let excepted = rules.excepted.iter().flat_map(|name| name.to_be_bytes());
-    [
-        Some(rules.blocks.serialize()),
-        Some(rules.exceptions.serialize()),
-        Some(rules.hosts.serialize()),
-        Some(rules.guards.serialize()),
-        Some(excepted.collect()),
-    ]
-}
-
-/// The apps that exceptions name, as they were kept.
-fn excepted(file: &Path) -> Option<Vec<u64>> {
-    let kept = files::read_bytes(file, MAX_COMPILED).ok()?;
-    let (names, rest) = kept.as_chunks::<8>();
-    rest.is_empty()
-        .then(|| names.iter().map(|name| u64::from_be_bytes(*name)).collect())
 }

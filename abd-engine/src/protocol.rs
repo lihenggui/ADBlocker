@@ -995,6 +995,7 @@ mod tests {
 
         let error = check(
             &paths,
+            None,
             "https://ads.example/",
             "https://news.example/",
             "image",
@@ -1032,7 +1033,7 @@ mod tests {
             (page, "document"),
         ] {
             let expected = full.check(url, page, kind, "GET");
-            let actual = check(&paths, url, page, kind).unwrap();
+            let actual = check(&paths, None, url, page, kind).unwrap();
             assert_eq!(
                 (actual.blocked, actual.rule),
                 (expected.blocked, expected.rule)
@@ -1053,6 +1054,7 @@ mod tests {
         let check = || {
             check(
                 &paths,
+                None,
                 "https://tracker.example/",
                 "https://news.example/",
                 "image",
@@ -1092,11 +1094,12 @@ mod tests {
         .unwrap();
         std::fs::write(paths.user_rules(), "||mine.example^\n").unwrap();
         let url = "https://ads.adnet.example/v2/serve?slot=feed_3";
-        let c = check(&paths, url, "https://news.example/", "script").unwrap();
+        let c = check(&paths, None, url, "https://news.example/", "script").unwrap();
         assert_eq!(value(c), json("check.json"));
 
         let c = check(
             &paths,
+            None,
             "https://mine.example/",
             "https://news.example/",
             "image",
@@ -1105,6 +1108,7 @@ mod tests {
         assert_eq!(c.source.as_deref(), Some("rules"));
         let c = check(
             &paths,
+            None,
             "https://fine.example/",
             "https://news.example/",
             "image",
