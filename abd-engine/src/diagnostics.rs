@@ -139,7 +139,7 @@ impl Diagnostics {
         }
         let (full, rest) = engine(rest)?;
         let (unknown, mut rest) = engine(rest)?;
-        let mut apps = [&[][..]; 5];
+        let mut apps = [&[][..]; 4];
         for kept in &mut apps {
             let (size, tail) = rest.split_at_checked(4)?;
             (*kept, rest) =

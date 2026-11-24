@@ -20,9 +20,10 @@
 //! not a source there, so a block that also needs one is left out, and an
 //! exception that names one applies whatever the page.
 //!
-//! The members of a shared UID are not told apart. A block for one of
-//! them is applied to none, and an exception for any app is applied to
-//! all.
+//! The members of a shared UID are not told apart, so none of these rules
+//! is applied to them: which app a rule would need to know is not known.
+//! An exception for one app that allows every address, as lists have them,
+//! would otherwise allow it to every such group.
 
 use std::collections::HashSet;
 
@@ -33,10 +34,6 @@ use adblock::request::Request;
 use super::host_rules::{host_only, project_guard};
 use super::{Check, network, source_option};
 use crate::apps::{Identity, valid_package};
-
-/// The apps of exceptions that a shared UID is matched against. A list
-/// naming more is not one of rules for apps people have.
-const MAX_EXCEPTED: usize = 4096;
 
 /// An exception for every address, as a guard: the exception it stands
 /// for could not be narrowed to hosts.
@@ -52,15 +49,10 @@ pub(crate) struct AppRules {
     pub(super) hosts: Engine,
     /// Where an exception may apply, for a host refused before a request.
     guards: Engine,
-    /// The apps that exceptions name, sorted.
-    excepted: Vec<u64>,
 }
 
-/// One app among the app rules.
-pub(crate) struct Scope {
-    sources: Vec<u64>,
-    blocks: bool,
-}
+/// One app among the app rules, as the source of its requests.
+pub(crate) struct Scope(u64);
 
 struct Scoped<'a> {
     pattern: &'a str,
@@ -146,13 +138,6 @@ impl Scoped<'_> {
             out.push('\n');
         }
     }
-
-    fn named(&self) -> impl Iterator<Item = u64> + '_ {
-        self.apps
-            .split('|')
-            .filter(|name| !name.starts_with('~'))
-            .map(name_hash)
-    }
 }
 
 /// The rule with its app as a source, if it is one for apps that the
@@ -218,14 +203,12 @@ impl AppRules {
             .filter_map(|(_, (id, bad), _)| bad.then_some(*id))
             .collect();
         let [mut blocks, mut exceptions, mut hosts, mut guards] = [const { String::new() }; 4];
-        let mut excepted = Vec::new();
         for (rule, (id, bad), line) in rules {
             if bad || disabled.contains(&id) {
                 continue;
             }
             let kept = if rule.exception() {
                 rule.guards(&mut guards);
-                excepted.extend(rule.named());
                 &mut exceptions
             } else {
                 if let Some(host) = rule.whole_host() {
@@ -237,65 +220,48 @@ impl AppRules {
             kept.push_str(&line);
             kept.push('\n');
         }
-        excepted.sort_unstable();
-        excepted.dedup();
-        excepted.truncate(MAX_EXCEPTED);
         Some(Self {
             blocks: engine(blocks, debug),
             exceptions: engine(exceptions, debug),
             hosts: engine(hosts, false),
             guards: engine(guards, false),
-            excepted,
         })
     }
 
     /// The engines as they are kept, each to be read back by
     /// [`AppRules::compiled`] in this order.
-    pub(crate) fn serialized(&self) -> [Vec<u8>; 5] {
-        let excepted = self.excepted.iter().flat_map(|name| name.to_be_bytes());
+    pub(crate) fn serialized(&self) -> [Vec<u8>; 4] {
         [
             self.blocks.serialize(),
             self.exceptions.serialize(),
             self.hosts.serialize(),
             self.guards.serialize(),
-            excepted.collect(),
         ]
     }
 
     /// What [`AppRules::serialized`] kept, if it is whole.
-    pub(crate) fn compiled(kept: [&[u8]; 5]) -> Option<Self> {
-        let [blocks, exceptions, hosts, guards, excepted] = kept;
+    pub(crate) fn compiled(kept: [&[u8]; 4]) -> Option<Self> {
+        let [blocks, exceptions, hosts, guards] = kept;
         let engine = |compiled: &[u8]| {
             let mut engine = Engine::default();
             // Checked by the engine against its own checksum.
             engine.deserialize(compiled).ok()?;
             Some(engine)
         };
-        let (names, rest) = excepted.as_chunks::<8>();
-        if !rest.is_empty() {
-            return None;
-        }
         Some(Self {
             blocks: engine(blocks)?,
             exceptions: engine(exceptions)?,
             hosts: engine(hosts)?,
             guards: engine(guards)?,
-            excepted: names.iter().map(|name| u64::from_be_bytes(*name)).collect(),
         })
     }
 
-    /// `app` as the engine names it: a package, or a shared UID's group.
-    pub(super) fn scope(&self, app: &str) -> Scope {
-        match Identity::parse(app) {
-            Some(identity) if !identity.is_group() => Scope {
-                sources: vec![name_hash(identity.package)],
-                blocks: true,
-            },
-            _ => Scope {
-                sources: self.excepted.clone(),
-                blocks: false,
-            },
-        }
+    /// `app`, as the engine names it, if it is one these rules can name: a
+    /// package, and not a shared UID's group.
+    pub(super) fn scope(app: &str) -> Option<Scope> {
+        Identity::parse(app)
+            .filter(|identity| !identity.is_group())
+            .map(|identity| Scope(name_hash(identity.package)))
     }
 
     /// Judges `req` by the rules of `web` and those of the app together:
@@ -318,13 +284,9 @@ impl AppRules {
         if found.important {
             return check;
         }
-        let mut app = Some(scope.sources.clone());
+        let mut app = Some(vec![scope.0]);
         let own = swap_source(req, &mut app, |req| {
-            let own = if scope.blocks {
-                blocks.check_network_request_subset(req, false, false)
-            } else {
-                Default::default()
-            };
+            let own = blocks.check_network_request_subset(req, false, false);
             let excepted = !own.important
                 && (web_rule || own.filter.is_some())
                 && self
@@ -357,7 +319,7 @@ impl AppRules {
     /// Whether no exception of the app could apply to a request of `req`'s
     /// host.
     pub(super) fn unguarded(&self, req: &mut Request, scope: &Scope) -> bool {
-        swap_source(req, &mut Some(scope.sources.clone()), |req| {
+        swap_source(req, &mut Some(vec![scope.0]), |req| {
             self.guards
                 .check_network_request_subset(req, false, true)
                 .exception
@@ -474,19 +436,23 @@ mod tests {
     }
 
     #[test]
-    fn a_shared_uid_gets_the_exceptions_of_every_app_and_the_blocks_of_none() {
+    fn a_shared_uid_is_judged_by_the_rules_for_every_app_alone() {
         let f = filters(
             "||ads.example^\n@@||ads.example^$app=com.member\n\
              ||shop.example^$app=com.member\n\
-             ||other.example^\n@@||other.example^$app=~com.member\n",
+             ||other.example^\n@@*$app=com.cinema\n",
         );
         let group = "@com.shared";
-        assert!(!blocked(&f, group, "https://ads.example/"));
-        assert!(!f.for_app(group).blocks_host("ads.example"));
+        assert!(blocked(&f, group, "https://ads.example/"));
+        assert!(f.for_app(group).blocks_host("ads.example"));
         assert!(!blocked(&f, group, "https://shop.example/"));
         assert!(!f.for_app(group).blocks_domain("shop.example"));
-        // Which member it is not is not known either.
+        // An exception that allows one app every address allows it no other.
         assert!(blocked(&f, group, "https://other.example/"));
+        assert!(f.for_app(group).blocks_domain("other.example"));
+        assert!(blocked(&f, "com.member", "https://other.example/"));
+        assert!(!blocked(&f, "com.cinema", "https://other.example/"));
+        assert!(!f.for_app("com.cinema").blocks_host("other.example"));
     }
 
     #[test]
@@ -540,7 +506,7 @@ mod tests {
             let f = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
             assert!(f.for_app("com.reader").blocks_host("shop.example"));
             assert!(!f.for_app("com.member").blocks_host("ads.example"));
-            assert!(!f.for_app("@com.shared").blocks_host("ads.example"));
+            assert!(f.for_app("@com.shared").blocks_host("ads.example"));
             assert!(f.for_app("com.reader").blocks_host("ads.example"));
         }
         assert!(cache.path().join("app-blocks").exists());

@@ -23,13 +23,7 @@ use crate::files;
 use crate::list_files::MAX_COMPILED;
 
 /// The files of the rules for apps, in the order they are kept in.
-const APPS: [&str; 5] = [
-    "app-blocks",
-    "app-exceptions",
-    "app-hosts",
-    "app-guards",
-    "app-excepted",
-];
+const APPS: [&str; 4] = ["app-blocks", "app-exceptions", "app-hosts", "app-guards"];
 
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
@@ -58,13 +52,12 @@ impl Filters {
                 remaining -= kept.len();
                 Some(kept)
             });
-            let [blocks, exceptions, hosts, guards, excepted] = kept.each_mut().map(Option::take);
+            let [blocks, exceptions, hosts, guards] = kept.each_mut().map(Option::take);
             Some(AppRules::compiled([
                 &blocks?,
                 &exceptions?,
                 &hosts?,
                 &guards?,
-                &excepted?,
             ])?)
         } else {
             None
