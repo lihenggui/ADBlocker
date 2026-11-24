@@ -423,6 +423,25 @@ impl Ctx {
         self.services.stats.count(Some(package), Counter::Passed);
         self.services.live.passed(package, host, reason);
     }
+
+    /// What is done with a connection that was to be decrypted and stays
+    /// encrypted after all, for `reason`: it has no requests to judge, so
+    /// its host is judged by the domain rules, as `Policy::decide_named`
+    /// judges one known beforehand to stay encrypted. Returns whether it
+    /// is handed on; one that is not has been reset.
+    fn hands_on(&self, app: &TcpStream, package: &str, host: &str, reason: Reason) -> bool {
+        // A trusted host is never blocked.
+        if reason != Reason::Trusted && self.filters().for_app(package).blocks_domain(host) {
+            self.services
+                .stats
+                .count(Some(package), Counter::HostsBlocked);
+            self.services.live.host_blocked(package, host);
+            reset(app);
+            return false;
+        }
+        self.passed(package, host, reason);
+        true
+    }
 }
 
 /// Ends a connection that is not carried, with a reset: the app fails at
@@ -556,7 +575,9 @@ async fn inspect_tls(
         }
         Verdict::Mitm if trusting == Trusting::No => {
             trace!(ctx, "pass    {package} {host} (not made to trust us)");
-            ctx.passed(&package, &host, Reason::Untrusted);
+            if !ctx.hands_on(&app, &package, &host, Reason::Untrusted) {
+                return Ok(());
+            }
             splice(&ctx, app, origin).await
         }
         Verdict::Mitm => {

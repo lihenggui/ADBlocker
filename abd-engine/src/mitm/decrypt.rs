@@ -71,12 +71,18 @@ pub(super) async fn mitm(
     // On the loopback interface nothing is gained by waiting to fill a
     // packet, and a handshake waits out a delayed acknowledgement for it.
     app.set_nodelay(true)?;
-    let Some(verified) = verify_upstream(&ctx, &app, &peer, &hello).await? else {
-        return splice(&ctx, app, peer.origin).await;
+    let verified = match verify_upstream(&ctx, &app, &peer, &hello).await? {
+        Ok(verified) => verified,
+        Err(reason) if ctx.hands_on(&app, &peer.package, &peer.host, reason) => {
+            return splice(&ctx, app, peer.origin).await;
+        }
+        Err(_) => return Ok(()),
     };
     if let Some(reason) = still_inspectable(&ctx, &peer) {
-        ctx.passed(&peer.package, &peer.host, reason);
         drop(verified);
+        if !ctx.hands_on(&app, &peer.package, &peer.host, reason) {
+            return Ok(());
+        }
         return splice(&ctx, app, peer.origin).await;
     }
     if !profile_current(&ctx, &peer, &verified) {
@@ -102,12 +108,14 @@ pub(super) async fn mitm(
     serve_decrypted(ctx, app, verified, peer, alpn, trusting).await
 }
 
+/// The server of the connection, verified, or why the connection is not
+/// decrypted.
 async fn verify_upstream(
     ctx: &Ctx,
     app: &TcpStream,
     peer: &Peer,
     hello: &Hello,
-) -> Result<Option<Verified>> {
+) -> Result<std::result::Result<Verified, Reason>> {
     let Peer {
         origin,
         package,
@@ -118,8 +126,7 @@ async fn verify_upstream(
         // Not a name a certificate could be checked against, so not one
         // to answer for: the app is given whatever is there.
         trace!(ctx, "pass    {package} {host} (not a name)");
-        ctx.passed(package, host, Reason::Unverified);
-        return Ok(None);
+        return Ok(Err(Reason::Unverified));
     };
     let serial = crate::apps::Identity::parse(package).and_then(|app| app.profile_serial);
     let profile_tls = serial.and_then(|serial| {
@@ -131,8 +138,7 @@ async fn verify_upstream(
             .cloned()
     });
     if serial.is_some() && profile_tls.is_none() {
-        ctx.passed(package, host, Reason::Untrusted);
-        return Ok(None);
+        return Ok(Err(Reason::Untrusted));
     }
     let tls = profile_tls.as_deref().unwrap_or(&ctx.services.tls);
     let up_tcp = connect(ctx, app, *origin).await?;
@@ -146,8 +152,7 @@ async fn verify_upstream(
                 r.err().map_or_else(String::new, |e| e.to_string())
             });
             trace!(ctx, "pass    {package} {host} (server: {why})");
-            ctx.passed(package, host, Reason::Unverified);
-            return Ok(None);
+            return Ok(Err(Reason::Unverified));
         }
     };
     // A server that proves who is behind it, as banks and payment
@@ -157,11 +162,10 @@ async fn verify_upstream(
     if certificate.is_some_and(|c| tls.extended_validation(host, c)) {
         trace!(ctx, "pass    {package} {host} (extended validation)");
         ctx.services.policy.found_sensitive(host);
-        ctx.passed(package, host, Reason::Sensitive);
         drop(up);
-        return Ok(None);
+        return Ok(Err(Reason::Sensitive));
     }
-    Ok(Some(Verified {
+    Ok(Ok(Verified {
         stream: up,
         profile: serial.zip(profile_tls),
     }))

@@ -1204,7 +1204,23 @@ async fn a_pinned_host_its_domain_rules_block_is_refused_with_a_try_pending() {
 }
 
 #[tokio::test]
-async fn work_tls_uses_only_its_profile_trust_and_respects_opaque_exceptions() {
+async fn an_app_not_made_to_trust_us_is_refused_a_host_its_domain_rules_block() {
+    let rig = rig(Setup {
+        // The exception keeps the host from being refused before a
+        // request, and no request of this app is ever seen.
+        rules: "||site.test^\n@@||site.test/pass^$image\n",
+        trusting: Trusting::No,
+        ..Setup::default()
+    })
+    .await;
+    assert!(rig.handshake(Trust::System, H1).await.is_err());
+    assert_eq!(rig.hits(), 0);
+    assert_eq!(rig.count(Counter::HostsBlocked), 1);
+    assert_eq!(rig.count(Counter::Passed), 0);
+}
+
+#[tokio::test]
+async fn work_tls_uses_only_its_profile_trust_and_an_undecrypted_host_follows_its_domain_rules() {
     let work_uid = 1_010_001;
     let rig = rig(Setup {
         uid: work_uid,
@@ -1215,9 +1231,10 @@ async fn work_tls_uses_only_its_profile_trust_and_respects_opaque_exceptions() {
     *rig.ctx.selection.apps.write().unwrap() =
         Arc::new(BTreeMap::from([(work_uid, "31:com.app".to_owned())]));
     let real = || rig.get(Trust::ServerOnly, H1, "/ads/asset.png", None);
-    // The absent local CA and a profile that distrusts the upstream
-    // root both leave the ClientHello untouched for the work app.
-    assert!(real().await.unwrap().2);
+    // With the local CA absent, and with a profile that distrusts the
+    // upstream root, nothing of the work app is decrypted: no request is
+    // seen that the exception could allow, and the host's rule refuses it.
+    assert!(real().await.is_err());
     let without_upstream = Arc::new(rig.ctx.services.tls.with_roots(RootCertStore::empty()));
     rig.ctx
         .selection
@@ -1225,9 +1242,10 @@ async fn work_tls_uses_only_its_profile_trust_and_respects_opaque_exceptions() {
         .write()
         .unwrap()
         .insert(31, without_upstream);
-    assert!(real().await.unwrap().2);
-    assert_eq!(rig.count(Counter::HostsBlocked), 0);
+    assert!(real().await.is_err());
+    assert_eq!(rig.count(Counter::HostsBlocked), 2);
     assert_eq!(rig.count(Counter::Decrypted), 0);
+    assert_eq!(rig.hits(), 0);
 
     let authorized = Arc::new(
         rig.ctx
