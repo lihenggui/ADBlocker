@@ -1,0 +1,1 @@
+Built with a pinned Rust release and NDK, so that F-Droid can build the same APK from the source and publish the one signed here. Nothing else changes.
