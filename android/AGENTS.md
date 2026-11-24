@@ -99,7 +99,9 @@ Assembling `:app` needs the daemons in `../out/` (`../scripts/build.sh`).
   the settings remember it (`UserData.moduleInstalledByApp`): root is not
   asked whose the module is in order to find out. It starts a stopped
   daemon where no root manager ran the module's launcher, never turns a
-  module on again, and is not tried a second time.
+  module on again, and is not tried a second time. It does the same once
+  for a process when the app is opened in root mode
+  (`MainActivityViewModel`), for a boot broadcast that did not arrive.
 - Screens ask `Capabilities` what the method in use can do, never the
   method itself. Without the engine in the build, the VPN method's commands
   throw `AbdException.EngineMissing`.
