@@ -23,6 +23,7 @@ if [ "$#" -eq 0 ]; then
     result=0
     for scenario in install install-unsupported reinstall boot boot-implausible-list boot-unreadable-list \
         boot-app-gone boot-disabled boot-yields boot-pending-module remove remove-fails remove-refused \
+        remove-leftover remove-leftover-reinstall remove-leftover-module \
         takeover update-module update-module-removal update-module-pending install-pending-module \
         module-uninstall; do
         sh "$0" "$scenario" || result=1
@@ -65,6 +66,10 @@ case "${0%/bin/abd}" in
     *) where=unknown ;;
 esac
 printf '%s %s\n' "$where" "$*" >>"$FIXTURE/calls"
+# The copies of the stores are kept while apps have them mounted.
+case "$SCENARIO:$*" in
+    remove-leftover*:'trust remove') exit 3 ;;
+esac
 EOF
 (cd "$archive" && zip -q -r "$fixture/module.zip" .)
 
@@ -166,6 +171,17 @@ stopped_first() {
     head -n 2 "$fixture/calls" | cmp -s - "$fixture/first" || fail "the installed daemon was not stopped first"
 }
 
+# A removal while apps have the copies of the stores mounted.
+removed_with_leftover() {
+    installed_by_app
+    mkdir -p "$data/store" "$data/user-store" "$data/ca"
+    touch "$data/store/root.0" "$data/apps"
+    direct_sh remove || fail "the removal failed"
+    test ! -e "$direct" && test ! -e "$data/ca" && test ! -e "$data/apps" || fail "the module or its key is left"
+    test -f "$data/store/root.0" || fail "a copy apps may have mounted was removed"
+    forget_calls
+}
+
 staged_nothing() {
     if ls -d "$adb"/.adblocker-direct.* >/dev/null 2>&1; then fail "the staging directory was left behind"; fi
 }
@@ -186,7 +202,7 @@ case "$SCENARIO" in
         done
         test -x "$direct/bin/abd" || fail "the daemon cannot be run"
         test -x "$launcher" || fail "nothing starts the module at boot"
-        test ! -e "$direct/launcher" || fail "the launcher was left beside the module"
+        test ! -e "$adb/.adblocker-launcher" || fail "the launcher was left where it was written"
         test ! -e "$module" || fail "a module appeared in the root manager"
         staged_nothing
         ;;
@@ -274,6 +290,32 @@ case "$SCENARIO" in
         flashed
         if direct_sh remove; then fail "the data of the module in the manager was removed"; fi
         test ! -s "$fixture/calls" && test -d "$data" || fail "the module in the manager was touched"
+        ;;
+    remove-leftover)
+        removed_with_leftover
+        mode "$launcher" -rwx------
+        # At the next boot, as a root manager runs it.
+        sh "$launcher" || fail "the cleanup failed"
+        test ! -e "$data" && test ! -e "$launcher" || fail "something is left after the boot"
+        test ! -s "$fixture/calls" || fail "something was started"
+        ;;
+    remove-leftover-reinstall)
+        removed_with_leftover
+        direct_sh install "$fixture/module.zip" || fail "the installation failed"
+        starts direct
+        forget_calls
+        touch "$data/apps"
+        sh "$launcher" || fail "the launcher failed"
+        starts direct
+        test -f "$data/apps" || fail "the data of the module installed since was removed"
+        ;;
+    remove-leftover-module)
+        removed_with_leftover
+        flashed
+        touch "$data/apps"
+        sh "$launcher" || fail "the cleanup failed"
+        test -f "$data/apps" || fail "the data of the module in the manager was removed"
+        test ! -e "$launcher" || fail "the cleanup stays for another boot"
         ;;
     takeover)
         installed_by_app
