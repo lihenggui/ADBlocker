@@ -11,7 +11,7 @@
     },
     {
       "id": "adguard_mobile",
-      "url": "https://filters.adtidy.org/extension/ublock/filters/11.txt",
+      "url": "https://filters.adtidy.org/android/filters/11.txt",
       "title": "AdGuard Mobile Ads",
       "descriptions": {"en": "Ads in mobile apps", "zh": "移动应用中的广告"},
       "category": "Ads",
