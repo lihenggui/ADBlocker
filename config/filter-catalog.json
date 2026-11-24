@@ -95,6 +95,13 @@
       "category": "Regional"
     },
     {
+      "id": "awavenue",
+      "url": "https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/AWAvenue-Ads-Rule.txt",
+      "title": "AWAvenue Ads Rule",
+      "descriptions": {"en": "Ad SDKs in Chinese apps", "zh": "中文应用中的广告 SDK"},
+      "category": "Regional"
+    },
+    {
       "id": "easylist_dutch",
       "url": "https://easylist-downloads.adblockplus.org/easylistdutch.txt",
       "title": "EasyList Dutch",
