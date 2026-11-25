@@ -50,6 +50,7 @@ import kotlin.coroutines.CoroutineContext
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -71,6 +72,7 @@ class AppsViewModelTest {
         var workUnavailable = false
         var unavailableReason: AppUnavailableReason? = null
         var listWithheld = false
+        var allApps = false
 
         override suspend fun inventory() = AppInventory(apps(), workUnavailable, listWithheld = listWithheld)
         var holding: CompletableDeferred<Unit>? = null
@@ -88,7 +90,8 @@ class AppsViewModelTest {
             }
             if (!installed) return emptyList()
             val app = news.copy(unavailableReason = unavailableReason)
-            return listOf(AppEntry(app, filtered[news.packageName]?.let { FilteredApp(news.packageName, it, null) }))
+            val filter = filtered[news.packageName]?.let { FilteredApp(news.packageName, it, null) }
+            return listOf(AppEntry(app, filter, inAllAppsScope = allApps, excluded = allApps && filter == null))
         }
 
         override suspend fun setFiltered(packageName: String, filtered: Boolean) = changes.changing {
@@ -119,6 +122,38 @@ class AppsViewModelTest {
     private fun takeMessage() = viewModel.pendingMessages.value.single().let {
         viewModel.onMessageShown(it.id)
         it.message
+    }
+
+    @Test
+    fun givenAnAllAppsExclusionIsPending_whenAConcurrentLoadFinishes_thenTheEntryStillShowsItAsExcluded() = runTest {
+        daemon.allApps = true
+        daemon.filtered[news.packageName] = FilterLevel.Hosts
+        showApps()
+        val gate = CompletableDeferred<Unit>()
+        daemon.holding = gate
+
+        viewModel.setFiltered(shown(), false)
+        runCurrent()
+        viewModel.refresh()
+        runCurrent()
+
+        assertTrue(shown().inAllAppsScope)
+        assertTrue(shown().excluded)
+        assertFalse(shown().isFiltered)
+        assertEquals(0, viewModel.uiState.value.filteredCount)
+        gate.complete(Unit)
+        runCurrent()
+        assertTrue(shown().excluded)
+    }
+
+    @Test
+    fun givenAnUnchangedUiState_whenReadAgain_thenItReusesTheFilteredList() {
+        val entry = AppEntry(news, FilteredApp(news.packageName, FilterLevel.Hosts, null))
+        val state = AppsUiState(entries = listOf(entry))
+
+        assertEquals(listOf(entry), state.shown)
+        assertSame(state.shown, state.shown)
+        assertEquals(1, state.filteredCount)
     }
 
     @Test

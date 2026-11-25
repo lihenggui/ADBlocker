@@ -70,15 +70,14 @@ data class AppsUiState(
     val touched: Set<String> = emptySet(),
 ) {
     /** The apps the chosen chip shows. */
-    val shown: List<AppEntry>
-        get() = entries.filter {
-            it.appKey in touched || when (filter) {
-                AppFilter.Filtered -> it.isFiltered
-                AppFilter.All -> true
-            }
+    val shown: List<AppEntry> by lazy {
+        when (filter) {
+            AppFilter.Filtered -> entries.filter { it.isFiltered || it.appKey in touched }
+            AppFilter.All -> entries
         }
+    }
 
-    val filteredCount: Int get() = entries.count { it.isFiltered }
+    val filteredCount: Int by lazy { entries.count { it.isFiltered } }
 }
 
 @HiltViewModel
@@ -127,7 +126,8 @@ class AppsViewModel @Inject constructor(
                     else -> AppFilter.Filtered
                 }
                 val shown = entries.map { entry ->
-                    pending[entry.appKey]?.second?.let { AppEntry(entry.app, it.filter) } ?: entry
+                    val optimistic = pending[entry.appKey]?.second ?: return@map entry
+                    entry.copy(filter = optimistic.filter, excluded = entry.inAllAppsScope && optimistic.filter == null)
                 }
                 it.copy(
                     loading = false,
