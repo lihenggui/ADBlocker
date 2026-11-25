@@ -25,6 +25,7 @@ pub(super) const HLS: &str = "hls";
 pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
 pub(super) const URLTRANSFORM: &str = "urltransform";
+pub(super) const CSP: &str = "csp";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum PageModifier {
@@ -218,7 +219,8 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
             .filter(|name| *name != HLS)
             .collect()
     });
-    line.contains("$_")
+    line.contains(CSP)
+        || line.contains("$_")
         || line.contains(",_")
         || line.contains("$hls")
         || line.contains(",hls")

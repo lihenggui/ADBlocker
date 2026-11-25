@@ -191,6 +191,24 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         }
     }
 
+    fn csp(&self, filters: &AppFilters<'_>, url: &str, kind: RequestKind) -> Option<HeaderValue> {
+        let (kind, page) = match kind {
+            RequestKind::Assumed => (
+                "document",
+                match self.page {
+                    Page::Unnamed { cross_site: false } => Page::Itself,
+                    page => page,
+                },
+            ),
+            RequestKind::Known("document") => ("document", self.page),
+            RequestKind::Known("subdocument") => ("subdocument", self.page),
+            RequestKind::Known(_) => return None,
+        };
+        let directives = filters.csp(url, page, kind, self.method)?;
+        // Header parsing can reject an unusable value from a cached matcher.
+        HeaderValue::from_str(&directives).ok()
+    }
+
     fn evaluate(
         &self,
         filters: &AppFilters<'_>,
@@ -218,6 +236,9 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             filters.check_with_page(url, self.page, kind.as_str(), self.method)
         };
         let blocked = check.blocked;
+        if !blocked && self.permits_actions {
+            plan.csp = self.csp(filters, url, kind);
+        }
         plan.ask_for_identity = !plan.body.actions.is_empty()
             || (!blocked
                 && self.permits_body_rewrite

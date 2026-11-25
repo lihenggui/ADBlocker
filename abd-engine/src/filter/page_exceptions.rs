@@ -145,6 +145,14 @@ impl PageExceptions {
         )
     }
 
+    pub(super) fn url_rules_disabled(&self, url: &str, page: Page<'_>, method: &str) -> bool {
+        let disables = |page| {
+            let exceptions = self.response(url, page, method);
+            exceptions.document || exceptions.urlblock
+        };
+        disables(Page::Itself) || matches!(page, Page::Named(_)) && disables(page)
+    }
+
     pub(super) fn skip_html(&self, url: &str, method: &str) -> bool {
         html::disabled_by(self.response(url, Page::Itself, method))
     }

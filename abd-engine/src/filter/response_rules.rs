@@ -108,10 +108,8 @@ impl<'a> Parsed<'a> {
             },
         };
         let projected = parsed.project(0);
-        let source = rule::read(&projected);
-        let network = source
-            .network()
-            .filter(|rule| rule.is_csp() && !rule.is_badfilter())?;
+        let network =
+            rule::parse_network(&projected).filter(|rule| rule.is_csp() && !rule.is_badfilter())?;
         // The CSP index can drop a condition with only excluded destinations.
         // Defer those predicates to qualifiers, using the matcher's own hashes.
         if kind == ActionKind::UrlTransform

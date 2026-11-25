@@ -449,6 +449,41 @@ impl AppFilters<'_> {
         }
     }
 
+    pub(crate) fn csp(
+        &self,
+        url: &str,
+        page: Page<'_>,
+        kind: &str,
+        method: &str,
+    ) -> Option<String> {
+        if self
+            .filters
+            .page_exceptions
+            .url_rules_disabled(url, page, method)
+        {
+            return None;
+        }
+        let requests = &self.filters.requests;
+        let csp_method = match kind {
+            "document" => crate::rule::csp::DOCUMENT_METHOD,
+            "subdocument" => crate::rule::csp::SUBDOCUMENT_METHOD,
+            _ => return None,
+        };
+        let mut request = RequestRules::request_with_page(url, page, kind, csp_method)?;
+        let web = requests.full.get_csp_directives(&request);
+        let app = self.app_rules().and_then(|(rules, scope)| {
+            scope.with_source(&mut request, |req| rules.blocks.get_csp_directives(req))
+        });
+        match (web, app) {
+            (Some(mut web), Some(app)) => {
+                web.push(',');
+                web.push_str(&app);
+                Some(web)
+            }
+            (web, app) => web.or(app),
+        }
+    }
+
     pub(crate) fn check_with_page(
         &self,
         url: &str,

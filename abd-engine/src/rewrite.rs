@@ -42,6 +42,7 @@ pub(crate) struct RewritePlan {
     pub(crate) url_transforms: Vec<Arc<ResponseAction>>,
     pub(crate) request_headers: Vec<HeaderName>,
     pub(crate) response_headers: Vec<HeaderName>,
+    pub(crate) csp: Option<hyper::header::HeaderValue>,
     pub(crate) body: BodyPlan,
     pub(crate) ask_for_identity: bool,
 }

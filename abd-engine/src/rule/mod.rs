@@ -30,6 +30,7 @@ pub(crate) mod action;
 pub(crate) mod address;
 mod adguard;
 mod comment;
+pub(crate) mod csp;
 mod denyallow;
 pub(crate) mod html;
 pub(crate) mod javascript;
@@ -53,6 +54,7 @@ pub(crate) struct Rule<'a> {
     translated: Option<adguard::Translation>,
     rewritten: Option<String>,
     noop: bool,
+    csp_subdocument: bool,
     noop_host: Option<&'a str>,
     pub(crate) denyallow: bool,
     pub(crate) redirect_exception: bool,
@@ -76,6 +78,7 @@ pub(crate) enum Reason {
     DenyAllow(denyallow::Rejection),
     RegexSourceDomain,
     NetworkRegex,
+    Csp(csp::Rejection),
     Address(address::Rejection),
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
@@ -127,6 +130,7 @@ pub(crate) fn read_with_scripts<'a>(
         translated: None,
         rewritten: None,
         noop: false,
+        csp_subdocument: false,
         noop_host: None,
         denyallow: false,
         redirect_exception: false,
@@ -160,7 +164,7 @@ pub(crate) fn read_with_scripts<'a>(
     if custom.as_ref().is_some_and(|options| {
         !options.pattern.contains('#')
             && options.tokens().any(|option| {
-                option.name() == modifiers::HLS
+                matches!(option.name(), modifiers::CSP | modifiers::HLS)
                     || option.name() == modifiers::URLTRANSFORM
                     || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
             })
@@ -195,6 +199,10 @@ impl<'a> Rule<'a> {
         let mut app = None;
         if let Some(options) = custom {
             self.noop = options.noop;
+            if let Err(reason) = csp::validate(&options) {
+                self.kind = Kind::NotApplied(Reason::Csp(reason));
+                return;
+            }
             match network_qualifiers(&options) {
                 Ok(condition) => denyallow = condition,
                 Err(reason) => {
@@ -253,6 +261,9 @@ impl<'a> Rule<'a> {
     fn rewrite_network(&mut self, options: &Options<'a>, denyallow: Option<&denyallow::Condition>) {
         self.rewritten = if let Some(condition) = denyallow {
             Some(condition.rewrite(options))
+        } else if let Some(projected) = csp::project(options) {
+            self.csp_subdocument = true;
+            Some(projected)
         } else if options.noop
             && options.tokens().next().is_none()
             && let Some((line, host)) = whole_pattern(options.pattern)
@@ -266,7 +277,7 @@ impl<'a> Rule<'a> {
 
     /// Text for diagnostics when matcher syntax differs from the list.
     pub(crate) fn original(&self) -> Option<&'a str> {
-        (self.noop || self.denyallow).then_some(self.line)
+        (self.noop || self.denyallow || self.csp_subdocument).then_some(self.line)
     }
 
     pub(crate) fn has_redirect_option(&self) -> bool {
@@ -328,6 +339,7 @@ impl<'a> Rule<'a> {
                 | Reason::DenyAllow(_)
                 | Reason::RegexSourceDomain
                 | Reason::NetworkRegex
+                | Reason::Csp(_)
                 | Reason::Address(_),
             ) => None,
             _ => Some(self.normalized()),
@@ -405,6 +417,7 @@ impl<'a> Rule<'a> {
                             | Reason::DenyAllow(_)
                             | Reason::RegexSourceDomain
                             | Reason::NetworkRegex
+                            | Reason::Csp(_)
                             | Reason::Address(_)
                     )
             )
@@ -423,6 +436,7 @@ impl<'a> Rule<'a> {
                 Reason::DenyAllow(_)
                     | Reason::RegexSourceDomain
                     | Reason::NetworkRegex
+                    | Reason::Csp(_)
                     | Reason::Address(_)
             )
         ) {

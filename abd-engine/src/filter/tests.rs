@@ -22,6 +22,7 @@ fn filters(rules: &str) -> Filters {
     Filters::load(&[dir.path()], true).unwrap()
 }
 
+mod csp;
 mod guards;
 mod javascript;
 mod redirects;

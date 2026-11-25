@@ -136,6 +136,11 @@ A matching `$urltransform` rule can change an allowed request's path
 and query before it is sent. It can redirect a GET or HEAD request to
 another address. The app decides whether to follow the redirect and
 opens any new connection itself.
+With URL filtering on, any list can add a Content Security Policy to
+an allowed document with a `$csp` rule. Server policies still apply.
+The engine rejects reporting directives. Cosmetic injection handles list
+policies and server policies together.
+[URL and response rules](docs/how-it-works.md#filtering)
 Whole-host refusals happen before the engine reads a request. The engine
 applies response rules before it adds cosmetic styles or scripts.
 

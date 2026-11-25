@@ -60,7 +60,7 @@ impl Scope<'_> {
         self.with_source(req, |req| super::unguarded(guards, req))
     }
 
-    fn with_source<T>(&self, req: &mut Request, f: impl FnOnce(&Request) -> T) -> T {
+    pub(super) fn with_source<T>(&self, req: &mut Request, f: impl FnOnce(&Request) -> T) -> T {
         let previous = req.source_hostname_hashes.replace(self.hashes.to_vec());
         let result = f(req);
         req.source_hostname_hashes = previous;
@@ -80,6 +80,7 @@ struct Projected<'a> {
     id: u64,
     bad: bool,
     is_redirect: bool,
+    is_csp: bool,
     redirect_exception: bool,
     line: String,
     original: Option<&'a str>,
@@ -110,6 +111,7 @@ fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'
         id: parsed.get_id(),
         bad: parsed.is_badfilter(),
         is_redirect: parsed.is_redirect(),
+        is_csp: parsed.is_csp(),
         redirect_exception: source.redirect_exception,
         line: source.normalized().into_owned(),
         original,
@@ -218,6 +220,7 @@ impl<'a> AppProjections<'a> {
             id,
             bad,
             is_redirect,
+            is_csp,
             redirect_exception,
             line,
             original,
@@ -232,7 +235,10 @@ impl<'a> AppProjections<'a> {
             if redirect_exception {
                 continue;
             }
-            if rule.exception() {
+            // The CSP matcher resolves its own exceptions alongside policies.
+            if is_csp {
+                blocks.push(&line, original.filter(|_| debug));
+            } else if rule.exception() {
                 rule.guards(&mut guards);
                 exceptions.push_str(&line);
                 exceptions.push('\n');

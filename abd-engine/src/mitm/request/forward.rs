@@ -16,7 +16,7 @@ use std::future::Future;
 use std::sync::Arc;
 
 use hyper::body::Incoming;
-use hyper::header::{ACCEPT_ENCODING, HeaderName, HeaderValue, UPGRADE};
+use hyper::header::{ACCEPT_ENCODING, CONTENT_SECURITY_POLICY, HeaderName, HeaderValue, UPGRADE};
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 
@@ -50,6 +50,7 @@ impl PendingVerdict<'_> {
         }
         rewrite.body.actions = selected.body.actions;
         rewrite.response_headers = selected.response_headers;
+        rewrite.csp = selected.csp;
         request.record(&decision);
         None
     }
@@ -140,6 +141,9 @@ async fn forward_response(
     // Remove headers before the body rewrite and cosmetic code use the head
     // for the app. Content-Type, framing, encoding and CSP are protected.
     if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
+        if html_document && let Some(csp) = rewrite.csp {
+            resp.headers_mut().append(CONTENT_SECURITY_POLICY, csp);
+        }
         for name in rewrite.response_headers {
             resp.headers_mut().remove(name);
         }

@@ -373,6 +373,18 @@ the scheme, host, or port of a GET or HEAD request sends the app an empty
 connection itself. The engine counts and reports the redirect as a block
 and uses the original URL in the recording.
 
+With URL filtering on, any list can use `$csp=policy` to add a Content
+Security Policy to an allowed document or frame. If the request type is
+unknown, the policy is added when the response identifies itself as HTML.
+For example, `||example.org^$csp=frame-src 'none'` blocks every frame on the
+page. A rule with `$subdocument` applies only to frames. Matching policies
+are appended in one response header field alongside the server's policies.
+`@@...$csp` disables all matching policies and `@@...$csp=policy` disables
+the named policy. The `$document` and `$urlblock` exceptions also disable
+the list policies. The engine rejects reporting directives. When cosmetic
+filtering adds a style or script, it handles each list policy in the same
+way as a server policy.
+
 A rule can name the apps it is for with AdGuard's `$app=` option.
 Entries separated by `|` can be package names, prefixes ending in `*`,
 or regular expressions enclosed in `/`. Names and prefixes ignore ASCII
