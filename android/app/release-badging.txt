@@ -1,4 +1,4 @@
-package: name='li.mercury.adblocker' versionCode='11' versionName='0.1.10' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
+package: name='li.mercury.adblocker' versionCode='12' versionName='0.1.11' platformBuildVersionName='17' platformBuildVersionCode='37' compileSdkVersion='37' compileSdkVersionCodename='17'
 minSdkVersion:'29'
 targetSdkVersion:'37'
 uses-permission: name='android.permission.INTERNET'
