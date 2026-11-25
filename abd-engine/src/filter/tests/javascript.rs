@@ -180,7 +180,7 @@ fn page_script_exceptions_keep_element_hiding_unless_it_is_also_excepted() {
             filters
                 .page_exceptions
                 .response(&format!("{URL}content"), Page::Itself, "GET")
-                .all
+                .content
         );
         let hiding = filters.hiding(&format!("{URL}both"));
         assert!(hiding.css.is_none() && hiding.script.is_none());

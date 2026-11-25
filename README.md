@@ -235,7 +235,10 @@ Custom rules go in `rules/*.txt`, in the syntax of the filter lists.
 A matching `$replace` rule can override a request block and rewrite the
 text response when URL filtering is on. A matching `$jsonprune` rule
 removes items from a JSON or JSONP response and leaves request blocking
-in effect. `$app=` accepts package names, prefixes ending in `*`, and
+in effect. `$removeheader=header-name` removes a response header, and
+`$removeheader=request:header-name` removes a request header. Header
+removal rules come from your custom rules and trusted catalog lists.
+`$app=` accepts package names, prefixes ending in `*`, and
 regular expressions enclosed in `/`. Separate entries with `|` and
 prefix every entry with `~` to exclude the matching apps. In expressions,
 escape `/`, `$`, `,`, and `|` with a backslash.

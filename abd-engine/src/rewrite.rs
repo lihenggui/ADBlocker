@@ -27,14 +27,44 @@ use std::time::Instant;
 use bytes::Bytes;
 use http_body_util::{BodyExt, combinators::BoxBody};
 use hyper::body::{Body, Frame};
-use hyper::header::{ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH, ETAG};
+use hyper::header::{ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH, ETAG, HeaderName};
 use hyper::{Response, StatusCode};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::{Sleep, sleep};
 
+use crate::htmlfilter::Compiled;
 use crate::limits::{MAX_REWRITE_BODY, MAX_REWRITES, REWRITE_WAIT, REWRITE_WORK};
-use crate::rule::action::{ActionKind, ResponseAction, html};
+use crate::rule::action::{ActionKind, Place, ResponseAction, html};
+
+#[derive(Default)]
+pub(crate) struct RewritePlan {
+    pub(crate) request_headers: Vec<HeaderName>,
+    pub(crate) response_headers: Vec<HeaderName>,
+    pub(crate) body: BodyPlan,
+    pub(crate) ask_for_identity: bool,
+}
+
+#[derive(Default)]
+pub(crate) struct BodyPlan {
+    pub(crate) actions: Vec<Arc<ResponseAction>>,
+    pub(crate) html: Vec<Arc<Compiled>>,
+}
+
+impl RewritePlan {
+    pub(crate) fn select(actions: Vec<Arc<ResponseAction>>, permits_body_rewrite: bool) -> Self {
+        let mut plan = Self::default();
+        for action in actions {
+            match action.place() {
+                Place::Request(name) => plan.request_headers.push(name.clone()),
+                Place::ResponseHead(name) => plan.response_headers.push(name.clone()),
+                Place::ResponseBody if permits_body_rewrite => plan.body.actions.push(action),
+                Place::ResponseBody => (),
+            }
+        }
+        plan
+    }
+}
 
 static SLOTS: std::sync::LazyLock<Slots> = std::sync::LazyLock::new(|| Slots::new(MAX_REWRITES));
 

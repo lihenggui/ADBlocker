@@ -19,6 +19,7 @@ use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
 
 use super::{Page, RequestRules, is_network_exception};
+use crate::rule::action::{PageExceptions as ResponseExceptions, html};
 use crate::rule::{self, Elements, PageException, Rule};
 
 /// adblock-rust handles generic-hide and cosmetic exceptions itself. It
@@ -32,12 +33,6 @@ pub(super) struct PageExceptions {
     pub(super) element: Option<Engine>,
     pub(super) script: Option<Engine>,
     pub(super) specific: Option<(Engine, Engine)>,
-}
-
-#[derive(Default)]
-pub(super) struct ResponseExceptions {
-    pub(super) all: bool,
-    pub(super) prune: bool,
 }
 
 #[derive(Default)]
@@ -143,15 +138,15 @@ impl PageExceptions {
         RequestRules::request_with_page(url, Page::Itself, "document", method).map_or_else(
             ResponseExceptions::default,
             |page| ResponseExceptions {
-                all: Self::matches(self.all.as_ref(), &page)
-                    || Self::matches(self.content.as_ref(), &page),
-                prune: Self::matches(self.urlblock.as_ref(), &page),
+                document: Self::matches(self.all.as_ref(), &page),
+                content: Self::matches(self.content.as_ref(), &page),
+                urlblock: Self::matches(self.urlblock.as_ref(), &page),
             },
         )
     }
 
     pub(super) fn skip_html(&self, url: &str, method: &str) -> bool {
-        self.response(url, Page::Itself, method).all
+        html::disabled_by(self.response(url, Page::Itself, method))
     }
 
     pub(super) fn matches(engine: Option<&Engine>, page: &Request) -> bool {

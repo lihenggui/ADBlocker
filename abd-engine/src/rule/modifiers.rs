@@ -22,6 +22,7 @@ pub(super) const NETWORK: &str = "network";
 pub(super) const DENYALLOW: &str = "denyallow";
 pub(super) const PRUNE: &str = "jsonprune";
 pub(super) const REPLACE: &str = "replace";
+pub(super) const REMOVEHEADER: &str = "removeheader";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum PageModifier {
@@ -55,6 +56,7 @@ pub(super) enum Kind {
 pub(super) enum Compatibility {
     /// Qualifiers are removed and adblock-rust checks the rest with CSP.
     Matcher,
+    RemoveHeader,
     /// Only explicitly supported qualifiers and matcher options are accepted.
     Only(&'static [Allowed]),
 }
@@ -127,6 +129,11 @@ static MODIFIERS: &[Modifier] = &[
         Action(ActionKind::Prune, Compatibility::Only(PRUNE_OPTIONS)),
         Optional,
     ),
+    modifier(
+        &[REMOVEHEADER],
+        Action(ActionKind::RemoveHeader, Compatibility::RemoveHeader),
+        Optional,
+    ),
     modifier(&["domain", "from"], Source, Required),
     modifier(&["third-party", "3p"], Source, FlagValue),
     modifier(&["first-party", "1p"], Source, FlagValue),
@@ -174,7 +181,6 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["header"], Unsupported, Required),
     modifier(&["hls"], Unsupported, Required),
     modifier(&["xmlprune"], Unsupported, Required),
-    modifier(&["removeheader"], Unsupported, Required),
     modifier(&["urltransform"], Unsupported, Required),
     modifier(&["referrerpolicy"], Unsupported, Required),
     modifier(&["strict-third-party", "strict3p"], Unsupported, FlagValue),
@@ -189,7 +195,19 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
             .flat_map(|modifier| modifier.names.iter().copied())
             .collect()
     });
-    line.contains("$_") || line.contains(",_") || OWNED_NAMES.iter().any(|name| line.contains(name))
+    line.contains("$_")
+        || line.contains(",_")
+        || OWNED_NAMES.iter().any(|name| line.contains(name))
+        || line
+            .split_once('$')
+            .is_some_and(|(_, suffix)| suffix.split([',', '$']).any(is_removeheader_option))
+}
+
+pub(super) fn is_removeheader_option(text: &str) -> bool {
+    text.split(['=', ',']).next().is_some_and(|name| {
+        name.trim_start_matches('~')
+            .eq_ignore_ascii_case(REMOVEHEADER)
+    })
 }
 
 pub(super) fn lookup(name: &str) -> Option<&'static Modifier> {
@@ -202,7 +220,13 @@ pub(super) fn lookup(name: &str) -> Option<&'static Modifier> {
     if name.starts_with('_') && name.bytes().all(|byte| byte == b'_') {
         BY_NAME.get("_").copied()
     } else {
-        BY_NAME.get(name).copied()
+        BY_NAME
+            .get(name)
+            .or_else(|| {
+                name.eq_ignore_ascii_case(REMOVEHEADER)
+                    .then(|| &BY_NAME[REMOVEHEADER])
+            })
+            .copied()
     }
 }
 
@@ -232,16 +256,36 @@ impl Compatibility {
     pub(super) fn accepts(self, raw_name: &str, value: Option<&str>) -> bool {
         match self {
             Self::Matcher => true,
-            Self::Only(allowed) => {
+            Self::Only(_) | Self::RemoveHeader => {
                 let (name, negated) = raw_name
                     .strip_prefix('~')
                     .map_or((raw_name, false), |name| (name, true));
                 lookup(name).is_some_and(|modifier| {
-                    modifier.accepts_value(value)
-                        && allowed.iter().any(|entry| {
-                            entry.name == modifier.names[0] && (!negated || entry.negatable)
-                        })
+                    modifier.accepts_value(value) && self.accepts_option(modifier, negated)
                 })
+            }
+        }
+    }
+
+    fn accepts_option(self, modifier: &Modifier, negated: bool) -> bool {
+        let name = modifier.names[0];
+        match self {
+            Self::Matcher => true,
+            Self::Only(allowed) => allowed
+                .iter()
+                .any(|entry| entry.name == name && (!negated || entry.negatable)),
+            Self::RemoveHeader => {
+                matches!(modifier.kind, Type(_) | Page(Document))
+                    || name == "third-party"
+                    || (!negated
+                        && matches!(
+                            name,
+                            APP | "domain"
+                                | "strict-first-party"
+                                | "strict-third-party"
+                                | "important"
+                                | "match-case"
+                        ))
             }
         }
     }

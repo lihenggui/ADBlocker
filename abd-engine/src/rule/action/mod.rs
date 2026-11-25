@@ -14,10 +14,12 @@
 
 //! The cached specifications and compiled implementations of response actions.
 
+use hyper::header::HeaderName;
 use serde::{Deserialize, Serialize};
 
 pub(crate) mod html;
 mod prune;
+pub(super) mod removeheader;
 mod replace;
 
 #[cfg(test)]
@@ -33,12 +35,27 @@ pub(crate) enum ActionSpec {
         insensitive: bool,
         single_line: bool,
     },
+    RemoveHeader(removeheader::Spec),
 }
 
 /// A compiled action that can safely be shared among concurrent jobs.
 pub(crate) enum ResponseAction {
     Prune(prune::Compiled),
     Replace(replace::Compiled),
+    RemoveHeader(removeheader::Compiled),
+}
+
+pub(crate) enum Place<'a> {
+    Request(&'a HeaderName),
+    ResponseHead(&'a HeaderName),
+    ResponseBody,
+}
+
+#[derive(Clone, Copy, Default)]
+pub(crate) struct PageExceptions {
+    pub(crate) document: bool,
+    pub(crate) content: bool,
+    pub(crate) urlblock: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
@@ -46,12 +63,16 @@ pub(crate) enum ActionKind {
     // Sort pruning first so replacements see the remaining text.
     Prune,
     Replace,
+    RemoveHeader,
 }
 
 impl ActionKind {
     pub(crate) fn parse(self, value: &str) -> Option<ActionSpec> {
         match self {
             Self::Prune => prune::parse(value).map(ActionSpec::Prune),
+            Self::RemoveHeader => removeheader::parse(value)
+                .ok()
+                .map(ActionSpec::RemoveHeader),
             Self::Replace => {
                 let replace::Parsed {
                     pattern,
@@ -73,6 +94,7 @@ impl ActionKind {
         match self {
             Self::Prune => prune::disables(value),
             Self::Replace => replace::disables(value),
+            Self::RemoveHeader => value.is_none(),
         }
     }
 
@@ -80,14 +102,24 @@ impl ActionKind {
         match self {
             Self::Prune => prune::overrides_block(),
             Self::Replace => replace::overrides_block(),
+            Self::RemoveHeader => false,
         }
     }
 
     pub(crate) fn deduplicates(self) -> bool {
         match self {
-            Self::Prune => false,
+            Self::Prune | Self::RemoveHeader => false,
             Self::Replace => true,
         }
+    }
+
+    pub(crate) fn disabled_by(self, page: PageExceptions) -> bool {
+        page.document
+            || match self {
+                Self::Prune => page.content || page.urlblock,
+                Self::Replace => page.content,
+                Self::RemoveHeader => page.urlblock,
+            }
     }
 }
 
@@ -96,6 +128,7 @@ impl ActionSpec {
     pub(crate) fn compile(&self) -> Option<ResponseAction> {
         match self {
             Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
+            Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
             Self::Replace {
                 pattern,
                 replacement,
@@ -112,6 +145,15 @@ impl ResponseAction {
         match self {
             Self::Prune(_) => ActionKind::Prune,
             Self::Replace(_) => ActionKind::Replace,
+            Self::RemoveHeader(_) => ActionKind::RemoveHeader,
+        }
+    }
+
+    pub(crate) fn place(&self) -> Place<'_> {
+        match self {
+            Self::Prune(_) | Self::Replace(_) => Place::ResponseBody,
+            Self::RemoveHeader(removeheader::Removal::Request(name)) => Place::Request(name),
+            Self::RemoveHeader(removeheader::Removal::Response(name)) => Place::ResponseHead(name),
         }
     }
 
@@ -123,7 +165,7 @@ impl ResponseAction {
     /// the blocking job, so an idle action keeps none of it.
     pub(crate) fn regex_bytes(&self) -> usize {
         match self {
-            Self::Prune(_) => 0,
+            Self::Prune(_) | Self::RemoveHeader(_) => 0,
             Self::Replace(action) => action.regex_bytes(),
         }
     }
@@ -136,6 +178,7 @@ impl ResponseAction {
         match self {
             Self::Prune(action) => action.apply(input, within_budget),
             Self::Replace(action) => action.apply(input, within_budget),
+            Self::RemoveHeader(_) => None,
         }
     }
 }

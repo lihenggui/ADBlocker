@@ -169,6 +169,8 @@ impl Filters {
         let mut patterns = Patterns::default();
         let mut scripts = Scripts::default();
         for (path, text) in &lists {
+            // AdGuard restricts $removeheader to trusted filters, like the
+            // other actions admitted through this catalog mark.
             let trust_responses = user_rules(path) || trusted_list_file(path, Trust::ResponseRules);
             let (trust_scripts, options) = source_options(path);
             let mut normalized = MatcherList::with_capacity(text.len());

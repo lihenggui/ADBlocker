@@ -14,7 +14,7 @@
 
 use std::borrow::Cow;
 
-use super::action::{ActionKind, ActionSpec};
+use super::action::{ActionKind, ActionSpec, removeheader};
 use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
 use super::options::{OptionToken, Options};
 use crate::limits::MAX_RESPONSE_RULE;
@@ -27,13 +27,14 @@ pub(crate) struct ResponseRule<'a> {
 }
 
 pub(crate) struct Action<'a> {
-    pub(crate) pattern: &'a str,
+    pub(crate) pattern: Cow<'a, str>,
     pub(crate) options: Vec<&'a str>,
     pub(crate) spec: Option<ActionSpec>,
     pub(crate) kind: ActionKind,
     pub(crate) include: u16,
     pub(crate) exclude: u16,
     pub(crate) apps: Option<&'a str>,
+    pub(crate) strict_third_party: Option<bool>,
     pub(crate) exception: bool,
 }
 
@@ -62,6 +63,10 @@ impl<'a> ResponseRule<'a> {
     }
 
     pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
+        // An incompatible noop must not share the valid rule's budget key.
+        if self.kind == ActionKind::RemoveHeader {
+            return Cow::Borrowed(line);
+        }
         self.options
             .without_noops()
             .map_or(Cow::Borrowed(line), Cow::Owned)
@@ -69,20 +74,26 @@ impl<'a> ResponseRule<'a> {
 
     pub(crate) fn action(&self) -> Option<Action<'a>> {
         let options = &self.options;
-        if options.written_len() > MAX_RESPONSE_RULE {
+        if options.written_len() > MAX_RESPONSE_RULE
+            || (self.kind == ActionKind::RemoveHeader && options.noop)
+        {
             return None;
         }
-        let pattern = options.pattern.strip_prefix("@@");
-        let exception = pattern.is_some();
+        let exception = options.pattern.starts_with("@@");
+        let pattern = options
+            .pattern
+            .strip_prefix("@@")
+            .unwrap_or(options.pattern);
         let value = options.token(self.action_index).value;
         let mut action = Action {
-            pattern: pattern.unwrap_or(options.pattern),
+            pattern: Cow::Borrowed(pattern),
             options: Vec::new(),
             spec: action_spec(self.kind, value, exception)?,
             kind: self.kind,
             include: 0,
             exclude: 0,
             apps: None,
+            strict_third_party: None,
             exception,
         };
         for (index, token) in options.tokens().enumerate() {
@@ -101,7 +112,16 @@ impl<'a> ResponseRule<'a> {
                     return None;
                 }
             } else {
-                action.take_qualifier(token);
+                action.take_qualifier(token)?;
+            }
+        }
+        if self.kind == ActionKind::RemoveHeader {
+            let match_case = action.options.contains(&"match-case");
+            if match_case {
+                action.pattern = removeheader::case_sensitive_pattern(pattern);
+            }
+            if !super::regex::network_pattern_supported(&action.pattern, match_case) {
+                return None;
             }
         }
         Some(action)
@@ -136,10 +156,26 @@ fn action_spec(
 }
 
 impl<'a> Action<'a> {
-    fn take_qualifier(&mut self, option: OptionToken<'a>) {
+    fn take_qualifier(&mut self, option: OptionToken<'a>) -> Option<()> {
         // AdGuard's reference omits $all for $jsonprune, but its lists use it.
         if option.raw == "all" {
-            return;
+            return Some(());
+        }
+        if self.kind == ActionKind::RemoveHeader
+            && let Some(third_party) = match option.raw_name {
+                "strict-first-party" | "strict1p" => Some(false),
+                "strict-third-party" | "strict3p" => Some(true),
+                _ => None,
+            }
+        {
+            if self
+                .strict_third_party
+                .is_some_and(|previous| previous != third_party)
+            {
+                return None;
+            }
+            self.strict_third_party = Some(third_party);
+            return Some(());
         }
         let (name, negated) = option
             .raw_name
@@ -150,5 +186,6 @@ impl<'a> Action<'a> {
             Some(bit) => self.include |= bit,
             None => self.options.push(option.raw),
         }
+        Some(())
     }
 }

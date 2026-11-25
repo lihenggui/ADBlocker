@@ -44,6 +44,8 @@ use tokio::net::TcpListener;
 
 use super::*;
 
+mod removeheader;
+
 const HOST: &str = "site.test";
 const PACKAGE: &str = "com.app";
 const UID: u32 = 10001;
@@ -189,7 +191,9 @@ async fn rig(setup: Setup) -> Rig {
                             .body(Full::new(Bytes::new()))
                             .unwrap()));
                     }
-                    if let Some(response) = replacement_fixture(&req) {
+                    if let Some(response) =
+                        replacement_fixture(&req).or_else(|| removeheader::fixture(&req))
+                    {
                         return std::future::ready(Ok(response));
                     }
                     // `/big/<n>` is answered with n MiB, for the measurements.
@@ -737,7 +741,12 @@ async fn an_allowed_first_cleartext_request_receives_the_origins_final_response(
 
 #[tokio::test]
 async fn a_cleartext_websocket_upgrade_can_be_the_first_forwarded_request() {
-    let (rig, server) = plain_rig(Setup::default()).await;
+    let (rig, server) = plain_rig(Setup {
+        rules: "||ads.example/socket$removeheader=request:x-keep\n\
+                ||ads.example/socket$removeheader=x-keep",
+        ..Setup::default()
+    })
+    .await;
     let upstream = tokio::spawn(async move {
         let (tcp, _) = server.accept().await.unwrap();
         let (upgrade, upgraded) = tokio::sync::oneshot::channel();
@@ -745,6 +754,7 @@ async fn a_cleartext_websocket_upgrade_can_be_the_first_forwarded_request() {
         let service = service_fn(|mut req: Request<Incoming>| {
             assert_eq!(req.uri().path(), "/socket");
             assert_eq!(req.headers()["upgrade"], "websocket");
+            assert_eq!(req.headers()["x-keep"], "request");
             let on_upgrade = hyper::upgrade::on(&mut req);
             assert!(
                 upgrade
@@ -761,6 +771,7 @@ async fn a_cleartext_websocket_upgrade_can_be_the_first_forwarded_request() {
                         .status(StatusCode::SWITCHING_PROTOCOLS)
                         .header("connection", "upgrade")
                         .header("upgrade", "websocket")
+                        .header("x-keep", "response")
                         .body(Empty::<Bytes>::new())
                         .unwrap(),
                 )
@@ -787,10 +798,12 @@ async fn a_cleartext_websocket_upgrade_can_be_the_first_forwarded_request() {
             .header(HOST_HEADER, "ads.example")
             .header("connection", "upgrade")
             .header("upgrade", "websocket")
+            .header("x-keep", "request")
             .body(Empty::<Bytes>::new())
             .unwrap();
         let mut resp = tx.send_request(req).await.unwrap();
         assert_eq!(resp.status(), StatusCode::SWITCHING_PROTOCOLS);
+        assert_eq!(resp.headers()["x-keep"], "response");
         let mut io = TokioIo::new(hyper::upgrade::on(&mut resp).await.unwrap());
         io.write_all(b"ping").await.unwrap();
         let mut buf = [0; 4];

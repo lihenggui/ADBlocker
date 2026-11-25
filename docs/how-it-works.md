@@ -339,6 +339,21 @@ uncompressed text response up to 2 MiB. It takes these rules from the
 user's custom rules and catalog lists marked as trusted for response
 rules.
 
+A `$removeheader=header-name` rule removes all values of a named response
+header. Use `$removeheader=request:header-name` to remove it from the
+forwarded request instead. Header names are case-insensitive. The engine
+uses the request's type for request headers and the final verdict's type
+for response headers. It removes response headers before body rewriting
+and cosmetic filtering. For header-only rules, the engine streams the
+body as received. Protocol upgrades and `101` responses keep their
+headers. Header removal uses the same trusted sources as text response
+rewriting.
+
+An exception such as `@@||example.org^$removeheader` disables all header
+removals for matching URLs. Adding a value to the exception limits it to
+that header and direction.
+The `$document` and `$urlblock` page exceptions also disable header removal.
+
 A rule can name the apps it is for with AdGuard's `$app=` option.
 Entries separated by `|` can be package names, prefixes ending in `*`,
 or regular expressions enclosed in `/`. Names and prefixes ignore ASCII

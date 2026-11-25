@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Response rules decide what to change in the body of a matched request.
+//! Response rules select changes to a matched request or its response.
 //! Each rule uses its number as a CSP directive to get every URL match
 //! from adblock-rust. Exceptions are resolved here after checking types
 //! and apps, which the CSP query does not know.
@@ -28,7 +28,7 @@ use serde::{Deserialize, Serialize};
 use super::app_patterns::{Condition, Patterns, Prepared, Scope};
 use super::{Page, RequestRules};
 use crate::limits::{MAX_RESPONSE_REGEX_BYTES, MAX_RESPONSE_RULE, MAX_RESPONSE_RULES};
-use crate::rule::action::{ActionKind, ActionSpec, ResponseAction};
+use crate::rule::action::{ActionKind, ActionSpec, PageExceptions, ResponseAction};
 use crate::rule::{self, Action, ResponseRule, kind_bit};
 
 /// Conditions that must hold for a match returned by the CSP query.
@@ -40,14 +40,18 @@ struct Qualifiers {
     exclude: u16,
     /// The app condition can only match a known package.
     apps: Option<Condition>,
+    strict_third_party: Option<bool>,
 }
 
 impl Qualifiers {
     /// Require a package identity for app options, even for negated names.
-    fn matches(&self, kind: &str, scope: Option<&Scope<'_>>) -> bool {
+    fn matches(&self, kind: &str, scope: Option<&Scope<'_>>, strict_third_party: bool) -> bool {
         let bit = kind_bit(kind).unwrap_or(0);
         (self.include == 0 || self.include & bit != 0)
             && self.exclude & bit == 0
+            && self
+                .strict_third_party
+                .is_none_or(|required| required == strict_third_party)
             && self
                 .apps
                 .as_ref()
@@ -57,7 +61,7 @@ impl Qualifiers {
 
 /// A source rule before its condition and action are assigned cache indices.
 struct Parsed<'a> {
-    pattern: &'a str,
+    pattern: Cow<'a, str>,
     options: String,
     action: Option<ActionSpec>,
     kind: ActionKind,
@@ -76,6 +80,7 @@ impl<'a> Parsed<'a> {
             include,
             exclude,
             apps,
+            strict_third_party,
             exception,
         } = rule.action()?;
         let parsed = Self {
@@ -89,6 +94,7 @@ impl<'a> Parsed<'a> {
                 include,
                 exclude,
                 apps: None,
+                strict_third_party,
             },
         };
         let projected = parsed.project(0);
@@ -315,14 +321,17 @@ impl ResponseRules {
         tokens: &str,
         kind: &str,
         scope: Option<&Scope<'_>>,
-        skip_prune: bool,
+        page: PageExceptions,
+        strict_third_party: bool,
     ) -> Vec<Arc<ResponseAction>> {
         let mut matched: Vec<_> = tokens
             .split(',')
             .filter_map(|token| {
                 let id = token.parse::<usize>().ok()?;
                 let rule = self.table.rules.get(id)?;
-                rule.qualifiers.matches(kind, scope).then_some((id, rule))
+                rule.qualifiers
+                    .matches(kind, scope, strict_third_party)
+                    .then_some((id, rule))
             })
             .collect();
         if matched.is_empty() {
@@ -331,9 +340,6 @@ impl ResponseRules {
         matched.sort_unstable_by_key(|(id, _)| *id);
         let mut seen = vec![false; self.compiled.len()];
         let mut skipped = BTreeSet::new();
-        if skip_prune {
-            skipped.insert(ActionKind::Prune);
-        }
         for (_, rule) in matched.iter().filter(|(_, rule)| rule.exception) {
             match rule.action {
                 RuleAction::One(id) => seen[id] = true,
@@ -349,7 +355,7 @@ impl ResponseRules {
             };
             let action = &self.compiled[id];
             let kind = action.kind();
-            if !skipped.contains(&kind) && !seen[id] {
+            if !kind.disabled_by(page) && !skipped.contains(&kind) && !seen[id] {
                 seen[id] = kind.deduplicates();
                 actions.push(action.clone());
             }
@@ -371,13 +377,19 @@ pub(crate) struct ResponseMatches<'a> {
     rules: &'a ResponseRules,
     tokens: String,
     scope: Option<&'a Scope<'a>>,
-    skip_prune: bool,
+    page: PageExceptions,
+    strict_third_party: bool,
 }
 
 impl ResponseMatches<'_> {
     pub(crate) fn actions(&self, kind: &str) -> Vec<Arc<ResponseAction>> {
-        self.rules
-            .actions(&self.tokens, kind, self.scope, self.skip_prune)
+        self.rules.actions(
+            &self.tokens,
+            kind,
+            self.scope,
+            self.page,
+            self.strict_third_party,
+        )
     }
 }
 
@@ -403,16 +415,24 @@ impl super::AppFilters<'_> {
     ) -> Option<ResponseMatches<'_>> {
         let rules = self.filters.responses.as_ref()?;
         let exceptions = self.filters.page_exceptions.response(url, page, method);
-        if exceptions.all {
+        if exceptions.document {
             return None;
         }
         let request = RequestRules::request_with_page(url, page, "document", method)?;
         let tokens = rules.engine.get_csp_directives(&request)?;
+        let strict_third_party = match page {
+            Page::Named(source) => {
+                source.hostname().trim_end_matches('.') != request.hostname.trim_end_matches('.')
+            }
+            Page::Itself => false,
+            Page::Unnamed { cross_site } => cross_site,
+        };
         Some(ResponseMatches {
             rules,
             tokens,
             scope: self.scope.as_ref(),
-            skip_prune: exceptions.prune,
+            page: exceptions,
+            strict_third_party,
         })
     }
 }

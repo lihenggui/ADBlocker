@@ -22,7 +22,8 @@ use http_body_util::{BodyExt, Full, combinators::BoxBody};
 use hyper::body::Incoming;
 use hyper::header::{
     ACCEPT_ENCODING, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_LENGTH,
-    CONTENT_SECURITY_POLICY, CONTENT_TYPE, HOST, HeaderValue, ORIGIN, RANGE, REFERER, UPGRADE,
+    CONTENT_SECURITY_POLICY, CONTENT_TYPE, HOST, HeaderName, HeaderValue, ORIGIN, RANGE, REFERER,
+    UPGRADE,
 };
 use hyper::http::uri::{Authority, PathAndQuery};
 use hyper::{HeaderMap, Method, Request, Response, StatusCode};
@@ -31,9 +32,9 @@ use hyper_util::rt::TokioIo;
 use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
 use crate::filter::{AppFilters, Filters, Hiding, Page, Redirect};
-use crate::htmlfilter::Compiled;
 use crate::relay;
-use crate::rule::action::{ResponseAction, html};
+use crate::rewrite::RewritePlan;
+use crate::rule::action::{Place, html};
 use crate::stats::Counter;
 use crate::tls::Tls;
 
@@ -264,14 +265,8 @@ struct RequestMetadata<'a, 't> {
     told: Option<&'t str>,
     shows_page: bool,
     method: &'a str,
-    permits_rewrite: bool,
-}
-
-#[derive(Default)]
-struct RewritePlan {
-    actions: Vec<Arc<ResponseAction>>,
-    ask_for_identity: bool,
-    html: Vec<Arc<Compiled>>,
+    permits_actions: bool,
+    permits_body_rewrite: bool,
 }
 
 impl<'a, 't> RequestMetadata<'a, 't> {
@@ -286,7 +281,8 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             told: told.and_then(|(value, _)| value.to_str().ok()),
             shows_page: shows_page(req, &page),
             method: method.as_str(),
-            permits_rewrite: permits_rewrite(req),
+            permits_actions: permits_actions(req),
+            permits_body_rewrite: permits_body_rewrite(req),
         }
     }
 
@@ -297,26 +293,36 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         kind: RequestKind,
     ) -> (RequestDecision<'t>, RewritePlan) {
         let matched = self
-            .permits_rewrite
+            .permits_actions
             .then(|| filters.response_matches(url, self.page, self.method))
             .flatten();
         let actions = matched
             .as_ref()
             .map_or_else(Vec::new, |m| m.actions(kind.as_str()));
+        let mut plan = RewritePlan::select(actions, self.permits_body_rewrite);
         // Only replacement rules take precedence after the connection passes host filtering.
-        let check = if actions.iter().any(|action| action.overrides_block()) {
+        let check = if plan
+            .body
+            .actions
+            .iter()
+            .any(|action| action.overrides_block())
+        {
             Default::default()
         } else {
             filters.check_with_page(url, self.page, kind.as_str(), self.method)
         };
         let blocked = check.blocked;
-        let ask_for_identity = !actions.is_empty()
+        plan.ask_for_identity = !plan.body.actions.is_empty()
             || (!blocked
+                && self.permits_body_rewrite
                 && kind == RequestKind::Assumed
-                && matched.is_some_and(|m| {
-                    RESPONSE_KINDS
-                        .iter()
-                        .any(|kind| !m.actions(kind).is_empty())
+                && matched.is_some_and(|matches| {
+                    RESPONSE_KINDS.iter().any(|kind| {
+                        matches
+                            .actions(kind)
+                            .iter()
+                            .any(|action| matches!(action.place(), Place::ResponseBody))
+                    })
                 }));
         (
             RequestDecision {
@@ -325,11 +331,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
                 kind,
                 page: self.told,
             },
-            RewritePlan {
-                actions,
-                ask_for_identity,
-                html: Vec::new(),
-            },
+            plan,
         )
     }
 }
@@ -361,15 +363,15 @@ impl MatchedRequest<'_> {
         kind: RequestKind,
         mut plan: RewritePlan,
     ) -> RewritePlan {
-        if self.metadata.permits_rewrite
+        if self.metadata.permits_body_rewrite
             && matches!(
                 kind,
                 RequestKind::Assumed | RequestKind::Known("document" | "subdocument")
             )
             && self.shared.ctx.selection.cosmetic.load(Relaxed)
         {
-            plan.html = filters.html_rules(self.host, self.url, self.metadata.method);
-            plan.ask_for_identity |= !plan.html.is_empty();
+            plan.body.html = filters.html_rules(self.host, self.url, self.metadata.method);
+            plan.ask_for_identity |= !plan.body.html.is_empty();
         }
         plan
     }
@@ -432,7 +434,7 @@ impl PendingVerdict<'_> {
     fn finish(
         mut self,
         inferred: RequestKind,
-        actions: &mut Vec<Arc<ResponseAction>>,
+        rewrite: &mut RewritePlan,
     ) -> Option<Response<Body>> {
         let request = self.request;
         // As in AdGuard, the request has already been sent before its response reveals the type.
@@ -441,7 +443,8 @@ impl PendingVerdict<'_> {
         if decision.blocked {
             return Some(request.blocked(decision));
         }
-        *actions = selected.actions;
+        rewrite.body.actions = selected.body.actions;
+        rewrite.response_headers = selected.response_headers;
         request.record(&decision);
         None
     }
@@ -560,7 +563,7 @@ async fn forward_response(
     let connect_tunnel = shared.https.is_none() && req.method() == Method::CONNECT;
     let app_upgrade = (connect_tunnel || req.headers().contains_key(UPGRADE))
         .then(|| hyper::upgrade::on(&mut req));
-    let mut resp = match forward(upstream, req).await {
+    let mut resp = match forward(upstream, req, rewrite.request_headers.drain(..)).await {
         Ok(response) => response,
         Err(e) => {
             let Shared { ctx, package, .. } = shared;
@@ -577,16 +580,24 @@ async fn forward_response(
     if let Some(pending) = pending
         && resp.status() != StatusCode::SWITCHING_PROTOCOLS
         && let Some(kind) = response_kind(resp.headers())
-        && let Some(blocked) = pending.finish(kind, &mut rewrite.actions)
+        && let Some(blocked) = pending.finish(kind, &mut rewrite)
     {
         return blocked;
     }
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
-    let html = (html_document && !rewrite.html.is_empty()).then(|| html::Action {
-        rules: rewrite.html,
+    let html = (html_document && !rewrite.body.html.is_empty()).then(|| html::Action {
+        rules: rewrite.body.html,
         charset: crate::html::transport_charset(resp.headers()).map(str::to_owned),
     });
-    crate::rewrite::wrap(resp, rewrite.actions, html)
+    // The verdict, upgrade handling and HTML charset use the original head.
+    // Remove headers before the body rewrite and cosmetic code use the head
+    // for the app. Content-Type, framing, encoding and CSP are protected.
+    if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
+        for name in rewrite.response_headers {
+            resp.headers_mut().remove(name);
+        }
+    }
+    crate::rewrite::wrap(resp, rewrite.body.actions, html)
 }
 
 fn guard_site(
@@ -666,22 +677,28 @@ fn hiding_for(
     // so that injection can stream the page without decompressing it.
     let whole_page = matches!(kind, "document" | "subdocument")
         && req.method() == hyper::Method::GET
-        && !req.headers().contains_key(RANGE);
+        && permits_body_rewrite(req);
     (shared.https.is_some() && whole_page && shared.ctx.selection.cosmetic.load(Relaxed))
         .then(|| filters.hiding(url))
         .filter(|hiding| hiding.any())
 }
 
-fn permits_rewrite<B>(req: &Request<B>) -> bool {
-    !matches!(*req.method(), Method::HEAD | Method::CONNECT)
-        && !req.headers().contains_key(RANGE)
-        && !req.headers().contains_key(UPGRADE)
+fn permits_actions<B>(req: &Request<B>) -> bool {
+    req.method() != Method::CONNECT && !req.headers().contains_key(UPGRADE)
+}
+
+fn permits_body_rewrite<B>(req: &Request<B>) -> bool {
+    permits_actions(req) && req.method() != Method::HEAD && !req.headers().contains_key(RANGE)
 }
 
 async fn forward(
     upstream: &Upstream,
-    req: Request<Incoming>,
+    mut req: Request<Incoming>,
+    remove_headers: impl Iterator<Item = HeaderName>,
 ) -> Result<Response<Incoming>, hyper::Error> {
+    for name in remove_headers {
+        req.headers_mut().remove(name);
+    }
     match upstream {
         Upstream::H2(tx) => tx.clone().send_request(req).await,
         Upstream::H1(tx) => {

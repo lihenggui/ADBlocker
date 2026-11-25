@@ -19,7 +19,12 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 
+use super::PageExceptions;
 use crate::htmlfilter::{self, Compiled};
+
+pub(crate) fn disabled_by(page: PageExceptions) -> bool {
+    page.document || page.content
+}
 
 /// The host index supplies one operation for all the rules of a document.
 pub(crate) struct Action {

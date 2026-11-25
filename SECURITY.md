@@ -116,16 +116,20 @@ and do not cover every sensitive site. Updates can add entries.
 ADBlocker keeps existing protections when an update omits an entry or a
 download fails.
 
-### Rewriting text responses
+### Changing headers and text responses
 
 With URL filtering on, ADBlocker can rewrite uncompressed text responses
 up to 2 MiB in decrypted HTTPS and plaintext HTTP traffic. Only the user's
 custom rules and the AdGuard and uBlock Origin lists marked for response
-rewriting in the subscription catalog can supply `$replace` and
-`$jsonprune` rules. A matching
+rewriting in the subscription catalog can supply `$replace`,
+`$jsonprune` and `$removeheader` rules. A matching
 `$replace` rule can override a request block and change text the app
 displays or code it runs. A matching `$jsonprune` rule removes items from
 a JSON or JSONP response and leaves request blocking in effect.
+A matching `$removeheader` rule can remove an HTTP request or response
+header. The engine rejects rules for the headers protected by AdGuard
+and the additional headers listed for each direction.
+[Protected headers](abd-engine/src/rule/action/removeheader.rs)
 Whole-host refusals happen before the engine reads a request. The engine
 applies response rules before it adds cosmetic styles or scripts.
 

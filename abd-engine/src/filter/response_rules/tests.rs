@@ -655,6 +655,7 @@ fn subscription_rules_compile_and_rewrite_the_intended_bytes() {
 }
 
 mod prune;
+mod removeheader;
 
 #[test]
 fn response_patterns_and_their_exceptions_survive_the_cache_without_network_app_rules() {

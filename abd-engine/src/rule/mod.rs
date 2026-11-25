@@ -155,6 +155,16 @@ pub(crate) fn read_with_scripts<'a>(
         };
         return rule;
     }
+    // A header name can contain the characters that mark a cosmetic rule.
+    if custom.as_ref().is_some_and(|options| {
+        !options.pattern.contains('#')
+            && options
+                .tokens()
+                .any(|option| option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER))
+    }) {
+        rule.read_options(custom);
+        return rule;
+    }
     if javascript::uses_reserved_name(line) {
         rule.kind = Kind::NotApplied(Reason::AdGuard(adguard::Unsupported::JavaScript(
             javascript::Rejection::ReservedName,
