@@ -108,6 +108,64 @@ class RootShellTest {
     }
 
     @Test
+    fun givenSuRejectsMountMaster_whenSeveralCommandsRun_thenOnlyTheProbeUsesTheOption() {
+        val launched = mutableListOf<List<String>>()
+        val children = RootChildProcesses { args ->
+            launched += args
+            StreamProcess(ByteArrayInputStream(byteArrayOf()), if (args.last() == "true") 1 else 3)
+        }
+
+        assertEquals(3, children.start("change").waitFor())
+        assertEquals(3, children.start("watch").waitFor())
+
+        assertEquals(
+            listOf(listOf("su", "--mount-master", "-c", "true"), listOf("su", "-c", "change"), listOf("su", "-c", "watch")),
+            launched,
+        )
+    }
+
+    @Test
+    fun givenMountMasterWorks_whenACommandFails_thenItIsNeverRetriedInAnotherNamespace() {
+        val launched = mutableListOf<List<String>>()
+        val children = RootChildProcesses { args ->
+            launched += args
+            StreamProcess(ByteArrayInputStream(byteArrayOf()), if (args.last() == "true") 0 else 3)
+        }
+
+        assertEquals(3, children.start("change").waitFor())
+
+        assertEquals(listOf("true", "change").map { listOf("su", "--mount-master", "-c", it) }, launched)
+    }
+
+    @Test
+    fun givenSuCannotStart_whenCollecting_thenItReportsNoRoot() = runTest {
+        assertFailsWith<AbdException.NoRoot> {
+            streamProcess("fixture") { throw IOException("executable not found") }.toList()
+        }
+    }
+
+    @Test
+    fun givenLargeDiagnosticOutput_whenTheChildExits_thenStderrIsCappedAndTheExitIsPreserved() = runTest {
+        val process = ProcessBuilder("sh", "-c", "head -c 65536 /dev/zero >&2; printf done; exit 3").start()
+
+        val result = communicate(process, "", Dispatchers.IO)
+
+        assertEquals(3, result.code)
+        assertEquals("done", result.output)
+        assertEquals(16 * 1024, result.error.length)
+    }
+
+    @Test
+    fun givenOutputBeyondTheRulesLimit_whenTheChildSucceeds_thenTruncatedDataIsRejected() = runTest {
+        val limit = 16 * 1024 * 1024
+        val valid = ProcessBuilder("sh", "-c", "head -c $limit /dev/zero").start()
+        assertEquals(limit, communicate(valid, "", Dispatchers.IO).output.length)
+
+        val oversized = ProcessBuilder("sh", "-c", "head -c ${limit + 1} /dev/zero").start()
+        assertFailsWith<AbdException.BadOutput> { communicate(oversized, "", Dispatchers.IO) }
+    }
+
+    @Test
     fun rulesTravelThroughStdinWithoutShellExpansionOrAnExtraNewline() = runTest {
         val rules = "! '\$HOME `id` Запись\n".repeat(64 * 1024) + "||example.com^"
         val result = communicate(ProcessBuilder("sh", "-c", "cat; printf warning >&2").start(), rules, Dispatchers.IO)
@@ -227,6 +285,11 @@ class RootShellTest {
         }
 
         override fun exitValue() = waitFor()
+        override fun destroyForcibly(): Process {
+            destroy()
+            return this
+        }
+
         override fun destroy() {
             destroyed = true
         }
