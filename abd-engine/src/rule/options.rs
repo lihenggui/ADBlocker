@@ -15,7 +15,7 @@
 //! Option boundaries and quoting shared by the rule reader and action values.
 
 use super::modifiers::{
-    APP, CSP, DENYALLOW, HLS, NETWORK, PRUNE, REMOVEPARAM, REPLACE, URLTRANSFORM, is_noop,
+    APP, COOKIE, CSP, DENYALLOW, HLS, NETWORK, PRUNE, REMOVEPARAM, REPLACE, URLTRANSFORM, is_noop,
     is_removeheader_option,
 };
 use super::quoting::{delimiter, unescaped};
@@ -183,6 +183,13 @@ pub(super) fn source_regex_end(option: &str) -> Option<usize> {
 fn custom_value_end(option: &str) -> Option<usize> {
     replacement_fields(option)
         .map(|value| option.len() - value.len() + option_value_end(value))
+        .or_else(|| {
+            let pattern = option
+                .strip_prefix("cookie=")?
+                .trim_start()
+                .strip_prefix('/')?;
+            Some(option.len() - pattern.len() + delimiter(pattern)? + 1)
+        })
         .or_else(|| source_regex_end(option))
 }
 
@@ -225,14 +232,23 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
         }
         let option = &line[cursor..];
         if is_removeheader_option(option)
-            || [APP, CSP, DENYALLOW, HLS, NETWORK, REMOVEPARAM, URLTRANSFORM]
-                .into_iter()
-                .any(|name| {
-                    option
-                        .trim_start_matches('~')
-                        .strip_prefix(name)
-                        .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-                })
+            || [
+                APP,
+                COOKIE,
+                CSP,
+                DENYALLOW,
+                HLS,
+                NETWORK,
+                REMOVEPARAM,
+                URLTRANSFORM,
+            ]
+            .into_iter()
+            .any(|name| {
+                option
+                    .trim_start_matches('~')
+                    .strip_prefix(name)
+                    .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+            })
         {
             owned_options = true;
         }

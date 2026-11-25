@@ -35,13 +35,14 @@ use tokio::time::{Sleep, sleep};
 
 use crate::htmlfilter::Compiled;
 use crate::limits::{MAX_REWRITE_BODY, MAX_REWRITES, REWRITE_WAIT, REWRITE_WORK};
-use crate::rule::action::{ActionKind, Place, ResponseAction, hls, html};
+use crate::rule::action::{ActionKind, Place, ResponseAction, cookie, hls, html};
 
 #[derive(Default)]
 pub(crate) struct RewritePlan {
     pub(crate) url_transforms: Vec<Arc<ResponseAction>>,
     pub(crate) request_headers: Vec<HeaderName>,
     pub(crate) response_headers: Vec<HeaderName>,
+    pub(crate) cookies: Vec<Arc<ResponseAction>>,
     pub(crate) csp: Option<hyper::header::HeaderValue>,
     pub(crate) body: BodyPlan,
     pub(crate) ask_for_identity: bool,
@@ -61,11 +62,21 @@ impl RewritePlan {
                 Place::Request(name) => plan.request_headers.push(name.clone()),
                 Place::RequestUrl => plan.url_transforms.push(action),
                 Place::ResponseHead(name) => plan.response_headers.push(name.clone()),
+                Place::RequestAndResponseHead => plan.cookies.push(action),
                 Place::ResponseBody if permits_body_rewrite => plan.body.actions.push(action),
                 Place::ResponseBody => (),
             }
         }
         plan
+    }
+
+    pub(crate) fn cookie_rules(&self) -> impl Iterator<Item = &cookie::Compiled> {
+        self.cookies
+            .iter()
+            .filter_map(|action| match action.as_ref() {
+                ResponseAction::Cookie(cookie) => Some(cookie),
+                _ => None,
+            })
     }
 }
 

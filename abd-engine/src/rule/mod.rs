@@ -20,9 +20,7 @@ use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
-use self::modifiers::{
-    APP, Kind as ModifierKind, NETWORK, PageModifier, lookup, may_have_owned_options,
-};
+use self::modifiers::{APP, Kind as ModifierKind, NETWORK, lookup, may_have_owned_options};
 use self::options::{OptionToken, Options, Quoting};
 use self::quoting::unescaped;
 
@@ -36,6 +34,7 @@ pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
+mod page_exception;
 pub(crate) mod preprocess;
 pub(crate) mod quoting;
 mod regex;
@@ -45,6 +44,7 @@ mod response;
 pub use comment::{count, is_comment};
 pub(crate) use denyallow::matcher_applies as denyallow_matcher_applies;
 pub(crate) use modifiers::kind_bit;
+pub(crate) use page_exception::{Elements, PageException};
 pub(crate) use response::{Action, ResponseRule};
 
 pub(crate) struct Rule<'a> {
@@ -81,6 +81,7 @@ pub(crate) enum Reason {
     NetworkRegex,
     Csp(csp::Rejection),
     RemoveParam(removeparam::Rejection),
+    Cookie(action::cookie::Rejection),
     Address(address::Rejection),
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
@@ -98,21 +99,6 @@ pub(crate) struct AppCondition<'a, 'options> {
     pub(crate) pattern: &'a str,
     pub(crate) apps: &'a str,
     pub(crate) options: Vec<&'options str>,
-}
-
-#[derive(Clone, Copy)]
-pub(crate) enum Elements {
-    All,
-    Specific,
-}
-
-pub(crate) struct PageException<'a> {
-    pattern: &'a str,
-    pub(crate) document: bool,
-    pub(crate) content: bool,
-    pub(crate) urlblock: bool,
-    pub(crate) script: bool,
-    pub(crate) elements: Option<Elements>,
 }
 
 pub(crate) fn read(line: &str) -> Rule<'_> {
@@ -168,7 +154,7 @@ pub(crate) fn read_with_scripts<'a>(
             && options.tokens().any(|option| {
                 matches!(
                     option.name(),
-                    modifiers::CSP | modifiers::HLS | modifiers::REMOVEPARAM
+                    modifiers::COOKIE | modifiers::CSP | modifiers::HLS | modifiers::REMOVEPARAM
                 ) || option.name() == modifiers::URLTRANSFORM
                     || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
             })
@@ -220,7 +206,10 @@ impl<'a> Rule<'a> {
             }
             match ResponseRule::read(options) {
                 Ok(response) => {
-                    self.kind = Kind::Response(response);
+                    self.kind = match response.cookie_rejection() {
+                        Some(reason) => Kind::NotApplied(Reason::Cookie(reason)),
+                        None => Kind::Response(response),
+                    };
                     return;
                 }
                 Err(options) if options.tokens().any(|token| token.name() == APP) => {
@@ -358,6 +347,7 @@ impl<'a> Rule<'a> {
                 | Reason::NetworkRegex
                 | Reason::Csp(_)
                 | Reason::RemoveParam(_)
+                | Reason::Cookie(_)
                 | Reason::Address(_),
             ) => None,
             _ => Some(self.normalized()),
@@ -437,6 +427,7 @@ impl<'a> Rule<'a> {
                             | Reason::NetworkRegex
                             | Reason::Csp(_)
                             | Reason::RemoveParam(_)
+                            | Reason::Cookie(_)
                             | Reason::Address(_)
                     )
             )
@@ -457,6 +448,7 @@ impl<'a> Rule<'a> {
                     | Reason::NetworkRegex
                     | Reason::Csp(_)
                     | Reason::RemoveParam(_)
+                    | Reason::Cookie(_)
                     | Reason::Address(_)
             )
         ) {
@@ -633,62 +625,6 @@ impl<'a> AppRule<'a> {
             apps: apps?,
             options,
         })
-    }
-}
-
-impl<'a> PageException<'a> {
-    fn read(options: &Options<'a>) -> Option<Self> {
-        let (mut document, mut content, mut urlblock) = (false, false, false);
-        let (mut element, mut specific, mut generic) = (false, false, false);
-        let mut script = false;
-        for token in options.tokens() {
-            match page_modifier(token) {
-                Some(PageModifier::Document) => document = true,
-                Some(PageModifier::Content) => content = true,
-                Some(PageModifier::Urlblock) => urlblock = true,
-                Some(PageModifier::Element) => element = true,
-                Some(PageModifier::Specific) => specific = true,
-                Some(PageModifier::Generic) => generic = true,
-                Some(PageModifier::Script) => script = true,
-                None => (),
-            }
-        }
-        let content = content && !document;
-        let elements = if element || (specific && generic) {
-            Some(Elements::All)
-        } else if specific {
-            Some(Elements::Specific)
-        } else {
-            None
-        };
-        (document || content || urlblock || elements.is_some() || script).then_some(Self {
-            pattern: options.pattern,
-            document,
-            content,
-            urlblock,
-            script,
-            elements,
-        })
-    }
-
-    pub(crate) fn project(&self, options: impl Iterator<Item = OptionToken<'a>>) -> String {
-        let mut projected = format!("{}$document", self.pattern);
-        for token in options {
-            // The bare extension flag targets separate userscripts.
-            if page_modifier(token).is_none() && !(self.script && token.raw == "extension") {
-                projected.push(',');
-                projected.push_str(token.raw);
-            }
-        }
-        projected
-    }
-}
-
-fn page_modifier(token: OptionToken<'_>) -> Option<PageModifier> {
-    let modifier = lookup(token.raw_name)?;
-    match modifier.kind {
-        ModifierKind::Page(page) if modifier.accepts_value(token.value) => Some(page),
-        _ => None,
     }
 }
 

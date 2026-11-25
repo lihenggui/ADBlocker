@@ -654,6 +654,7 @@ fn subscription_rules_compile_and_rewrite_the_intended_bytes() {
     }
 }
 
+mod cookie;
 mod hls;
 mod prune;
 mod removeheader;

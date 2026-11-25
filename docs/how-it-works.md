@@ -373,6 +373,25 @@ the scheme, host, or port of a GET or HEAD request sends the app an empty
 connection itself. The engine counts and reports the redirect as a block
 and uses the original URL in the recording.
 
+A `$cookie` rule from any list can remove cookies from allowed requests
+and responses. Use `$cookie=name` for a case-sensitive cookie name or
+`$cookie=/regexp/` for an expression over the name. A bare `$cookie`
+selects every cookie. Escape commas and dollar signs in expressions.
+The engine removes matching pairs from `Cookie` before sending the request
+and matching `Set-Cookie` fields from the response head.
+
+Add `;maxAge=seconds` to cap the remaining lifetime of matching
+`Set-Cookie` fields. The engine uses the server's `Max-Age` or, when
+absent, the time until a valid `Expires`. It removes `Expires` and writes
+the capped `Max-Age`. Expired cookies receive zero seconds. Session
+cookies receive the rule's limit, floored at zero. Add `;sameSite=strategy`
+to set `SameSite` to `Strict`, `Lax` or `None`. Rules with either
+attribute leave request cookies alone. The engine preserves malformed
+cookie fields and streams the body as received. `@@...$cookie` exempts all
+cookies.
+`@@...$cookie=name` and `@@...$cookie=/regexp/` exempt selected names.
+The `$document` and `$urlblock` page exceptions also disable cookie rules.
+
 A `$removeparam=name` rule strips populated values of a case-sensitive
 query parameter on GET, HEAD, OPTIONS and POST requests. Any list can
 supply one. Without a resource type qualifier the rule applies to

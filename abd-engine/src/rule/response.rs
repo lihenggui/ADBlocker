@@ -14,7 +14,7 @@
 
 use std::borrow::Cow;
 
-use super::action::{ActionKind, ActionSpec};
+use super::action::{ActionKind, ActionSpec, cookie};
 use super::denyallow;
 use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
 use super::options::{OptionToken, Options};
@@ -66,7 +66,24 @@ impl<'a> ResponseRule<'a> {
     }
 
     pub(crate) fn requires_trusted_source(&self) -> bool {
-        self.kind != ActionKind::RemoveParamException
+        !matches!(
+            self.kind,
+            ActionKind::RemoveParamException | ActionKind::Cookie
+        )
+    }
+
+    pub(super) fn cookie_rejection(&self) -> Option<cookie::Rejection> {
+        if self.kind != ActionKind::Cookie {
+            return None;
+        }
+        let value = self
+            .options
+            .token(self.action_index)
+            .value
+            .unwrap_or_default();
+        cookie::parse(value, self.options.pattern.starts_with("@@"))
+            .and_then(|spec| spec.validate())
+            .err()
     }
 
     pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
@@ -82,7 +99,10 @@ impl<'a> ResponseRule<'a> {
     fn rejects_noop(&self) -> bool {
         matches!(
             self.kind,
-            ActionKind::Hls | ActionKind::RemoveHeader | ActionKind::UrlTransform
+            ActionKind::Hls
+                | ActionKind::RemoveHeader
+                | ActionKind::UrlTransform
+                | ActionKind::Cookie
         )
     }
 
@@ -132,9 +152,36 @@ impl<'a> ResponseRule<'a> {
             exclude: 0,
             apps: None,
             strict_third_party: None,
-            // A named parameter exception preserves it during URL preparation.
-            exception: exception && self.kind != ActionKind::RemoveParamException,
+            // Named exceptions select individual cookies or query parameters.
+            exception: exception
+                && self.kind != ActionKind::RemoveParamException
+                && !(self.kind == ActionKind::Cookie && !self.kind.disables(value)),
         };
+        let (has_type, all_types) = self.qualifiers(&mut action)?;
+        if matches!(
+            self.kind,
+            ActionKind::UrlTransform | ActionKind::RemoveParamException
+        ) {
+            if all_types {
+                action.include = 0;
+            } else if !has_type {
+                action.include = kind_bit("document").expect("document has a type bit");
+            }
+        }
+        if self.rejects_noop() {
+            let match_case = action.options.iter().any(|option| option == "match-case");
+            if match_case {
+                action.pattern = super::regex::case_sensitive_pattern(pattern);
+            }
+            if !super::regex::network_pattern_supported(&action.pattern, match_case) {
+                return None;
+            }
+        }
+        Some(action)
+    }
+
+    fn qualifiers(&self, action: &mut Action<'a>) -> Option<(bool, bool)> {
+        let options = &self.options;
         let mut has_type = false;
         let mut all_types = false;
         let denyallow = if matches!(
@@ -172,26 +219,7 @@ impl<'a> ResponseRule<'a> {
                 action.take_qualifier(token)?;
             }
         }
-        if matches!(
-            self.kind,
-            ActionKind::UrlTransform | ActionKind::RemoveParamException
-        ) {
-            if all_types {
-                action.include = 0;
-            } else if !has_type {
-                action.include = kind_bit("document").expect("document has a type bit");
-            }
-        }
-        if self.rejects_noop() {
-            let match_case = action.options.iter().any(|option| option == "match-case");
-            if match_case {
-                action.pattern = super::regex::case_sensitive_pattern(pattern);
-            }
-            if !super::regex::network_pattern_supported(&action.pattern, match_case) {
-                return None;
-            }
-        }
-        Some(action)
+        Some((has_type, all_types))
     }
 
     #[cfg(test)]
@@ -217,6 +245,10 @@ fn action_spec(
 ) -> Option<Option<ActionSpec>> {
     if exception && kind.disables(value) {
         Some(None)
+    } else if kind == ActionKind::Cookie {
+        Some(Some(ActionSpec::Cookie(
+            cookie::parse(value.unwrap_or_default(), exception).ok()?,
+        )))
     } else {
         Some(Some(kind.parse(value.filter(|v| !v.is_empty())?)?))
     }
@@ -248,6 +280,17 @@ impl<'a> Action<'a> {
             .raw_name
             .strip_prefix('~')
             .map_or((option.raw_name, false), |name| (name, true));
+        if self.kind == ActionKind::Cookie && name == "domain" && negated {
+            let domains = option.value?;
+            if domains.split('|').any(|domain| domain.starts_with('~')) {
+                return None;
+            }
+            self.options.push(Cow::Owned(format!(
+                "domain=~{}",
+                domains.replace('|', "|~")
+            )));
+            return Some(());
+        }
         match option.value.is_none().then(|| kind_bit(name)).flatten() {
             Some(bit) if negated => self.exclude |= bit,
             Some(bit) => self.include |= bit,

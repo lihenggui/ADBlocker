@@ -17,6 +17,7 @@
 use hyper::header::HeaderName;
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod cookie;
 pub(crate) mod hls;
 pub(crate) mod html;
 mod prune;
@@ -41,6 +42,7 @@ pub(crate) enum ActionSpec {
     RemoveHeader(removeheader::Spec),
     UrlTransform(urltransform::Spec),
     RemoveParamException(String),
+    Cookie(cookie::Spec),
 }
 
 /// A compiled action that can safely be shared among concurrent jobs.
@@ -51,12 +53,14 @@ pub(crate) enum ResponseAction {
     RemoveHeader(removeheader::Compiled),
     UrlTransform(urltransform::Compiled),
     RemoveParamException(String),
+    Cookie(cookie::Compiled),
 }
 
 pub(crate) enum Place<'a> {
     Request(&'a HeaderName),
     RequestUrl,
     ResponseHead(&'a HeaderName),
+    RequestAndResponseHead,
     ResponseBody,
 }
 
@@ -76,12 +80,14 @@ pub(crate) enum ActionKind {
     RemoveHeader,
     UrlTransform,
     RemoveParamException,
+    Cookie,
 }
 
 impl ActionKind {
     pub(crate) fn parse(self, value: &str) -> Option<ActionSpec> {
         match self {
             Self::Prune => prune::parse(value).map(ActionSpec::Prune),
+            Self::Cookie => cookie::parse(value, false).ok().map(ActionSpec::Cookie),
             Self::Hls => hls::parse(value).ok().map(ActionSpec::Hls),
             Self::RemoveHeader => removeheader::parse(value)
                 .ok()
@@ -114,6 +120,7 @@ impl ActionKind {
             Self::Replace | Self::UrlTransform => replace::disables(value),
             Self::RemoveHeader => value.is_none(),
             Self::RemoveParamException => false,
+            Self::Cookie => value.is_none_or(|value| value.trim().is_empty()),
         }
     }
 
@@ -121,15 +128,17 @@ impl ActionKind {
         match self {
             Self::Prune => prune::overrides_block(),
             Self::Replace => replace::overrides_block(),
-            Self::Hls | Self::RemoveHeader | Self::UrlTransform | Self::RemoveParamException => {
-                false
-            }
+            Self::Hls
+            | Self::RemoveHeader
+            | Self::UrlTransform
+            | Self::RemoveParamException
+            | Self::Cookie => false,
         }
     }
 
     pub(crate) fn deduplicates(self) -> bool {
         match self {
-            Self::Prune | Self::RemoveHeader | Self::UrlTransform => false,
+            Self::Prune | Self::RemoveHeader | Self::UrlTransform | Self::Cookie => false,
             Self::Hls | Self::Replace | Self::RemoveParamException => true,
         }
     }
@@ -139,9 +148,10 @@ impl ActionKind {
             || match self {
                 Self::Prune | Self::Hls => page.content || page.urlblock,
                 Self::Replace => page.content,
-                Self::RemoveHeader | Self::UrlTransform | Self::RemoveParamException => {
-                    page.urlblock
-                }
+                Self::RemoveHeader
+                | Self::UrlTransform
+                | Self::RemoveParamException
+                | Self::Cookie => page.urlblock,
             }
     }
 
@@ -149,7 +159,9 @@ impl ActionKind {
         match self {
             Self::Hls => hls::takes(mime),
             Self::Prune | Self::Replace => crate::media_type::text(mime),
-            Self::RemoveHeader | Self::UrlTransform | Self::RemoveParamException => false,
+            Self::RemoveHeader | Self::UrlTransform | Self::RemoveParamException | Self::Cookie => {
+                false
+            }
         }
     }
 }
@@ -158,6 +170,7 @@ impl ActionSpec {
     /// Reject a pattern that cannot be searched within the per-expression limit.
     pub(crate) fn compile(&self) -> Option<ResponseAction> {
         match self {
+            Self::Cookie(spec) => spec.compile().ok().map(ResponseAction::Cookie),
             Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
             Self::Hls(spec) => spec.compile().map(ResponseAction::Hls),
             Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
@@ -179,6 +192,7 @@ impl ActionSpec {
 impl ResponseAction {
     pub(crate) fn kind(&self) -> ActionKind {
         match self {
+            Self::Cookie(_) => ActionKind::Cookie,
             Self::Prune(_) => ActionKind::Prune,
             Self::Hls(_) => ActionKind::Hls,
             Self::Replace(_) => ActionKind::Replace,
@@ -190,6 +204,7 @@ impl ResponseAction {
 
     pub(crate) fn place(&self) -> Place<'_> {
         match self {
+            Self::Cookie(_) => Place::RequestAndResponseHead,
             Self::Prune(_) | Self::Hls(_) | Self::Replace(_) => Place::ResponseBody,
             Self::UrlTransform(_) | Self::RemoveParamException(_) => Place::RequestUrl,
             Self::RemoveHeader(removeheader::Removal::Request(name)) => Place::Request(name),
@@ -206,6 +221,7 @@ impl ResponseAction {
     pub(crate) fn regex_bytes(&self) -> usize {
         match self {
             Self::Prune(_) | Self::RemoveHeader(_) | Self::RemoveParamException(_) => 0,
+            Self::Cookie(action) => action.regex_bytes(),
             Self::Hls(_) => hls::REGEX_CHARGE,
             Self::Replace(action) => action.regex_bytes(),
             Self::UrlTransform(action) => action.regex_bytes(),
@@ -224,7 +240,8 @@ impl ResponseAction {
             Self::Hls(_)
             | Self::RemoveHeader(_)
             | Self::UrlTransform(_)
-            | Self::RemoveParamException(_) => None,
+            | Self::RemoveParamException(_)
+            | Self::Cookie(_) => None,
         }
     }
 }

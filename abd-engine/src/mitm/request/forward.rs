@@ -27,7 +27,7 @@ use crate::filter::Filters;
 use crate::mitm::upstream::LINGER_TIME;
 use crate::relay;
 use crate::rewrite::RewritePlan;
-use crate::rule::action::html;
+use crate::rule::action::{cookie, html};
 
 /// If forwarding ends without a response head, keep the request-side verdict.
 struct PendingVerdict<'a> {
@@ -51,6 +51,7 @@ impl PendingVerdict<'_> {
         rewrite.body.actions = selected.body.actions;
         rewrite.response_headers = selected.response_headers;
         rewrite.csp = selected.csp;
+        rewrite.cookies = selected.cookies;
         request.record(&decision);
         None
     }
@@ -111,6 +112,7 @@ async fn forward_response(
     let connect_tunnel = shared.https.is_none() && req.method() == Method::CONNECT;
     let app_upgrade = (connect_tunnel || req.headers().contains_key(UPGRADE))
         .then(|| hyper::upgrade::on(&mut req));
+    cookie::request(req.headers_mut(), rewrite.cookie_rules());
     let mut resp = match forward(upstream, req, rewrite.request_headers.drain(..)).await {
         Ok(response) => response,
         Err(e) => {
@@ -134,19 +136,20 @@ async fn forward_response(
     }
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
     let html = (html_document && !rewrite.body.html.is_empty()).then(|| html::Action {
-        rules: rewrite.body.html,
+        rules: std::mem::take(&mut rewrite.body.html),
         charset: crate::html::transport_charset(resp.headers()).map(str::to_owned),
     });
     // The verdict, upgrade handling and HTML charset use the original head.
     // Remove headers before the body rewrite and cosmetic code use the head
     // for the app. Content-Type, framing, encoding and CSP are protected.
     if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
-        if html_document && let Some(csp) = rewrite.csp {
+        if html_document && let Some(csp) = rewrite.csp.take() {
             resp.headers_mut().append(CONTENT_SECURITY_POLICY, csp);
         }
-        for name in rewrite.response_headers {
+        for name in rewrite.response_headers.drain(..) {
             resp.headers_mut().remove(name);
         }
+        cookie::response(resp.headers_mut(), rewrite.cookie_rules());
     }
     crate::rewrite::wrap(resp, rewrite.body.actions, html, url)
 }

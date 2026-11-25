@@ -25,6 +25,7 @@ pub(super) const HLS: &str = "hls";
 pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
 pub(super) const URLTRANSFORM: &str = "urltransform";
+pub(super) const COOKIE: &str = "cookie";
 pub(super) const CSP: &str = "csp";
 pub(super) const REMOVEPARAM: &str = "removeparam";
 
@@ -105,6 +106,11 @@ const HLS_OPTIONS: &[Allowed] = &[
     allow("xmlhttprequest"),
     // The reference permits the strict forms. Their matching semantics
     // are unavailable to HLS rules, as with jsonprune.
+];
+const COOKIE_OPTIONS: &[Allowed] = &[
+    allow_negation("domain"),
+    allow("important"),
+    allow_negation("third-party"),
 ];
 const NETWORK_OPTIONS: &[Allowed] = &[allow(NETWORK), allow(APP), allow("important")];
 
@@ -208,7 +214,11 @@ static MODIFIERS: &[Modifier] = &[
         Address(Compatibility::Only(NETWORK_OPTIONS)),
         FlagValue,
     ),
-    modifier(&["cookie"], Unsupported, Optional),
+    modifier(
+        &[COOKIE],
+        Action(ActionKind::Cookie, Compatibility::Only(COOKIE_OPTIONS)),
+        Optional,
+    ),
     modifier(&["header"], Unsupported, Required),
     modifier(&["xmlprune"], Unsupported, Required),
     modifier(&["referrerpolicy"], Unsupported, Required),

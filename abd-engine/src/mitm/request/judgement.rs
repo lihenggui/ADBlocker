@@ -224,6 +224,9 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             .as_ref()
             .map_or_else(Vec::new, |m| m.actions(kind.as_str(), include_transforms));
         let mut plan = RewritePlan::select(actions, self.permits_body_rewrite);
+        if !plan.cookies.is_empty() && filters.url_rules_disabled(url, self.page, self.method) {
+            plan.cookies.clear();
+        }
         // Only replacement rules take precedence after the connection passes host filtering.
         let check = if plan
             .body

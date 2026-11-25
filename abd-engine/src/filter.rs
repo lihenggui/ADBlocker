@@ -454,6 +454,12 @@ impl AppFilters<'_> {
         }
     }
 
+    pub(crate) fn url_rules_disabled(&self, url: &str, page: Page<'_>, method: &str) -> bool {
+        self.filters
+            .page_exceptions
+            .url_rules_disabled(url, page, method)
+    }
+
     pub(crate) fn csp(
         &self,
         url: &str,

@@ -136,13 +136,18 @@ A matching `$urltransform` rule can change an allowed request's path
 and query before it is sent. It can redirect a GET or HEAD request to
 another address. The app decides whether to follow the redirect and
 opens any new connection itself.
-With URL filtering on, any list can remove a named query parameter with
-`$removeparam`. The request still goes to the app's original server.
-With URL filtering on, any list can add a Content Security Policy to
-an allowed document with a `$csp` rule. Server policies still apply.
-The engine rejects reporting directives. Cosmetic injection handles list
-policies and server policies together.
+With URL filtering on, any list can use `$cookie` to remove cookies from
+a request or response, cap a cookie's Max-Age or set its SameSite
+attribute. This can end a login session or change when the app sends a
+cookie across sites. Any list can use `$removeparam` to remove a named
+query parameter before sending the request to the original server.
+
+Any list can add a Content Security Policy to an allowed document with
+`$csp`. Server policies still apply. The engine rejects reporting
+directives. Cosmetic injection handles list policies and server
+policies together.
 [URL and response rules](docs/how-it-works.md#filtering)
+
 Whole-host refusals happen before the engine reads a request. The engine
 applies response rules before it adds cosmetic styles or scripts.
 

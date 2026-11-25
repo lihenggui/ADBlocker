@@ -43,6 +43,7 @@ use tokio::net::TcpListener;
 
 use super::*;
 
+mod cookie;
 mod csp;
 mod hls;
 mod removeheader;
@@ -195,6 +196,7 @@ async fn rig(setup: Setup) -> Rig {
                             .unwrap()));
                     }
                     if let Some(response) = replacement_fixture(&req)
+                        .or_else(|| cookie::fixture(&req))
                         .or_else(|| removeheader::fixture(&req))
                         .or_else(|| hls::fixture(&req))
                         .or_else(|| urltransform::fixture(&req))
