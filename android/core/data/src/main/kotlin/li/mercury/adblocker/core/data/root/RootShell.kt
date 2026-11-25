@@ -31,7 +31,9 @@ import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
 import li.mercury.adblocker.core.common.dispatchers.Dispatcher
 import li.mercury.adblocker.core.data.AbdException
 import timber.log.Timber
+import java.io.ByteArrayOutputStream
 import java.io.IOException
+import java.io.InputStream
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -48,6 +50,8 @@ class CommandResult(val isSuccess: Boolean, val code: Int, val output: String, v
 open class RootShell @Inject constructor(
     @Dispatcher(IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
+    private val children = RootChildProcesses()
+
     /**
      * Runs [command] in the shared root shell, logging how long it took under
      * [label]. The label is all that is logged of it: commands carry package
@@ -91,7 +95,7 @@ open class RootShell @Inject constructor(
         // Once the writer starts, finish the bounded command even if its screen closes.
         // Closing stdin on cancellation would let rules set commit a partial file.
         withContext(NonCancellable) {
-            val process = ProcessBuilder("su", "--mount-master", "-c", "exec timeout $DEFAULT_TIMEOUT_SECONDS $command").start()
+            val process = startRootProcess { children.start("exec timeout $DEFAULT_TIMEOUT_SECONDS $command") }
             val result = communicate(process, input, ioDispatcher)
             Timber.d("%s: exit %d", label, result.code)
             if (result.code == TIMED_OUT) throw AbdException.TimedOut()
@@ -115,8 +119,7 @@ open class RootShell @Inject constructor(
      */
     open fun stream(command: String, label: String): Flow<String> = streamProcess(label) {
         rootShell()
-        // The same global mount namespace as the shared shell.
-        ProcessBuilder("su", "--mount-master", "-c", command).start()
+        children.start(command)
     }.flowOn(ioDispatcher)
 
     /**
@@ -158,12 +161,39 @@ open class RootShell @Inject constructor(
     }
 }
 
+/** Selects the mount option before starting a caller's command, which may change state. */
+internal class RootChildProcesses(private val launch: (List<String>) -> Process = { ProcessBuilder(it).start() }) {
+    private val mountMaster by lazy {
+        val probe = launch(listOf("su", "--mount-master", "-c", "true"))
+        try {
+            probe.outputStream.close()
+            if (!probe.waitFor(5, TimeUnit.SECONDS)) throw AbdException.TimedOut()
+            probe.exitValue() == 0
+        } finally {
+            probe.destroyForcibly()
+        }
+    }
+
+    fun start(command: String): Process {
+        val prefix = if (mountMaster) listOf("su", "--mount-master", "-c") else listOf("su", "-c")
+        return launch(prefix + command)
+    }
+}
+
+private fun startRootProcess(start: () -> Process): Process = try {
+    start()
+} catch (_: IOException) {
+    throw AbdException.NoRoot()
+}
+
+// A rules export can be as large as the 16 MiB rules file.
+private const val MAX_STDOUT = 16 * 1024 * 1024
 private const val MAX_STDERR = 16 * 1024
 private const val STDERR_JOIN_MS = 1_000L
 private const val PIPE_FAILURE_WAIT_MS = 1_000L
 
 internal fun streamProcess(label: String, start: () -> Process): Flow<String> = callbackFlow {
-    val process = start()
+    val process = startRootProcess(start)
     val stderr = StringBuffer()
     val errors = thread(name = "$label-stderr", isDaemon = true) {
         runCatching {
@@ -220,8 +250,8 @@ internal fun streamProcess(label: String, start: () -> Process): Flow<String> = 
 /** Drain both pipes while writing. A checker can report more than a pipeful of issues. */
 internal suspend fun communicate(process: Process, input: String, ioDispatcher: CoroutineDispatcher): CommandResult = withContext(ioDispatcher) {
     try {
-        val stdout = async { process.inputStream.bufferedReader().use { it.readText() } }
-        val stderr = async { process.errorStream.bufferedReader().use { it.readText() } }
+        val stdout = async { process.inputStream.use { it.readCapped(MAX_STDOUT) } }
+        val stderr = async { process.errorStream.use { it.readCapped(MAX_STDERR) } }
         val writeFailure = try {
             process.outputStream.bufferedWriter().use { it.write(input) }
             null
@@ -231,10 +261,30 @@ internal suspend fun communicate(process: Process, input: String, ioDispatcher: 
         }
         val code = process.waitFor()
         if (code == 0 && writeFailure != null) throw writeFailure
-        CommandResult(code == 0, code, stdout.await(), stderr.await())
+        val output = stdout.await()
+        val error = stderr.await()
+        if (code == 0 && output.truncated) throw AbdException.BadOutput("Root command output exceeded the size limit")
+        CommandResult(code == 0, code, output.text, error.text)
     } finally {
         process.destroy()
     }
+}
+
+private data class CapturedOutput(val text: String, val truncated: Boolean)
+
+private fun InputStream.readCapped(limit: Int): CapturedOutput {
+    val output = ByteArrayOutputStream()
+    val buffer = ByteArray(8192)
+    var truncated = false
+    while (true) {
+        val count = read(buffer)
+        if (count < 0) break
+        val kept = minOf(count, limit - output.size())
+        output.write(buffer, 0, kept)
+        // Drain the pipe after the limit so the child can finish and report its exit.
+        if (kept < count) truncated = true
+    }
+    return CapturedOutput(output.toString(Charsets.UTF_8.name()), truncated)
 }
 
 /** What toybox `timeout` exits with when it stopped the command. */
