@@ -154,6 +154,10 @@ impl Limits {
         })
     }
 
+    pub fn capacity(&self) -> usize {
+        self.max
+    }
+
     /// A place for a connection of `uid`, if there is one.
     pub fn take(self: &Arc<Self>, uid: u32) -> Option<Slot> {
         let mut carried = self.carried.lock().unwrap();

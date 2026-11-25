@@ -20,7 +20,10 @@
 # Every step is taken whatever became of the one before. What matters most
 # comes first: that no app is left without its network, then that no app
 # trusts the authority any longer, then that its key is destroyed.
-MODDIR=${0%/*}
+case "$0" in
+*/*) MODDIR=${0%/*} ;;
+*) MODDIR=. ;;
+esac
 ABD=$MODDIR/bin/abd
 DATA=/data/adb/adblocker
 
@@ -54,7 +57,8 @@ rm -rf "$DATA/ca" || cleanup=1
 if [ "$removed" -eq 0 ]; then
     rm -rf "$DATA" || cleanup=1
 else
-    for entry in "$DATA"/* "$DATA"/.[!.]*; do
+    for entry in "$DATA"/* "$DATA"/.[!.]* "$DATA"/..?*; do
+        [ -e "$entry" ] || [ -L "$entry" ] || continue
         case "$entry" in
         "$DATA/store" | "$DATA/user-store") ;;
         *) rm -rf "$entry" || cleanup=1 ;;

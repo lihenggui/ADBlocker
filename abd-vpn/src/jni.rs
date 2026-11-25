@@ -19,16 +19,16 @@
 
 #![allow(
     unsafe_code,
-    reason = "the functions the JVM calls, the handle it holds and the descriptor it gives"
+    reason = "the functions the JVM calls and the descriptor it gives"
 )]
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::{IpAddr, SocketAddr};
 use std::os::fd::{FromRawFd as _, OwnedFd, RawFd};
 use std::path::Path;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
-use jni::errors::{Result, ThrowRuntimeExAndDefault};
+use jni::errors::{Error, Result, ThrowRuntimeExAndDefault};
 use jni::objects::{Global, JByteArray, JObject, JObjectArray, JString, JValue};
 use jni::sys::{jint, jlong};
 use jni::{Env, EnvUnowned, JavaVM, jni_sig, jni_str};
@@ -66,18 +66,18 @@ impl Android {
     }
 }
 
-fn address(ip: IpAddr) -> Vec<u8> {
+fn address<'l>(env: &mut Env<'l>, ip: IpAddr) -> Result<JByteArray<'l>> {
     match ip {
-        IpAddr::V4(ip) => ip.octets().to_vec(),
-        IpAddr::V6(ip) => ip.octets().to_vec(),
+        IpAddr::V4(ip) => env.byte_array_from_slice(&ip.octets()),
+        IpAddr::V6(ip) => env.byte_array_from_slice(&ip.octets()),
     }
 }
 
 impl Platform for Android {
     fn owner(&self, protocol: i32, app: SocketAddr, server: SocketAddr) -> Option<u32> {
         let uid = self.ask(|env, callbacks| {
-            let local = env.byte_array_from_slice(&address(app.ip()))?;
-            let remote = env.byte_array_from_slice(&address(server.ip()))?;
+            let local = address(env, app.ip())?;
+            let remote = address(env, server.ip())?;
             env.call_method(
                 callbacks,
                 jni_str!("ownerUid"),
@@ -200,20 +200,60 @@ struct Opened {
     android: Arc<Android>,
 }
 
-/// The engine behind a handle `open` returned, or none for 0.
-fn opened(handle: jlong) -> Option<&'static Opened> {
-    // SAFETY: a handle other than 0 is the pointer `open` made of a box,
-    // which lives until `close`; the app calls nothing after that, as the
-    // contract has it.
-    unsafe { (handle as *const Opened).as_ref() }
+struct Handles {
+    last: jlong,
+    active: Option<Arc<Opened>>,
 }
 
-fn strings(env: &mut Env, array: &JObjectArray<JString>) -> Result<Vec<String>> {
+static HANDLES: Mutex<Handles> = Mutex::new(Handles {
+    last: 0,
+    active: None,
+});
+static OPENING: Mutex<()> = Mutex::new(());
+
+fn opened(handle: jlong) -> Option<Arc<Opened>> {
+    let handles = HANDLES.lock().unwrap();
+    (handles.last == handle)
+        .then(|| handles.active.clone())
+        .flatten()
+}
+
+fn required(object: &JObject, name: &'static str) -> Result<()> {
+    if object.is_null() {
+        return Err(Error::NullPtr(name));
+    }
+    Ok(())
+}
+
+fn string_elements(
+    env: &mut Env,
+    array: &JObjectArray<JString>,
+    name: &'static str,
+    limit: usize,
+) -> Result<Vec<String>> {
+    required(array.as_ref(), name)?;
     let mut all = Vec::new();
-    for i in 0..array.len(env)? {
-        all.push(array.get_element(env, i)?.try_to_string(env)?);
+    for i in 0..array.len(env)?.min(limit) {
+        all.push(env.with_local_frame(1, |env| {
+            let element = array.get_element(env, i)?;
+            required(element.as_ref(), name)?;
+            element.try_to_string(env)
+        })?);
     }
     Ok(all)
+}
+
+fn certificates(env: &mut Env, roots: &JObjectArray<JByteArray>) -> Result<Vec<Vec<u8>>> {
+    required(roots.as_ref(), "roots")?;
+    let mut certificates = Vec::new();
+    for i in 0..roots.len(env)? {
+        certificates.push(env.with_local_frame(1, |env| {
+            let root = roots.get_element(env, i)?;
+            required(root.as_ref(), "root certificate")?;
+            env.convert_byte_array(&root)
+        })?);
+    }
+    Ok(certificates)
 }
 
 #[unsafe(no_mangle)]
@@ -227,27 +267,48 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_open<'l>(
     callbacks: JObject<'l>,
 ) -> jlong {
     env.with_env(|env| -> Result<jlong> {
+        required(data_dir.as_ref(), "data_dir")?;
+        required(time_zone.as_ref(), "time_zone")?;
+        required(&callbacks, "callbacks")?;
+        // A second open cannot build a session while the first is opening.
+        // Session::open may call Java, so keep the handle lock out of it.
+        let Ok(_opening) = OPENING.try_lock() else {
+            log("the engine is already opening");
+            return Ok(0);
+        };
+        let next = {
+            let handles = HANDLES.lock().unwrap();
+            if handles.active.is_some() {
+                log("the engine is already open");
+                return Ok(0);
+            }
+            let Some(next) = handles.last.checked_add(1) else {
+                log("the engine has no handle IDs left");
+                return Ok(0);
+            };
+            next
+        };
         let dir = data_dir.try_to_string(env)?;
+        let locales = string_elements(env, &locale_tags, "locale_tags", usize::MAX)?;
+        let certificates = certificates(env, &roots)?;
         // Once per process, as the contract has it: a later open keeps the
         // defaults the commands have already shown.
         if !abd_engine::catalog::set_device_locale(
-            strings(env, &locale_tags)?.iter().map(String::as_str),
+            locales.iter().map(String::as_str),
             &time_zone.try_to_string(env)?,
         ) {
             log("the list defaults were already set");
-        }
-        let mut certificates = Vec::new();
-        for i in 0..roots.len(env)? {
-            let root = roots.get_element(env, i)?;
-            certificates.push(env.convert_byte_array(&root)?);
         }
         let android = Arc::new(Android {
             callbacks: env.new_global_ref(&callbacks)?,
         });
         match Session::open(Path::new(&dir), &certificates, android.clone()) {
             Ok(session) => {
-                let opened = Box::new(Opened { session, android });
-                Ok(Box::into_raw(opened) as jlong)
+                *HANDLES.lock().unwrap() = Handles {
+                    last: next,
+                    active: Some(Arc::new(Opened { session, android })),
+                };
+                Ok(next)
             }
             Err(e) => {
                 log(&format!("the engine did not open: {e:#}"));
@@ -267,7 +328,7 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_command<'l>(
     stdin: JByteArray<'l>,
 ) -> JObject<'l> {
     env.with_env(|env| -> Result<JObject<'l>> {
-        let args = strings(env, &args)?;
+        let args = string_elements(env, &args, "args", usize::MAX)?;
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
         let stdin = if stdin.is_null() {
             Vec::new()
@@ -306,8 +367,9 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_stream<'l>(
     sink: JObject<'l>,
 ) -> jlong {
     env.with_env(|env| -> Result<jlong> {
-        let args = strings(env, &args)?;
+        let args = string_elements(env, &args, "args", usize::MAX)?;
         let args: Vec<&str> = args.iter().map(String::as_str).collect();
+        required(&sink, "sink")?;
         let mut lines = Lines {
             sink: env.new_global_ref(&sink)?,
         };
@@ -354,13 +416,10 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_start<'l>(
     };
     let started = env
         .with_env(|env| -> Result<bool> {
-            let mut servers = Vec::new();
-            for index in 0..resolvers.len(env)?.min(MAX_RESOLVERS) {
-                let addr = resolvers.get_element(env, index)?.try_to_string(env)?;
-                if let Ok(addr) = addr.parse::<SocketAddr>() {
-                    servers.push(addr);
-                }
-            }
+            let servers = string_elements(env, &resolvers, "resolvers", MAX_RESOLVERS)?
+                .iter()
+                .filter_map(|addr| addr.parse::<SocketAddr>().ok())
+                .collect();
             let android = opened.android.clone();
             match opened.session.start(
                 tun,
@@ -396,10 +455,14 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_close<'l>(
     _this: JObject<'l>,
     handle: jlong,
 ) {
-    if handle != 0 {
-        // SAFETY: the pointer `open` made of a box, given back once.
-        drop(unsafe { Box::from_raw(handle as *mut Opened) });
-    }
+    let closed = {
+        let mut handles = HANDLES.lock().unwrap();
+        if handles.last != handle {
+            return;
+        }
+        handles.active.take()
+    };
+    drop(closed);
 }
 
 #[cfg(test)]

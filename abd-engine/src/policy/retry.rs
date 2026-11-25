@@ -35,8 +35,6 @@
 
 use std::collections::HashMap;
 
-use super::Pinned;
-
 /// The least time, in seconds, between a refused try of a host and the
 /// next: an app that crashes as it starts must not lose a connection to
 /// each of its hosts at every start.
@@ -60,7 +58,7 @@ enum Retry {
 
 #[derive(Default)]
 pub(super) struct Retries {
-    entries: HashMap<Pinned, Retry>,
+    entries: HashMap<String, HashMap<String, Retry>>,
     last_ticket: u64,
 }
 
@@ -69,99 +67,124 @@ impl Retries {
     /// tried once, except one refused in the last [`INTERVAL`] or under
     /// way now. Returns whether any was left without a try for want of
     /// room.
-    pub fn grant(&mut self, package: &str, hosts: &[String], now: u64) -> bool {
+    pub fn grant<'a>(
+        &mut self,
+        package: &str,
+        hosts: impl IntoIterator<Item = &'a str>,
+        now: u64,
+    ) -> bool {
+        let mut available = MAX_ENTRIES - self.entries.values().map(HashMap::len).sum::<usize>();
         let mut full = false;
         for host in hosts {
-            let key = (package.to_owned(), host.clone());
-            let state = self.state(&key, now);
-            let grant = match state {
-                None if self.entries.len() >= MAX_ENTRIES => {
-                    full = true;
-                    false
+            match self
+                .entries
+                .get_mut(package)
+                .and_then(|entries| entries.get_mut(host))
+            {
+                Some(state) => {
+                    state.expire(now);
+                    if matches!(*state, Retry::Refused { at } if now >= at.saturating_add(INTERVAL))
+                    {
+                        *state = Retry::Granted;
+                    }
                 }
-                None => true,
-                Some(Retry::Refused { at }) => now >= at.saturating_add(INTERVAL),
-                Some(Retry::Granted | Retry::Trying { .. }) => false,
-            };
-            if grant {
-                self.entries.insert(key, Retry::Granted);
+                None if available == 0 => full = true,
+                None => {
+                    self.entries
+                        .entry(package.to_owned())
+                        .or_default()
+                        .insert(host.to_owned(), Retry::Granted);
+                    available -= 1;
+                }
             }
         }
         full
     }
 
     #[cfg(test)]
-    pub fn is_granted(&self, key: &Pinned) -> bool {
-        self.entries.get(key) == Some(&Retry::Granted)
+    fn is_granted(&self, (package, host): (&str, &str)) -> bool {
+        self.entries.get(package).and_then(|hosts| hosts.get(host)) == Some(&Retry::Granted)
     }
 
     /// Takes the try for a connection, if there is one: the ticket it
     /// ends the try with.
-    pub fn take(&mut self, key: &Pinned, now: u64) -> Option<u64> {
-        if self.state(key, now) != Some(Retry::Granted) {
+    pub fn take(&mut self, (package, host): (&str, &str), now: u64) -> Option<u64> {
+        let state = self.entries.get_mut(package)?.get_mut(host)?;
+        state.expire(now);
+        if *state != Retry::Granted {
             return None;
         }
         self.last_ticket = self.last_ticket.wrapping_add(1);
         let ticket = self.last_ticket;
-        self.entries
-            .insert(key.clone(), Retry::Trying { ticket, since: now });
+        *state = Retry::Trying { ticket, since: now };
         Some(ticket)
-    }
-
-    /// Whether `ticket` is that of the try under way.
-    fn holds(&self, key: &Pinned, ticket: u64) -> bool {
-        matches!(self.entries.get(key), Some(Retry::Trying { ticket: held, .. }) if *held == ticket)
     }
 
     /// The app refused the try of `ticket`, or its connection ended without
     /// a request. Returns whether it was the try under way.
-    pub fn refused(&mut self, key: &Pinned, ticket: u64, now: u64) -> bool {
-        let held = self.holds(key, ticket);
-        if held {
-            self.entries.insert(key.clone(), Retry::Refused { at: now });
-        }
-        held
+    pub fn refused(&mut self, key: (&str, &str), ticket: u64, now: u64) -> bool {
+        let Some(state) = self.held(key, ticket) else {
+            return false;
+        };
+        *state = Retry::Refused { at: now };
+        true
     }
 
     /// The app sent a request on the try of `ticket`. Returns whether it
     /// was the try under way, which is then over.
-    pub fn accepted(&mut self, key: &Pinned, ticket: u64) -> bool {
-        let held = self.holds(key, ticket);
-        if held {
-            self.entries.remove(key);
+    pub fn accepted(&mut self, (package, host): (&str, &str), ticket: u64) -> bool {
+        let Some(hosts) = self.entries.get_mut(package) else {
+            return false;
+        };
+        if !hosts.get(host).is_some_and(|state| state.holds(ticket)) {
+            return false;
         }
-        held
+        hosts.remove(host);
+        if hosts.is_empty() {
+            self.entries.remove(package);
+        }
+        true
     }
 
     /// The connection of `ticket` never showed the app our certificate:
     /// the try is the next connection's.
-    pub fn unresolved(&mut self, key: &Pinned, ticket: u64) {
-        if self.holds(key, ticket) {
-            self.entries.insert(key.clone(), Retry::Granted);
+    pub fn unresolved(&mut self, key: (&str, &str), ticket: u64) {
+        if let Some(state) = self.held(key, ticket) {
+            *state = Retry::Granted;
         }
     }
 
-    pub fn retain(&mut self, mut keep: impl FnMut(&Pinned) -> bool) {
-        self.entries.retain(|key, _| keep(key));
+    fn held(&mut self, (package, host): (&str, &str), ticket: u64) -> Option<&mut Retry> {
+        self.entries
+            .get_mut(package)?
+            .get_mut(host)
+            .filter(|state| state.holds(ticket))
     }
 
-    /// The state of the host's try, with one under way too long taken as
-    /// refused when it began.
-    fn state(&mut self, key: &Pinned, now: u64) -> Option<Retry> {
-        let state = self.entries.get(key).copied();
-        if let Some(Retry::Trying { since, .. }) = state
-            && now >= since.saturating_add(RESOLVE_TIME)
-        {
-            let refused = Retry::Refused { at: since };
-            self.entries.insert(key.clone(), refused);
-            return Some(refused);
-        }
-        state
+    pub fn retain(&mut self, mut keep: impl FnMut(&str, &str) -> bool) {
+        self.entries.retain(|package, hosts| {
+            hosts.retain(|host, _| keep(package, host));
+            !hosts.is_empty()
+        });
     }
 
     #[cfg(test)]
-    pub fn len(&self) -> usize {
-        self.entries.len()
+    fn len(&self) -> usize {
+        self.entries.values().map(HashMap::len).sum()
+    }
+}
+
+impl Retry {
+    fn holds(self, ticket: u64) -> bool {
+        matches!(self, Self::Trying { ticket: held, .. } if held == ticket)
+    }
+
+    fn expire(&mut self, now: u64) {
+        if let Self::Trying { since, .. } = *self
+            && now >= since.saturating_add(RESOLVE_TIME)
+        {
+            *self = Self::Refused { at: since };
+        }
     }
 }
 
@@ -169,76 +192,72 @@ impl Retries {
 mod tests {
     use super::*;
 
-    fn key(host: &str) -> Pinned {
-        ("com.app".to_owned(), host.to_owned())
-    }
-
-    fn hosts(names: &[&str]) -> Vec<String> {
-        names.iter().map(|&name| name.to_owned()).collect()
+    fn key(host: &str) -> (&str, &str) {
+        ("com.app", host)
     }
 
     #[test]
     fn a_process_start_grants_each_host_one_try() {
         let mut retries = Retries::default();
-        retries.grant("com.app", &hosts(&["a.example", "b.example"]), 1000);
-        assert!(retries.is_granted(&key("a.example")));
-        assert!(retries.is_granted(&key("b.example")));
-        assert!(!retries.is_granted(&("com.other".to_owned(), "a.example".to_owned())));
+        retries.grant("com.app", ["a.example", "b.example"], 1000);
+        assert!(retries.is_granted(key("a.example")));
+        assert!(retries.is_granted(key("b.example")));
+        assert!(!retries.is_granted(("com.other", "a.example")));
 
-        let ticket = retries.take(&key("a.example"), 1000);
+        let ticket = retries.take(key("a.example"), 1000);
         assert!(ticket.is_some());
-        assert_eq!(retries.take(&key("a.example"), 1000), None);
-        assert!(!retries.is_granted(&key("a.example")));
+        assert_eq!(retries.take(key("a.example"), 1000), None);
+        assert!(!retries.is_granted(key("a.example")));
     }
 
     #[test]
     fn a_refused_try_is_not_granted_again_before_the_interval() {
         let mut retries = Retries::default();
-        retries.grant("com.app", &hosts(&["a.example"]), 1000);
-        let ticket = retries.take(&key("a.example"), 1000).unwrap();
-        assert!(retries.refused(&key("a.example"), ticket, 1001));
+        retries.grant("com.app", ["a.example"], 1000);
+        let ticket = retries.take(key("a.example"), 1000).unwrap();
+        assert!(retries.refused(key("a.example"), ticket, 1001));
 
         // A crash loop: process after process.
         for at in 1002..1001 + INTERVAL {
-            retries.grant("com.app", &hosts(&["a.example"]), at);
-            assert_eq!(retries.take(&key("a.example"), at), None);
+            retries.grant("com.app", ["a.example"], at);
+            assert_eq!(retries.take(key("a.example"), at), None);
         }
-        retries.grant("com.app", &hosts(&["a.example"]), 1001 + INTERVAL);
-        assert!(retries.take(&key("a.example"), 1001 + INTERVAL).is_some());
+        retries.grant("com.app", ["a.example"], 1001 + INTERVAL);
+        assert!(retries.take(key("a.example"), 1001 + INTERVAL).is_some());
     }
 
     #[test]
     fn only_the_connection_of_the_ticket_ends_a_try() {
         let mut retries = Retries::default();
-        retries.grant("com.app", &hosts(&["a.example"]), 1000);
-        let ticket = retries.take(&key("a.example"), 1000).unwrap();
+        retries.grant("com.app", ["a.example"], 1000);
+        let ticket = retries.take(key("a.example"), 1000).unwrap();
         // A second process starts while the first tries.
-        retries.grant("com.app", &hosts(&["a.example"]), 1001);
-        assert_eq!(retries.take(&key("a.example"), 1001), None);
-        assert!(!retries.refused(&key("a.example"), ticket + 1, 1002));
-        assert!(!retries.accepted(&key("a.example"), ticket + 1));
-        retries.unresolved(&key("a.example"), ticket + 1);
-        assert!(!retries.is_granted(&key("a.example")));
-        assert!(retries.accepted(&key("a.example"), ticket));
+        retries.grant("com.app", ["a.example"], 1001);
+        assert_eq!(retries.take(key("a.example"), 1001), None);
+        assert!(!retries.refused(key("a.example"), ticket + 1, 1002));
+        assert!(!retries.accepted(key("a.example"), ticket + 1));
+        retries.unresolved(key("a.example"), ticket + 1);
+        assert!(!retries.is_granted(key("a.example")));
+        assert!(retries.accepted(key("a.example"), ticket));
         assert_eq!(retries.len(), 0);
     }
 
     #[test]
     fn a_try_that_never_showed_the_app_our_certificate_is_left_for_the_next() {
         let mut retries = Retries::default();
-        retries.grant("com.app", &hosts(&["a.example"]), 1000);
-        let ticket = retries.take(&key("a.example"), 1000).unwrap();
-        retries.unresolved(&key("a.example"), ticket);
-        assert!(retries.take(&key("a.example"), 1001).is_some());
+        retries.grant("com.app", ["a.example"], 1000);
+        let ticket = retries.take(key("a.example"), 1000).unwrap();
+        retries.unresolved(key("a.example"), ticket);
+        assert!(retries.take(key("a.example"), 1001).is_some());
     }
 
     #[test]
     fn a_try_that_never_ends_counts_as_refused_when_it_began() {
         let mut retries = Retries::default();
-        retries.grant("com.app", &hosts(&["a.example"]), 1000);
-        retries.take(&key("a.example"), 1000).unwrap();
-        retries.grant("com.app", &hosts(&["a.example"]), 1000 + RESOLVE_TIME);
-        assert!(retries.is_granted(&key("a.example")), "refused at 1000");
+        retries.grant("com.app", ["a.example"], 1000);
+        retries.take(key("a.example"), 1000).unwrap();
+        retries.grant("com.app", ["a.example"], 1000 + RESOLVE_TIME);
+        assert!(retries.is_granted(key("a.example")), "refused at 1000");
     }
 
     #[test]
@@ -247,9 +266,9 @@ mod tests {
         let many: Vec<String> = (0..MAX_ENTRIES + 10)
             .map(|n| format!("h{n}.example"))
             .collect();
-        assert!(retries.grant("com.app", &many, 1000));
+        assert!(retries.grant("com.app", many.iter().map(String::as_str), 1000));
         assert_eq!(retries.len(), MAX_ENTRIES);
-        assert!(!Retries::default().grant("com.app", &hosts(&["a.example"]), 1000));
+        assert!(!Retries::default().grant("com.app", ["a.example"], 1000));
     }
 
     /// The policy as connections meet it.
@@ -389,7 +408,9 @@ mod tests {
                 .pinned
                 .lock()
                 .unwrap()
-                .insert(key("a.example"), now() - 3600);
+                .get_mut("com.app")
+                .unwrap()
+                .insert("a.example".to_owned(), now() - 3600);
             policy.process_started("com.app");
             let ticket = try_of(&policy, &filters, "a.example").unwrap();
             policy.try_refused("com.app", "a.example", ticket);
@@ -416,7 +437,9 @@ mod tests {
                 .pinned
                 .lock()
                 .unwrap()
-                .insert(key("a.example"), pinned_at);
+                .get_mut("com.app")
+                .unwrap()
+                .insert("a.example".to_owned(), pinned_at);
             policy.process_started("com.app");
             // The server could not be verified, say: our certificate was
             // never shown.
@@ -450,7 +473,13 @@ mod tests {
             policy.try_refused("com.app", "a.example", ticket);
             assert_eq!(policy.retries.lock().unwrap().len(), 1);
             // Gone old, as after 30 days.
-            policy.pinned.lock().unwrap().insert(key("a.example"), 0);
+            policy
+                .pinned
+                .lock()
+                .unwrap()
+                .get_mut("com.app")
+                .unwrap()
+                .insert("a.example".to_owned(), 0);
             policy.process_started("com.other");
             assert_eq!(policy.retries.lock().unwrap().len(), 0);
         }

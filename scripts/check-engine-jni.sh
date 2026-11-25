@@ -32,6 +32,10 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.cert.CertificateFactory;
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.FutureTask;
+import java.util.concurrent.TimeUnit;
 
 public class Engine {
     private native long open(String dir, byte[][] roots, String[] localeTags, String timeZoneId, Callbacks callbacks);
@@ -64,11 +68,23 @@ public class Engine {
 
         engine.rejectDescriptor(0, 9, new String[0]);
 
-        long handle = engine.open(dir, new byte[][]{trustAnchor}, localeTags, timeZoneId, callbacks);
+        byte[][] roots = new byte[512][];
+        Arrays.fill(roots, trustAnchor);
+        engine.checkNullInputs(dir, roots, localeTags, timeZoneId, callbacks);
+        long handle = engine.open(dir, roots, localeTags, timeZoneId, callbacks);
         check(handle != 0, "engine with usable upstream roots");
         try {
+            check(engine.open(dir, roots, localeTags, timeZoneId, callbacks) == 0, "only one engine can be open");
             engine.rejectDescriptor(handle, 8, null);
             engine.rejectDescriptor(handle, 7, new String[0]);
+            engine.rejectDescriptor(handle, 6, new String[]{null});
+            expectRuntime(() -> engine.command(handle, null, null));
+            expectRuntime(() -> engine.command(handle, new String[]{null}, null));
+            expectRuntime(() -> engine.stream(handle, null, sink));
+            expectRuntime(() -> engine.stream(handle, new String[]{"watch"}, null));
+            var manyArgs = new String[512];
+            Arrays.fill(manyArgs, "status");
+            check(engine.command(handle, manyArgs, null).exit() == 2, "large argument array converted");
             String lists = engine.run(handle, "lists", "--json");
             check(lists.contains("easylistchina.txt"), "the time zone enables the Chinese defaults");
             check(lists.contains("koreanlist.txt"), "the secondary locale enables the Korean default");
@@ -84,10 +100,57 @@ public class Engine {
             check(callbacks.inventoryCalls > 0, "inventory callback exercised");
             state = Files.readString(Path.of(dir, "state"));
             check(state.contains("\"filtering_apps\":0"), "inventory callback failure leaves no filtered apps");
+            engine.run(handle, "scope", "chosen");
+            engine.checkConcurrentClose(handle, callbacks);
         } finally {
+            // A second close of the same ID must be harmless.
             engine.close(handle);
         }
+        long reopened = engine.open(dir, roots, localeTags, timeZoneId, callbacks);
+        check(reopened > handle, "reopening uses a fresh handle ID");
+        engine.close(handle);
+        try {
+            engine.run(reopened, "status", "--json");
+            check(engine.command(handle, new String[]{"status"}, null).exit() == 1, "old handle is still closed");
+        } finally {
+            engine.close(reopened);
+        }
         System.out.println("Host JNI failure checks passed");
+    }
+
+    private void checkNullInputs(String dir, byte[][] roots, String[] tags, String zone, Callbacks callbacks) {
+        expectRuntime(() -> open(null, roots, tags, zone, callbacks));
+        expectRuntime(() -> open(dir, null, tags, zone, callbacks));
+        expectRuntime(() -> open(dir, new byte[][]{null}, tags, zone, callbacks));
+        expectRuntime(() -> open(dir, roots, null, zone, callbacks));
+        expectRuntime(() -> open(dir, roots, tags, null, callbacks));
+        expectRuntime(() -> open(dir, roots, tags, zone, null));
+    }
+
+    private static void expectRuntime(Runnable call) {
+        try {
+            call.run();
+        } catch (RuntimeException expected) {
+            return;
+        }
+        throw new AssertionError("null JNI input should raise a Java exception");
+    }
+
+    private void checkConcurrentClose(long handle, Callbacks callbacks) throws Exception {
+        callbacks.entered = new CountDownLatch(1);
+        callbacks.release = new CountDownLatch(1);
+        var ongoing = new FutureTask<>(() -> run(handle, "app", "list", "--json"));
+        var caller = new Thread(ongoing);
+        caller.setDaemon(true);
+        caller.start();
+        try {
+            check(callbacks.entered.await(5, TimeUnit.SECONDS), "command entered the callback");
+            close(handle);
+            check(command(handle, new String[]{"status"}, null).exit() == 1, "closed handle rejects new calls");
+        } finally {
+            callbacks.release.countDown();
+        }
+        check(ongoing.get(5, TimeUnit.SECONDS).contains("ca_not_installed"), "in-flight command completed");
     }
 
     // The shell gives each case a separate open regular file. The native
@@ -126,6 +189,8 @@ class Callbacks {
     int uidCalls;
     int caCalls;
     int inventoryCalls;
+    CountDownLatch entered;
+    CountDownLatch release;
 
     public int uidOf(String name) {
         uidCalls++;
@@ -134,6 +199,14 @@ class Callbacks {
 
     public boolean userCaInstalled() {
         caCalls++;
+        if (entered != null) {
+            entered.countDown();
+            try {
+                Engine.check(release.await(5, TimeUnit.SECONDS), "the callback was released");
+            } catch (InterruptedException e) {
+                throw new AssertionError(e);
+            }
+        }
         throw new IllegalStateException("test CA failure");
     }
 
@@ -145,6 +218,13 @@ class Callbacks {
 JAVA
 
 javac -d "$fixture/classes" "$fixture/Engine.java"
-java --enable-native-access=ALL-UNNAMED -cp "$fixture/classes" \
+status=0
+java -Xcheck:jni --enable-native-access=ALL-UNNAMED -cp "$fixture/classes" \
     li.mercury.adblocker.core.engine.Engine "$library" abd/testdata/isrg-root-x1.pem "$fixture" \
-    7<"$fixture/descriptor" 8<"$fixture/descriptor" 9<"$fixture/descriptor"
+    6<"$fixture/descriptor" 7<"$fixture/descriptor" 8<"$fixture/descriptor" 9<"$fixture/descriptor" \
+    >"$fixture/jvm.log" 2>&1 || status=$?
+cat "$fixture/jvm.log"
+test "$status" -eq 0
+if grep -q 'JNI local refs: .* exceeds capacity' "$fixture/jvm.log"; then
+    exit 1
+fi

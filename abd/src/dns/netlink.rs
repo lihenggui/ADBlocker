@@ -326,7 +326,9 @@ fn messages(mut bytes: &[u8]) -> impl Iterator<Item = Message<'_>> {
             seq: u32::from_ne_bytes(header[8..12].try_into().ok()?),
             payload: bytes.get(NLMSG_HDRLEN..len)?,
         };
-        bytes = bytes.get(len.next_multiple_of(4)..).unwrap_or_default();
+        bytes = bytes
+            .get(len.checked_next_multiple_of(4)?..)
+            .unwrap_or_default();
         Some(message)
     })
 }
@@ -352,7 +354,9 @@ fn attributes(payload: &[u8], fixed: usize) -> impl Iterator<Item = (u16, &[u8])
         let len = usize::from(u16::from_ne_bytes([header[0], header[1]]));
         let kind = u16::from_ne_bytes([header[2], header[3]]);
         let data = rest.get(4..len)?;
-        rest = rest.get(len.next_multiple_of(4)..).unwrap_or_default();
+        rest = rest
+            .get(len.checked_next_multiple_of(4)?..)
+            .unwrap_or_default();
         Some((kind, data))
     })
 }
@@ -662,6 +666,9 @@ mod tests {
             Some(libc::ENOENT)
         );
         assert!(acknowledged(&[0; 4]).is_ok());
+        error[..4].copy_from_slice(&u32::MAX.to_ne_bytes());
+        assert!(messages(&error).next().is_none());
+        assert!(attributes(&[0xff, 0xff, 0, 0], 0).next().is_none());
     }
 
     #[test]

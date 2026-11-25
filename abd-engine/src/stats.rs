@@ -180,7 +180,7 @@ fn prune(apps: &mut HashMap<String, Hours>, now: u64) {
     let hour = hour_of(now);
     let oldest = hour.saturating_sub(KEEP_HOURS - 1);
     for hours in apps.values_mut() {
-        hours.retain(|h, _| (oldest..=hour + 1).contains(h));
+        hours.retain(|h, _| (oldest..=hour.saturating_add(1)).contains(h));
     }
     apps.retain(|_, hours| !hours.is_empty());
 }
@@ -217,6 +217,19 @@ impl Default for Stats {
 
 /// How long counts may sit in memory before they are written.
 const WRITE_DELAY: Duration = Duration::from_secs(30);
+const MAX_WRITE_DELAY: Duration = Duration::from_secs(3600);
+
+fn next_write_delay(delay: Duration, result: io::Result<()>) -> Duration {
+    match result {
+        Ok(()) => WRITE_DELAY,
+        Err(error) => {
+            if delay == WRITE_DELAY {
+                eprintln!("stats: could not save counts; will retry with backoff: {error}");
+            }
+            (delay * 2).min(MAX_WRITE_DELAY)
+        }
+    }
+}
 
 impl Stats {
     /// Goes on from what `file` holds.
@@ -334,13 +347,14 @@ impl Stats {
 
     async fn write_periodically(self: Arc<Self>, file: PathBuf) {
         let file: Arc<Path> = file.into();
+        let mut delay = WRITE_DELAY;
         loop {
             self.changed.notified().await;
-            tokio::time::sleep(WRITE_DELAY).await;
+            tokio::time::sleep(delay).await;
             let (stats, file) = (self.clone(), file.clone());
             match tokio::task::spawn_blocking(move || stats.write_if_running(&file)).await {
-                Ok(Ok(true)) => {}
-                Ok(Err(error)) => eprintln!("stats: could not save counts; will retry: {error}"),
+                Ok(Ok(true)) => delay = next_write_delay(delay, Ok(())),
+                Ok(Err(error)) => delay = next_write_delay(delay, Err(error)),
                 Err(error) if error.is_panic() => std::panic::resume_unwind(error.into_panic()),
                 _ => break,
             }
@@ -353,6 +367,49 @@ mod tests {
     use super::*;
 
     const NOW: u64 = 489_872 * 3600 + 100;
+
+    #[test]
+    fn pruning_keeps_the_last_hour_without_overflow() {
+        let hour = u32::MAX;
+        let oldest = hour - KEEP_HOURS + 1;
+        let mut apps = HashMap::from([(
+            "com.a".to_owned(),
+            Hours::from([
+                (hour, [1; HOURLY]),
+                (oldest, [2; HOURLY]),
+                (oldest - 1, [3; HOURLY]),
+            ]),
+        )]);
+        prune(&mut apps, u64::from(hour) * 3600);
+        assert_eq!(
+            apps["com.a"].keys().copied().collect::<Vec<_>>(),
+            [oldest, hour]
+        );
+    }
+
+    #[test]
+    fn repeated_write_errors_back_off_until_a_write_succeeds() {
+        let dir = tempfile::tempdir().unwrap();
+        let parent = dir.path().join("missing");
+        let file = parent.join("stats");
+        let stats = Stats::default();
+        stats.count(None, Counter::Refused);
+        let mut delay = WRITE_DELAY;
+        for seconds in [60, 120, 240, 480, 960, 1920, 3600, 3600] {
+            let result = stats.write(&file);
+            assert!(result.is_err());
+            assert!(stats.unwritten.load(Acquire));
+            delay = next_write_delay(delay, result);
+            assert_eq!(delay, Duration::from_secs(seconds));
+        }
+        std::fs::create_dir(&parent).unwrap();
+        assert_eq!(next_write_delay(delay, stats.write(&file)), WRITE_DELAY);
+        assert!(!stats.unwritten.load(Acquire));
+        assert_eq!(
+            Snapshot::read(&file, clock::now()).unwrap().totals[Counter::Refused as usize],
+            1
+        );
+    }
 
     #[test]
     fn counts_go_to_the_app_and_the_hour_they_happened_in() {

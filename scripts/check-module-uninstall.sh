@@ -18,7 +18,7 @@ set -eu
 cd "$(dirname "$0")/.."
 fixture=$(mktemp -d)
 trap 'rm -rf "$fixture"' EXIT
-mkdir -p "$fixture/module/bin"
+mkdir -p "$fixture/module/bin" "$fixture/tools"
 # The module the app may have installed is looked for under the fixture too.
 sed -e 's|^DATA=/data/adb/adblocker$|DATA=$FIXTURE/data|' -e 's|/data/adb/|$FIXTURE/adb/|g' \
     module/uninstall.sh >"$fixture/module/uninstall.sh"
@@ -38,6 +38,15 @@ esac
 EOF
 chmod +x "$fixture/module/bin/abd"
 
+cat >"$fixture/tools/rm" <<'EOF'
+#!/bin/sh
+case "$*" in
+    *'*'*) touch "$FIXTURE/unexpanded-glob"; exit 1 ;;
+esac
+exec /bin/rm "$@"
+EOF
+chmod +x "$fixture/tools/rm"
+
 check_uninstall() {
     export STOP_STATUS=$1 UNHOOK_STATUS=$2 TRUST_STATUS=$3
     EXPECTED_KEEP=0
@@ -46,17 +55,23 @@ check_uninstall() {
     rm -rf "$fixture/data"
     mkdir -p "$fixture/data/ca" "$fixture/data/store" "$fixture/data/user-store"
     touch "$fixture/data/ca/user.key" "$fixture/data/store/system.0" \
-        "$fixture/data/user-store/user.0" "$fixture/data/apps" "$fixture/data/.private"
+        "$fixture/data/user-store/user.0" "$fixture/data/apps" "$fixture/data/.private" \
+        "$fixture/data/..private"
+    ln -s absent "$fixture/data/..dangling"
     : >"$fixture/calls"
-    sh "$fixture/module/uninstall.sh" 2>"$fixture/said"
+    (cd "$fixture/module" && sh uninstall.sh) 2>"$fixture/said"
     test ! -e "$fixture/wrong-keep"
     printf '%s\n' module-stop unhook 'trust remove' | cmp - "$fixture/calls"
     test ! -e "$fixture/data/ca"
     test ! -e "$fixture/data/apps"
     test ! -e "$fixture/data/.private"
+    test ! -e "$fixture/data/..private"
+    test ! -L "$fixture/data/..dangling"
     if [ "$4" = keep ]; then
         test -f "$fixture/data/store/system.0"
         test -f "$fixture/data/user-store/user.0"
+        (cd "$fixture/module" && PATH="$fixture/tools:$PATH" sh uninstall.sh) 2>/dev/null
+        test ! -e "$fixture/unexpanded-glob"
     else
         test ! -e "$fixture/data"
     fi

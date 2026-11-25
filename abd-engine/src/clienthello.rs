@@ -42,7 +42,7 @@ const HELLO_TIME: Duration = Duration::from_secs(5);
 const TLS_1_3: usize = 0x0304;
 
 /// What is looked at first, and the most a TLS record holds.
-const FIRST_LOOK: usize = 2048;
+const FIRST_LOOK: usize = 4096;
 const MAX_RECORD: usize = 16 * 1024;
 
 pub enum Peeked {
@@ -55,9 +55,8 @@ pub enum Peeked {
 
 /// Looks at the start of the stream until a whole ClientHello is there.
 pub async fn peek(stream: &TcpStream) -> std::io::Result<Peeked> {
-    // A hello is a few hundred bytes, two thousand with the keys now sent
-    // in it: room for that, and for the most a record can be only when one
-    // says it is longer.
+    // Leave room for modern key shares, and grow only if the record says
+    // it is longer.
     let mut buf = vec![0u8; FIRST_LOOK];
     let deadline = tokio::time::Instant::now() + HELLO_TIME;
     let mut last = 0;
@@ -119,6 +118,12 @@ impl<'a> Cur<'a> {
         self.take(2)
             .map(|b| u16::from_be_bytes([b[0], b[1]]) as usize)
     }
+
+    fn list(mut self) -> Option<Self> {
+        let len = self.u16()?;
+        let list = self.take(len)?;
+        self.0.is_empty().then_some(Self(list))
+    }
 }
 
 pub(crate) fn parse(record: &[u8]) -> Option<Hello> {
@@ -165,12 +170,7 @@ fn parse_extensions(mut ext: Cur<'_>) -> Option<Hello> {
                 }
                 hello.sni = parse_server_name(b)?;
             }
-            16 => {
-                b.u16()?;
-                while let Some(n) = b.u8() {
-                    hello.alpn.push(b.take(n)?.to_vec());
-                }
-            }
+            16 => parse_alpn(b, &mut hello.alpn)?,
             0xfe0d => {
                 // Only the outer form can appear in the clear. The rest is
                 // opaque here, and GREASE looks like a real offer.
@@ -186,13 +186,25 @@ fn parse_extensions(mut ext: Cur<'_>) -> Option<Hello> {
     Some(hello)
 }
 
-fn parse_server_name(mut b: Cur<'_>) -> Option<Option<String>> {
-    b.u16()?;
+fn parse_alpn(body: Cur<'_>, protocols: &mut Vec<Vec<u8>>) -> Option<()> {
+    let mut list = body.list()?;
+    while let Some(n) = list.u8() {
+        protocols.push(list.take(n)?.to_vec());
+    }
+    Some(())
+}
+
+fn parse_server_name(body: Cur<'_>) -> Option<Option<String>> {
+    let mut b = body.list()?;
     let mut name = None;
+    let mut named = false;
     while let Some(kind) = b.u8() {
         let n = b.u16()?;
         let bytes = b.take(n)?;
         if kind == 0 {
+            if std::mem::replace(&mut named, true) {
+                return None;
+            }
             name = std::str::from_utf8(bytes)
                 .ok()
                 .and_then(|s| crate::host::canonical_authority(s, "https", 443))
@@ -269,6 +281,30 @@ mod tests {
         handshake.extend_from_slice(&(hello.len() as u16).to_be_bytes());
         handshake.extend_from_slice(&hello);
         handshake
+    }
+
+    #[test]
+    fn two_host_names_in_one_extension_are_rejected() {
+        for first in [b'a', 0xff] {
+            let names = [0, 8, 0, 0, 1, first, 0, 0, 1, b'b'];
+            assert!(parse(&hello_with(&[(0, &names)])).is_none());
+        }
+    }
+
+    #[test]
+    fn sni_and_alpn_lists_must_fill_their_extensions() {
+        for (kind, mut body) in [
+            (0, vec![0, 5, 0, 0, 2, b'a', b'b']),
+            (16, vec![0, 3, 2, b'h', b'2']),
+        ] {
+            assert!(parse(&hello_with(&[(kind, &body)])).is_some());
+            body[1] += 1;
+            assert!(parse(&hello_with(&[(kind, &body)])).is_none());
+            body[1] -= 2;
+            assert!(parse(&hello_with(&[(kind, &body)])).is_none());
+            body.pop();
+            assert!(parse(&hello_with(&[(kind, &body)])).is_none());
+        }
     }
 
     /// A connection to this process: the end to write on, and the end read.
@@ -441,16 +477,31 @@ mod tests {
         assert_eq!(hello.sni.as_deref(), Some("pieces.example"));
     }
 
-    #[tokio::test]
-    async fn a_hello_larger_than_the_first_look_is_read_whole() {
-        let (mut client, server) = pair().await;
+    fn padded_record(padding: usize) -> Vec<u8> {
         // A name at the end, behind an extension of padding.
-        let padding = vec![0u8; 3 * FIRST_LOOK];
+        let padding = vec![0u8; padding];
         let name: &[u8] = &[0, 9, 0, 0, 6, b'f', b'a', b'r', b'.', b'e', b'x'];
         let handshake = hello_with(&[(21, &padding), (0, name)]);
         let mut record = vec![0x16, 3, 1];
         record.extend_from_slice(&(handshake.len() as u16).to_be_bytes());
         record.extend_from_slice(&handshake);
+        record
+    }
+
+    #[tokio::test]
+    async fn the_first_look_has_room_for_large_key_shares() {
+        let record = padded_record(3500);
+        assert!(record.len() <= FIRST_LOOK);
+        assert_peeked_name(record).await;
+    }
+
+    #[tokio::test]
+    async fn a_hello_larger_than_the_first_look_is_read_whole() {
+        assert_peeked_name(padded_record(FIRST_LOOK + 256)).await;
+    }
+
+    async fn assert_peeked_name(record: Vec<u8>) {
+        let (mut client, server) = pair().await;
         client.write_all(&record).await.unwrap();
         let Peeked::Tls(hello) = peek(&server).await.unwrap() else {
             panic!("not taken for TLS");

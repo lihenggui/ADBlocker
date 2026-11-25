@@ -1560,6 +1560,37 @@ async fn the_app_is_offered_the_protocol_the_server_chose() {
 }
 
 #[tokio::test]
+async fn a_decrypted_http2_connection_advertises_a_bounded_stream_count() {
+    let rig = rig(Setup {
+        alpn: &["h2"],
+        ..Setup::default()
+    })
+    .await;
+    let mut tls = rig.handshake(Trust::System, &["h2"]).await.unwrap();
+    assert_eq!(tls.get_ref().1.alpn_protocol(), Some(b"h2".as_slice()));
+    assert_ne!(
+        tls.get_ref().1.peer_certificates().unwrap()[0],
+        rig.server_leaf
+    );
+    let settings = tokio::time::timeout(Duration::from_secs(2), async {
+        tls.write_all(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n\0\0\0\x04\0\0\0\0\0")
+            .await
+            .unwrap();
+        let mut header = [0u8; 9];
+        tls.read_exact(&mut header).await.unwrap();
+        assert_eq!(&header[3..], &[4, 0, 0, 0, 0, 0]);
+        let len = u32::from_be_bytes([0, header[0], header[1], header[2]]) as usize;
+        assert!(len <= 16384 && len.is_multiple_of(6));
+        let mut settings = vec![0; len];
+        tls.read_exact(&mut settings).await.unwrap();
+        settings
+    })
+    .await
+    .unwrap();
+    assert!(settings.as_chunks::<6>().0.contains(&[0, 3, 0, 0, 0, 128]));
+}
+
+#[tokio::test]
 async fn a_request_blocked_by_its_path_never_reaches_the_server() {
     let rig = rig(Setup {
         rules: "/ads/banner\n",

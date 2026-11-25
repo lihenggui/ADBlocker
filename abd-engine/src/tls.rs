@@ -148,7 +148,15 @@ impl Tls {
     /// For connecting to the server an app was connecting to with `hello`.
     pub fn client(&self, hello: &Hello) -> Result<Arc<ClientConfig>> {
         // Of what the app offers, what can be read here, in its order.
-        let alpn: Vec<Vec<u8>> = hello.alpn.iter().filter(|p| readable(p)).cloned().collect();
+        let mut alpn = Vec::new();
+        for protocol in &hello.alpn {
+            if readable(protocol) && !alpn.contains(protocol) {
+                alpn.push(protocol.clone());
+            }
+            if alpn.len() == 2 {
+                break;
+            }
+        }
         let key = (alpn, hello.tls13_only);
         let mut clients = self.clients.lock().unwrap();
         if let Some(config) = clients.get(&key) {
@@ -223,6 +231,28 @@ mod tests {
             &tls.server(Some(b"h2")).unwrap(),
             &tls.server(Some(b"h2")).unwrap()
         ));
+    }
+
+    #[test]
+    fn repeated_protocols_share_a_configuration_in_first_seen_order() {
+        let (tls, _dir) = tls();
+        let config = tls.client(&hello(&["h2"], false)).unwrap();
+        for count in 2..=128 {
+            let repeated = tls.client(&hello(&vec!["h2"; count], false)).unwrap();
+            assert!(Arc::ptr_eq(&config, &repeated));
+        }
+        assert_eq!(tls.clients.lock().unwrap().len(), 1);
+        let preferred = tls
+            .client(&hello(
+                &["other", "http/1.1", "http/1.1", "h2", "h2"],
+                false,
+            ))
+            .unwrap();
+        assert_eq!(
+            preferred.alpn_protocols,
+            [b"http/1.1".to_vec(), b"h2".to_vec()]
+        );
+        assert_eq!(tls.clients.lock().unwrap().len(), 2);
     }
 
     /// A certificate naming the given policy, as encoded.

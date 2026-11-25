@@ -108,6 +108,10 @@ impl Daemon<'_> {
                 }
             }
             changed = package_changes(&mut self.reconcile.packages) => {
+                let changed = match changed.context("watching Android packages") {
+                    Ok(changed) => changed,
+                    Err(error) => return ControlFlow::Break(Err(error)),
+                };
                 self.reconcile.on_packages_changed(v6, changed);
                 self.android.schedule_apply();
             }
@@ -128,7 +132,13 @@ impl Daemon<'_> {
                 return ControlFlow::Break(Ok(()));
             }
             () = reconcile::due(&mut self.reconcile.pause_timer, &mut self.reconcile.apps_retry) => self.reconcile.reapply(v6),
-            uid = app_start(&mut self.reconcile.starts) => self.reconcile.on_app_started(uid),
+            uid = app_start(&mut self.reconcile.starts) => match uid {
+                Ok(uid) => self.reconcile.on_app_started(uid),
+                Err(error) => {
+                    eprintln!("processes: watch stopped: {error}");
+                    self.reconcile.starts = None;
+                }
+            },
             Some(mitm::Event::V6Suspect) = self.ipv6.suspects.recv() => self.ipv6.on_suspect(&self.ctx.ipv6),
             Some(reachable) = self.ipv6.probe.recv() => self.ipv6.on_probe(&self.ctx.ipv6, &mut self.reconcile, reachable),
             () = &mut self.ipv6.retry, if !v6 => self.ipv6.on_retry(&self.ctx.ipv6, &mut self.reconcile),
@@ -189,7 +199,9 @@ impl Daemon<'_> {
     }
 }
 
-async fn package_changes(packages: &mut std::io::Result<watch::Packages>) -> watch::Change {
+async fn package_changes(
+    packages: &mut std::io::Result<watch::Packages>,
+) -> std::io::Result<watch::Change> {
     match packages {
         Ok(packages) => packages.changed().await,
         Err(_) => std::future::pending().await,
@@ -203,7 +215,7 @@ async fn user_states(watch: &mut Option<watch::UserStates>) -> Option<(u32, u32)
     }
 }
 
-async fn app_start(starts: &mut Option<watch::Starts>) -> u32 {
+async fn app_start(starts: &mut Option<watch::Starts>) -> std::io::Result<u32> {
     match starts {
         Some(starts) => starts.started().await,
         None => std::future::pending().await,

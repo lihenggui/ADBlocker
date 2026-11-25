@@ -161,7 +161,7 @@ const PROBE_TIME: Duration = Duration::from_secs(5);
 /// else runs on it meanwhile, as there is no await in between. If the
 /// identity cannot be put back the process ends: a thread left as an app
 /// would do everything after as that app.
-fn as_app<T>(uid: u32, make: impl FnOnce() -> T) -> T {
+fn as_app<T>(uid: u32, make: impl FnOnce() -> std::io::Result<T>) -> std::io::Result<T> {
     // The raw calls: the C library's may be made for every thread. Each
     // returns the identity there was before it.
     // SAFETY: system calls on integers, which touch no memory.
@@ -171,7 +171,21 @@ fn as_app<T>(uid: u32, make: impl FnOnce() -> T) -> T {
             libc::syscall(libc::SYS_setfsuid, uid),
         )
     };
-    let made = make();
+    // SAFETY: system calls on integers. Each returns the current identity
+    // before setting it, so it must already match on the second call.
+    let switched = unsafe {
+        let got_uid = libc::syscall(libc::SYS_setfsuid, uid) as u32;
+        let got_gid = libc::syscall(libc::SYS_setfsgid, uid) as u32;
+        got_uid == uid && got_gid == uid
+    };
+    let made = if switched {
+        make()
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::PermissionDenied,
+            "could not switch socket creation to the app identity",
+        ))
+    };
     // SAFETY: as above. Set a second time, each says whether the first
     // took: these calls report no failure any other way.
     let restored = unsafe {
@@ -208,6 +222,18 @@ async fn dial(dst: SocketAddr, mark: u32, uid: u32, wait: Duration) -> std::io::
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refused_identity_switch_never_makes_a_socket() {
+        // The kernel treats all ones as a query and leaves the IDs intact.
+        let before = as_app(u32::MAX, || -> std::io::Result<()> {
+            panic!("socket creation must wait for both IDs to be verified")
+        });
+        assert_eq!(
+            before.unwrap_err().kind(),
+            std::io::ErrorKind::PermissionDenied
+        );
+    }
 
     #[test]
     fn the_marks_are_bits_of_nobody_else() {
@@ -258,7 +284,7 @@ mod tests {
         let me = unsafe { libc::getuid() };
         // Without root the identity cannot be changed to another's, and
         // changing it to one's own is what is left to try.
-        let made = as_app(me, || 7);
+        let made = as_app(me, || Ok(7)).unwrap();
         assert_eq!(made, 7);
         // SAFETY: returns the identity and sets the same.
         assert_eq!(unsafe { libc::syscall(libc::SYS_setfsuid, me) }, me as i64);

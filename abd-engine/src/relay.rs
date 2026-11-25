@@ -150,19 +150,25 @@ pub fn kernel_splices() -> bool {
 /// Joins `a` and `b` until both have ended, or until `linger` after the
 /// first has: a peer that never closes must not keep the connection of one
 /// long gone.
-pub async fn join(mut a: TcpStream, mut b: TcpStream, linger: Duration) {
+pub async fn join(a: TcpStream, b: TcpStream, linger: Duration) {
     let pipes = if kernel_splices() {
         Pipe::new().and_then(|there| Ok((there, Pipe::new()?)))
     } else {
         Err(io::ErrorKind::Unsupported.into())
     };
+    join_with_pipes(a, b, linger, pipes).await;
+}
+
+async fn join_with_pipes(
+    a: TcpStream,
+    b: TcpStream,
+    linger: Duration,
+    pipes: io::Result<(Pipe, Pipe)>,
+) {
     let Ok((there, back)) = pipes else {
         // No splicing, or no descriptors to spare for pipes: the bytes are
         // copied.
-        let copied = tokio::io::copy_bidirectional(&mut a, &mut b);
-        // Not bounded by `linger`: this path is taken when the daemon is
-        // at its limit, where a connection is better carried than cut.
-        let _ = copied.await;
+        join_streams(a, b, linger).await;
         return;
     };
     let there = one_way(&a, &b, there);
@@ -206,7 +212,7 @@ mod tests {
 
     /// Two connections to this process, joined: what is written to the
     /// first returned comes out of the second.
-    async fn joined(linger: Duration) -> (TcpStream, TcpStream) {
+    async fn joined(linger: Duration, splice: bool) -> (TcpStream, TcpStream) {
         async fn pair() -> (TcpStream, TcpStream) {
             let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
             let near = TcpStream::connect(listener.local_addr().unwrap())
@@ -215,7 +221,16 @@ mod tests {
             (near, listener.accept().await.unwrap().0)
         }
         let ((app, a), (server, b)) = (pair().await, pair().await);
-        tokio::spawn(join(a, b, linger));
+        if splice {
+            tokio::spawn(join(a, b, linger));
+        } else {
+            tokio::spawn(join_with_pipes(
+                a,
+                b,
+                linger,
+                Err(io::ErrorKind::Unsupported.into()),
+            ));
+        }
         (app, server)
     }
 
@@ -227,7 +242,7 @@ mod tests {
 
     #[tokio::test]
     async fn what_goes_in_one_end_comes_out_the_other_both_ways() {
-        let (mut app, mut server) = joined(Duration::from_secs(5)).await;
+        let (mut app, mut server) = joined(Duration::from_secs(5), true).await;
         // More than any buffer on the way holds at once.
         let sent: Vec<u8> = (0..8 << 20).map(|i: u32| (i % 251) as u8).collect();
         let expected = sent.clone();
@@ -248,7 +263,16 @@ mod tests {
 
     #[tokio::test(start_paused = true)]
     async fn a_peer_that_never_closes_is_let_go_some_time_after_the_other_left() {
-        let (app, mut server) = joined(Duration::from_secs(30)).await;
+        assert_linger(true).await;
+    }
+
+    #[tokio::test(start_paused = true)]
+    async fn copying_also_lets_a_peer_go_after_the_linger_time() {
+        assert_linger(false).await;
+    }
+
+    async fn assert_linger(splice: bool) {
+        let (app, mut server) = joined(Duration::from_secs(30), splice).await;
         drop(app);
         // The server is told the app has finished, and says nothing.
         let mut buf = [0u8; 1];

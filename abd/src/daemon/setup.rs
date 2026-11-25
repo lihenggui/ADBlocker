@@ -21,7 +21,7 @@ use abd_engine::{ca, exclusions, filter, live, mitm, pins, relay, state, tls};
 use anyhow::{Context as _, Result};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::signal::unix::{Signal, SignalKind, signal};
-use tokio::sync::mpsc;
+use tokio::sync::{Semaphore, mpsc};
 use tokio::task::JoinHandle;
 
 use super::capture_rules::CaptureRules;
@@ -68,17 +68,15 @@ pub(super) fn open(paths: &Paths) -> Result<Setup> {
     // Packet filter tools can wait for xtables. Keep accepting captures
     // while the serialized configuration task waits for them.
     let connection_ctx = ctx.clone();
+    let slots = Arc::new(Semaphore::new(ctx.services.limits.capacity()));
     let accepting = tokio::spawn(accept_connections(v4, v6, move |stream| {
         let ctx = connection_ctx.clone();
-        tokio::spawn(async move {
-            let origin = delivered(&stream);
-            let verbose = ctx.hooks.verbose;
-            if let Err(error) = mitm::handle(ctx, stream, origin).await
-                && verbose
-            {
-                eprintln!("error   {error:#}");
-            }
-        });
+        if !dispatch(&slots, stream, move |stream| handle_connection(ctx, stream)) {
+            connection_ctx
+                .services
+                .stats
+                .count(None, abd_engine::stats::Counter::Refused);
+        }
     }));
     Ok(Setup {
         ctx,
@@ -88,6 +86,37 @@ pub(super) fn open(paths: &Paths) -> Result<Setup> {
         event,
         signals: Signals { term, int, hup },
     })
+}
+
+fn dispatch<F>(
+    slots: &Arc<Semaphore>,
+    stream: TcpStream,
+    handle: impl FnOnce(TcpStream) -> F + Send + 'static,
+) -> bool
+where
+    F: Future<Output = ()> + Send,
+{
+    let Ok(slot) = slots.clone().try_acquire_owned() else {
+        // Match mitm's reset for refused connections. If setting linger
+        // fails, dropping the stream still closes it.
+        let _ = socket2::SockRef::from(&stream).set_linger(Some(Duration::ZERO));
+        return false;
+    };
+    tokio::spawn(async move {
+        let _slot = slot;
+        handle(stream).await;
+    });
+    true
+}
+
+async fn handle_connection(ctx: Arc<mitm::Ctx>, stream: TcpStream) {
+    let origin = delivered(&stream);
+    let verbose = ctx.hooks.verbose;
+    if let Err(error) = mitm::handle(ctx, stream, origin).await
+        && verbose
+    {
+        eprintln!("error   {error:#}");
+    }
 }
 
 fn context(
@@ -228,5 +257,42 @@ pub(super) async fn accept_connections(
             // Out of descriptors, most likely: let some connections end.
             Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use tokio::io::AsyncReadExt as _;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn a_connection_without_a_dispatch_slot_is_reset_before_spawning() {
+        let slots = Arc::new(Semaphore::new(1));
+        let held = slots.acquire().await.unwrap();
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        let mut app = TcpStream::connect(addr).await.unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        assert!(!dispatch(&slots, stream, |_| async {
+            panic!("at capacity")
+        }));
+        let read = tokio::time::timeout(Duration::from_secs(1), app.read_u8())
+            .await
+            .unwrap();
+        assert_eq!(
+            read.unwrap_err().kind(),
+            std::io::ErrorKind::ConnectionReset
+        );
+
+        drop(held);
+        let _app = TcpStream::connect(addr).await.unwrap();
+        let (stream, _) = listener.accept().await.unwrap();
+        let (send, recv) = tokio::sync::oneshot::channel();
+        assert!(dispatch(&slots, stream, |_| async {
+            send.send(()).unwrap()
+        }));
+        recv.await.unwrap();
+        let _reused = slots.acquire().await.unwrap();
     }
 }

@@ -235,7 +235,7 @@ fn join_upgrade(
     {
         let server_upgrade = hyper::upgrade::on(resp);
         let joined = tokio::spawn(async move {
-            if let (Ok(app), Ok(server)) = (app_upgrade.await, server_upgrade.await) {
+            if let (Ok(app), Ok(server)) = tokio::join!(app_upgrade, server_upgrade) {
                 relay::join_streams(TokioIo::new(app), TokioIo::new(server), LINGER_TIME).await;
             }
         });
