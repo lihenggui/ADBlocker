@@ -30,8 +30,11 @@ URL filtering is on by default. When ADBlocker can decrypt
 an HTTPS connection, it first verifies the site's certificate against
 Android's system certificates. It then presents the app with a
 certificate for that site, signed by its local certificate authority
-(CA), checks each request against the filter rules, and forwards allowed
-requests over its own encrypted connection to the site.
+(CA), checks each request against the filter rules, and forwards requests
+that are not blocked at that point over its own encrypted connection to the
+site. When the response headers identify the resource type, the engine can
+check the request again. A block decided then withholds the response from
+the app, but the request has already reached the site.
 
 With URL filtering on, a filter list can select a bundled resource for the
 engine to return in place of a blocked request's response. The list only
@@ -39,11 +42,13 @@ names a resource. Its content is fixed in the build. HTML substitutes
 are sandboxed and cannot load external resources.
 
 For recognized cleartext HTTP on TCP port 80, both filtering methods answer
-blocked requests locally. With root, the module opens a connection to the
-original destination only when it has a request to forward, so a server
-whose requests are all blocked is never contacted. The VPN connects to the
-server before it answers the app, as for any TCP connection, and sends
-nothing on it for a blocked request.
+requests blocked before forwarding locally. With root, the module opens a
+connection to the original destination only when it has a request to
+forward, so a server whose requests are all blocked before forwarding is
+never contacted. The VPN connects to the server before it answers the app,
+as for any TCP connection, and sends nothing on it for a request blocked
+before forwarding. A request blocked after the response headers arrive
+has already reached the server in either method.
 
 **Chosen apps** is the default. **All apps** extends filtering to
 installed personal apps with attributable app UIDs, including newly
