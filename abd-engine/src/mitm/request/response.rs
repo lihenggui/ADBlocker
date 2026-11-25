@@ -48,7 +48,12 @@ impl MatchedRequest<'_> {
             )
             && self.shared.ctx.selection.cosmetic.load(Relaxed)
         {
-            plan.body.html = filters.html_rules(self.host, &self.url, self.metadata.method);
+            plan.body.html = filters.html_rules(
+                self.host,
+                &self.url,
+                self.metadata.method,
+                kind != RequestKind::Assumed,
+            );
             plan.ask_for_identity |= !plan.body.html.is_empty();
         }
         plan
@@ -129,7 +134,14 @@ pub(super) async fn hide(
     let css = hiding.css.take();
     let mut head_css = css.as_deref();
     if let Some(script) = hiding.script.take() {
-        match body.prepare(&mut parts.headers, &script, head_css).await {
+        let rewriting = parts
+            .extensions
+            .remove::<crate::rewrite::HoldsFirstFrame>()
+            .is_some();
+        match body
+            .prepare(&mut parts.headers, &script, head_css, rewriting)
+            .await
+        {
             Preparation::Injected => head_css = None,
             Preparation::CssOnly if css.is_none() && !looked_through => {
                 return Response::from_parts(parts, body.boxed());

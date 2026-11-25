@@ -57,4 +57,10 @@
     <string name="core_ui_category_security">安全</string>
     <string name="core_ui_category_regional">区域</string>
     <string name="core_ui_category_annoyances">干扰元素</string>
+    <string name="core_ui_vpn_transfer_incomplete">未能沿用 root 模式下的部分设置。</string>
+    <string name="core_ui_vpn_transfer_apps">未能沿用 root 模式下的应用过滤设置。</string>
+    <string name="core_ui_vpn_transfer_lists">未能沿用 root 模式下的部分过滤列表设置。</string>
+    <string name="core_ui_vpn_transfer_rules">未能沿用 root 模式下的自定义规则。</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">未能沿用 root 模式下信任的部分网站。</string>
+    <string name="core_ui_vpn_transfer_url_filtering">未能沿用 root 模式下的按网址过滤设置。</string>
 </resources>

@@ -62,7 +62,22 @@ enum class ListUpdateState { Fetching, Updated, Unchanged, Failed }
 /** The user's own rules, checked: those that will not be applied. */
 data class RulesCheck(val rules: Int, val issues: List<RuleIssue>)
 
-data class RuleIssue(val line: Int, val text: String, val kind: RuleIssueKind, val reason: String? = null)
+sealed interface RuleIssueCode {
+    enum class Known : RuleIssueCode {
+        Option,
+        MalformedDirective,
+        IncludeNotFollowed,
+        ScriptletNoCounterpart,
+        ScriptletTrust,
+        ScriptletArguments,
+    }
+
+    data class Other(val value: String) : RuleIssueCode
+}
+
+data class RuleIssueReason(val code: RuleIssueCode, val name: String? = null)
+
+data class RuleIssue(val line: Int, val text: String, val kind: RuleIssueKind, val reason: RuleIssueReason? = null)
 
 enum class RuleIssueKind { Invalid, Unsupported, Inapplicable, Untrusted }
 

@@ -1028,7 +1028,8 @@ mod tests {
 
     #[test]
     fn rules_that_will_not_be_applied() {
-        let check = crate::rulecheck::check(&sample("rules.txt"), Default::default());
+        let check =
+            crate::rulecheck::check(&sample("rules.txt"), crate::rule::SourcePermissions::USER);
         let decoded: RulesCheck = serde_json::from_str(&sample("rules-check.json")).unwrap();
         assert_eq!(check, decoded);
         assert_eq!(value(check), json("rules-check.json"));

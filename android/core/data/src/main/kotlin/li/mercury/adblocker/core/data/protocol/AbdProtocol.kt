@@ -47,7 +47,9 @@ import li.mercury.adblocker.core.model.PinnedHost
 import li.mercury.adblocker.core.model.RequestEvent
 import li.mercury.adblocker.core.model.RuleCheckResult
 import li.mercury.adblocker.core.model.RuleIssue
+import li.mercury.adblocker.core.model.RuleIssueCode
 import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.model.RuleIssueReason
 import li.mercury.adblocker.core.model.RuleSource
 import li.mercury.adblocker.core.model.RulesCheck
 import li.mercury.adblocker.core.model.UpdateEvent
@@ -346,14 +348,29 @@ fun parseRulesCheck(text: String): RulesCheck = reading("rules check") {
         rules = dto.rules,
         issues = dto.issues.map {
             val kind = when (it.kind) {
-                "unsupported", "cosmetic", "unsupported_include" -> RuleIssueKind.Unsupported
+                "unsupported", "cosmetic" -> RuleIssueKind.Unsupported
                 "inapplicable" -> RuleIssueKind.Inapplicable
                 "untrusted" -> RuleIssueKind.Untrusted
                 else -> RuleIssueKind.Invalid
             }
-            RuleIssue(it.line, it.text, kind, it.reason)
+            RuleIssue(it.line, it.text, kind, it.reason?.let(::ruleIssueReason))
         },
     )
+}
+
+private fun ruleIssueReason(value: String): RuleIssueReason {
+    val wireCode = value.substringBefore(':')
+    val code = when (wireCode) {
+        "option" -> RuleIssueCode.Known.Option
+        "malformed-directive" -> RuleIssueCode.Known.MalformedDirective
+        "include-not-followed" -> RuleIssueCode.Known.IncludeNotFollowed
+        "scriptlet-no-counterpart" -> RuleIssueCode.Known.ScriptletNoCounterpart
+        "scriptlet-trust" -> RuleIssueCode.Known.ScriptletTrust
+        "scriptlet-arguments" -> RuleIssueCode.Known.ScriptletArguments
+        else -> RuleIssueCode.Other(wireCode)
+    }
+    val name = value.substringAfter(':', "").takeIf(String::isNotBlank)
+    return RuleIssueReason(code, name)
 }
 
 @Serializable

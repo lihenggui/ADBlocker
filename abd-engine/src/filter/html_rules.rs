@@ -14,16 +14,16 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 //! Select HTML rules by the document's own host, independently of the
-//! URL matcher. Exceptions cancel rules by their trimmed selector text.
+//! URL matcher. Rules without a positive domain require a known document
+//! request. Exceptions cancel rules by their trimmed selector text.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
 use crate::htmlfilter::Compiled;
-use crate::limits::{MAX_HTML_REGEXES, MAX_HTML_RULES, MAX_HTML_RULES_PER_PAGE};
+use crate::limits::{MAX_HTML_RULES, MAX_HTML_RULES_PER_PAGE};
 use crate::public_suffix::Name;
-use crate::rule::html::{Condition, Domain, Rule, Spec};
+use crate::rule::html::{Budget, Domain, Rule, Spec};
 
 #[derive(Default)]
 pub(super) struct HtmlProjections<'a> {
@@ -43,22 +43,19 @@ impl<'a> HtmlProjections<'a> {
 
     pub(super) fn finish(self) -> HtmlRules {
         let mut index = HtmlRules::default();
-        let mut regexes = MAX_HTML_REGEXES;
+        let mut budget = Budget::default();
         let mut dropped = self.dropped;
         for spec in self.rules.into_values() {
-            let count = regex_count(&spec);
-            let Some(remaining) = regexes.checked_sub(count) else {
+            // Compile only retained specs so rejected rules cannot accumulate regex heap.
+            let compiled = spec.compile().expect("validated HTML rule compiles");
+            if budget.keep(&compiled).is_err() {
                 if spec.exception {
                     eprintln!("lists: omitted HTML filtering at the exception generation limit");
                     return HtmlRules::default();
                 }
                 dropped += 1;
                 continue;
-            };
-            regexes = remaining;
-            // These specs were validated by the reader. Compile only the
-            // retained subset so rejected rules cannot accumulate regex heap.
-            let compiled = spec.compile().expect("validated HTML rule compiles");
+            }
             index.add(Rule { spec, compiled });
         }
         if dropped != 0 {
@@ -74,7 +71,6 @@ pub(super) struct HtmlRules {
     suffixes: HashMap<String, Vec<usize>>,
     wildcards: HashMap<String, Vec<usize>>,
     global: Vec<usize>,
-    dropped: AtomicU64,
 }
 
 impl HtmlRules {
@@ -112,21 +108,24 @@ impl HtmlRules {
 
     pub(super) fn cached(data: &[u8]) -> Option<Self> {
         let specs: Vec<Spec> = serde_json::from_slice(data).ok()?;
-        if specs.len() > MAX_HTML_RULES
-            || specs.iter().map(regex_count).sum::<usize>() > MAX_HTML_REGEXES
-        {
+        if specs.len() > MAX_HTML_RULES {
             return None;
         }
         let mut index = Self::default();
+        let mut budget = Budget::default();
         for spec in specs {
             let compiled = spec.compile().ok()?;
+            budget.keep(&compiled).ok()?;
             index.add(Rule { spec, compiled });
         }
         Some(index)
     }
 
-    fn candidates(&self, host: &Host<'_>) -> BTreeSet<usize> {
-        let mut ids: BTreeSet<_> = self.global.iter().copied().collect();
+    fn candidates(&self, host: &Host<'_>, known_document: bool) -> BTreeSet<usize> {
+        let mut ids = BTreeSet::new();
+        if known_document {
+            ids.extend(self.global.iter().copied());
+        }
         let mut suffix = host.name;
         loop {
             ids.extend(self.suffixes.get(suffix).into_iter().flatten().copied());
@@ -141,9 +140,9 @@ impl HtmlRules {
         ids
     }
 
-    fn select(&self, host: &str) -> (Vec<Arc<Compiled>>, u64) {
+    fn select(&self, host: &str, known_document: bool) -> Vec<Arc<Compiled>> {
         if self.rules.is_empty() {
-            return (Vec::new(), 0);
+            return Vec::new();
         }
         let normalized = if host.bytes().any(|b| b.is_ascii_uppercase()) {
             std::borrow::Cow::Owned(host.to_ascii_lowercase())
@@ -151,7 +150,7 @@ impl HtmlRules {
             std::borrow::Cow::Borrowed(host)
         };
         let host = Host::new(normalized.trim_end_matches('.'));
-        let candidates = self.candidates(&host);
+        let candidates = self.candidates(&host, known_document);
         let applies = |spec: &Spec| {
             !spec
                 .domains
@@ -164,28 +163,16 @@ impl HtmlRules {
             .filter(|spec| spec.exception && applies(spec))
             .map(|spec| spec.selector.as_str())
             .collect();
-        let mut selected = Vec::new();
-        let mut dropped = 0;
-        for id in candidates {
-            let (spec, compiled) = &self.rules[id];
-            if !spec.exception && applies(spec) && seen.insert(spec.selector.as_str()) {
-                if selected.len() == MAX_HTML_RULES_PER_PAGE {
-                    dropped += 1;
-                } else {
-                    selected.push(Arc::clone(compiled));
-                }
-            }
-        }
-        (selected, dropped)
+        candidates
+            .into_iter()
+            .filter_map(|id| {
+                let (spec, compiled) = &self.rules[id];
+                (!spec.exception && applies(spec) && seen.insert(spec.selector.as_str()))
+                    .then(|| Arc::clone(compiled))
+            })
+            .take(MAX_HTML_RULES_PER_PAGE)
+            .collect()
     }
-}
-
-fn regex_count(spec: &Spec) -> usize {
-    spec.steps
-        .iter()
-        .flat_map(|step| &step.content)
-        .filter(|condition| matches!(condition, Condition::Matches { .. } | Condition::Glob(_)))
-        .count()
 }
 
 struct Host<'a> {
@@ -221,13 +208,16 @@ impl<'a> Host<'a> {
 
 impl super::Filters {
     /// Host selection also determines whether the request needs an unpacked body.
-    pub(crate) fn html_rules(&self, host: &str, url: &str, method: &str) -> Vec<Arc<Compiled>> {
-        let (rules, dropped) = self.html.select(host);
+    pub(crate) fn html_rules(
+        &self,
+        host: &str,
+        url: &str,
+        method: &str,
+        known_document: bool,
+    ) -> Vec<Arc<Compiled>> {
+        let rules = self.html.select(host, known_document);
         if !rules.is_empty() && self.page_exceptions.skip_html(url, method) {
             return Vec::new();
-        }
-        if dropped != 0 {
-            self.html.dropped.fetch_add(dropped, Relaxed);
         }
         rules
     }
@@ -252,11 +242,12 @@ mod tests {
     }
 
     fn cut(filters: &Filters, host: &str, path: &str, html: &'static str) -> Bytes {
-        let selected = filters.html_rules(host, &format!("https://{host}/{path}"), "GET");
+        let selected = filters.html_rules(host, &format!("https://{host}/{path}"), "GET", true);
         crate::htmlfilter::apply(
             Bytes::from_static(html.as_bytes()),
             &selected,
             None,
+            false,
             &|| true,
         )
         .unwrap()
@@ -372,7 +363,7 @@ mod tests {
             .map(|i| format!("site.test$$div[id={i:03}]\n"))
             .collect();
         let filters = filters(&text);
-        let result = filters.html_rules("site.test", "https://site.test/", "GET");
+        let result = filters.html_rules("site.test", "https://site.test/", "GET", true);
         assert_eq!(result.len(), MAX_HTML_RULES_PER_PAGE);
         for (i, rule) in result.iter().enumerate() {
             assert!(matches!(
@@ -380,7 +371,6 @@ mod tests {
                 Some(crate::htmlfilter::AttributeValue::Contains(value)) if value == &format!("{i:03}")
             ));
         }
-        assert_eq!(filters.html.dropped.load(Relaxed), 2);
     }
 
     #[test]
@@ -407,4 +397,73 @@ mod tests {
             assert_eq!(cut(&filters, "keep.example.org", "", body), body);
         }
     }
+}
+
+#[cfg(test)]
+#[test]
+fn html_exceptions_displace_removals_at_the_table_limit() {
+    let mut rules = HtmlProjections::default();
+    let text: Vec<_> = (0..MAX_HTML_RULES)
+        .map(|i| format!("site.test$$div[id={i:04}]"))
+        .chain(["site.test$@$div[id=0000]".to_owned()])
+        .collect();
+    for line in &text {
+        let crate::rule::Kind::Html(rule) = crate::rule::read(line).kind else {
+            panic!("{line}")
+        };
+        rules.add(line, rule);
+    }
+    let kept = rules.finish();
+    assert_eq!(kept.rules.len(), MAX_HTML_RULES);
+    let body = bytes::Bytes::from_static(b"<div id=0000>keep</div><div id=0001>remove</div>");
+    assert_eq!(
+        crate::htmlfilter::apply(body, &kept.select("site.test", true), None, false, &|| true)
+            .unwrap(),
+        "<div id=0000>keep</div>"
+    );
+}
+
+#[cfg(test)]
+#[test]
+fn reviewed_html_expressions_are_charged_to_the_generation_budget() {
+    use crate::limits::{MAX_HTML_REGEX_BYTES, MAX_HTML_REGEXES};
+    let text: Vec<_> = (0..MAX_HTML_REGEXES)
+        .map(|i| format!(r"site{i}.test##^script:has-text(/\w{{10}}a{i}/)"))
+        .collect();
+    let mut rules = HtmlProjections::default();
+    for line in &text {
+        let crate::rule::Kind::Html(rule) = crate::rule::read(line).kind else {
+            panic!("{line}")
+        };
+        rules.add(line, rule);
+    }
+    let kept = rules.finish();
+    let charged: usize = kept.rules.iter().map(|(_, rule)| rule.regex_cost().1).sum();
+    assert!(
+        charged > 0 && charged <= MAX_HTML_REGEX_BYTES,
+        "{charged} bytes"
+    );
+    assert_eq!(
+        HtmlRules::cached(&kept.serialized().unwrap())
+            .unwrap()
+            .rules
+            .len(),
+        kept.rules.len()
+    );
+
+    // Expanding the counted repetition still fits individually but makes the shared budget bind.
+    let text: Vec<_> = (0..MAX_HTML_REGEXES)
+        .map(|i| format!(r"site{i}.test##^script:has-text(/\w{{250}}a{i}/)"))
+        .collect();
+    let mut rules = HtmlProjections::default();
+    for line in &text {
+        let crate::rule::Kind::Html(rule) = crate::rule::read(line).kind else {
+            panic!("{line}")
+        };
+        rules.add(line, rule);
+    }
+    let kept = rules.finish();
+    let charged: usize = kept.rules.iter().map(|(_, rule)| rule.regex_cost().1).sum();
+    assert!(kept.rules.len() < MAX_HTML_REGEXES, "{charged} bytes");
+    assert!(charged <= MAX_HTML_REGEX_BYTES, "{charged} bytes");
 }

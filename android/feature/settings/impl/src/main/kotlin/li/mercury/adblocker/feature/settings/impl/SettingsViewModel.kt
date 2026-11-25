@@ -68,6 +68,7 @@ import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnStatus
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
+import li.mercury.adblocker.core.ui.vpnTransferMessages
 import javax.inject.Inject
 import kotlin.reflect.KProperty1
 
@@ -286,8 +287,16 @@ class SettingsViewModel @Inject constructor(
 
     /** With root mode not set up: filtering moves to the VPN, which the overview then connects. */
     fun switchToVpn() = busy {
-        methods.switchTo(FilterMethod.Vpn)
-        messages.show(UiMessage(R.string.feature_settings_switched_to_vpn))
+        when (val result = methods.switchTo(FilterMethod.Vpn)) {
+            FilterMethodSwitch.Complete -> messages.show(UiMessage(R.string.feature_settings_switched_to_vpn))
+
+            is FilterMethodSwitch.VpnTransferIncomplete -> {
+                val texts = vpnTransferMessages(result.failed)
+                messages.show(UiMessage(texts.first(), additionalText = texts.drop(1)))
+            }
+
+            FilterMethodSwitch.RootPending -> Unit
+        }
     }
 
     fun cancelRootSwitch() = busy {

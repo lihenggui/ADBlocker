@@ -613,3 +613,27 @@ mod tests {
         }
     }
 }
+
+#[cfg(test)]
+#[test]
+fn an_address_exception_after_the_rule_limit_still_allows_the_endpoint() {
+    let mut text = String::from("192.0.2.2$network\n");
+    for port in 1..MAX_ADDRESS_RULES {
+        use std::fmt::Write as _;
+        writeln!(text, "192.0.2.1:{port}$network").unwrap();
+    }
+    text.push_str("@@192.0.2.2$network\n");
+    let filters = super::Filters::build(
+        [Ok((std::path::Path::new("subscription.txt"), text))].into_iter(),
+        None,
+        false,
+        16,
+    )
+    .unwrap();
+    assert_eq!(
+        filters
+            .for_app("com.app")
+            .address_decision(([192, 0, 2, 2], 443).into()),
+        AddressDecision::Pass,
+    );
+}

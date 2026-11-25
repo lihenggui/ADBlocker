@@ -81,6 +81,10 @@ fn trusted_list() -> SourcePermissions {
 fn limit_prefix(expected: &str) -> (String, usize) {
     let mut text = String::new();
     let count = match expected {
+        "unsupported html-generation-limit" => {
+            text = "example.org##^div\n".repeat(crate::limits::MAX_HTML_RULES);
+            crate::limits::MAX_HTML_RULES
+        }
         "unsupported address-limit" => {
             text = "192.0.2.1$network\n".repeat(MAX_ADDRESS_RULES);
             MAX_ADDRESS_RULES

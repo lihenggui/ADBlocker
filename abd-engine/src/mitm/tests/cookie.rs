@@ -148,8 +148,8 @@ async fn cookie_exceptions_spare_their_names_or_the_entire_request() {
     .await;
     let all = "concept=1; _ga_first=2; c_user=3";
     for (path, kept, count) in [
-        ("/cookies/suppress", None, 2),
-        ("/cookies/named", Some("concept=1; _ga_first=2"), 4),
+        ("/cookies/suppress", None, 1),
+        ("/cookies/named", Some("concept=1; _ga_first=2"), 3),
         ("/cookies/all", Some(all), 10),
         ("/cookies/doc", Some(all), 10),
         ("/cookies/url", Some(all), 10),

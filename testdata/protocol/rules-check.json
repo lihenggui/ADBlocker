@@ -4,7 +4,6 @@
     { "line": 6, "text": "||tracker.example^$frobnicate", "kind": "invalid", "reason": "option:frobnicate" },
     { "line": 7, "text": "!#include extra.txt", "kind": "unsupported", "reason": "include-not-followed" },
     { "line": 8, "text": "!#if adguard &&", "kind": "invalid", "reason": "malformed-directive" },
-    { "line": 11, "text": "||ads.example^$popup", "kind": "inapplicable", "reason": "option:popup" },
-    { "line": 12, "text": "||ads.example^$replace=/ad/content/", "kind": "untrusted", "reason": "response-trust:replace" }
+    { "line": 11, "text": "||ads.example^$popup", "kind": "inapplicable", "reason": "option:popup" }
   ]
 }

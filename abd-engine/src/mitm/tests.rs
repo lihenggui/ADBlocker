@@ -182,6 +182,9 @@ async fn rig(setup: Setup) -> Rig {
                 let h2 = tls.get_ref().1.alpn_protocol() == Some(b"h2");
                 let svc = service_fn(move |mut req: Request<Incoming>| {
                     hits.fetch_add(1, Relaxed);
+                    if let Some(response) = delayed_or_late_fixture(req.uri().path()) {
+                        return std::future::ready(Ok(response));
+                    }
                     // `/upgrade` switches protocols and then never closes.
                     if req.uri().path() == "/upgrade" {
                         let upgraded = hyper::upgrade::on(&mut req);
@@ -193,7 +196,7 @@ async fn rig(setup: Setup) -> Rig {
                             .status(StatusCode::SWITCHING_PROTOCOLS)
                             .header("connection", "upgrade")
                             .header("upgrade", "websocket")
-                            .body(Full::new(Bytes::new()))
+                            .body(Full::new(Bytes::new()).boxed())
                             .unwrap()));
                     }
                     if let Some(response) = replacement_fixture(&req)
@@ -203,7 +206,7 @@ async fn rig(setup: Setup) -> Rig {
                         .or_else(|| urltransform::fixture(&req))
                         .or_else(|| xmlprune::fixture(&req))
                     {
-                        return std::future::ready(Ok(response));
+                        return std::future::ready(Ok(response.map(BodyExt::boxed)));
                     }
                     // `/big/<n>` is answered with n MiB, for the measurements.
                     let body = match req.uri().path().strip_prefix("/big/") {
@@ -240,7 +243,10 @@ async fn rig(setup: Setup) -> Rig {
                                         Response::builder()
                                             .header(hyper::header::CONTENT_TYPE, "text/html")
                                             .header(hyper::header::CONTENT_SECURITY_POLICY, policy)
-                                            .body(Full::new(Bytes::from_static(b"<body>no head")))
+                                            .body(
+                                                Full::new(Bytes::from_static(b"<body>no head"))
+                                                    .boxed(),
+                                            )
                                             .unwrap(),
                                     ));
                                 }
@@ -262,7 +268,7 @@ async fn rig(setup: Setup) -> Rig {
                         let close = hyper::header::HeaderValue::from_static("close");
                         resp.headers_mut().insert(hyper::header::CONNECTION, close);
                     }
-                    std::future::ready(Ok::<_, hyper::Error>(resp))
+                    std::future::ready(Ok::<_, hyper::Error>(resp.map(BodyExt::boxed)))
                 });
                 let io = TokioIo::new(tls);
                 if h2 {
@@ -3326,4 +3332,269 @@ async fn a_subdocument_uses_its_own_html_rules_and_page_exceptions() {
         assert_eq!(status, StatusCode::OK);
         assert!(body.contains(expected), "{body}");
     }
+}
+
+#[tokio::test]
+async fn generic_html_rules_request_identity_only_for_a_known_document() {
+    for rule in ["##^div[class=ad-box]", "~other.test$$div[class=ad-box]"] {
+        let rig = rig(Setup {
+            rules: rule,
+            ..Setup::default()
+        })
+        .await;
+        for (known, expected) in [
+            (false, "<body>gzip, br<div class=\"ad-box\">"),
+            (true, "<body>identity</body>"),
+        ] {
+            let (_, status, body, _) = rig
+                .request_response(Trust::System, H1, "/page/named", None, |mut req| {
+                    if !known {
+                        req.headers_mut().unwrap().remove("sec-fetch-dest");
+                    }
+                    req
+                })
+                .await
+                .unwrap();
+            assert_eq!(status, StatusCode::OK);
+            assert!(body.contains(expected), "{rule}: {body}");
+        }
+    }
+}
+
+type FixtureBody = http_body_util::combinators::BoxBody<Bytes, std::convert::Infallible>;
+
+fn delayed_or_late_fixture(path: &str) -> Option<Response<FixtureBody>> {
+    let (mime, body) = match path {
+        "/creative/small" => ("image/png", Full::new(Bytes::from_static(b"small")).boxed()),
+        "/creative/large" => (
+            "image/png",
+            Full::new(Bytes::from(vec![0; 4 << 20])).boxed(),
+        ),
+        "/creative/slow" => (
+            "image/png",
+            delayed_body(b"", b"image", Duration::from_millis(900)),
+        ),
+        "/page/delayed" => (
+            "text/html",
+            delayed_body(
+                b"<html><head><title>original</title>",
+                b"</head><body>keep</body></html>",
+                Duration::from_millis(400),
+            ),
+        ),
+        "/page/html" => (
+            "APPLICATION/XHTML+XML",
+            Full::new(Bytes::from_static(b"<script/>keep<script>ads=1</script>")).boxed(),
+        ),
+        "/page/plain" => (
+            "text/plain",
+            Full::new(Bytes::from_static(b"<script>ads=1</script>")).boxed(),
+        ),
+        "/page/json" => (
+            "application/json",
+            Full::new(Bytes::from_static(br#"{"data":"<script>ads=1</script>"}"#)).boxed(),
+        ),
+        _ => return None,
+    };
+    Some(
+        Response::builder()
+            .header("content-type", mime)
+            .body(body)
+            .unwrap(),
+    )
+}
+
+fn delayed_body(first: &'static [u8], next: &'static [u8], delay: Duration) -> FixtureBody {
+    use hyper::body::Frame;
+    use std::pin::Pin;
+    use std::task::{Context, Poll};
+
+    struct Frames {
+        first: Option<Bytes>,
+        next: Option<Bytes>,
+        timer: Pin<Box<tokio::time::Sleep>>,
+    }
+
+    impl futures_core::Stream for Frames {
+        type Item = Result<Frame<Bytes>, std::convert::Infallible>;
+
+        fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+            if let Some(first) = self.first.take() {
+                return Poll::Ready(Some(Ok(Frame::data(first))));
+            }
+            if self.next.is_some() {
+                std::task::ready!(self.timer.as_mut().poll(cx));
+            }
+            Poll::Ready(self.next.take().map(|next| Ok(Frame::data(next))))
+        }
+    }
+
+    http_body_util::StreamBody::new(Frames {
+        first: Some(Bytes::from_static(first)),
+        next: Some(Bytes::from_static(next)),
+        timer: Box::pin(tokio::time::sleep(delay)),
+    })
+    .boxed()
+}
+
+#[tokio::test]
+async fn only_html_representations_are_edited_for_a_document_request() {
+    let rig = rig(Setup {
+        rules: "site.test##^script:has-text(ads=1)",
+        ..Setup::default()
+    })
+    .await;
+    for (path, expected) in [
+        ("/page/plain", "<script>ads=1</script>"),
+        ("/page/json", r#"{"data":"<script>ads=1</script>"}"#),
+        ("/page/html", "<script/>keep"),
+    ] {
+        let (status, body, _) = rig.get(Trust::System, H1, path, None).await.unwrap();
+        assert_eq!(
+            (status, body.as_str()),
+            (StatusCode::OK, expected),
+            "{path}"
+        );
+    }
+}
+
+#[tokio::test]
+async fn scriptlets_wait_for_the_rewritten_body_but_keep_the_short_streaming_deadline() {
+    for (rules, edit) in [
+        (
+            "site.test##+js(set, adbFixture, true)\nsite.test##.ad",
+            false,
+        ),
+        (
+            "site.test##+js(set, adbFixture, true)\nsite.test##.ad\n||site.test/page/delayed$replace=/original/edited/",
+            true,
+        ),
+    ] {
+        let rig = rig(Setup {
+            rules,
+            ..Setup::default()
+        })
+        .await;
+        let (status, body, _) = rig
+            .get(Trust::System, H1, "/page/delayed", None)
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.contains("display:none!important"), "{body}");
+        assert_eq!(body.contains("adbFixture"), edit, "{body}");
+        assert!(
+            body.contains(if edit {
+                "<title>edited</title>"
+            } else {
+                "<title>original</title>"
+            }),
+            "{body}"
+        );
+    }
+}
+
+fn followup(path: &str, h2: bool) -> Request<Empty<Bytes>> {
+    Request::get(if h2 {
+        format!("https://{HOST}{path}")
+    } else {
+        path.to_owned()
+    })
+    .header(HOST_HEADER, HOST)
+    .body(Empty::new())
+    .unwrap()
+}
+
+async fn h1_sender(rig: &Rig) -> hyper::client::conn::http1::SendRequest<Empty<Bytes>> {
+    let tls = rig.handshake(Trust::System, H1).await.unwrap();
+    let (tx, conn) = hyper::client::conn::http1::handshake(TokioIo::new(tls))
+        .await
+        .unwrap();
+    tokio::spawn(conn);
+    tx
+}
+
+#[tokio::test]
+async fn late_block_keeps_http1_reusable_or_explicitly_closes_it() {
+    for size in ["small", "large", "slow"] {
+        let rig = rig(Setup {
+            rules: "||site.test/creative$image",
+            ..Setup::default()
+        })
+        .await;
+        let mut tx = h1_sender(&rig).await;
+        let reply = tx
+            .send_request(followup(&format!("/creative/{size}"), false))
+            .await
+            .unwrap();
+        assert_eq!(reply.status(), StatusCode::FORBIDDEN);
+        assert_eq!(
+            reply.headers().contains_key("connection"),
+            size != "small",
+            "{size}"
+        );
+        assert!(
+            reply
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .is_empty()
+        );
+        if size != "small" {
+            tx = h1_sender(&rig).await;
+        }
+        for path in ["/next", "/third"] {
+            tx.ready().await.unwrap();
+            let reply = tx.send_request(followup(path, false)).await.unwrap();
+            assert_eq!(reply.status(), StatusCode::OK);
+            assert_eq!(
+                reply.into_body().collect().await.unwrap().to_bytes(),
+                format!("GET {path}")
+            );
+        }
+        assert_eq!(rig.dials.load(Relaxed), if size == "small" { 1 } else { 2 });
+    }
+}
+
+#[tokio::test]
+async fn late_block_does_not_close_http2_for_small_large_or_slow_bodies() {
+    let rig = rig(Setup {
+        rules: "||site.test/creative$image",
+        alpn: BOTH,
+        ..Setup::default()
+    })
+    .await;
+    let tls = rig.handshake(Trust::System, BOTH).await.unwrap();
+    let (mut tx, conn) =
+        hyper::client::conn::http2::handshake(TokioExecutor::new(), TokioIo::new(tls))
+            .await
+            .unwrap();
+    tokio::spawn(conn);
+    for size in ["small", "large", "slow"] {
+        let reply = tx
+            .send_request(followup(&format!("/creative/{size}"), true))
+            .await
+            .unwrap();
+        assert_eq!(reply.status(), StatusCode::FORBIDDEN);
+        assert!(!reply.headers().contains_key("connection"));
+        assert!(
+            reply
+                .into_body()
+                .collect()
+                .await
+                .unwrap()
+                .to_bytes()
+                .is_empty()
+        );
+        for path in ["/next", "/third"] {
+            let reply = tx.send_request(followup(path, true)).await.unwrap();
+            assert_eq!(reply.status(), StatusCode::OK);
+            assert_eq!(
+                reply.into_body().collect().await.unwrap().to_bytes(),
+                format!("GET {path}")
+            );
+        }
+    }
+    assert_eq!(rig.dials.load(Relaxed), 1);
 }

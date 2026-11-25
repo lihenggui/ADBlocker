@@ -36,6 +36,7 @@ import li.mercury.adblocker.core.model.ReadState
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnState
 import li.mercury.adblocker.core.model.VpnStatus
+import li.mercury.adblocker.core.model.VpnTransferPart
 import li.mercury.adblocker.core.screenshottesting.DefaultTestDevices
 import li.mercury.adblocker.core.screenshottesting.DemoApp
 import li.mercury.adblocker.core.screenshottesting.DemoClockRule
@@ -43,6 +44,10 @@ import li.mercury.adblocker.core.screenshottesting.DemoData
 import li.mercury.adblocker.core.screenshottesting.captureForDevice
 import li.mercury.adblocker.core.screenshottesting.captureMultiDevice
 import li.mercury.adblocker.core.ui.LocalSnackbarHostState
+import li.mercury.adblocker.core.ui.MessageEffect
+import li.mercury.adblocker.core.ui.MessageQueue
+import li.mercury.adblocker.core.ui.UiMessage
+import li.mercury.adblocker.core.ui.vpnTransferMessages
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -242,6 +247,19 @@ class SettingsScreenScreenshotTests {
     @Config(qualifiers = "zh-rCN")
     fun givenRootModeNotSetUp_whenShownInChinese_thenMatchesGolden() {
         composeTestRule.captureForDevice("phone_tall_zh", TALL_PHONE, "SettingsNotSetUp") { Settings(notSetUp) }
+    }
+
+    @Test
+    fun givenAnIncompleteVpnTransfer_whenSettingsShowsTheOutcome_thenMatchesGolden() {
+        val parts = setOf(VpnTransferPart.Apps, VpnTransferPart.Rules)
+        val texts = vpnTransferMessages(parts)
+        val queue = MessageQueue().apply { show(UiMessage(texts.first(), additionalText = texts.drop(1))) }
+        capturePhone("SettingsVpnTransferIncomplete") {
+            MessageEffect(queue.pending, queue::onMessageShown)
+            Settings(vpn)
+        }
+        val text = texts.joinToString(" ") { composeTestRule.activity.getString(it) }
+        composeTestRule.onNodeWithText(text).assertExists()
     }
 
     @Test

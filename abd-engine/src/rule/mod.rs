@@ -119,6 +119,13 @@ pub(crate) fn read(line: &str) -> Rule<'_> {
     read_with_scripts(line, None)
 }
 
+/// Preliminary test for exceptions that may need a slot in a bounded table.
+pub(crate) fn may_reserve_exception(line: &str) -> bool {
+    let line = line.trim_start();
+    line.starts_with("@@") && (line.contains("app=") || line.contains("network"))
+        || line.contains("#@%#")
+}
+
 pub(crate) fn read_with_scripts<'a>(
     line: &'a str,
     scripts: Option<&mut javascript::Scripts<'a>>,

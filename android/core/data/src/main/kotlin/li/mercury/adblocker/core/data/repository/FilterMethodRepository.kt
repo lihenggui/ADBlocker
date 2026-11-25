@@ -17,6 +17,7 @@
 package li.mercury.adblocker.core.data.repository
 
 import li.mercury.adblocker.core.model.FilterMethod
+import li.mercury.adblocker.core.model.VpnTransferPart
 
 sealed interface FilterMethodSwitch {
     data object Complete : FilterMethodSwitch
@@ -25,8 +26,6 @@ sealed interface FilterMethodSwitch {
     /** An empty set means the root configuration could not be read as a whole. */
     data class VpnTransferIncomplete(val failed: Set<VpnTransferPart> = emptySet()) : FilterMethodSwitch
 }
-
-enum class VpnTransferPart { Apps, Lists, Rules, TrustedSites, UrlFiltering }
 
 /** Choosing between the root module and the VPN. */
 interface FilterMethodRepository {

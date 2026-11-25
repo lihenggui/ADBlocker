@@ -61,4 +61,10 @@
     <string name="core_ui_category_security">Security</string>
     <string name="core_ui_category_regional">Regional</string>
     <string name="core_ui_category_annoyances">Annoyances</string>
+    <string name="core_ui_vpn_transfer_incomplete">Some root mode settings could not be carried over.</string>
+    <string name="core_ui_vpn_transfer_apps">The root mode app filtering settings could not be carried over.</string>
+    <string name="core_ui_vpn_transfer_lists">Some root mode filter list settings could not be carried over.</string>
+    <string name="core_ui_vpn_transfer_rules">The root mode custom rules could not be carried over.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Some root mode trusted sites could not be carried over.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">The root mode URL filtering settings could not be carried over.</string>
 </resources>

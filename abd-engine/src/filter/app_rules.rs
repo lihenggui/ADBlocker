@@ -736,3 +736,23 @@ mod tests {
         assert!(cache.path().join("app-blocks").exists());
     }
 }
+
+#[cfg(test)]
+#[test]
+fn app_pattern_slots_are_reserved_for_exceptions() {
+    use std::fmt::Write as _;
+    let mut text = String::from("||ads.example^\n");
+    for p in 0..crate::limits::MAX_APP_PATTERNS {
+        writeln!(text, "||other.test^$app=com.p{p}.*").unwrap();
+    }
+    text.push_str("@@||ads.example^$app=com.reader*\n");
+    let filters = super::Filters::build(
+        [Ok((std::path::Path::new("subscription.txt"), text))].into_iter(),
+        None,
+        false,
+        16,
+    )
+    .unwrap();
+    assert!(!filters.for_app("com.reader").blocks_host("ads.example"));
+    assert!(filters.for_app("com.other").blocks_host("ads.example"));
+}

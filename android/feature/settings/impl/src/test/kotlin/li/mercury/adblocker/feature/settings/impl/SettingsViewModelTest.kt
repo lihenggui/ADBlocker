@@ -52,6 +52,7 @@ import li.mercury.adblocker.core.model.PinnedHost
 import li.mercury.adblocker.core.model.ReadState
 import li.mercury.adblocker.core.model.UserData
 import li.mercury.adblocker.core.model.VpnStatus
+import li.mercury.adblocker.core.model.VpnTransferPart
 import li.mercury.adblocker.core.testing.MainDispatcherRule
 import li.mercury.adblocker.core.testing.TestUserDataRepository
 import li.mercury.adblocker.core.testing.unexpected
@@ -135,6 +136,7 @@ class SettingsViewModelTest {
     private var rootManager: String? = null
     private var rootGranted = false
     private var shouldDefer = false
+    private var vpnSwitch: FilterMethodSwitch = FilterMethodSwitch.Complete
     private var startResult = Result.success(false)
     private val methods = object : FilterMethodRepository by unexpected() {
         override suspend fun rootAvailable(): Boolean {
@@ -144,6 +146,7 @@ class SettingsViewModelTest {
 
         override suspend fun switchTo(method: FilterMethod): FilterMethodSwitch {
             done += "method $method"
+            if (method == FilterMethod.Vpn) return vpnSwitch
             if (shouldDefer) userData.setRootSwitchPending()
             return if (shouldDefer) FilterMethodSwitch.RootPending else FilterMethodSwitch.Complete
         }
@@ -615,6 +618,20 @@ class SettingsViewModelTest {
         viewModel.switchToVpn()
         assertEquals(listOf("remove", "method Vpn"), done)
         assertEquals(R.string.feature_settings_switched_to_vpn, takeMessageText())
+    }
+
+    @Test
+    fun givenIncompleteVpnTransfer_whenSwitchingFromSettings_thenTheOnboardingMessagesAreShown() = runTest {
+        showSettings()
+        vpnSwitch = FilterMethodSwitch.VpnTransferIncomplete()
+        viewModel.switchToVpn()
+        assertEquals(li.mercury.adblocker.core.ui.R.string.core_ui_vpn_transfer_incomplete, takeMessageText())
+
+        vpnSwitch = FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.Apps, VpnTransferPart.Rules))
+        viewModel.switchToVpn()
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(li.mercury.adblocker.core.ui.R.string.core_ui_vpn_transfer_apps, message.text)
+        assertEquals(listOf(li.mercury.adblocker.core.ui.R.string.core_ui_vpn_transfer_rules), message.additionalText)
     }
 
     @Test

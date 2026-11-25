@@ -38,6 +38,7 @@ mod htmlfilter;
 mod jsonpath;
 pub mod limits;
 mod list_files;
+mod list_regex;
 mod list_url;
 pub mod live;
 pub mod malformed;

@@ -32,6 +32,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import li.mercury.adblocker.core.model.VpnTransferPart
 import java.util.concurrent.atomic.AtomicLong
 
 /**
@@ -44,8 +45,23 @@ class UiMessage(
     val args: List<Any> = emptyList(),
     @param:StringRes val actionLabel: Int? = null,
     val quantity: Int? = null,
+    val additionalText: List<Int> = emptyList(),
     val onAction: (() -> Unit)? = null,
 )
+
+fun vpnTransferMessages(failed: Set<VpnTransferPart>): List<Int> = if (failed.isEmpty()) {
+    listOf(R.string.core_ui_vpn_transfer_incomplete)
+} else {
+    failed.sorted().map { part ->
+        when (part) {
+            VpnTransferPart.Apps -> R.string.core_ui_vpn_transfer_apps
+            VpnTransferPart.Lists -> R.string.core_ui_vpn_transfer_lists
+            VpnTransferPart.Rules -> R.string.core_ui_vpn_transfer_rules
+            VpnTransferPart.TrustedSites -> R.string.core_ui_vpn_transfer_trusted_sites
+            VpnTransferPart.UrlFiltering -> R.string.core_ui_vpn_transfer_url_filtering
+        }
+    }
+}
 
 data class PendingMessage(val id: Long, val message: UiMessage)
 
@@ -103,7 +119,8 @@ fun MessageEffect(messages: StateFlow<List<PendingMessage>>, onAcknowledge: (Lon
             val pending = messages.value.firstOrNull() ?: return@collect
             val message = pending.message
             val args = message.args.toTypedArray()
-            val text = message.quantity?.let { resources.getQuantityString(message.text, it, *args) } ?: resources.getString(message.text, *args)
+            val primary = message.quantity?.let { resources.getQuantityString(message.text, it, *args) } ?: resources.getString(message.text, *args)
+            val text = (listOf(primary) + message.additionalText.map { resources.getString(it) }).joinToString(" ")
             val actionLabel = message.actionLabel?.let(resources::getString)
             val scope = if (message.onAction != null) screenScope else appScope
             host.currentSnackbarData?.dismiss()

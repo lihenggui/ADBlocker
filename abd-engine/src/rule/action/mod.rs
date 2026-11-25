@@ -283,7 +283,7 @@ impl ResponseAction {
             | Self::RemoveHeader(_)
             | Self::RemoveParamException(_) => 0,
             Self::Cookie(action) => action.regex_bytes(),
-            Self::Hls(_) => hls::REGEX_CHARGE,
+            Self::Hls(action) => action.regex_bytes(),
             Self::Replace(action) => action.regex_bytes(),
             Self::UrlTransform(action) => action.regex_bytes(),
         }

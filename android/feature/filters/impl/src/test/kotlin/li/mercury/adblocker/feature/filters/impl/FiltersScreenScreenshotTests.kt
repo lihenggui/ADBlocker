@@ -48,7 +48,9 @@ import li.mercury.adblocker.core.designsystem.theme.ADBlockerTheme
 import li.mercury.adblocker.core.model.ListUpdateState
 import li.mercury.adblocker.core.model.RuleCheckResult
 import li.mercury.adblocker.core.model.RuleIssue
+import li.mercury.adblocker.core.model.RuleIssueCode
 import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.model.RuleIssueReason
 import li.mercury.adblocker.core.model.RuleSource
 import li.mercury.adblocker.core.model.RulesCheck
 import li.mercury.adblocker.core.screenshottesting.DefaultTestDevices
@@ -86,7 +88,7 @@ class FiltersScreenScreenshotTests {
         composeTestRule.captureForDevice(if (darkMode) "phone_dark" else "phone", DefaultTestDevices.PHONE.spec, name, darkMode = darkMode, body = body)
     }
 
-    private val issue = RuleIssue(5, "||ads.example^\$popup", RuleIssueKind.Inapplicable, "option:popup")
+    private val issue = RuleIssue(5, "||ads.example^\$popup", RuleIssueKind.Inapplicable, RuleIssueReason(RuleIssueCode.Known.Option, "popup"))
     private val issues = listOf(issue)
     private val userRules = DemoData.userRules.replace("example.com##.promo-banner", issue.text)
 

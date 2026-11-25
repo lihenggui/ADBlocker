@@ -84,9 +84,10 @@ const PROTECTED: &[&str] = &[
     "upgrade",
 ];
 
-// Requests need routing, framing and the controls for upgrades, trailers and 100-continue.
+// Requests need routing, framing, decoding and the controls for upgrades, trailers and 100-continue.
 const REQUEST: &[&str] = &[
     "host",
+    "content-encoding",
     "content-length",
     "transfer-encoding",
     "connection",
@@ -96,6 +97,9 @@ const REQUEST: &[&str] = &[
 ];
 // Responses need framing and the controls for decoding, upgrades and trailers.
 const RESPONSE: &[&str] = &[
+    // Also protect page security policies beyond the reference's list.
+    "permissions-policy",
+    "clear-site-data",
     "content-length",
     "transfer-encoding",
     "content-encoding",
@@ -144,6 +148,17 @@ fn compile_name(name: &str, required: &[&str], reason: Rejection) -> Result<Head
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn request_encoding_and_response_security_policies_are_protected() {
+        for name in [
+            "permissions-policy",
+            "clear-site-data",
+            "request:content-encoding",
+        ] {
+            assert!(parse(name).is_err(), "{name}");
+        }
+    }
 
     #[test]
     fn names_are_http_tokens_and_values_identify_direction_and_name() {
@@ -195,12 +210,18 @@ mod tests {
             );
             assert!(parse(name).is_ok(), "{name}");
         }
-        for name in ["content-encoding", "trailer"] {
-            assert!(
-                matches!(parse(name), Err(Rejection::RequiredForResponse)),
-                "{name}"
-            );
-            assert!(parse(&format!("request:{name}")).is_ok(), "{name}");
-        }
+        assert!(matches!(
+            parse("trailer"),
+            Err(Rejection::RequiredForResponse)
+        ));
+        assert!(parse("request:trailer").is_ok());
+        assert!(matches!(
+            parse("content-encoding"),
+            Err(Rejection::RequiredForResponse)
+        ));
+        assert!(matches!(
+            parse("request:content-encoding"),
+            Err(Rejection::RequiredForRequest)
+        ));
     }
 }

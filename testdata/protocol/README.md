@@ -29,7 +29,7 @@ commit.
 | `update.jsonl` | `abd update --json` | One event a line |
 | `pinned.json` | `abd pinned --json` | |
 | `allow.json` | `abd allow list --json` | |
-| `rules-check.json` | `abd rules check --json` | For `rules.txt` checked with ordinary list permissions |
+| `rules-check.json` | `abd rules check --json` | For `rules.txt` checked with user-rule permissions |
 | `rules.txt` | input of `abd rules check` and `abd rules set` | |
 | `check.json` | `abd check --json [--app <app>] <url> <page> <kind>` | |
 | `watch.jsonl` | `abd watch --json` | One event a line |
@@ -105,9 +105,12 @@ commit.
 - `kind`: what `mitm::kind` returns, such as `document`, `script`, `image`,
   `stylesheet`, `font`, `media`, `xmlhttprequest`, `websocket`, `other`.
 - `state` (`update.jsonl`): `fetching`, `updated`, `unchanged`, `failed`.
-- `kind` (`rules-check.json`): `cosmetic` identifies page rules flagged by
-  the check, including unsupported forms and scriptlets that require trusted
-  permissions. `invalid` identifies input that does not parse as a rule.
+- `kind` (`rules-check.json`): `invalid` identifies malformed or unknown
+  input. `unsupported` identifies recognized syntax the engine cannot apply.
+  `inapplicable` identifies a rule that needs unavailable request context.
+- `using_previous_address` (`lists.json`): true when the active copy came
+  from the list's former address and is kept until the new address supplies
+  a usable copy. The field is omitted otherwise.
 - `source` (`check.json`): the address of the list the rule is in, `rules`
   for the user's own rules, or `null`.
 - A `{"dropped":n}` line in `watch.jsonl` says that `n` events were left
@@ -119,8 +122,8 @@ commit.
 `rules check --json` reports the number of active rule lines as `rules`.
 Each issue contains its 1-based `line`, trimmed `text`, `kind` and `reason`.
 Includes and malformed preprocessor directives are issues outside the rule
-count. The command checks with the permissions of user rules. The fixture
-uses an ordinary list so it can also show `untrusted`.
+count. The command and fixture use user-rule permissions. The list checker
+can also report `untrusted` for rules that need an approved source.
 
 | Kind | Reason | Meaning |
 | --- | --- | --- |
@@ -160,6 +163,7 @@ uses an ordinary list so it can also show `untrusted`.
 | `invalid` | `hls-invalid-flags` | The segment expression has unrecognized flags. |
 | `invalid` | `hls-missing-delimiter` | The segment expression has no closing delimiter. |
 | `invalid` | `hls-unescaped-separator` | The segment pattern contains an unescaped separator. |
+| `unsupported` | `html-generation-limit` | The HTML rule exceeds the generation's count or compiled expression budget. |
 | `invalid` | `html-attribute` | The selector contains a malformed attribute condition. |
 | `invalid` | `html-domain` | The HTML rule has an invalid domain constraint. |
 | `invalid` | `html-length` | The content length constraint is malformed. |

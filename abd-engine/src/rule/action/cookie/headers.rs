@@ -14,8 +14,6 @@
 
 //! Apply cookie actions to individual fields without collecting an HTTP body.
 
-use std::fmt::Write as _;
-
 use hyper::HeaderMap;
 use hyper::header::{COOKIE, HeaderName, HeaderValue, SET_COOKIE};
 
@@ -57,16 +55,16 @@ fn response_with_clock<'a>(
 enum Edit {
     Keep,
     Remove,
-    Replace(String),
+    Replace(Vec<u8>),
 }
 
-fn edit_fields(headers: &mut HeaderMap, name: HeaderName, edit: impl Fn(&str) -> Edit) {
+fn edit_fields(headers: &mut HeaderMap, name: HeaderName, edit: impl Fn(&[u8]) -> Edit) {
     let mut changed = false;
     let fields: Vec<_> = headers
         .get_all(&name)
         .iter()
         .filter_map(|value| {
-            match value.to_str().ok().map_or(Edit::Keep, &edit) {
+            match edit(value.as_bytes()) {
                 Edit::Keep => Some(value.clone()),
                 Edit::Remove => {
                     changed = true;
@@ -74,7 +72,7 @@ fn edit_fields(headers: &mut HeaderMap, name: HeaderName, edit: impl Fn(&str) ->
                 }
                 Edit::Replace(text) => {
                     // Leave the original field if the rewritten value is unusable.
-                    let Ok(mut replacement) = HeaderValue::from_str(&text) else {
+                    let Ok(mut replacement) = HeaderValue::from_bytes(&text) else {
                         return Some(value.clone());
                     };
                     changed |= replacement != *value;
@@ -105,14 +103,17 @@ fn pair_name(pair: &str) -> Option<&str> {
     .then_some(name)
 }
 
-fn request_field(text: &str, rules: &[&Compiled]) -> Edit {
+fn request_field(text: &[u8], rules: &[&Compiled]) -> Edit {
+    let Ok(text) = std::str::from_utf8(text) else {
+        return Edit::Keep;
+    };
     let mut kept = Vec::new();
     let mut removed = false;
     for pair in text.split(';').map(str::trim_ascii) {
         let Some(name) = pair_name(pair) else {
             return Edit::Keep;
         };
-        if matches!(change(name, rules), Some(Change::Suppress)) {
+        if matches!(change(name.as_bytes(), rules), Some(Change::Suppress)) {
             removed = true;
         } else {
             kept.push(pair);
@@ -123,11 +124,11 @@ fn request_field(text: &str, rules: &[&Compiled]) -> Edit {
     } else if kept.is_empty() {
         Edit::Remove
     } else {
-        Edit::Replace(kept.join("; "))
+        Edit::Replace(kept.join("; ").into_bytes())
     }
 }
 
-fn change(name: &str, rules: &[&Compiled]) -> Option<Change> {
+fn change(name: &[u8], rules: &[&Compiled]) -> Option<Change> {
     let mut result = None;
     for rule in rules.iter().filter(|rule| rule.matches(name)) {
         result = Some(match (result, rule.change) {
@@ -148,59 +149,70 @@ fn min_age(first: Option<i64>, second: Option<i64>) -> Option<i64> {
     first.into_iter().chain(second).min()
 }
 
-fn response_field(text: &str, rules: &[&Compiled], now: i64) -> Edit {
-    let mut fields = text.split(';').map(str::trim_ascii);
-    let Some(pair) = fields.next() else {
+fn response_field(text: &[u8], rules: &[&Compiled], now: i64) -> Edit {
+    // RFC 6265 §5.2 decides whether there is a name-value pair before
+    // interpreting any attributes. Treat its name and value as bytes.
+    let mut fields = text.split(|&byte| byte == b';').map(<[u8]>::trim_ascii);
+    let pair = fields.next().unwrap_or_default();
+    let Some(equals) = pair.iter().position(|&byte| byte == b'=') else {
         return Edit::Keep;
     };
-    let Some(edit) = pair_name(pair).and_then(|name| change(name, rules)) else {
+    let name = pair[..equals].trim_ascii();
+    if name.is_empty() {
         return Edit::Keep;
-    };
-    let mut kept = vec![pair];
+    }
+    match change(name, rules) {
+        Some(Change::Suppress) => Edit::Remove,
+        Some(Change::Attributes(attributes)) => rewrite(pair, fields, attributes, now),
+        Some(Change::Exempt) | None => Edit::Keep,
+    }
+}
+
+fn rewrite<'a>(
+    pair: &[u8],
+    fields: impl Iterator<Item = &'a [u8]>,
+    attributes: Attributes,
+    now: i64,
+) -> Edit {
+    let mut rewritten = pair.to_vec();
     let mut server_max_age = None;
     let mut server_expires = None;
-    let attributes = match edit {
-        Change::Attributes(attributes) => attributes,
-        Change::Suppress | Change::Exempt => Attributes::default(),
-    };
     for field in fields {
-        let (name, value) = field.split_once('=').unwrap_or((field, ""));
-        let name = name.trim_ascii_end();
-        let is_max_age = name.eq_ignore_ascii_case("max-age");
-        if attributes.max_age.is_some() {
-            if is_max_age {
-                server_max_age = parse_max_age(value).or(server_max_age);
+        let equals = field
+            .iter()
+            .position(|&byte| byte == b'=')
+            .unwrap_or(field.len());
+        let name = field[..equals].trim_ascii_end();
+        let value = field.get(equals + 1..).unwrap_or_default();
+        if name.eq_ignore_ascii_case(b"max-age") {
+            let age = std::str::from_utf8(value).ok().and_then(parse_max_age);
+            if attributes.max_age.is_some() || age.is_none() {
+                server_max_age = age.or(server_max_age);
                 continue;
             }
-            if name.eq_ignore_ascii_case("expires") {
-                // An invalid date is ignored, including after a valid Expires.
-                server_expires = date::parse(value).or(server_expires);
+        } else if name.eq_ignore_ascii_case(b"expires") {
+            let expires = std::str::from_utf8(value).ok().and_then(date::parse);
+            if attributes.max_age.is_some() || expires.is_none() {
+                server_expires = expires.or(server_expires);
                 continue;
             }
-        }
-        if field.is_empty()
-            || field.bytes().any(|b| !b.is_ascii() || b.is_ascii_control())
-            || (is_max_age && parse_max_age(value).is_none())
+        } else if name.is_empty()
+            || (attributes.same_site.is_some() && name.eq_ignore_ascii_case(b"samesite"))
         {
-            return Edit::Keep;
-        }
-        if attributes.same_site.is_some() && name.eq_ignore_ascii_case("samesite") {
             continue;
         }
-        kept.push(field);
+        rewritten.extend_from_slice(b"; ");
+        rewritten.extend_from_slice(field);
     }
-    if edit == Change::Suppress {
-        return Edit::Remove;
-    }
-    let mut rewritten = kept.join("; ");
     if let Some(limit) = attributes.max_age {
         let lifetime =
             server_max_age.or_else(|| server_expires.map(|expires| expires.saturating_sub(now)));
         let max_age = limit.min(lifetime.unwrap_or(limit)).max(0);
-        write!(rewritten, "; Max-Age={max_age}").expect("writing to a string");
+        rewritten.extend_from_slice(format!("; Max-Age={max_age}").as_bytes());
     }
     if let Some(same_site) = attributes.same_site {
-        write!(rewritten, "; SameSite={}", same_site.as_str()).expect("writing to a string");
+        rewritten.extend_from_slice(b"; SameSite=");
+        rewritten.extend_from_slice(same_site.as_str().as_bytes());
     }
     Edit::Replace(rewritten)
 }
@@ -220,6 +232,76 @@ fn parse_max_age(value: &str) -> Option<i64> {
 mod tests {
     use super::*;
     use crate::rule::action::cookie::parse;
+
+    #[test]
+    fn cookie_names_can_be_opaque_header_bytes() {
+        let rule = parse("/.+/", false).unwrap().compile().unwrap();
+        let mut headers = HeaderMap::new();
+        headers.append(
+            SET_COOKIE,
+            HeaderValue::from_bytes(b"\xFF=1; Path=/").unwrap(),
+        );
+        response(&mut headers, std::iter::once(&rule));
+        assert!(!headers.contains_key(SET_COOKIE));
+    }
+
+    #[test]
+    fn the_cookie_selector_rejects_excessive_regex_fallback_work_at_load() {
+        let spec = parse("/[ab]*a[ab]{5000}c/", false).unwrap();
+        assert_eq!(
+            spec.compile().err(),
+            Some(super::super::Rejection::InvalidExpression)
+        );
+    }
+
+    #[test]
+    fn suppression_matches_cookie_names_independently_of_values_and_attributes() {
+        for selector in ["track", "/.+/", "/^_ga.*/"] {
+            let name = if selector.starts_with("/^_ga") {
+                "_ga_1"
+            } else {
+                "track"
+            };
+            let rule = parse(selector, false).unwrap().compile().unwrap();
+            let mut headers = HeaderMap::new();
+            for suffix in [
+                "1; Path=/",
+                "1; Path=/;",
+                "1; Max-Age=oops",
+                "one two,three; Secure",
+            ] {
+                headers.append(
+                    SET_COOKIE,
+                    HeaderValue::from_str(&format!("{name}={suffix}")).unwrap(),
+                );
+            }
+            headers.append(SET_COOKIE, HeaderValue::from_static("no-pair"));
+            response(&mut headers, std::iter::once(&rule));
+            assert_eq!(
+                headers.get_all(SET_COOKIE).iter().collect::<Vec<_>>(),
+                ["no-pair"],
+                "{selector}"
+            );
+        }
+    }
+
+    #[test]
+    fn rewriting_a_cookie_keeps_the_pair_and_parseable_attributes() {
+        let rule = parse("track;sameSite=lax", false)
+            .unwrap()
+            .compile()
+            .unwrap();
+        let mut headers = HeaderMap::new();
+        headers.append(
+            SET_COOKIE,
+            HeaderValue::from_static("track=a b,c; Path=/; Max-Age=oops; Secure;"),
+        );
+        response(&mut headers, std::iter::once(&rule));
+        assert_eq!(
+            headers[SET_COOKIE],
+            "track=a b,c; Path=/; Secure; SameSite=Lax"
+        );
+    }
 
     // Wed, 09 Jun 2021 10:17:44 GMT.
     const NOW_MS: u64 = 1_623_233_864_000;
@@ -366,27 +448,11 @@ mod tests {
             prop_oneof![arbitrary_bytes(), structured]
         }
 
-        // RFC 6265 cookie-pair, expressed independently of the editor.
-        fn pair(field: &HeaderValue) -> Option<(&str, &str)> {
-            let pair = field
-                .to_str()
-                .ok()?
-                .split(';')
-                .next()?
-                .trim_matches([' ', '\t']);
-            let (name, value) = pair.split_once('=')?;
-            let octets = value
-                .strip_prefix('"')
-                .and_then(|v| v.strip_suffix('"'))
-                .unwrap_or(value);
-            let name_ok = !name.is_empty()
-                && name
-                    .bytes()
-                    .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^`|~_".contains(&b));
-            let value_ok = octets
-                .bytes()
-                .all(|b| matches!(b, 0x21 | 0x23..=0x2b | 0x2d..=0x3a | 0x3c..=0x5b | 0x5d..=0x7e));
-            (name_ok && value_ok).then_some((name, value))
+        // RFC 6265 §5.2 finds a name-value pair before checking attributes.
+        fn pair(field: &HeaderValue) -> Option<&[u8]> {
+            let pair = field.as_bytes().split(|&b| b == b';').next()?.trim_ascii();
+            let equals = pair.iter().position(|&b| b == b'=')?;
+            (!pair[..equals].trim_ascii().is_empty()).then_some(pair)
         }
 
         proptest! {

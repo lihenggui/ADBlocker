@@ -12,14 +12,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use regex_automata::Input;
 use regex_automata::meta::Regex;
-use regex_automata::util::{iter::Searcher, syntax};
-use regex_automata::{Input, MatchKind};
+use regex_automata::util::iter::Searcher;
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
+use crate::list_regex::{self, RegexInput};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::compile_pattern;
 
 pub(crate) struct Compiled {
     regex: Regex,
@@ -97,24 +97,13 @@ pub(super) fn compile(
     if pattern.len().saturating_add(replacement.len()) > MAX_RESPONSE_RULE {
         return None;
     }
-    let regex = compile_pattern(pattern, (), |translated| {
-        Regex::builder()
-            .configure(
-                Regex::config()
-                    .nfa_size_limit(Some(MAX_RESPONSE_REGEX))
-                    .match_kind(MatchKind::LeftmostFirst)
-                    .utf8_empty(false)
-                    .hybrid_cache_capacity(2 << 20),
-            )
-            .syntax(
-                syntax::Config::new()
-                    .utf8(false)
-                    .case_insensitive(insensitive)
-                    .dot_matches_new_line(single_line),
-            )
-            .build(translated)
-            .map_err(|_| ())
-    })
+    let regex = list_regex::compile(
+        pattern,
+        RegexInput::Bytes,
+        insensitive,
+        single_line,
+        MAX_RESPONSE_REGEX,
+    )
     .ok()?;
     Some(Compiled {
         regex,
@@ -230,6 +219,20 @@ mod tests {
         assert!(compiled.apply(b"A,B", &|| false).is_none());
         assert!(parse(r"/a/$1/").is_none());
         assert!(compile("(", "", false, false).is_none());
+    }
+
+    #[test]
+    fn an_expensive_replacement_is_rejected_or_finishes_within_the_work_budget() {
+        let Some(rule) = compile("[ab]*a[ab]{5000}c", "", false, false) else {
+            return;
+        };
+        let body = vec![b'a'; 2 << 20];
+        let start = std::time::Instant::now();
+        assert_eq!(
+            rule.apply(&body, &|| { start.elapsed() < crate::limits::REWRITE_WORK }),
+            Some(body)
+        );
+        assert!(start.elapsed() < std::time::Duration::from_secs(3));
     }
 
     #[test]

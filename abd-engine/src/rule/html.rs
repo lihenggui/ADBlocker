@@ -20,15 +20,15 @@
 
 use std::net::IpAddr;
 
-use regex::{Error, Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::quoting::delimiter;
-use super::regex::compile_pattern;
 use crate::htmlfilter::{Attribute, AttributeValue, Compiled, Content, Selector};
 use crate::limits::{
-    MAX_HTML_CHAIN, MAX_HTML_CONDITIONS, MAX_HTML_RULE, MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE,
+    MAX_HTML_CHAIN, MAX_HTML_CONDITIONS, MAX_HTML_REGEX, MAX_HTML_REGEX_BYTES, MAX_HTML_REGEXES,
+    MAX_HTML_RULE, MAX_HTML_RULES, MAX_RESPONSE_RULE,
 };
+use crate::list_regex::{self, CompileError, RegexInput};
 use crate::public_suffix::Name;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -59,6 +59,46 @@ pub(crate) struct Spec {
 pub(crate) struct Rule {
     pub(crate) spec: Spec,
     pub(crate) compiled: Compiled,
+}
+
+pub(crate) struct Budget {
+    rules: usize,
+    expressions: usize,
+    bytes: usize,
+}
+
+impl Default for Budget {
+    fn default() -> Self {
+        Self {
+            rules: MAX_HTML_RULES,
+            expressions: MAX_HTML_REGEXES,
+            bytes: MAX_HTML_REGEX_BYTES,
+        }
+    }
+}
+
+impl Budget {
+    pub(crate) fn keep(&mut self, rule: &Compiled) -> Result<(), crate::rule::Code> {
+        let (expressions, bytes) = rule.regex_cost();
+        let rules = self
+            .rules
+            .checked_sub(1)
+            .ok_or(crate::rule::Code::HtmlGenerationLimit)?;
+        let expressions = self
+            .expressions
+            .checked_sub(expressions)
+            .ok_or(crate::rule::Code::HtmlGenerationLimit)?;
+        let bytes = self
+            .bytes
+            .checked_sub(bytes)
+            .ok_or(crate::rule::Code::HtmlGenerationLimit)?;
+        *self = Self {
+            rules,
+            expressions,
+            bytes,
+        };
+        Ok(())
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -138,7 +178,7 @@ pub(super) fn read(line: &str, fields: Fields<'_>) -> Result<Rule, Rejection> {
     } else {
         domains.split(',').map(domain).collect::<Result<_, _>>()?
     };
-    let steps = chain(selector)?;
+    let steps = chain(selector, ublock)?;
     let spec = Spec {
         selector: selector.to_owned(),
         exception,
@@ -167,10 +207,10 @@ fn domain(text: &str) -> Result<Domain, Rejection> {
     })
 }
 
-fn chain(mut text: &str) -> Result<Vec<Step>, Rejection> {
+fn chain(mut text: &str, ublock: bool) -> Result<Vec<Step>, Rejection> {
     let mut steps = Vec::new();
     loop {
-        let (step, rest) = step(text.trim_start())?;
+        let (step, rest) = step(text.trim_start(), ublock)?;
         steps.push(step);
         if rest.is_empty() {
             return Ok(steps);
@@ -193,7 +233,7 @@ fn name_prefix<'a>(text: &'a str, extra: &[u8]) -> (&'a str, &'a str) {
     text.split_at(end)
 }
 
-fn step(text: &str) -> Result<(Step, &str), Rejection> {
+fn step(text: &str, ublock: bool) -> Result<(Step, &str), Rejection> {
     let (tag, mut rest) = if text.starts_with(|c: char| c.is_ascii_alphabetic()) {
         name_prefix(text, b"-_")
     } else {
@@ -207,7 +247,7 @@ fn step(text: &str) -> Result<(Step, &str), Rejection> {
         content: Vec::new(),
     };
     while let Some(attribute) = rest.strip_prefix('[') {
-        rest = read_attribute(attribute, &mut step)?;
+        rest = read_attribute(attribute, &mut step, ublock)?;
     }
     while let Some(pseudo) = rest.strip_prefix(':') {
         let (name, arg) = name_prefix(pseudo, b"-");
@@ -225,7 +265,7 @@ fn step(text: &str) -> Result<(Step, &str), Rejection> {
     Ok((step, rest.trim_start()))
 }
 
-fn read_attribute<'a>(text: &'a str, step: &mut Step) -> Result<&'a str, Rejection> {
+fn read_attribute<'a>(text: &'a str, step: &mut Step, ublock: bool) -> Result<&'a str, Rejection> {
     let (name, tail) = name_prefix(text.trim_start(), b"-_:.");
     if name.is_empty() {
         return Err(Rejection::Attribute);
@@ -234,6 +274,7 @@ fn read_attribute<'a>(text: &'a str, step: &mut Step) -> Result<&'a str, Rejecti
     let (operator, tail) = match tail.as_bytes() {
         [b'=', ..] => (Some(b'='), &tail[1..]),
         [operator @ (b'*' | b'^' | b'$'), b'=', ..] => (Some(*operator), &tail[2..]),
+        [operator @ (b'~' | b'|'), b'=', ..] if ublock => (Some(*operator), &tail[2..]),
         [b'~' | b'|', b'=', ..] => return Err(Rejection::AttributeOperator),
         _ => (None, tail),
     };
@@ -255,6 +296,10 @@ fn read_attribute<'a>(text: &'a str, step: &mut Step) -> Result<&'a str, Rejecti
     );
     if !special {
         let value = value.map(|value| match operator {
+            Some(b'=') if ublock => AttributeValue::Exact(value),
+            Some(b'~') => AttributeValue::Word(value),
+            Some(b'|') => AttributeValue::DashPrefix(value),
+            Some(b'*' | b'^' | b'$') if ublock && value.is_empty() => AttributeValue::Never,
             Some(b'^') => AttributeValue::StartsWith(value),
             Some(b'$') => AttributeValue::EndsWith(value),
             _ => AttributeValue::Contains(value),
@@ -403,12 +448,7 @@ fn assertion_end(text: &str) -> Option<usize> {
             b'\\' => {
                 bytes.next()?;
             }
-            b'[' => {
-                classes += 1;
-                bytes.next_if(|&(_, byte)| byte == b'^');
-                // At the beginning of a class, a closing bracket is literal.
-                bytes.next_if(|&(_, byte)| byte == b']');
-            }
+            b'[' if classes == 0 => classes = 1,
             b']' if classes > 0 => classes -= 1,
             b'(' if classes == 0 => groups += 1,
             b')' if classes == 0 && groups == 0 => return Some(at),
@@ -474,19 +514,12 @@ impl Spec {
     }
 }
 
-fn compile_regex(pattern: &str, insensitive: bool, single_line: bool) -> Result<Regex, Rejection> {
-    RegexBuilder::new(pattern)
-        .case_insensitive(insensitive)
-        .dot_matches_new_line(single_line)
-        .size_limit(MAX_RESPONSE_REGEX)
-        // A Base-list alternation falls back to a much slower search with
-        // 32 KiB. Keep the lazy DFA usable while bounding each regex's cache.
-        .dfa_size_limit(64 << 10)
-        .build()
-        .map_err(|err| match err {
-            Error::Syntax(s) if s.contains("look-around") => Rejection::LookAround,
-            _ => Rejection::Regex,
-        })
+fn regex_rejection(error: CompileError) -> Rejection {
+    match error {
+        CompileError::Limit => Rejection::Size,
+        CompileError::LookAround => Rejection::LookAround,
+        CompileError::Unsupported => Rejection::Regex,
+    }
 }
 
 impl Content {
@@ -497,9 +530,16 @@ impl Content {
                 pattern,
                 insensitive,
                 single_line,
-            } => Self::Matches(compile_pattern(pattern, Rejection::Regex, |translated| {
-                compile_regex(translated, *insensitive, *single_line)
-            })?),
+            } => Self::Matches(
+                list_regex::compile(
+                    pattern,
+                    RegexInput::Text,
+                    *insensitive,
+                    *single_line,
+                    MAX_HTML_REGEX,
+                )
+                .map_err(regex_rejection)?,
+            ),
             Condition::Glob(glob) => {
                 let mut pattern = String::from(r"\A");
                 for (index, part) in glob.split('*').enumerate() {
@@ -510,11 +550,20 @@ impl Content {
                         if index != 0 {
                             pattern.push('.');
                         }
-                        pattern.push_str(&regex::escape(literal));
+                        pattern.push_str(&::regex::escape(literal));
                     }
                 }
                 pattern.push_str(r"\z");
-                Self::Glob(compile_regex(&pattern, false, true)?)
+                Self::Glob(
+                    list_regex::compile_normalized(
+                        &pattern,
+                        RegexInput::Text,
+                        false,
+                        true,
+                        MAX_HTML_REGEX,
+                    )
+                    .map_err(regex_rejection)?,
+                )
             }
             Condition::Length {
                 min,
@@ -616,7 +665,7 @@ mod tests {
 
     #[test]
     fn assertion_end_ignores_parentheses_inside_character_classes() {
-        for assertion in [r"[)][^()\]]", r"[])]", r"[^])]", r"[[a-z]&&[^)]]"] {
+        for assertion in [r"[)][^()\]]", r"(?:[])literal", r"(?:[^])literal", r"[[(]"] {
             let with_tail = format!("{assertion})suffix");
             assert_eq!(
                 assertion_end(&with_tail),
@@ -640,7 +689,6 @@ mod tests {
         for text in [
             "example.org$$script:contains(getPopunderCookie):contains(/^(?=.{0,2500}$).*/s)",
             r"example.org$$script:contains(/^(?=.{1000,2000}$)(?=.*tips\[1\].*document\.write\(tips.*$).*/s)",
-            r#"~example.com$$script:contains(/document\.write[^|&%$#@!]{0,400}:8007"\+"\/cc\//)"#,
             r#"example.org$$script[tag-content="banner"][max-length="400"]"#,
             r#"example.org$$div[class="ad"] > script[src="x"]"#,
             r"ign.com$$script:contains(/^(?=.{10000,30000}$)(?=.*'iframe-network').*/s)",

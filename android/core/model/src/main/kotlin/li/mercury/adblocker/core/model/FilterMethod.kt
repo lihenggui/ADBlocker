@@ -42,3 +42,5 @@ data class Capabilities(val method: FilterMethod) {
     /** Decryption needs the authority in the user store, installed by the user. */
     val needsUserCa: Boolean get() = method == FilterMethod.Vpn
 }
+
+enum class VpnTransferPart { Apps, Lists, Rules, TrustedSites, UrlFiltering }

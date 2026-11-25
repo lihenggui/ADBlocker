@@ -37,7 +37,6 @@ import li.mercury.adblocker.core.data.repository.FilterMethodSwitch
 import li.mercury.adblocker.core.data.repository.ListUpdateScheduler
 import li.mercury.adblocker.core.data.repository.ListsRepository
 import li.mercury.adblocker.core.data.repository.ModuleRepository
-import li.mercury.adblocker.core.data.repository.VpnTransferPart
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppIconSource
 import li.mercury.adblocker.core.model.AppInventory
@@ -54,6 +53,7 @@ import li.mercury.adblocker.core.model.SharedAppMember
 import li.mercury.adblocker.core.model.UpdateEvent
 import li.mercury.adblocker.core.model.VpnState
 import li.mercury.adblocker.core.model.VpnStatus
+import li.mercury.adblocker.core.model.VpnTransferPart
 import li.mercury.adblocker.core.model.WorkApp
 import li.mercury.adblocker.core.model.WorkSelection
 import li.mercury.adblocker.core.testing.MainDispatcherRule

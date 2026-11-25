@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::*;
+use crate::list_regex::normalize_pattern;
 
 #[test]
 fn literal_braces_are_quoted_and_repeat_counts_keep_their_meaning() {
@@ -36,7 +36,7 @@ fn literal_braces_are_quoted_and_repeat_counts_keep_their_meaning() {
         ("x}y{", r"x\}y\{"),
     ] {
         assert_eq!(
-            normalize_pattern(pattern).as_deref(),
+            normalize_pattern(pattern, false, false).as_deref(),
             Some(expected),
             "{pattern}"
         );
@@ -44,56 +44,10 @@ fn literal_braces_are_quoted_and_repeat_counts_keep_their_meaning() {
 }
 
 mod properties {
-    use proptest::prelude::*;
-    use regex::RegexBuilder;
-
     use super::*;
-    use crate::limits::MAX_RESPONSE_REGEX;
-    use crate::test_support::arbitrary_text;
-
-    fn pattern() -> impl Strategy<Value = String> {
-        let fragment = prop::sample::select(vec![
-            "^ad",
-            ".*",
-            "(?:x|y)",
-            "[a-z]",
-            r"\{",
-            "{return",
-            "}",
-            "a{1,4}",
-            "[{}]",
-            r"\p{Greek}",
-            r"\w{999999}",
-            r"\b{start}",
-            "a++",
-            "(?=x)",
-            "(",
-            "[",
-            r"\",
-        ]);
-        prop_oneof![
-            arbitrary_text(),
-            prop::collection::vec(fragment, 0..8).prop_map(|pieces| pieces.concat()),
-        ]
-    }
+    use proptest::prelude::*;
 
     proptest! {
-        #[test]
-        fn translating_and_compiling_returns_only_patterns_accepted_at_the_size_limit(
-            pattern in pattern(),
-        ) {
-            let result = compile_pattern(&pattern, (), |translated| {
-                RegexBuilder::new(translated)
-                    .size_limit(MAX_RESPONSE_REGEX)
-                    .build()
-                    .map_err(|_| ())
-            });
-            if let Ok(compiled) = result {
-                prop_assert!(RegexBuilder::new(compiled.as_str())
-                    .size_limit(MAX_RESPONSE_REGEX).build().is_ok());
-            }
-        }
-
         #[test]
         fn patterns_with_no_rewritten_constructs_are_preserved(
             literal in "[a-zA-Z0-9_ -]{0,40}",
@@ -102,8 +56,69 @@ mod properties {
             ]),
         ) {
             let pattern = format!("^{fragment}{literal}$");
-            let translated = normalize_pattern(&pattern);
+            let translated = normalize_pattern(&pattern, false, false);
             prop_assert_eq!(translated.as_deref(), Some(pattern.as_str()));
         }
+    }
+}
+
+#[test]
+fn list_escapes_and_classes_keep_their_javascript_meaning() {
+    for (pattern, matches, misses) in [
+        (
+            r"\<script\>[\s\S]*?\<\/script\>",
+            "<script>\nx</script>",
+            "<script>x",
+        ),
+        (r"\q\_\<\>", "q_<>", "q_a"),
+        (r"^[^]]$", "\n]", "a"),
+        (r"^[]$", "", "a"),
+        (
+            r"^\w{20,40}=\w{20,40}$",
+            "abcdefghijklmnopqrst=abcdefghijklmnopqrst",
+            "ébcdefghijklmnopqrst=abcdefghijklmnopqrst",
+        ),
+        (r"^[\w\d]+$", "a_1", "é١"),
+        (r"^[\W\D]+$", "é١", "1"),
+        (r"^\bword\b$", "word", "Sword"),
+        (r"^é\bword\bé\Bé$", "éwordéé", "éwordéz"),
+        (r"^\s$", "\u{feff}", "\u{85}"),
+        (r"^[\S]$", "\u{85}", "\u{feff}"),
+    ] {
+        let translated = normalize_pattern(pattern, false, false).unwrap();
+        let text = regex::Regex::new(&translated).unwrap();
+        let bytes = regex::bytes::Regex::new(&translated).unwrap();
+        if pattern != r"^[]$" {
+            assert!(text.is_match(matches), "{pattern} on {matches:?}");
+            assert!(
+                bytes.is_match(matches.as_bytes()),
+                "{pattern} on {matches:?}"
+            );
+        } else {
+            assert!(!text.is_match(matches));
+            assert!(!bytes.is_match(matches.as_bytes()));
+        }
+        assert!(!text.is_match(misses), "{pattern} on {misses:?}");
+        assert!(
+            !bytes.is_match(misses.as_bytes()),
+            "{pattern} on {misses:?}"
+        );
+    }
+}
+
+#[test]
+fn case_insensitive_word_classes_keep_non_ascii_case_equivalents_outside_the_set() {
+    use crate::limits::MAX_RESPONSE_REGEX;
+    use crate::list_regex::{RegexInput, compile, matches};
+    for (pattern, matching, missed) in [
+        (r"^[\w-]+$", "asK-_9", "aſK"),
+        (r"^[^\w]+$", "ſKé", "_"),
+        (r"^[\Wq]+$", "ſKqQ", "s"),
+    ] {
+        let regex = compile(pattern, RegexInput::Text, true, false, MAX_RESPONSE_REGEX)
+            .ok()
+            .unwrap();
+        assert!(matches(&regex, matching.as_bytes()), "{pattern}");
+        assert!(!matches(&regex, missed.as_bytes()), "{pattern}");
     }
 }

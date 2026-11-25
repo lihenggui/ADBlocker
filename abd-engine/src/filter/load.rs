@@ -123,6 +123,39 @@ fn compile_requests(
     }
 }
 
+/// Reserve bounded app patterns, address entries and JavaScript bodies with
+/// exceptions first, without changing the order in which lists reach the matcher.
+fn reserve_exceptions<'a>(
+    lists: &'a [(&Path, String)],
+    patterns: &mut Patterns,
+    addresses: &mut AddressProjections,
+    scripts: &mut Scripts<'a>,
+) {
+    for (path, text) in lists {
+        let permissions = SourcePermissions::for_path(path);
+        for line in preprocess::lines(text).filter(|line| rule::may_reserve_exception(line)) {
+            let source =
+                rule::read_with_scripts(line, permissions.scripts().then_some(&mut *scripts));
+            match source.kind {
+                Kind::Address(address) if address.exception => {
+                    // The projection counts drops at the address limit.
+                    let _ = addresses.add(&address);
+                }
+                Kind::App(app) if source.line.starts_with("@@") => {
+                    // A rejected exception has no app patterns to reserve.
+                    let _ = app_rules::validate(&app, patterns);
+                }
+                Kind::Response(response)
+                    if source.line.starts_with("@@") && permissions.allows_response(&response) =>
+                {
+                    let _ = super::validate_response_rule(&response, patterns);
+                }
+                _ => {}
+            }
+        }
+    }
+}
+
 impl Filters {
     /// Loads every `*.txt` list in `dirs`. With `debug` the engine keeps the
     /// text of each rule, to name the one that matched; it costs memory.
@@ -132,10 +165,6 @@ impl Filters {
 
     /// As [`Filters::load`], but from what was kept in `cache` when these
     /// same lists were loaded before, and keeping it there otherwise.
-    ///
-    /// Reading the lists is a tenth of a second of one core at full work
-    /// and tens of megabytes passed through memory, at every start and
-    /// every reload, for lists that change once a day at most.
     pub fn load_cached(dirs: &[&Path], cache: &Path) -> Result<Self> {
         Self::open(dirs, Some(cache), false)
     }
@@ -190,6 +219,7 @@ impl Filters {
         let mut html = HtmlProjections::default();
         let mut patterns = Patterns::default();
         let mut scripts = Scripts::default();
+        reserve_exceptions(&lists, &mut patterns, &mut addresses, &mut scripts);
         for (path, text) in &lists {
             let permissions = SourcePermissions::for_path(path);
             let mut normalized = MatcherList::with_capacity(text.len());
@@ -208,7 +238,7 @@ impl Filters {
                 pages.add(&source);
                 match source.kind {
                     Kind::App(app) => apps.add(&app, &mut patterns),
-                    Kind::Address(address) => {
+                    Kind::Address(address) if !address.exception => {
                         // The projection tracks or rejects entries at its limits.
                         let _ = addresses.add(&address);
                     }

@@ -20,7 +20,10 @@ import android.content.Context
 import android.content.res.Configuration
 import androidx.test.core.app.ApplicationProvider
 import li.mercury.adblocker.core.model.RuleIssue
+import li.mercury.adblocker.core.model.RuleIssueCode
+import li.mercury.adblocker.core.model.RuleIssueCode.Known
 import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.model.RuleIssueReason
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -30,16 +33,16 @@ import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 class RuleIssueTextTest {
-    private fun message(kind: RuleIssueKind, reason: String?) = RuleIssue(1, "", kind, reason).message()
+    private fun message(kind: RuleIssueKind, reason: RuleIssueReason?) = RuleIssue(1, "", kind, reason).message()
 
     @Test
     fun givenRuleReasons_whenMapped_thenKnownDetailsAndUnknownCodesUseLocalizedMessages() {
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_invalid_option, "typo"), message(RuleIssueKind.Invalid, "option:typo"))
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_unsupported_named, "header"), message(RuleIssueKind.Unsupported, "option:header"))
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_inapplicable_named, "popup"), message(RuleIssueKind.Inapplicable, "option:popup"))
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_invalid), message(RuleIssueKind.Invalid, "future:detail"))
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_unsupported_include), message(RuleIssueKind.Unsupported, "include-not-followed"))
-        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_malformed_directive), message(RuleIssueKind.Invalid, "malformed-directive"))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_invalid_option, "typo"), message(RuleIssueKind.Invalid, RuleIssueReason(Known.Option, "typo")))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_unsupported_named, "header"), message(RuleIssueKind.Unsupported, RuleIssueReason(Known.Option, "header")))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_inapplicable_named, "popup"), message(RuleIssueKind.Inapplicable, RuleIssueReason(Known.Option, "popup")))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_invalid), message(RuleIssueKind.Invalid, RuleIssueReason(RuleIssueCode.Other("future"), "detail")))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_unsupported_include), message(RuleIssueKind.Unsupported, RuleIssueReason(Known.IncludeNotFollowed)))
+        assertEquals(RuleIssueMessage(R.string.feature_filters_issue_malformed_directive), message(RuleIssueKind.Invalid, RuleIssueReason(Known.MalformedDirective)))
     }
 
     @Test
@@ -47,9 +50,9 @@ class RuleIssueTextTest {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val defaults = RuleIssueKind.entries.map { message(it, null) }
         val named = listOf(
-            message(RuleIssueKind.Invalid, "option:typo"),
-            message(RuleIssueKind.Unsupported, "scriptlet-no-counterpart:example-scriptlet"),
-            message(RuleIssueKind.Inapplicable, "option:popup"),
+            message(RuleIssueKind.Invalid, RuleIssueReason(Known.Option, "typo")),
+            message(RuleIssueKind.Unsupported, RuleIssueReason(Known.ScriptletNoCounterpart, "example-scriptlet")),
+            message(RuleIssueKind.Inapplicable, RuleIssueReason(Known.Option, "popup")),
         )
         val texts = listOf(Locale.ENGLISH, Locale.SIMPLIFIED_CHINESE).map { locale ->
             val config = Configuration(context.resources.configuration).apply { setLocale(locale) }

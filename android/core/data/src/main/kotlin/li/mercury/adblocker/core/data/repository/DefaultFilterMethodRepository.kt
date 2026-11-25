@@ -34,11 +34,13 @@ import li.mercury.adblocker.core.data.transport.RootTransport
 import li.mercury.adblocker.core.data.vpn.VpnController
 import li.mercury.adblocker.core.model.AppIdentity
 import li.mercury.adblocker.core.model.AppSelections
+import li.mercury.adblocker.core.model.DaemonStatus
 import li.mercury.adblocker.core.model.FilterList
 import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.SavedAppKey
+import li.mercury.adblocker.core.model.VpnTransferPart
 import timber.log.Timber
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -208,12 +210,35 @@ internal class DefaultFilterMethodRepository(
         }
     }.onFailure { Timber.w("method switch: finish: %s", it.javaClass.simpleName) }.isSuccess
 
+    private data class HttpsPreferences(val urlFiltering: Boolean?, val cosmetic: Boolean?)
+
+    private fun DaemonStatus?.httpsPreferences() = HttpsPreferences(this?.urlFiltering, this?.cosmetic)
+
+    private suspend fun carryHttps(
+        to: AbdClient,
+        wanted: HttpsPreferences,
+        current: HttpsPreferences,
+        onMissing: () -> Unit = {},
+        apply: suspend (suspend () -> Unit) -> Unit,
+    ) {
+        suspend fun carry(value: Boolean?, previous: Boolean?, write: suspend (Boolean) -> Unit) {
+            if (value == null) {
+                onMissing()
+            } else if (value != previous) {
+                apply { write(value) }
+            }
+        }
+
+        carry(wanted.urlFiltering, current.urlFiltering, to::setUrlFiltering)
+        carry(wanted.cosmetic, current.cosmetic, to::setCosmetic)
+    }
+
     private data class Configuration(
         val apps: AppSelections,
         val lists: Map<String, Boolean>,
         val rules: String,
         val trusted: Set<String>,
-        val urlFiltering: Boolean,
+        val https: HttpsPreferences,
     )
 
     private suspend fun configuration(client: AbdClient) = Configuration(
@@ -221,12 +246,12 @@ internal class DefaultFilterMethodRepository(
         lists = client.lists().associate { it.url to it.enabled },
         rules = client.userRules(),
         trusted = client.allowList().toSet(),
-        urlFiltering = client.status().urlFiltering == true,
+        https = client.status().httpsPreferences(),
     )
 
     private suspend fun writeRootConfiguration(to: AbdClient, wanted: Configuration, had: Configuration) {
         // The new apps are joined only after their filtering settings are ready.
-        if (wanted.urlFiltering != had.urlFiltering) to.setUrlFiltering(wanted.urlFiltering)
+        carryHttps(to, wanted.https, had.https) { it() }
         for (host in wanted.trusted - had.trusted) to.allow(host)
         for (url in wanted.lists.keys - had.lists.keys) to.addList(url)
         for ((url, enabled) in wanted.lists) {
@@ -359,13 +384,12 @@ internal class DefaultFilterMethodRepository(
         val lists: List<FilterList>?,
         val rules: String?,
         val trusted: List<String>?,
-        val urlFiltering: Boolean?,
-        val cosmetic: Boolean?,
+        val https: HttpsPreferences,
     ) {
         val personal = apps.chosen.filter { SavedAppKey(it).isTransferablePersonalPackage }
         val hasChoices: Boolean
             get() = personal.isNotEmpty() || apps.excluded.isNotEmpty() || apps.scope == FilteringScope.All ||
-                !rules.isNullOrEmpty() || !trusted.isNullOrEmpty() || urlFiltering == false || cosmetic == false ||
+                !rules.isNullOrEmpty() || !trusted.isNullOrEmpty() || https.urlFiltering == false || https.cosmetic == false ||
                 lists.orEmpty().any { !it.enabled || !FilterCatalog.canBeDefault(it.url) }
     }
 
@@ -384,8 +408,7 @@ internal class DefaultFilterMethodRepository(
             lists = suspendRunCatching { from.lists() }.getOrNull(),
             rules = suspendRunCatching { from.userRules() }.getOrNull(),
             trusted = suspendRunCatching { from.allowList() }.getOrNull(),
-            urlFiltering = status?.urlFiltering,
-            cosmetic = status?.cosmetic,
+            https = status.httpsPreferences(),
         )
     }
 
@@ -405,17 +428,8 @@ internal class DefaultFilterMethodRepository(
 
         val current = suspendRunCatching { to.status() }.getOrNull()
         val urlPart = VpnTransferPart.UrlFiltering
-        val urlFiltering = carried.urlFiltering
-        val cosmetic = carried.cosmetic
-        if (urlFiltering == null) {
-            written.failed += urlPart
-        } else if (current?.urlFiltering != urlFiltering) {
-            each(urlPart) { to.setUrlFiltering(urlFiltering) }
-        }
-        if (cosmetic == null) {
-            written.failed += urlPart
-        } else if (current?.cosmetic != cosmetic) {
-            each(urlPart) { to.setCosmetic(cosmetic) }
+        carryHttps(to, carried.https, current.httpsPreferences(), onMissing = { written.failed += urlPart }) { write ->
+            each(urlPart, write)
         }
 
         val trustedPart = VpnTransferPart.TrustedSites

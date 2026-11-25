@@ -96,17 +96,28 @@ pub(crate) const MAX_XPATH_TEXT_WORK: usize = 16 << 20;
 /// The most heap used by one response NFA. Counted Unicode repetitions
 /// expand into UTF-8 transitions for each repetition.
 pub(crate) const MAX_RESPONSE_REGEX: usize = 512 << 10;
+/// Scratch required by the fallback engines before scanning a body.
+/// Large state sets can outgrow the lazy DFA and make fallback take too long.
+pub(crate) const MAX_REGEX_FALLBACK_SCRATCH: usize = 128 << 10;
+pub(crate) const MAX_REGEX_FALLBACK_REPEAT: usize = 4096;
+/// Maximum lazy-DFA workspace for an individual trusted response expression.
+pub(crate) const MAX_RESPONSE_REGEX_CACHE: usize = 2 << 20;
 /// Source size, selector depth, and generation limits for HTML filtering.
 pub(crate) const MAX_HTML_RULE: usize = 32 << 10;
 pub(crate) const MAX_HTML_CHAIN: usize = 32;
 pub(crate) const MAX_HTML_CONDITIONS: usize = 32;
 pub(crate) const MAX_HTML_RULES: usize = 4096;
 pub(crate) const MAX_HTML_REGEXES: usize = 512;
+pub(crate) const MAX_HTML_REGEX: usize = 64 << 10;
+pub(crate) const MAX_HTML_REGEX_BYTES: usize = 8 << 20;
 pub(crate) const MAX_HTML_RULES_PER_PAGE: usize = 128;
 /// A deeper subtree is skipped. Exhausting either work limit abandons the rewrite.
 pub(crate) const MAX_HTML_DEPTH: usize = 128;
 pub(crate) const MAX_HTML_ELEMENTS: usize = 100_000;
-pub(crate) const MAX_HTML_DECODED: usize = 4 << 20;
+pub(crate) const MAX_HTML_DECODED: usize = MAX_REWRITE_BODY;
+/// The most data and time spent draining a withheld response for connection reuse.
+pub(crate) const MAX_BLOCKED_DRAIN: usize = 256 << 10;
+pub(crate) const BLOCKED_DRAIN_WAIT: std::time::Duration = std::time::Duration::from_millis(500);
 /// The largest original response that can be rewritten on a phone.
 pub(crate) const MAX_REWRITE_BODY: usize = 2 << 20;
 /// The most lines in a playlist that can be edited, including its header.

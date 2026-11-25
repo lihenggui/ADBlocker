@@ -29,6 +29,7 @@ import li.mercury.adblocker.core.model.FilterMethod
 import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.ModuleState
 import li.mercury.adblocker.core.model.UserData
+import li.mercury.adblocker.core.model.VpnTransferPart
 import li.mercury.adblocker.core.testing.unexpected
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
@@ -470,12 +471,17 @@ class FilterMethodRepositoryTest {
     }
 
     @Test
-    fun givenVpnUrlFilteringOff_whenSwitchingToRoot_thenThePreferenceIsCarried() = runTest {
-        fixture.userData.setFilterMethod(FilterMethod.Vpn)
-        val root = FakeAbd(urlFiltering = true, cosmetic = true)
-        fixture.repository(root, FakeAbd(urlFiltering = false, cosmetic = false)).switchTo(FilterMethod.Root)
-        assertFalse(root.urlFiltering)
-        assertTrue(root.cosmetic)
+    fun givenVpnFilteringPreferences_whenSwitchingToRoot_thenBothAreCarriedIndependently() = runTest {
+        for (urlFiltering in listOf(false, true)) {
+            for (cosmetic in listOf(false, true)) {
+                fixture.userData.setFilterMethod(FilterMethod.Vpn)
+                val root = FakeAbd(urlFiltering = !urlFiltering, cosmetic = !cosmetic)
+                val vpn = FakeAbd(urlFiltering = urlFiltering, cosmetic = cosmetic)
+                assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, vpn).switchTo(FilterMethod.Root))
+                assertEquals(urlFiltering, root.urlFiltering)
+                assertEquals(cosmetic, root.cosmetic)
+            }
+        }
     }
 
     @Test

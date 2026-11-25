@@ -30,7 +30,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import li.mercury.adblocker.core.data.repository.VpnTransferPart
 import li.mercury.adblocker.core.designsystem.component.MarkDefaults
 import li.mercury.adblocker.core.designsystem.component.MarkState
 import li.mercury.adblocker.core.designsystem.component.StatusMark
@@ -43,6 +42,7 @@ import li.mercury.adblocker.core.ui.StepAction
 import li.mercury.adblocker.core.ui.StepPage
 import li.mercury.adblocker.core.ui.failureText
 import li.mercury.adblocker.core.ui.formatCount
+import li.mercury.adblocker.core.ui.vpnTransferMessages
 import li.mercury.adblocker.feature.onboarding.impl.InstallStage
 import li.mercury.adblocker.feature.onboarding.impl.InstallState
 import li.mercury.adblocker.feature.onboarding.impl.OnboardingUiState
@@ -104,21 +104,12 @@ internal fun ColumnScope.StartVpn(state: OnboardingUiState, onStart: () -> Unit,
     ) {
         RevealNotNull(state.vpnTransferFailure) { failure ->
             Column {
-                if (failure.failed.isEmpty()) Hint(stringResource(R.string.feature_onboarding_vpn_transfer_incomplete), centered = true)
-                for (part in failure.failed.sorted()) Hint(stringResource(part.failureText()), centered = true)
+                for (message in vpnTransferMessages(failure.failed)) Hint(stringResource(message), centered = true)
             }
         }
         // A failure takes the parts away; the words above say what went wrong.
         Reveal(hasApps && install !is InstallState.Failed) { VpnParts(state, install, done, lists) }
     }
-}
-
-private fun VpnTransferPart.failureText() = when (this) {
-    VpnTransferPart.Apps -> R.string.feature_onboarding_vpn_transfer_apps
-    VpnTransferPart.Lists -> R.string.feature_onboarding_vpn_transfer_lists
-    VpnTransferPart.Rules -> R.string.feature_onboarding_vpn_transfer_rules
-    VpnTransferPart.TrustedSites -> R.string.feature_onboarding_vpn_transfer_trusted_sites
-    VpnTransferPart.UrlFiltering -> R.string.feature_onboarding_vpn_transfer_url_filtering
 }
 
 /** The button the VPN step shows. Finish turning on keeps its place; other buttons fade through. */

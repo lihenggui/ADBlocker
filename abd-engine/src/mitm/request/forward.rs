@@ -15,8 +15,11 @@
 use std::future::Future;
 use std::sync::Arc;
 
-use hyper::body::Incoming;
-use hyper::header::{ACCEPT_ENCODING, CONTENT_SECURITY_POLICY, HeaderName, HeaderValue, UPGRADE};
+use http_body_util::BodyExt;
+use hyper::body::{Body as _, Incoming};
+use hyper::header::{
+    ACCEPT_ENCODING, CONNECTION, CONTENT_SECURITY_POLICY, HeaderName, HeaderValue, UPGRADE,
+};
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
 
@@ -24,6 +27,7 @@ use super::judgement::{MatchedRequest, RequestDecision, RequestKind, response_ki
 use super::response::{empty, hide, hiding_for};
 use super::{Body, Shared, Upstream, trace};
 use crate::filter::Filters;
+use crate::limits::{BLOCKED_DRAIN_WAIT, MAX_BLOCKED_DRAIN};
 use crate::mitm::upstream::LINGER_TIME;
 use crate::relay;
 use crate::rewrite::RewritePlan;
@@ -121,29 +125,29 @@ async fn forward_response(
             return empty(StatusCode::BAD_GATEWAY);
         }
     };
-    let html_document = pending.is_none()
-        || crate::media_type::read(resp.headers()).is_some_and(|mime| {
-            mime.eq_ignore_ascii_case("text/html")
-                || mime.eq_ignore_ascii_case("application/xhtml+xml")
-        });
+    let mime = crate::media_type::read(resp.headers());
+    let is_html = mime.is_some_and(html::takes);
+    let xhtml = mime.is_some_and(|mime| mime.eq_ignore_ascii_case("application/xhtml+xml"));
+    let csp_document = pending.is_none() || is_html;
     // A protocol switch has no response representation to classify.
     if let Some(pending) = pending
         && resp.status() != StatusCode::SWITCHING_PROTOCOLS
         && let Some(kind) = response_kind(resp.headers())
         && let Some(blocked) = pending.finish(kind, &mut rewrite)
     {
-        return blocked;
+        return finish_block(upstream, resp, blocked).await;
     }
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
-    let html = (html_document && !rewrite.body.html.is_empty()).then(|| html::Action {
+    let html = (is_html && !rewrite.body.html.is_empty()).then(|| html::Action {
         rules: std::mem::take(&mut rewrite.body.html),
         charset: crate::html::transport_charset(resp.headers()).map(str::to_owned),
+        xhtml,
     });
     // The verdict, upgrade handling and HTML charset use the original head.
     // Remove headers before the body rewrite and cosmetic code use the head
     // for the app. Content-Type, framing, encoding and CSP are protected.
     if resp.status() != StatusCode::SWITCHING_PROTOCOLS {
-        if html_document && let Some(csp) = rewrite.csp.take() {
+        if csp_document && let Some(csp) = rewrite.csp.take() {
             resp.headers_mut().append(CONTENT_SECURITY_POLICY, csp);
         }
         for name in rewrite.response_headers.drain(..) {
@@ -152,6 +156,50 @@ async fn forward_response(
         cookie::response(resp.headers_mut(), rewrite.cookie_rules());
     }
     crate::rewrite::wrap(resp, rewrite.body.actions, html, url)
+}
+
+async fn finish_block(
+    upstream: &Upstream,
+    withheld: Response<Incoming>,
+    mut reply: Response<Body>,
+) -> Response<Body> {
+    let closing = withheld.headers().get_all(CONNECTION).iter().any(|value| {
+        value.to_str().is_ok_and(|text| {
+            text.split(',')
+                .any(|token| token.trim_ascii().eq_ignore_ascii_case("close"))
+        })
+    });
+    let drained = !closing
+        && tokio::time::timeout(BLOCKED_DRAIN_WAIT, drain(withheld.into_body()))
+            .await
+            .unwrap_or(false);
+    // Each app connection has one verified upstream and shares its lifetime.
+    // Tell HTTP/1 clients to reconnect if that upstream cannot be reused.
+    // HTTP/2 can discard the body by resetting just its stream.
+    if !drained && matches!(upstream, Upstream::H1(_)) {
+        reply
+            .headers_mut()
+            .insert(CONNECTION, HeaderValue::from_static("close"));
+    }
+    reply
+}
+
+async fn drain(mut body: Incoming) -> bool {
+    let mut left = MAX_BLOCKED_DRAIN;
+    while body.size_hint().lower() <= left as u64 {
+        match body.frame().await {
+            Some(Ok(frame)) => {
+                let bytes = frame.data_ref().map_or(0, bytes::Bytes::len);
+                let Some(remaining) = left.checked_sub(bytes) else {
+                    return false;
+                };
+                left = remaining;
+            }
+            None => return true,
+            Some(Err(_)) => return false,
+        }
+    }
+    false
 }
 
 async fn forward(

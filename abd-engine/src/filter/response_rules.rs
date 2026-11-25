@@ -194,24 +194,28 @@ pub(super) struct ResponseRules {
     compiled: Vec<Arc<ResponseAction>>,
 }
 
-/// Keep the alphabetically first rules, before checking their actions.
+/// Keep exceptions before actions, and use text order within each group.
 #[derive(Default)]
 pub(super) struct ResponseProjections<'a> {
-    lines: BTreeMap<Cow<'a, str>, Option<Parsed<'a>>>,
+    lines: BTreeMap<(bool, Cow<'a, str>), Option<Parsed<'a>>>,
 }
 
 impl<'a> ResponseProjections<'a> {
     pub(super) fn add(&mut self, line: &'a str, response: ResponseRule<'a>) {
         let line = response.normalized(line);
-        if line.len() <= MAX_RESPONSE_RULE
-            && (self.lines.len() < MAX_RESPONSE_RULES
-                || self
-                    .lines
-                    .last_key_value()
-                    .is_some_and(|(last, _)| &line < last))
-            && !self.lines.contains_key(line.as_ref())
+        if line.len() > MAX_RESPONSE_RULE {
+            return;
+        }
+        let key = (!line.starts_with("@@"), line);
+        if self.lines.len() < MAX_RESPONSE_RULES
+            || self
+                .lines
+                .last_key_value()
+                .is_some_and(|(last, _)| &key < last)
         {
-            self.lines.insert(line, Parsed::from_rule(&response).ok());
+            self.lines
+                .entry(key)
+                .or_insert_with(|| Parsed::from_rule(&response).ok());
             if self.lines.len() > MAX_RESPONSE_RULES {
                 self.lines.pop_last();
             }

@@ -30,7 +30,14 @@ pub fn check(text: &str, permissions: SourcePermissions) -> RulesCheck {
     let mut checker = Checker::default();
     let mut rules = 0;
     let mut issues = Vec::new();
-    for ((number, line), directive) in preprocess::scan(text) {
+    let is_exception = |line: &str| {
+        rule::may_reserve_exception(line) || line.contains("$@$") || line.contains("#@#^")
+    };
+    let lines =
+        preprocess::scan(text).filter(|((_, line), issue)| issue.is_ok() && is_exception(line));
+    let rest =
+        preprocess::scan(text).filter(|((_, line), issue)| issue.is_err() || !is_exception(line));
+    for ((number, line), directive) in lines.chain(rest) {
         let reason = match directive {
             Err(issue) => issue.into(),
             Ok(()) => {
@@ -63,6 +70,7 @@ pub fn check(text: &str, permissions: SourcePermissions) -> RulesCheck {
 struct Checker<'a> {
     patterns: Patterns,
     addresses: AddressProjections,
+    html: rule::html::Budget,
     scripts: Scripts<'a>,
 }
 
@@ -73,7 +81,8 @@ impl Checker<'_> {
         permissions: SourcePermissions,
     ) -> Result<(), RuleReason> {
         match &source.kind {
-            Kind::Comment | Kind::Html(_) => Ok(()),
+            Kind::Comment => Ok(()),
+            Kind::Html(rule) => Ok(self.html.keep(&rule.compiled)?),
             Kind::Address(address) => self.addresses.add(address),
             Kind::Response(response) => {
                 if permissions.allows_response(response) {

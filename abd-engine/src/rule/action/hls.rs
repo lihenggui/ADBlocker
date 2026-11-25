@@ -16,13 +16,13 @@
 
 use bytes::Bytes;
 use hyper::Uri;
-use regex::{Regex, RegexBuilder};
+use regex_automata::meta::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
+use crate::list_regex::{self, RegexInput};
 use crate::playlist;
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::compile_pattern;
 
 mod pattern;
 
@@ -105,20 +105,16 @@ impl Spec {
 }
 
 fn compile(value: &str) -> Result<Compiled, Rejection> {
-    let compile = |pattern: &str, insensitive| {
-        RegexBuilder::new(pattern)
-            .case_insensitive(insensitive)
-            .size_limit(MAX_RESPONSE_REGEX)
-            .dfa_size_limit(0)
-            .build()
-            .map_err(|_| Rejection::UnsupportedPattern)
-    };
     let (regex, target) = match fields(value)? {
         Value::Basic(value) => (
-            compile(
+            list_regex::compile_normalized(
                 &pattern::translate(&unescape(value, &['/', ',', '$']))?,
+                RegexInput::Text,
                 true,
-            )?,
+                false,
+                MAX_RESPONSE_REGEX,
+            )
+            .map_err(|_| Rejection::UnsupportedPattern)?,
             if value.starts_with("||") {
                 Target::HostAnchoredUrl
             } else {
@@ -130,11 +126,14 @@ fn compile(value: &str) -> Result<Compiled, Rejection> {
             insensitive,
             tags,
         } => (
-            compile_pattern(
+            list_regex::compile(
                 &unescape(pattern, &[',', '$']),
-                Rejection::UnsupportedPattern,
-                |translated| compile(translated, insensitive),
-            )?,
+                RegexInput::Text,
+                insensitive,
+                false,
+                MAX_RESPONSE_REGEX,
+            )
+            .map_err(|_| Rejection::UnsupportedPattern)?,
             if tags { Target::Tag } else { Target::Url },
         ),
     };
@@ -142,19 +141,18 @@ fn compile(value: &str) -> Result<Compiled, Rejection> {
 }
 
 impl Compiled {
+    pub(super) fn regex_bytes(&self) -> usize {
+        self.regex.memory_usage()
+    }
+
     fn matches(&self, text: &str) -> bool {
         match self.target {
-            Target::HostAnchoredUrl => {
-                pattern::from_host(text).is_some_and(|url| self.regex.is_match(url))
-            }
-            Target::Url | Target::Tag => self.regex.is_match(text),
+            Target::HostAnchoredUrl => pattern::from_host(text)
+                .is_some_and(|url| list_regex::matches(&self.regex, url.as_bytes())),
+            Target::Url | Target::Tag => list_regex::matches(&self.regex, text.as_bytes()),
         }
     }
 }
-
-/// Charge the full per-expression allowance because regex does not expose
-/// the compiled heap. Disabling the lazy DFA avoids a retained DFA cache.
-pub(super) const REGEX_CHARGE: usize = MAX_RESPONSE_REGEX;
 
 pub(crate) fn takes(mime: &str) -> bool {
     matches!(
@@ -252,4 +250,21 @@ mod tests {
         }
         assert!(Spec("x".repeat(MAX_RESPONSE_RULE + 1)).compile().is_err());
     }
+}
+
+#[test]
+fn an_expensive_playlist_expression_is_rejected_or_finishes_within_the_work_budget() {
+    let Ok(rule) = compile("/[ab]*a[ab]{5000}c/") else {
+        return;
+    };
+    let body = Bytes::from(format!("#EXTM3U\n{}", "a".repeat((2 << 20) - 8)));
+    let base = "https://site.test/playlist.m3u8".parse().unwrap();
+    let start = std::time::Instant::now();
+    assert_eq!(
+        apply(body.clone(), &base, &[&rule], &|| {
+            start.elapsed() < crate::limits::REWRITE_WORK
+        }),
+        Some(body)
+    );
+    assert!(start.elapsed() < std::time::Duration::from_secs(3));
 }

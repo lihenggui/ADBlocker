@@ -323,20 +323,34 @@ impl<B: Body<Data = Bytes> + Unpin> Prefix<B> {
         headers: &mut HeaderMap,
         script: &str,
         css: Option<&str>,
+        rewriting: bool,
     ) -> Preparation {
         let mut held = Vec::new();
-        let deadline = Instant::now() + HEAD_WAIT;
+        // The rewrite applies its own collection and work deadlines before
+        // it can deliver anything. Start our short head wait at that point.
+        let mut deadline = (!rewriting).then(|| Instant::now() + HEAD_WAIT);
         let header_charset = transport_charset(headers);
         let head = loop {
             match inspect(&held, header_charset) {
                 Inspect::Ready(head) => break Some(head),
                 Inspect::Skip => break None,
-                Inspect::More if held.len() == MAX_HELD || Instant::now() >= deadline => {
+                Inspect::More
+                    if held.len() == MAX_HELD
+                        || deadline.is_some_and(|end| Instant::now() >= end) =>
+                {
                     break None;
                 }
                 Inspect::More => {}
             }
-            match timeout_at(deadline, self.inner.frame()).await {
+            let frame = match deadline {
+                Some(end) => timeout_at(end, self.inner.frame()).await,
+                None => {
+                    let frame = self.inner.frame().await;
+                    deadline = Some(Instant::now() + HEAD_WAIT);
+                    Ok(frame)
+                }
+            };
+            match frame {
                 Ok(Some(Ok(frame))) => match frame.into_data() {
                     Ok(mut data) => {
                         let take = data.len().min(MAX_HELD - held.len());
@@ -418,7 +432,8 @@ mod tests {
         let mut body = Prefix::new(Full::new(Bytes::from(format!("{start}{rest}"))));
         let script = "window.fixture = 42;\n";
         assert!(matches!(
-            body.prepare(&mut headers, script, Some("div{}")).await,
+            body.prepare(&mut headers, script, Some("div{}"), false)
+                .await,
             Preparation::Injected
         ));
         let hash = source(script);
@@ -460,7 +475,7 @@ mod tests {
             );
             let mut body = Prefix::new(Full::new(Bytes::from_static(before.as_bytes())));
             assert!(matches!(
-                body.prepare(&mut headers, "window.fixture = 42", Some("div{}"))
+                body.prepare(&mut headers, "window.fixture = 42", Some("div{}"), false)
                     .await,
                 Preparation::CssOnly
             ));
@@ -481,7 +496,7 @@ mod tests {
         let mut body = Prefix::new(Full::new(Bytes::from(format!("{start}{rest}"))));
         let script = "window.fixture = 42;";
         assert!(matches!(
-            body.prepare(&mut headers, script, None).await,
+            body.prepare(&mut headers, script, None, false).await,
             Preparation::Injected
         ));
         assert_eq!(
@@ -510,7 +525,7 @@ mod tests {
             )));
             let script = "window.fixture = 42;";
             assert!(matches!(
-                body.prepare(&mut headers, script, None).await,
+                body.prepare(&mut headers, script, None, false).await,
                 Preparation::Injected
             ));
             assert_eq!(
@@ -548,7 +563,7 @@ mod tests {
             );
             let mut body = Prefix::new(Full::new(Bytes::from_static(page)));
             assert!(matches!(
-                body.prepare(&mut headers, script, None).await,
+                body.prepare(&mut headers, script, None, false).await,
                 Preparation::CssOnly
             ));
             assert_eq!(body.collect().await.unwrap().to_bytes(), page.as_slice());
@@ -618,7 +633,8 @@ mod tests {
         let before = format!("{}<head></head>", " ".repeat(MAX_HELD));
         let mut body = Prefix::new(Full::new(Bytes::from(before.clone())));
         assert!(matches!(
-            body.prepare(&mut HeaderMap::new(), "script", None).await,
+            body.prepare(&mut HeaderMap::new(), "script", None, false)
+                .await,
             Preparation::NoHead
         ));
         assert_eq!(body.collect().await.unwrap().to_bytes(), before);

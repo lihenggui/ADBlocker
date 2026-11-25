@@ -14,12 +14,12 @@
 
 //! Cookie selectors and modifications from filter rules.
 
-use regex::{Regex, RegexBuilder};
+use regex_automata::meta::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
+use crate::list_regex::{self, RegexInput};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::normalize_pattern;
 
 mod date;
 mod headers;
@@ -118,9 +118,10 @@ fn fields(value: &str) -> Result<(Selector, Option<&str>), Rejection> {
         } else {
             Some(tail.strip_prefix(';').ok_or(Rejection::InvalidExpression)?)
         };
-        let pattern = normalize_pattern(&unescape(pattern, &['/', ',', '$']))
-            .ok_or(Rejection::InvalidExpression)?;
-        return Ok((Selector::Pattern(pattern), attributes));
+        return Ok((
+            Selector::Pattern(unescape(pattern, &['/', ',', '$'])),
+            attributes,
+        ));
     }
     let (name, attributes) = match value.split_once(';') {
         Some((name, attributes)) => (name.trim_end(), Some(attributes)),
@@ -199,12 +200,14 @@ impl Spec {
             Selector::Name(_) => return Err(Rejection::InvalidName),
             Selector::Pattern(pattern) if pattern.len() <= MAX_RESPONSE_RULE * 2 => {
                 Matcher::Pattern(
-                    RegexBuilder::new(pattern)
-                        .unicode(false)
-                        .size_limit(MAX_RESPONSE_REGEX)
-                        .dfa_size_limit(0)
-                        .build()
-                        .map_err(|_| Rejection::InvalidExpression)?,
+                    list_regex::compile(
+                        pattern,
+                        RegexInput::Cookie,
+                        false,
+                        false,
+                        MAX_RESPONSE_REGEX,
+                    )
+                    .map_err(|_| Rejection::InvalidExpression)?,
                 )
             }
             Selector::Pattern(_) => return Err(Rejection::TooLong),
@@ -226,18 +229,17 @@ impl Spec {
 
 impl Compiled {
     pub(super) fn regex_bytes(&self) -> usize {
-        if matches!(self.selector, Matcher::Pattern(_)) {
-            MAX_RESPONSE_REGEX
-        } else {
-            0
+        match &self.selector {
+            Matcher::Pattern(regex) => regex.memory_usage(),
+            _ => 0,
         }
     }
 
-    fn matches(&self, name: &str) -> bool {
+    fn matches(&self, name: &[u8]) -> bool {
         match &self.selector {
             Matcher::Any => true,
-            Matcher::Name(expected) => expected == name,
-            Matcher::Pattern(regex) => regex.is_match(name),
+            Matcher::Name(expected) => expected.as_bytes() == name,
+            Matcher::Pattern(regex) => list_regex::matches(regex, name),
         }
     }
 }

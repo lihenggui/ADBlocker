@@ -75,7 +75,6 @@ object DemoData {
             ipv6 = true,
             listsUpdated = ago(60 * 5),
             urlFiltering = true,
-            // Off until the user turns it on: it changes the pages.
             cosmetic = true,
         )
 

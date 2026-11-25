@@ -86,6 +86,7 @@ codes! {
     HtmlResponseHeader => Unsupported, "html-response-header";
     HtmlRegexFlags => Unsupported, "html-regex-flags";
     HtmlRegex => Invalid, "html-regex";
+    HtmlGenerationLimit => Unsupported, "html-generation-limit";
     HtmlLookaround => Unsupported, "html-lookaround";
     HtmlLength => Invalid, "html-length";
     JavascriptNoDomains => Invalid, "javascript-no-domains";

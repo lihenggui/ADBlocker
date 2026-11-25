@@ -53,8 +53,8 @@ whom, and whether it is one to carry at all (`capture::admitted`,
   (`capture::as_app`). Routing, VPNs, netd's per-app firewall and counters,
   and other modules' rules all go by these. Do not create one any other
   way, and keep nothing between the two halves of `as_app`.
-- Bodies are streamed except for eligible responses matched by response
-  rules. Up to 2 MiB of an original body can be held whole.
+- Bodies are streamed except for eligible responses matched by body rewrite
+  or HTML filtering rules. Up to 2 MiB of an original body can be held whole.
 - `Hooks::dial` exists so that the tests can connect without root. Do not
   give `conduct` another way to reach the network.
 - A handshake the client ends with an alert about our certificate pins the
@@ -155,24 +155,26 @@ and `dns/rules.rs` its lookups.
 
 - The full engine (`filter.rs`) judges decrypted requests. A separate
   engine holds the rules that block a host whatever the request, for
-  connections that stay encrypted. Another engine matches response rules
-  from trusted lists and the user's own rules. A matching response rule
-  takes precedence over a request-level block.
+  connections that stay encrypted. Another engine matches response rules.
+  A matching replacement rule takes precedence over a request-level block.
 - Preserve unknown page origin in both request matching and diagnostics.
-- The lists come from the network: untrusted input. They select what is
-  blocked, and what is hidden when page element hiding is on. Only trusted
-  lists and the user's own rules can rewrite a text response.
+- Lists are untrusted input. Any list can block traffic, hide or cut HTML
+  elements, remove cookies and query parameters, and add Content Security
+  Policies. Approved lists and the user's rules can also rewrite text, prune
+  JSON and XML, edit playlists, remove headers, transform URLs, and supply
+  JavaScript bodies.
   `abd-engine/src/update/` never replaces a list with what does not look like one.
 
 ## Hiding
 
 `cosmetic.rs` puts styles and scripts into pages after any response rewrite.
 
-- On by default and disabled by `cosmetic off` in the settings. It applies
-  only to whole, uncompressed HTML pages requested as documents and only
-  where the head of the page plainly begins
-  (`cosmetic::place`). Anything else is passed on as it came: when in
-  doubt, change nothing.
+- Page element hiding is on by default and disabled by `cosmetic off` in
+  the settings. Style and script injection require whole, uncompressed HTML
+  pages requested as documents or subdocuments and a recognizable head
+  (`cosmetic::place`). HTML removal also applies to eligible responses to
+  requests of unknown type when the rule names the requested host and the
+  response is HTML.
 - A selector from a list goes into a page only through `cosmetic::style`.
   Whatever else is ever taken from a list for a page needs the same: a
   test that a hostile list cannot end the element or begin another.
@@ -186,9 +188,10 @@ and `dns/rules.rs` its lookups.
   changed for it: the style carries the page's own nonce or is left out
   (`cosmetic::inline`). The names are gathered without reading the page as
   a browser does; a name taken for one that is not hides nothing.
-- The page is not held: `MAX_HELD` of its beginning at most, until the
-  place is known. The names kept of it are bounded (`MAX_NAMES`), and so is
-  a tag that comes in pieces.
+- Injection holds at most `MAX_HELD` of the page's beginning while it
+  locates the head. A body edit can hold the original under its own limits.
+  The names kept by injection are bounded (`MAX_NAMES`), as is a tag that
+  comes in pieces.
 - A change to what is put into pages, or to which pages, is said in
   SECURITY.md in the same commit.
 

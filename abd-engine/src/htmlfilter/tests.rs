@@ -30,7 +30,7 @@ fn rules(text: &str) -> Vec<Arc<Compiled>> {
 fn check(selector: &str, html: &str, expected: &str) {
     let body = Bytes::copy_from_slice(html.as_bytes());
     assert_eq!(
-        apply(body, &rules(selector), None, &|| true).unwrap(),
+        apply(body, &rules(selector), None, false, &|| true).unwrap(),
         expected,
         "{selector}"
     );
@@ -291,12 +291,11 @@ fn every_raw_element_ends_only_at_its_own_end_tag() {
 fn void_and_self_closed_elements_have_empty_content() {
     for name in [
         "area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "source",
-        "track", "wbr", "thing",
+        "track", "wbr",
     ] {
-        let slash = if name == "thing" { "/" } else { "" };
         check(
             &format!("$${name}[max-length=0]"),
-            &format!("<main><{name}{slash}>keep</main>"),
+            &format!("<main><{name}>keep</main>"),
             "<main>keep</main>",
         );
     }
@@ -481,7 +480,7 @@ fn a_gbk_page_matches_chinese_content_and_counts_characters_not_bytes() {
         let body = make(&format!("{start}<div>广告</div><div>内容</div></body>"));
         let selected = rules(r#"$$div[tag-content="广告"][min-length=2][max-length=2]"#);
         assert_eq!(
-            apply(body, &selected, header, &|| true).unwrap(),
+            apply(body, &selected, header, false, &|| true).unwrap(),
             make(&format!("{start}<div>内容</div></body>"))
         );
     }
@@ -499,7 +498,7 @@ fn utf_16_and_utf_32_boms_and_declarations_pass_through() {
         (b"<meta charset=utf-16><div>ad</div>", None),
     ] {
         let original = Bytes::from_static(bytes);
-        let result = apply(original.clone(), &rules("$$div"), label, &|| true).unwrap();
+        let result = apply(original.clone(), &rules("$$div"), label, false, &|| true).unwrap();
         assert_eq!(result.as_ptr(), original.as_ptr());
         assert_eq!(result, original);
     }
@@ -523,19 +522,13 @@ fn excessive_element_visits_cancel_even_an_earlier_cut() {
         "<div>first</div>{}",
         "<br>".repeat(MAX_HTML_ELEMENTS)
     ));
-    assert!(apply(body, &rules("$$div"), None, &|| true).is_none());
+    assert!(apply(body, &rules("$$div"), None, false, &|| true).is_none());
 }
 
 #[test]
-fn excessive_total_content_decoding_cancels_the_whole_edit() {
-    let depth = 8;
-    let body = Bytes::from(format!(
-        "{}{}{}",
-        "<div>".repeat(depth),
-        "x".repeat(MAX_HTML_DECODED / depth + 1),
-        "</div>".repeat(depth)
-    ));
-    assert!(apply(body, &rules("$$div:contains(y)"), None, &|| true).is_none());
+fn an_oversized_document_is_outside_the_decode_budget() {
+    let body = Bytes::from(format!("<div>{}</div>", "x".repeat(MAX_HTML_DECODED)));
+    assert!(apply(body, &rules("$$div:contains(x)"), None, false, &|| true).is_none());
 }
 
 #[test]
@@ -550,6 +543,7 @@ fn cancellation_discards_pending_cuts() {
             Bytes::from_static(b"<div>ad</div><p>keep</p>"),
             &rules("$$div"),
             None,
+            false,
             &check
         )
         .is_none()
@@ -560,7 +554,7 @@ fn cancellation_discards_pending_cuts() {
 fn unchanged_results_return_the_original_allocation() {
     let original = Bytes::from(b"<p>kept</p>".to_vec());
     for selected in [Vec::new(), rules("$$div")] {
-        let passed = apply(original.clone(), &selected, None, &|| true).unwrap();
+        let passed = apply(original.clone(), &selected, None, false, &|| true).unwrap();
         assert_eq!(passed.as_ptr(), original.as_ptr());
         assert_eq!(passed, original);
     }
@@ -640,7 +634,7 @@ mod properties {
             content: Vec::new(),
         })];
         assert_eq!(
-            apply(input.clone(), &rules, Some("utf-8"), &|| true),
+            apply(input.clone(), &rules, Some("utf-8"), false, &|| true),
             Some(input)
         );
     }
@@ -661,7 +655,7 @@ mod properties {
                     content: text.into_iter().map(|s| Content::Contains(s.to_owned())).collect(),
                 })
             }).collect();
-            if let Some(output) = apply(input.clone(), &rules, Some("utf-8"), &|| true) {
+            if let Some(output) = apply(input.clone(), &rules, Some("utf-8"), false, &|| true) {
                 assert_removal(&input, &output)?;
             }
         }
@@ -673,7 +667,7 @@ mod properties {
                 content: Vec::new(),
             });
             for rules in [&[][..], &[absent][..]] {
-                prop_assert_eq!(apply(input.clone(), rules, Some("utf-8"), &|| true), Some(input.clone()));
+                prop_assert_eq!(apply(input.clone(), rules, Some("utf-8"), false, &|| true), Some(input.clone()));
             }
         }
 
@@ -692,9 +686,75 @@ mod properties {
                 steps: vec![selector(tag, marked)],
                 content: Vec::new(),
             })).collect();
-            if let Some(output) = apply(input, &rules, Some("utf-8"), &|| true) {
-                prop_assert_eq!(apply(output.clone(), &rules, Some("utf-8"), &|| true), Some(output));
+            if let Some(output) = apply(input, &rules, Some("utf-8"), false, &|| true) {
+                prop_assert_eq!(apply(output.clone(), &rules, Some("utf-8"), false, &|| true), Some(output));
             }
         }
+    }
+}
+
+#[test]
+fn nested_content_tests_do_not_spend_the_decode_budget_again() {
+    let content = "x".repeat(374_000);
+    let start = "<div>".repeat(12);
+    let end = "</div>".repeat(12);
+    check(
+        "##^script:has-text(ads=1)\n##^div:has-text(nevermatches)",
+        &format!("{start}<script>ads=1</script>{content}{end}"),
+        &format!("{start}{content}{end}"),
+    );
+}
+
+#[test]
+fn trailing_solidus_closes_void_and_foreign_elements_only() {
+    check(
+        "site.test##^div[class=ad]",
+        "<div class='ad'/>remove</div><p>keep</p>",
+        "<p>keep</p>",
+    );
+    check("site.test##^img", "<img src='x'/>keep", "keep");
+    check(
+        "site.test##^svg > path",
+        "<svg><path d='x'/><circle/></svg><p>keep</p>",
+        "<svg><circle/></svg><p>keep</p>",
+    );
+}
+
+#[test]
+fn ublock_attribute_operators_use_css_matching() {
+    for (operator, needle, matching, kept) in [
+        ("=", "ad", "ad", "download"),
+        ("~=", "ad", "lead ad tail", "lead ad-box"),
+        ("|=", "ad", "ad-box", "adbox"),
+        ("^=", "ad", "adbox", "download"),
+        ("$=", "ad", "download", "adbox"),
+        ("*=", "ad", "download", "keep"),
+    ] {
+        let keep = format!("<div class='{kept}'>keep</div>");
+        check(
+            &format!(r#"site.test##^div[class{operator}"{needle}"]"#),
+            &format!("<div class='{matching}'>remove</div>{keep}"),
+            &keep,
+        );
+    }
+}
+
+#[test]
+fn an_expensive_html_expression_is_rejected_or_finishes_within_the_work_budget() {
+    let line = "site.test##^script:has-text(/[ab]*a[ab]{5000}c/)";
+    if let Kind::Html(rule) = rule::read(line).kind {
+        let start = std::time::Instant::now();
+        let body = Bytes::from(format!("<script>{}</script>", "a".repeat((2 << 20) - 17)));
+        assert_eq!(
+            apply(
+                body.clone(),
+                &[Arc::new(rule.compiled)],
+                None,
+                false,
+                &|| { start.elapsed() < crate::limits::REWRITE_WORK }
+            ),
+            Some(body)
+        );
+        assert!(start.elapsed() < std::time::Duration::from_secs(3));
     }
 }

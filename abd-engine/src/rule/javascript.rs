@@ -349,3 +349,26 @@ mod tests {
         assert_eq!(scripts.dropped, 1);
     }
 }
+
+#[cfg(test)]
+#[test]
+fn a_script_exception_reserves_its_body_at_the_generation_limit() {
+    use std::fmt::Write as _;
+    let mut text = String::from("site.test#%#window.keep = 1;\n");
+    for i in 0..MAX_JS_SCRIPTS - 1 {
+        writeln!(text, "other.test#%#window.filler = {i};").unwrap();
+    }
+    text.push_str("site.test#%#window.exempt = 1;\nsite.test#@%#window.exempt = 1;\n");
+    let directory = tempfile::tempdir().unwrap();
+    let rules = directory.path().join("rules");
+    std::fs::create_dir(&rules).unwrap();
+    std::fs::write(rules.join("user.txt"), &text).unwrap();
+    let filters = crate::filter::Filters::load(&[&rules], false).unwrap();
+    let script = filters.hiding("https://site.test/").script.unwrap();
+    assert!(script.contains("window.keep = 1;"));
+    assert!(!script.contains("window.exempt = 1;"));
+
+    let report = crate::rulecheck::check(&text, crate::rule::SourcePermissions::USER);
+    assert_eq!(report.issues.len(), 1);
+    assert!(report.issues[0].text.starts_with("other.test#%#"));
+}

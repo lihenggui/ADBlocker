@@ -109,12 +109,6 @@
     <string name="feature_onboarding_notifications_allowed">通知已允许</string>
     <string name="feature_onboarding_notifications_off">通知未允许</string>
     <string name="feature_onboarding_notifications_off_text">可在设置中允许</string>
-    <string name="feature_onboarding_vpn_transfer_incomplete">未能沿用 root 模式下的部分设置。</string>
-    <string name="feature_onboarding_vpn_transfer_apps">未能沿用 root 模式下的应用过滤设置。</string>
-    <string name="feature_onboarding_vpn_transfer_lists">未能沿用 root 模式下的部分过滤列表设置。</string>
-    <string name="feature_onboarding_vpn_transfer_rules">未能沿用 root 模式下的自定义规则。</string>
-    <string name="feature_onboarding_vpn_transfer_trusted_sites">未能沿用 root 模式下信任的部分网站。</string>
-    <string name="feature_onboarding_vpn_transfer_url_filtering">未能沿用 root 模式下的按网址过滤设置。</string>
     <string name="feature_onboarding_vpn_connected">VPN 已连接</string>
     <string name="feature_onboarding_vpn_connected_text">仅所选应用经过 VPN</string>
     <string name="feature_onboarding_lists_downloaded">订阅已下载</string>

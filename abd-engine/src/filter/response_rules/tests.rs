@@ -697,3 +697,26 @@ fn response_patterns_and_their_exceptions_survive_the_cache_without_network_app_
         }
     }
 }
+
+#[test]
+fn a_response_exception_has_priority_over_new_actions_at_the_table_limit() {
+    let text: String = (0..MAX_RESPONSE_RULES)
+        .map(|n| format!("/a{n:04}/$cookie=track\n"))
+        .chain(["@@/a0000/$cookie\n".to_owned()])
+        .collect();
+    let kept = ResponseRules::build_with_budget(
+        [text.as_str()].into_iter(),
+        MAX_RESPONSE_REGEX_BYTES,
+        &mut Patterns::default(),
+    )
+    .unwrap();
+    assert_eq!(kept.table.rules.len(), MAX_RESPONSE_RULES);
+    assert_eq!(
+        kept.table
+            .rules
+            .iter()
+            .filter(|rule| rule.exception)
+            .count(),
+        1
+    );
+}

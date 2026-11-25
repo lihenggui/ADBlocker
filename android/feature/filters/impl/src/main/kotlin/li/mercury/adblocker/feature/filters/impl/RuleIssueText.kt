@@ -20,30 +20,31 @@ import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.res.stringResource
 import li.mercury.adblocker.core.model.RuleIssue
+import li.mercury.adblocker.core.model.RuleIssueCode.Known
 import li.mercury.adblocker.core.model.RuleIssueKind
 
 internal data class RuleIssueMessage(@StringRes val resource: Int, val name: String? = null)
 
 internal fun RuleIssue.message(): RuleIssueMessage {
-    val code = reason?.substringBefore(':')
-    val name = reason?.substringAfter(':', "")?.takeIf(String::isNotBlank)
+    val code = reason?.code
+    val name = reason?.name
     return when (kind) {
         RuleIssueKind.Invalid -> when {
-            reason == "malformed-directive" -> RuleIssueMessage(R.string.feature_filters_issue_malformed_directive)
-            code == "option" && name != null -> RuleIssueMessage(R.string.feature_filters_issue_invalid_option, name)
+            code == Known.MalformedDirective -> RuleIssueMessage(R.string.feature_filters_issue_malformed_directive)
+            code == Known.Option && name != null -> RuleIssueMessage(R.string.feature_filters_issue_invalid_option, name)
             else -> RuleIssueMessage(R.string.feature_filters_issue_invalid)
         }
 
         RuleIssueKind.Unsupported -> when {
-            reason == "include-not-followed" -> RuleIssueMessage(R.string.feature_filters_issue_unsupported_include)
+            code == Known.IncludeNotFollowed -> RuleIssueMessage(R.string.feature_filters_issue_unsupported_include)
 
-            name != null && code in setOf("option", "scriptlet-no-counterpart", "scriptlet-trust", "scriptlet-arguments") ->
+            name != null && code in setOf(Known.Option, Known.ScriptletNoCounterpart, Known.ScriptletTrust, Known.ScriptletArguments) ->
                 RuleIssueMessage(R.string.feature_filters_issue_unsupported_named, name)
 
             else -> RuleIssueMessage(R.string.feature_filters_issue_unsupported)
         }
 
-        RuleIssueKind.Inapplicable -> if (code == "option" && name != null) {
+        RuleIssueKind.Inapplicable -> if (code == Known.Option && name != null) {
             RuleIssueMessage(R.string.feature_filters_issue_inapplicable_named, name)
         } else {
             RuleIssueMessage(R.string.feature_filters_issue_inapplicable)

@@ -25,7 +25,9 @@ import li.mercury.adblocker.core.model.FilteringScope
 import li.mercury.adblocker.core.model.LevelReason
 import li.mercury.adblocker.core.model.ListUpdateState
 import li.mercury.adblocker.core.model.PassReason
+import li.mercury.adblocker.core.model.RuleIssueCode
 import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.model.RuleIssueReason
 import li.mercury.adblocker.core.model.RuleSource
 import li.mercury.adblocker.core.model.UpdateEvent
 import li.mercury.adblocker.core.model.Verdict
@@ -351,11 +353,10 @@ class AbdProtocolTest {
         assertEquals(7, check.rules)
         assertEquals(
             listOf(
-                Triple(6, RuleIssueKind.Invalid, "option:frobnicate"),
-                Triple(7, RuleIssueKind.Unsupported, "include-not-followed"),
-                Triple(8, RuleIssueKind.Invalid, "malformed-directive"),
-                Triple(11, RuleIssueKind.Inapplicable, "option:popup"),
-                Triple(12, RuleIssueKind.Untrusted, "response-trust:replace"),
+                Triple(6, RuleIssueKind.Invalid, RuleIssueReason(RuleIssueCode.Known.Option, "frobnicate")),
+                Triple(7, RuleIssueKind.Unsupported, RuleIssueReason(RuleIssueCode.Known.IncludeNotFollowed)),
+                Triple(8, RuleIssueKind.Invalid, RuleIssueReason(RuleIssueCode.Known.MalformedDirective)),
+                Triple(11, RuleIssueKind.Inapplicable, RuleIssueReason(RuleIssueCode.Known.Option, "popup")),
             ),
             check.issues.map { Triple(it.line, it.kind, it.reason) },
         )
@@ -369,7 +370,16 @@ class AbdProtocolTest {
             """{"rules":1,"issues":[{"line":1,"text":"rule","kind":"future","reason":"future-form:example"}]}""",
         ).issues.single()
         assertEquals(RuleIssueKind.Invalid, issue.kind)
-        assertEquals("future-form:example", issue.reason)
+        assertEquals(RuleIssueReason(RuleIssueCode.Other("future-form"), "example"), issue.reason)
+    }
+
+    @Test
+    fun givenRetiredIncludeClass_whenDecoded_thenItFollowsTheUnknownClassFallback() {
+        val issue = parseRulesCheck(
+            """{"rules":1,"issues":[{"line":1,"text":"rule","kind":"unsupported_include"}]}""",
+        ).issues.single()
+        assertEquals(RuleIssueKind.Invalid, issue.kind)
+        assertEquals(null, issue.reason)
     }
 
     @Test
@@ -379,16 +389,15 @@ class AbdProtocolTest {
             {"rules":2,"issues":[
                 {"line":1,"text":"rule","kind":"cosmetic"},
                 {"line":2,"text":"rule","kind":"invalid"},
-                {"line":3,"text":"!#include example.txt","kind":"unsupported_include"},
-                {"line":4,"text":"!#endif","kind":"malformed_directive"}
+                {"line":3,"text":"!#endif","kind":"malformed_directive"}
             ]}
             """.trimIndent(),
         ).issues
         assertEquals(
-            listOf(RuleIssueKind.Unsupported, RuleIssueKind.Invalid, RuleIssueKind.Unsupported, RuleIssueKind.Invalid),
+            listOf(RuleIssueKind.Unsupported, RuleIssueKind.Invalid, RuleIssueKind.Invalid),
             issues.map { it.kind },
         )
-        assertEquals(List(4) { null }, issues.map { it.reason })
+        assertEquals(List(3) { null }, issues.map { it.reason })
     }
 
     @Test

@@ -162,8 +162,11 @@ uncompressed HTML documents it already decrypts. You can turn it off in
 Settings or with `abd cosmetic off`.
 A list can hide legitimate content, change the DOM, or alter page behavior.
 
-- Any list can cut matching elements out of the HTML on the pages it
-  names. This can remove page content, scripts, and HTML policy elements.
+- Any list can cut matching elements out of HTML responses. A rule that
+  names a positive domain can also apply to requests of unknown type on
+  that domain. Rules with no positive domain, including rules with only
+  negated domains, apply only to known document or subdocument requests.
+  Cutting elements can remove page content, scripts, and HTML policy elements.
   The engine reads at most 2 MiB for this edit. It skips encodings it cannot
   scan, including UTF-16 and UTF-32, and skips elements beyond its nesting
   limit. The original body passes through if the element, decoding, or

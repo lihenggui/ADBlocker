@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
-use regex::Regex;
+use regex_automata::meta::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::html::{self, Tag};
@@ -42,6 +42,10 @@ pub(crate) struct Attribute {
 #[derive(Clone, Serialize, Deserialize)]
 pub(crate) enum AttributeValue {
     Contains(String),
+    Never,
+    Exact(String),
+    Word(String),
+    DashPrefix(String),
     StartsWith(String),
     EndsWith(String),
 }
@@ -50,10 +54,25 @@ impl AttributeValue {
     fn matches(&self, value: &str) -> bool {
         match self {
             Self::Contains(text) => value.contains(text),
+            Self::Never => false,
+            Self::Exact(text) => value == text,
+            Self::Word(text) => value
+                .split(html_space)
+                .any(|word| !word.is_empty() && word == text),
+            Self::DashPrefix(text) => {
+                value == text
+                    || value
+                        .strip_prefix(text)
+                        .is_some_and(|tail| tail.starts_with('-'))
+            }
             Self::StartsWith(text) => value.starts_with(text),
             Self::EndsWith(text) => value.ends_with(text),
         }
     }
+}
+
+fn html_space(ch: char) -> bool {
+    matches!(ch, ' ' | '\t' | '\n' | '\r' | '\x0c')
 }
 
 /// Shared selector steps and the compiled content predicates of the last step.
@@ -73,10 +92,23 @@ pub(crate) enum Content {
     },
 }
 
+impl Compiled {
+    pub(crate) fn regex_cost(&self) -> (usize, usize) {
+        self.content
+            .iter()
+            .filter_map(|condition| match condition {
+                Content::Matches(regex) | Content::Glob(regex) => Some(regex.memory_usage()),
+                _ => None,
+            })
+            .fold((0, 0), |(count, bytes), size| (count + 1, bytes + size))
+    }
+}
+
 pub(crate) fn apply(
     body: Bytes,
     rules: &[Arc<Compiled>],
     charset: Option<&str>,
+    xhtml: bool,
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Bytes> {
     if rules.is_empty() {
@@ -85,33 +117,97 @@ pub(crate) fn apply(
     let Some(encoding) = html::document_encoding(&body, charset) else {
         return Some(body);
     };
+    let document = Decoded::new(&body, encoding, within_budget)?;
     let mut scan = Scan {
-        input: &body,
+        input: &document.text,
+        xhtml,
         rules,
-        encoding,
         within_budget,
         open: Vec::new(),
         removed: Vec::new(),
         elements: 0,
-        decoded: 0,
     };
     scan.document()?;
     if scan.removed.is_empty() {
         return Some(body);
     }
-    let removed: usize = scan.removed.iter().map(Range::len).sum();
-    let mut output = Vec::with_capacity(body.len() - removed);
+    let mut output = Vec::with_capacity(body.len());
     let mut cursor = 0;
     for range in scan.removed {
-        if !append(&mut output, &body[cursor..range.start]) {
+        let start = document.original(range.start);
+        if !append(&mut output, &body[cursor..start]) {
             return Some(body);
         }
-        cursor = range.end;
+        cursor = document.original(range.end);
     }
     if !append(&mut output, &body[cursor..]) {
         return Some(body);
     }
     Some(Bytes::from(output))
+}
+
+/// Scan decoded text once. Cuts are made only at markup boundaries,
+/// so only changes in the byte offset at an angle bracket need recording.
+struct Decoded<'a> {
+    text: Cow<'a, str>,
+    offsets: Vec<(usize, usize)>,
+}
+
+impl<'a> Decoded<'a> {
+    fn new(
+        body: &'a [u8],
+        encoding: &'static Encoding,
+        within_budget: &dyn Fn() -> bool,
+    ) -> Option<Self> {
+        if body.len() > MAX_HTML_DECODED {
+            return None;
+        }
+        if (encoding == UTF_8 || body.is_ascii())
+            && let Ok(text) = std::str::from_utf8(body)
+        {
+            return Some(Self {
+                text: Cow::Borrowed(text),
+                offsets: Vec::new(),
+            });
+        }
+        let mut text = String::with_capacity(body.len());
+        let mut offsets = Vec::new();
+        let mut start = 0;
+        let mut delta = 0isize;
+        // ASCII-compatible encodings do not use '<' or '>' as trail bytes.
+        for (at, &byte) in body
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| matches!(b, b'<' | b'>'))
+        {
+            if !within_budget() {
+                return None;
+            }
+            text.push_str(&encoding.decode_without_bom_handling(&body[start..at]).0);
+            let next_delta = text.len().cast_signed() - at.cast_signed();
+            if delta != next_delta {
+                offsets.push((text.len(), at));
+                delta = next_delta;
+            }
+            text.push(char::from(byte));
+            start = at + 1;
+        }
+        text.push_str(&encoding.decode_without_bom_handling(&body[start..]).0);
+        Some(Self {
+            text: Cow::Owned(text),
+            offsets,
+        })
+    }
+
+    fn original(&self, at: usize) -> usize {
+        let n = self
+            .offsets
+            .partition_point(|&(position, _)| position <= at);
+        n.checked_sub(1).map_or(at, |index| {
+            let (decoded, original) = self.offsets[index];
+            original + (at - decoded)
+        })
+    }
 }
 
 fn append(output: &mut Vec<u8>, kept: &[u8]) -> bool {
@@ -284,7 +380,7 @@ enum Scope {
 
 impl Scope {
     // HTML Standard §13.2.4.2 list-item, button and table scopes. The
-    // scanner also stops at foreign roots since it does not track namespaces.
+    // scanner stops at foreign roots to stay within the current namespace.
     fn stops_at(&self, name: &[u8]) -> bool {
         if tag_in(name, &[b"html", b"table", b"template", b"math", b"svg"]) {
             return true;
@@ -316,29 +412,30 @@ fn tag_in(name: &[u8], names: &[&[u8]]) -> bool {
 struct Element<'a> {
     tag: Tag<'a>,
     start: usize,
+    foreign: bool,
 }
 
 struct Scan<'a> {
-    input: &'a [u8],
+    input: &'a str,
+    xhtml: bool,
     rules: &'a [Arc<Compiled>],
-    encoding: &'static Encoding,
     within_budget: &'a dyn Fn() -> bool,
     open: Vec<Element<'a>>,
     removed: Vec<Range<usize>>,
     elements: usize,
-    decoded: usize,
 }
 
 impl<'a> Scan<'a> {
     fn document(&mut self) -> Option<()> {
+        let input = self.input.as_bytes();
         let mut at = 0;
         let mut overflow: Option<Overflow<'_>> = None;
-        while let Some(offset) = self.input[at..].iter().position(|&b| b == b'<') {
+        while let Some(offset) = input[at..].iter().position(|&b| b == b'<') {
             if !(self.within_budget)() {
                 return None;
             }
             at += offset;
-            let rest = &self.input[at..];
+            let rest = &input[at..];
             if rest.starts_with(b"<!") || rest.starts_with(b"<?") {
                 let Some(end) = html::declaration_end(rest) else {
                     break;
@@ -354,7 +451,7 @@ impl<'a> Scan<'a> {
             let start = at;
             at += tag.end;
             if let Some(suppressed) = &mut overflow {
-                if suppressed.advance(&tag, self.input, &mut at)? {
+                if suppressed.advance(&tag, input, &mut at)? {
                     overflow = None;
                 } else if self.may_close_through_overflow(&tag, suppressed.name) {
                     // An untracked element may change the extent of a tracked ancestor.
@@ -362,33 +459,77 @@ impl<'a> Scan<'a> {
                 }
             } else if tag.closing {
                 self.close(tag.name, start, at)?;
-            } else {
-                self.close_for_start(tag.name, start)?;
-                if self.open.len() == MAX_HTML_DEPTH {
-                    if !tag.self_closed && !void(tag.name) {
-                        if html::raw(tag.name) {
-                            skip_raw(self.input, &tag, &mut at)?;
-                        } else {
-                            overflow = Some(Overflow {
-                                name: tag.name,
-                                depth: 1,
-                            });
-                        }
-                    }
-                    continue;
-                }
-                let Some((inner_end, end)) = element_end(self.input, &tag, at) else {
-                    if at == self.input.len() || html::raw(tag.name) {
-                        break;
-                    }
-                    self.open.push(Element { tag, start });
-                    continue;
-                };
-                self.test(Element { tag, start }, inner_end, end)?;
-                at = end;
+            } else if !self.start_tag(tag, start, &mut at, &mut overflow)? {
+                break;
             }
         }
         (self.within_budget)().then_some(())
+    }
+
+    fn start_tag(
+        &mut self,
+        tag: Tag<'a>,
+        start: usize,
+        at: &mut usize,
+        overflow: &mut Option<Overflow<'a>>,
+    ) -> Option<bool> {
+        let input = self.input.as_bytes();
+        let foreign = self.foreign(tag.name);
+        let html = !foreign && !self.xhtml;
+        if html {
+            self.close_for_start(tag.name, start)?;
+        }
+        let complete = if html {
+            void(tag.name)
+        } else {
+            tag.self_closed
+        };
+        let raw = html && html::raw(tag.name);
+        if self.open.len() == MAX_HTML_DEPTH {
+            if !complete {
+                if raw {
+                    skip_raw(input, &tag, at)?;
+                } else {
+                    *overflow = Some(Overflow {
+                        name: tag.name,
+                        depth: 1,
+                        foreign: !html,
+                    });
+                }
+            }
+            return Some(true);
+        }
+        let element = Element {
+            tag,
+            start,
+            foreign,
+        };
+        if complete {
+            self.test(element, *at, *at)?;
+        } else if raw {
+            let Some((start, end)) = html::raw_end(&input[*at..], element.tag.name) else {
+                return Some(false);
+            };
+            self.test(element, *at + start, *at + end)?;
+            *at += end;
+        } else if *at == input.len() {
+            return Some(false);
+        } else {
+            self.open.push(element);
+        }
+        Some(true)
+    }
+
+    fn foreign(&self, name: &[u8]) -> bool {
+        if tag_in(name, &[b"svg", b"math"]) {
+            return true;
+        }
+        self.open.last().is_some_and(|parent| {
+            parent.foreign
+                && !tag_in(parent.tag.name, &[b"foreignobject", b"desc", b"title"])
+                && (!tag_in(parent.tag.name, &[b"mi", b"mo", b"mn", b"ms", b"mtext"])
+                    || tag_in(name, &[b"mglyph", b"malignmark"]))
+        })
     }
 
     fn may_close_through_overflow(&self, tag: &Tag<'_>, overflow: &[u8]) -> bool {
@@ -444,23 +585,15 @@ impl<'a> Scan<'a> {
             return None;
         }
         let inner = &self.input[element.start + element.tag.end..inner_end];
-        let mut decoded = None;
         let mut length = None;
         for rule in self.rules {
             let (target, parents) = rule.steps.split_last()?;
-            if !matches_step(
-                self.input,
-                self.encoding,
-                &mut self.decoded,
-                &element,
-                target,
-            )? || self.open.len() < parents.len()
-            {
+            if !matches_step(self.input, &element, target) || self.open.len() < parents.len() {
                 continue;
             }
             let mut ancestors_match = true;
             for (ancestor, step) in self.open.iter().rev().zip(parents.iter().rev()) {
-                if !matches_step(self.input, self.encoding, &mut self.decoded, ancestor, step)? {
+                if !matches_step(self.input, ancestor, step) {
                     ancestors_match = false;
                     break;
                 }
@@ -472,16 +605,12 @@ impl<'a> Scan<'a> {
                 self.remove(element.start..end);
                 break;
             }
-            let text = match &decoded {
-                Some(text) => text,
-                None => decoded.insert(decode(self.encoding, &mut self.decoded, inner)?),
-            };
             let mut matches = true;
             for condition in &rule.content {
                 if !(self.within_budget)() {
                     return None;
                 }
-                if !matches_content(condition, text, &mut length) {
+                if !matches_content(condition, inner, &mut length) {
                     matches = false;
                     break;
                 }
@@ -507,67 +636,37 @@ impl<'a> Scan<'a> {
     }
 }
 
-fn matches_step(
-    input: &[u8],
-    encoding: &'static Encoding,
-    decoded: &mut usize,
-    element: &Element<'_>,
-    step: &Selector,
-) -> Option<bool> {
+fn matches_step(input: &str, element: &Element<'_>, step: &Selector) -> bool {
     if step
         .tag
         .as_ref()
         .is_some_and(|name| !element.tag.name.eq_ignore_ascii_case(name.as_bytes()))
     {
-        return Some(false);
+        return false;
     }
     let tag = &input[element.start..element.start + element.tag.end];
-    for condition in &step.attributes {
-        let Some(attr) =
-            element.tag.attrs.iter().find(|attr| {
-                tag[attr.name.clone()].eq_ignore_ascii_case(condition.name.as_bytes())
-            })
+    step.attributes.iter().all(|condition| {
+        let Some(attr) = element
+            .tag
+            .attrs
+            .iter()
+            .find(|attr| tag[attr.name.clone()].eq_ignore_ascii_case(&condition.name))
         else {
-            return Some(false);
+            return false;
         };
-        let Some(expected) = &condition.value else {
-            continue;
-        };
-        let value = attr
-            .value
-            .as_ref()
-            .map_or(b"".as_slice(), |range| &tag[range.clone()]);
-        let value = if encoding == UTF_8 || value.is_ascii() {
-            match std::str::from_utf8(value) {
-                Ok(text) => Cow::Borrowed(text),
-                Err(_) => decode(encoding, decoded, value)?,
-            }
-        } else {
-            decode(encoding, decoded, value)?
-        };
-        if !expected.matches(&value) {
-            return Some(false);
-        }
-    }
-    Some(true)
-}
-
-fn decode<'a>(
-    encoding: &'static Encoding,
-    decoded: &mut usize,
-    bytes: &'a [u8],
-) -> Option<Cow<'a, str>> {
-    *decoded += bytes.len();
-    if *decoded > MAX_HTML_DECODED {
-        return None;
-    }
-    Some(encoding.decode_without_bom_handling(bytes).0)
+        condition.value.as_ref().is_none_or(|expected| {
+            let value = attr.value.as_ref().map_or("", |range| &tag[range.clone()]);
+            expected.matches(value)
+        })
+    })
 }
 
 fn matches_content(condition: &Content, text: &str, length: &mut Option<usize>) -> bool {
     match condition {
         Content::Contains(needle) => text.contains(needle),
-        Content::Matches(regex) | Content::Glob(regex) => regex.is_match(text),
+        Content::Matches(regex) | Content::Glob(regex) => {
+            crate::list_regex::matches(regex, text.as_bytes())
+        }
         Content::Length {
             min,
             max,
@@ -601,17 +700,6 @@ fn void(name: &[u8]) -> bool {
     .any(|void| name.eq_ignore_ascii_case(void))
 }
 
-fn element_end(input: &[u8], tag: &Tag<'_>, after: usize) -> Option<(usize, usize)> {
-    if tag.self_closed || void(tag.name) {
-        return Some((after, after));
-    }
-    if html::raw(tag.name) {
-        let (start, end) = html::raw_end(&input[after..], tag.name)?;
-        return Some((after + start, after + end));
-    }
-    None
-}
-
 fn skip_raw(input: &[u8], tag: &Tag<'_>, at: &mut usize) -> Option<()> {
     *at += html::raw_end(&input[*at..], tag.name)?.1;
     Some(())
@@ -622,6 +710,7 @@ fn skip_raw(input: &[u8], tag: &Tag<'_>, at: &mut usize) -> Option<()> {
 struct Overflow<'a> {
     name: &'a [u8],
     depth: usize,
+    foreign: bool,
 }
 
 impl Overflow<'_> {
@@ -630,8 +719,12 @@ impl Overflow<'_> {
             if tag.name.eq_ignore_ascii_case(self.name) {
                 self.depth -= 1;
             }
-        } else if !tag.self_closed && !void(tag.name) {
-            if html::raw(tag.name) {
+        } else if !(if self.foreign {
+            tag.self_closed
+        } else {
+            void(tag.name)
+        }) {
+            if !self.foreign && html::raw(tag.name) {
                 skip_raw(input, tag, at)?;
             } else if tag.name.eq_ignore_ascii_case(self.name) {
                 self.depth += 1;

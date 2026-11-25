@@ -27,17 +27,24 @@ pub(crate) fn disabled_by(page: PageExceptions) -> bool {
 }
 
 pub(crate) fn takes(mime: &str) -> bool {
-    crate::media_type::text(mime)
+    mime.eq_ignore_ascii_case("text/html") || mime.eq_ignore_ascii_case("application/xhtml+xml")
 }
 
 /// The host index supplies one operation for all the rules of a document.
 pub(crate) struct Action {
     pub(crate) rules: Vec<Arc<Compiled>>,
     pub(crate) charset: Option<String>,
+    pub(crate) xhtml: bool,
 }
 
 impl Action {
     pub(crate) fn apply(&self, body: Bytes, within_budget: &dyn Fn() -> bool) -> Option<Bytes> {
-        htmlfilter::apply(body, &self.rules, self.charset.as_deref(), within_budget)
+        htmlfilter::apply(
+            body,
+            &self.rules,
+            self.charset.as_deref(),
+            self.xhtml,
+            within_budget,
+        )
     }
 }

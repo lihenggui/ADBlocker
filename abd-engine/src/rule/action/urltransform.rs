@@ -211,6 +211,13 @@ fn percent(mut input: &[u8]) -> Option<Vec<u8>> {
 }
 
 #[cfg(test)]
+#[test]
+fn the_url_transform_rejects_excessive_regex_fallback_work_at_load() {
+    let spec = parse("/[ab]*a[ab]{5000}c//").unwrap();
+    assert!(spec.compile().is_none());
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
 

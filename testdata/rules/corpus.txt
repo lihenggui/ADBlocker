@@ -1265,6 +1265,9 @@ example.org#@#^script:has-text((window);)
 ! expect: unsupported html-size
 $$div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div
 ! Synthetic HTML filtering example.
+! expect: unsupported html-generation-limit
+example.org##^span
+! Synthetic HTML filtering example.
 ! expect: invalid html-domain
 example.*.org$$script
 ! Synthetic HTML filtering example.

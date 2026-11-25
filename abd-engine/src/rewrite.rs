@@ -120,6 +120,10 @@ fn takes<B>(response: &Response<B>) -> bool {
         })
 }
 
+/// The body waits for collection and editing before yielding its first frame.
+#[derive(Clone)]
+pub(crate) struct HoldsFirstFrame;
+
 /// Leave the response intact if it cannot be collected right away.
 pub(crate) fn wrap<B>(
     response: Response<B>,
@@ -176,6 +180,7 @@ where
         return response.map(BodyExt::boxed);
     };
     let (mut parts, body) = response.into_parts();
+    parts.extensions.insert(HoldsFirstFrame);
     for name in [CONTENT_LENGTH, ACCEPT_RANGES, ETAG] {
         parts.headers.remove(name);
     }
