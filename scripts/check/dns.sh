@@ -80,18 +80,16 @@ dns_leftovers() {
 }
 
 check_dns() {
-    local run blocked got started took supervisor daemon i family
+    local run blocked got started took supervisor daemon i family rules
     run="$(date +%s)$RANDOM"
     blocked="abd-dns-$run.$dns_zone"
     # A lookup is judged as the host of a connection that is not decrypted.
     # With URL filtering on, no host is blocked early while a web exception
     # in the lists could apply to any host, as the subscribed lists' can:
     # domain filtering is where the answer does not depend on them.
+    rules=$(active_rule_count "$ABD") || die "could not read the rule count before adding the lookup rule"
     adb shell "$ABD url-filtering off && echo '||$blocked^' >> $LIST && $ABD reload"
-    for ((i = 0; i < 30; i++)); do
-        adb shell "$ABD check https://probe.$blocked/" | grep -q '^blocked' && break
-        sleep 1
-    done
+    await_rule_count "$ABD" "$((rules + 1))" || die "the daemon did not load the lookup rule"
     await_dns_rule "$uid" 0
     dns_fixture=$PACKAGE.dns
     build_check_apk scripts/check/app dns --rename-manifest-package "$dns_fixture"
@@ -178,12 +176,10 @@ check_dns() {
 # late enough after starting for the daemon to take it at its word. A try
 # of the host at the app's next start does not change how it is judged.
 check_pinned_lookup() {
-    local host=example.net i
-    adb shell "echo '||$host^' >> $LIST; echo '@@||$host/abd-check-any/\$image' >> $LIST; $ABD reload"
-    for ((i = 0; i < 30; i++)); do
-        adb shell "$ABD check https://$host/" | grep -q '^blocked' && break
-        sleep 1
-    done
+    local host=example.net i rules
+    rules=$(active_rule_count "$ABD") || die "could not read the rule count before adding the pinned lookup rules"
+    adb shell "printf '%s\n' '||$host^' '@@||$host/abd-check-any/\$image' >> $LIST && $ABD reload"
+    await_rule_count "$ABD" "$((rules + 2))" || die "the daemon did not load the pinned lookup rules"
     expect "a lookup of a host whose requests can be read is answered by its server" \
         "answer [1-9]* ttl *" "$(look_up "$host" "$PACKAGE" "--es dns udp")"
     expect "the app refuses the certificate for the host it pins" \
@@ -194,5 +190,6 @@ check_pinned_lookup() {
     done
     expect "a lookup of a host the app pins is judged by its domain rule" \
         "answer 0.0.0.0 ttl 0" "$(look_up "$host" "$PACKAGE" "--es dns udp")"
-    adb shell "$ABD pinned forget $PACKAGE $host; sed -i '/^||$host^\$/d; /abd-check-any/d' $LIST; $ABD reload"
+    adb shell "$ABD pinned forget $PACKAGE $host && sed -i '/^||$host^\$/d; /abd-check-any/d' $LIST && $ABD reload"
+    await_rule_count "$ABD" "$rules" || die "the daemon did not remove the pinned lookup rules"
 }

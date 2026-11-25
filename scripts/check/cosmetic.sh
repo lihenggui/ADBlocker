@@ -131,14 +131,19 @@ ANDROID
     cosmetic_daemon_replaced=1
     adb shell "sh $MODPATH/stop.sh"
     adb shell "timeout 55 unshare -m sh $cosmetic_stage/daemon $cosmetic_stage $ABD" >"$work/cosmetic-daemon.log" 2>&1 &
-    for ((i=0; i<50; i++)); do
-        if adb shell "$fixture_abd status --json" | jq -e '.running and .filtering_apps == 1' >/dev/null &&
-            adb exec-out cat "$cosmetic_stage/data/state" 2>/dev/null | jq -e '.exclusions_ready == true' >/dev/null; then
-            break
-        fi
-        sleep .2
-    done
-    ((i < 50)) || die "the fixture daemon did not select the WebView app"
+    await_cosmetic_capture() {
+        local expected=$1 i
+        for ((i=0; i<50; i++)); do
+            if adb shell "$fixture_abd status --json" |
+                jq -e --argjson expected "$expected" '.running and .rules != null and .filtering_apps == $expected' >/dev/null &&
+                adb exec-out cat "$cosmetic_stage/data/state" 2>/dev/null | jq -e '.exclusions_ready == true' >/dev/null; then
+                return 0
+            fi
+            sleep .2
+        done
+        return 1
+    }
+    await_cosmetic_capture 1 || die "the fixture daemon did not select the WebView app"
     adb shell "$fixture_abd status --json" | jq -e '.cosmetic == true' >/dev/null ||
         die "the fixture daemon did not enable element hiding by default"
 
@@ -148,8 +153,12 @@ ANDROID
             expected='[42,false,true,true]'
         else
             expected='[null,false,false,true]'
-            adb shell "$fixture_abd cosmetic off"
-            sleep 1
+            # The status flag reads the saved setting. Re-entry into
+            # capture confirms the daemon has applied the change.
+            adb shell "$fixture_abd app pause $PACKAGE --minutes 5"
+            await_cosmetic_capture 0 || die "the fixture daemon did not pause the WebView app"
+            adb shell "$fixture_abd cosmetic off && $fixture_abd app resume $PACKAGE"
+            await_cosmetic_capture 1 || die "the fixture daemon did not resume the WebView app after disabling element hiding"
         fi
         adb shell "rm -f $result_file; am start --user 0 -S -W -n $PACKAGE/.Main \
             --es url 'https://fixture.example/?cosmetic=$cosmetic' --ez webview true --ez expectCosmetic $cosmetic" >/dev/null

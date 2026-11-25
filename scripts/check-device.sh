@@ -78,6 +78,7 @@ fi
 MODPATH=$(adb shell 'm=/data/adb/modules/adblocker; [ -e $m/bin/abd ] || m=/data/adb/adblocker_direct; echo $m' | tr -d '\r')
 [[ $MODPATH == /data/adb/* ]] || die "could not ask the device where the module is"
 ABD=$MODPATH/bin/abd
+source scripts/check/rules.sh
 
 ANDROID_HOME="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-$HOME/Android/Sdk}}"
 tools="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -1)"
@@ -102,6 +103,7 @@ release_lock() {
     fi
 }
 cleanup() {
+    local result=$? active_rules fixture_rules expected_rules=
     if [[ -n ${dns_held:-} ]]; then adb shell "kill -CONT $dns_held" || true; fi
     if [[ -n ${dns_fixture:-} ]]; then adb shell "pm uninstall $dns_fixture" >/dev/null 2>&1 || true; fi
     if [[ -n ${vpn_trace_job:-} ]]; then stop_vpn_trace; fi
@@ -126,10 +128,24 @@ cleanup() {
         present) adb shell "umask 077; cat >$DATA/settings.check && mv $DATA/settings.check $DATA/settings" <"$work/settings" ;;
         absent) adb shell "rm -f $DATA/settings" ;;
     esac
-    adb shell "$ABD reload" >/dev/null 2>&1 || true
+    # The HTTP/3 check takes its rule count baseline from this daemon.
+    if ((result == 0)); then
+        if active_rules=$(active_rule_count "$ABD") &&
+            fixture_rules=$(adb shell "awk 'END { print NR }' $LIST" | tr -d '\r') &&
+            [[ $fixture_rules =~ ^[1-9][0-9]*$ ]] && ((active_rules >= fixture_rules)); then
+            expected_rules=$((active_rules - fixture_rules))
+        else
+            result=1
+            echo "error: could not read the rule counts before removing the device check's rules" >&2
+        fi
+    fi
     rm -rf "$work"
-    adb shell "rm -f $LIST $EXCLUDED; $ABD app remove $PACKAGE; pm uninstall $PACKAGE
+    adb shell "rm -f $LIST $EXCLUDED; $ABD app remove $PACKAGE; $ABD reload; pm uninstall $PACKAGE
         iptables -w -D OUTPUT -m owner --uid-owner $uid -m mark --mark $BYPASS/$BYPASS" >/dev/null 2>&1 || true
+    if [[ -n $expected_rules ]]; then
+        await_rule_count "$ABD" "$expected_rules" || die "the daemon did not remove the device check's rules"
+    fi
+    exit "$result"
 }
 # ---- the app -----------------------------------------------------------------
 # The administrator provisions trust. A distinct, ordinary app exercises
@@ -211,8 +227,6 @@ adb shell "umask 077; mkdir -p $DATA/exclusions && echo www.iana.org > $EXCLUDED
 # takes for the app's: what any other module's rules for the app go by.
 adb shell "iptables -w -I OUTPUT -m owner --uid-owner $uid -m mark --mark $BYPASS/$BYPASS"
 adb shell "$ABD reload"
-# The daemon reads its lists and apps again when told; give it a moment.
-sleep 3
 # The counts persist across daemons and runs of this check: what this run
 # did is the difference from now.
 counts_before="$(adb shell "$ABD stats" | tr -d '\r')"
@@ -295,9 +309,18 @@ expect() {
 default_status="$(adb shell "$ABD status --json" | tr -d '\r')"
 expect "URL filtering is on by default" '*"url_filtering":true*' "$default_status"
 expect "page element hiding is on by default" '*"cosmetic":true*' "$default_status"
+# An initial list download can also change the active rule count. Wait for
+# the fixture path to be blocked through the running daemon.
+deadline=$((SECONDS + 60))
+while :; do
+    got=$(fetch https://example.com/blocked-by-check)
+    [[ $got == "403 "*ADBlocker* ]] && break
+    ((SECONDS < deadline)) || die "the daemon did not block the fixture path after reload (got '$got')"
+    sleep 1
+done
+expect "a request is blocked by its path" "403 *ADBlocker*" "$got"
 expect "a request is decrypted and let through, trusting the system store" "200 *ADBlocker*" "$(fetch https://example.com/)"
 expect "a request is decrypted, trusting what the user added" "200 *ADBlocker*" "$(fetch https://www.wikipedia.org/)"
-expect "a request is blocked by its path" "403 *ADBlocker*" "$(fetch https://example.com/blocked-by-check)"
 # A full-mode connection can be allowed through to evaluate a path exception.
 # Turn off URL filtering when checking the pre-TLS refusal.
 adb shell "$ABD url-filtering off"

@@ -99,16 +99,20 @@ until device_time=$(adb shell date +%s) && ((device_time >= certificate_ready));
 done
 adb shell "chmod 700 $stage/check; chmod 600 $stage/key.der; sh $stage/net start $stage $mode"
 if [[ $mode == root ]]; then
+    source scripts/check/rules.sh
     before=$(adb shell "$abd status --json")
     previous_urls=$(jq -r '.url_filtering | if . then "on" else "off" end' <<<"$before")
     previous_count=$(jq '.filtering_apps // 0' <<<"$before")
+    previous_rules=$(jq -er '.rules | numbers' <<<"$before") || fail "Root daemon did not report its active rule count"
     adb shell "$abd url-filtering on"
-    adb shell "umask 077; mkdir -p /data/adb/adblocker/rules; echo '||fixture.example/ads/' >$list; $abd app add $package"
+    # Adding the app requests a reload after the fixture rule is written.
+    adb shell "umask 077; mkdir -p /data/adb/adblocker/rules && echo '||fixture.example/ads/' >$list && $abd app add $package"
     for ((i=0; i<50; i++)); do
         if adb shell "$abd status --json" | jq -e --argjson previous "$previous_count" '.filtering_apps > $previous and .ipv6' >/dev/null; then break; fi
         sleep .1
     done
     ((i < 50)) || fail "Root capture did not become ready for both families"
+    await_rule_count "$abd" "$((previous_rules + 1))" || fail "Root daemon did not load the HTTP/3 fixture rule"
 fi
 fetch() {
     local ipv6=$1 caller=$2 probe=$3 result i
