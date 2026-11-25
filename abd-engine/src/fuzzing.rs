@@ -15,11 +15,14 @@
 //! Entry points for the standalone parser fuzz targets.
 
 use std::sync::{Arc, LazyLock};
-use std::{path::Path, str};
+use std::{hint::black_box, path::Path, str};
 
 use bytes::Bytes;
 use hyper::Uri;
-use hyper::header::{HeaderMap, HeaderValue, SET_COOKIE};
+use hyper::header::{
+    CONTENT_SECURITY_POLICY, CONTENT_SECURITY_POLICY_REPORT_ONLY, HeaderMap, HeaderValue,
+    SET_COOKIE,
+};
 
 use crate::filter::Filters;
 use crate::htmlfilter;
@@ -27,6 +30,11 @@ use crate::jsonpath;
 use crate::list_files::{MAX_LIST, MAX_LISTS};
 use crate::rule::action::{ActionKind, ResponseAction, cookie, hls};
 use crate::rule::{self, Kind};
+use crate::{clienthello, cosmetic, dns, quic};
+
+#[cfg(test)]
+#[path = "../../fuzz/replay.rs"]
+mod replay;
 
 // Let each parser reach its own limits without a clock-dependent cutoff.
 // libFuzzer imposes a timeout on each input.
@@ -125,5 +133,87 @@ pub fn rule_list(input: &[u8]) {
         let entry = Ok((Path::new("rules/fuzz.txt"), text.to_owned()));
         let _ = Filters::build(std::iter::once(entry), None, false, MAX_LISTS)
             .expect("in-memory list read succeeds");
+    }
+}
+
+pub fn clienthello(input: &[u8]) {
+    black_box(clienthello::parse(input));
+}
+
+pub fn dns(input: &[u8]) {
+    if let Some(query) = dns::Question::parse(input, false) {
+        black_box(query.host());
+        for truncated in [false, true] {
+            let reply = query.local_answer(60, truncated);
+            assert!(dns::is_answer_to(input, &reply));
+        }
+    } else if let Some(reply) = dns::Question::parse(input, true) {
+        black_box(reply.host());
+    } else if let Some(reply) = dns::refusal(input) {
+        assert!(dns::is_answer_to(input, &reply));
+    }
+}
+
+pub fn quic(input: &[u8]) {
+    black_box(quic::is_initial(input));
+}
+
+pub fn cosmetic(input: &[u8]) {
+    let mut parts = input.splitn(4, |&byte| byte == b'\n');
+    let (policy, report_only, selector, html) =
+        match (parts.next(), parts.next(), parts.next(), parts.next()) {
+            (Some(policy), Some(report_only), Some(selector), Some(html)) => {
+                (policy, report_only, selector, html)
+            }
+            _ => (input, input, input, input),
+        };
+    // The head and a tag's attributes can arrive in different body frames.
+    black_box(cosmetic::place(&html[..html.len().min(17)]));
+    black_box(cosmetic::place(html));
+    let mut names = cosmetic::Names::default();
+    for chunk in html.chunks(17) {
+        names.scan(chunk);
+    }
+    black_box(names);
+
+    let css = str::from_utf8(selector).ok().and_then(|selector| {
+        black_box(cosmetic::safe_selector(selector));
+        cosmetic::style([selector.to_owned()])
+    });
+    let mut headers = HeaderMap::new();
+    for (name, value) in [
+        (CONTENT_SECURITY_POLICY, policy),
+        (CONTENT_SECURITY_POLICY_REPORT_ONLY, report_only),
+    ] {
+        if !value.is_empty()
+            && let Ok(value) = HeaderValue::from_bytes(value)
+        {
+            headers.append(name, value);
+        }
+    }
+    black_box(cosmetic::inline(&headers));
+    cosmetic::permit(
+        &mut headers,
+        css.as_deref().unwrap_or(".ad{display:none!important}"),
+    );
+    black_box(headers);
+}
+
+#[cfg(test)]
+#[test]
+fn engine_fuzz_seeds_replay_without_panicking() {
+    let targets = [
+        ("json_prune", json_prune as fn(&[u8])),
+        ("html_filter", html_filter),
+        ("playlist", playlist),
+        ("set_cookie", set_cookie),
+        ("rule_list", rule_list),
+        ("clienthello", clienthello),
+        ("dns", dns),
+        ("quic", quic),
+        ("cosmetic", cosmetic),
+    ];
+    for (target, run) in targets {
+        replay::seeds(target, run);
     }
 }

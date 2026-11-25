@@ -32,7 +32,7 @@ pub mod dns;
 pub mod exclusions;
 pub mod files;
 pub mod filter;
-#[cfg(feature = "fuzzing")]
+#[cfg(any(test, feature = "fuzzing"))]
 #[doc(hidden)]
 pub mod fuzzing;
 mod host;

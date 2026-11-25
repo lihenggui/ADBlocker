@@ -12,6 +12,7 @@ cargo-fuzz = true
 
 [dependencies]
 abd-engine = { path = "../abd-engine", features = ["fuzzing"] }
+abd-vpn = { path = "../abd-vpn", features = ["fuzzing"] }
 libfuzzer-sys = "0.4.13"
 
 [[bin]]
@@ -45,6 +46,48 @@ bench = false
 [[bin]]
 name = "rule_list"
 path = "fuzz_targets/rule_list.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "clienthello"
+path = "fuzz_targets/clienthello.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dns"
+path = "fuzz_targets/dns.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "quic"
+path = "fuzz_targets/quic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "cosmetic"
+path = "fuzz_targets/cosmetic.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "datagram"
+path = "fuzz_targets/datagram.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "abx"
+path = "fuzz_targets/abx.rs"
 test = false
 doc = false
 bench = false

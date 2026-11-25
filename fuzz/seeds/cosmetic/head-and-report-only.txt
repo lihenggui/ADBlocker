@@ -1,0 +1,5 @@
+default-src 'self'; img-src https:
+style-src 'none'; report-uri /csp
+.banner[data-kind=ad]
+<!doctype html><html lang=en><head data-note="a>b"><title>Page</title></head>
+<body><aside class="banner ad" data-kind=ad id=hero>Example</aside></body></html>

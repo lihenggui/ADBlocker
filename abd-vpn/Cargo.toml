@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+fuzzing = []
+
 [dependencies]
 abd-engine = { path = "../abd-engine" }
 anyhow = { workspace = true, default-features = true }

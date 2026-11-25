@@ -1,0 +1,4 @@
+
+default-src 'none'
+@import url(example.css)
+<!doctype html><!-- incomplete

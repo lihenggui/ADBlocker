@@ -1,0 +1,4 @@
+style-src 'self' ÿ
+STYLE-SRC-ELEM 'none'; ; default-src 'self'
+.banner/*
+ï»¿<!doctype html><html><head></head><body>ÿ<div id=ad></div>

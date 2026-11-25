@@ -17,6 +17,10 @@
 
 use std::collections::BTreeMap;
 
+#[cfg(test)]
+#[path = "../../fuzz/replay.rs"]
+mod replay;
+
 pub const MAGIC: &[u8] = b"ABX\0";
 
 pub struct Element<'a> {
@@ -203,15 +207,16 @@ mod tests {
     use super::*;
 
     #[test]
+    fn abx_fuzz_seeds_replay_without_panicking() {
+        replay::seeds("abx", |input| {
+            let _ = elements(input);
+            let _ = package_elements(input);
+        });
+    }
+
+    #[test]
     fn the_package_reader_keeps_identity_fields_and_resolves_previously_skipped_strings() {
-        let document = b"ABX\0\x10\x32\xff\xff\x00\x08packages\
-            \x32\xff\xff\x00\x07package\
-            \x3f\xff\xff\x00\x04path\xff\xff\x00\x0acom.member\
-            \x3f\xff\xff\x00\x04name\x00\x03\
-            \x6f\xff\xff\x00\x0csharedUserId\x00\x00\x27\x11\
-            \x33\x00\x01\
-            \x32\xff\xff\x00\x04cert\x33\x00\x06\
-            \x33\x00\x00\x11";
+        let document = include_bytes!("../../fuzz/seeds/abx/packages.bin");
         let tags = package_elements(document).unwrap();
         assert_eq!(tags.len(), 2);
         assert_eq!(tags[1].attrs.len(), 2);
