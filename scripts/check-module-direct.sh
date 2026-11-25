@@ -27,7 +27,7 @@ if [ "$#" -eq 0 ]; then
         remove-not-stopped boot-app-gone-not-stopped remove-incomplete boot-app-gone-incomplete \
         reinstall-incomplete install-own-package install-pushed-package \
         takeover update-module update-module-removal update-module-pending install-pending-module \
-        module-uninstall; do
+        module-uninstall install-permissions-fail install-launcher-temp remove-leftover-detached; do
         sh "$0" "$scenario" || result=1
     done
     exit "$result"
@@ -58,6 +58,12 @@ for script in customize direct service supervise stop uninstall action; do
     sed -e "s|/data/adb|$adb|g" -e "s|/data/system|$fixture/data/system|g" -e "s|/data/app/|$fixture/data/app/|g" \
         -e "s|/system/bin/|$fixture/system/bin/|g" "module/$script.sh" >"$archive/$script.sh"
 done
+if [ "$SCENARIO" = install ]; then
+    # Android can execute printf as an external command, with a limit
+    # on individual argument lengths.
+    sed '2i printf() { /usr/bin/printf "$@"; }' "$archive/direct.sh" >"$archive/direct.tmp"
+    mv "$archive/direct.tmp" "$archive/direct.sh"
+fi
 sed 's/^versionCode=.*/versionCode=999/' module/module.prop >"$archive/module.prop"
 cat >"$archive/bin/x64/abd" <<'EOF'
 #!/bin/sh
@@ -93,9 +99,29 @@ case "$1" in
 esac
 EOF
 # Root owns the module on a device; here nothing can be given to it.
-printf '%s\n' '#!/bin/sh' >"$fixture/tools/chown"
-# No kernel configuration to read: the installer then leaves it to the daemon.
-printf '%s\n' '#!/bin/sh' 'exit 1' >"$fixture/tools/zcat"
+cat >"$fixture/tools/chown" <<'EOF'
+#!/bin/sh
+[ "$SCENARIO" != install-permissions-fail ]
+EOF
+cat >"$fixture/tools/zcat" <<'EOF'
+#!/bin/sh
+[ "$SCENARIO" = install ] || exit 1
+echo called >>"$FIXTURE/zcat"
+yes '# An unrelated kernel configuration option' | head -n 6000
+for option in NETFILTER_XT_MATCH_OWNER NETFILTER_XT_TARGET_TPROXY \
+    NETFILTER_XT_MARK NETFILTER_XT_MATCH_MULTIPORT NETFILTER_XT_MATCH_QUOTA2 \
+    IP_MULTIPLE_TABLES IP_NF_MANGLE; do
+    echo "CONFIG_$option=y"
+done
+EOF
+cat >"$fixture/tools/wc" <<'EOF'
+#!/bin/sh
+if [ "$SCENARIO:$*" = 'install-pushed-package:-c' ]; then
+    printf '  %s  \n' "$(/usr/bin/wc -c)"
+else
+    exec /usr/bin/wc "$@"
+fi
+EOF
 # The package manager knows of no app for the first user, as when the app is
 # installed for another user or in a work profile only.
 cat >"$fixture/tools/pm" <<'EOF'
@@ -106,6 +132,8 @@ EOF
 cat >"$fixture/tools/rm" <<'EOF'
 #!/bin/sh
 if [ "$SCENARIO:$*" = "remove-fails:-rf $FIXTURE/data/adb/adblocker" ]; then exit 1; fi
+if [ "$SCENARIO:$*" = "remove-leftover-detached:-rf $FIXTURE/data/adb/adblocker_direct.gone" ] &&
+    [ -d "$2" ]; then exit 1; fi
 exec /bin/rm "$@"
 EOF
 chmod +x "$fixture/tools/"*
@@ -215,6 +243,7 @@ case "$SCENARIO" in
         test -x "$launcher" || fail "nothing starts the module at boot"
         test ! -e "$adb/.adblocker-launcher" || fail "the launcher was left where it was written"
         test ! -e "$module" || fail "a module appeared in the root manager"
+        test "$(cat "$fixture/zcat")" = called || fail "the kernel configuration was read more than once"
         staged_nothing
         ;;
     install-unsupported)
@@ -237,7 +266,39 @@ case "$SCENARIO" in
         # From a computer: the archive brings the app with it.
         direct_sh install "$fixture/package.zip" || fail "the installation failed"
         starts direct
-        grep -q '^install -r -S ' "$fixture/pm" || fail "the app was not installed from the archive"
+        grep -qx "install -r -S $(/usr/bin/wc -c <"$fixture/package.zip")" "$fixture/pm" ||
+            fail "the app was not installed with a clean archive size"
+        ;;
+    install-permissions-fail)
+        if direct_sh install "$fixture/module.zip"; then fail "permission failure was ignored"; fi
+        grep -q 'Could not set module permissions' "$fixture/output" || fail "permission failure was not reported"
+        test ! -e "$direct" && test ! -e "$launcher" && test ! -s "$fixture/calls" ||
+            fail "a partially prepared module was used"
+        staged_nothing
+        ;;
+    install-launcher-temp)
+        printf 'keep\n' >"$fixture/unchanged"
+        ln -s "$fixture/unchanged" "$adb/.adblocker-launcher"
+        direct_sh install "$fixture/module.zip" || fail "the installation failed"
+        starts direct
+        test -L "$adb/.adblocker-launcher" && test "$(cat "$fixture/unchanged")" = keep ||
+            fail "the installer used a predictable temporary path"
+        mode "$launcher" -rwx------
+        if ls "$adb"/.adblocker-launcher.* >/dev/null 2>&1; then fail "a temporary launcher remains"; fi
+        ;;
+    remove-leftover-detached)
+        installed_by_app
+        mkdir -p "$data/store" "$data/ca"
+        touch "$data/store/root.0"
+        if direct_sh remove; then fail "partial removal was reported as complete"; fi
+        test ! -e "$direct" && test -d "$direct.gone" && test ! -e "$data/ca" ||
+            fail "the module was not detached or the key was not removed"
+        grep -q 'Could not delete the detached module' "$fixture/output" ||
+            fail "the detached module was not reported"
+        test -x "$launcher" && grep -q 'Removes what was left' "$launcher" ||
+            fail "the cleanup launcher was not written"
+        sh "$launcher"
+        test ! -e "$data" && test ! -e "$launcher" || fail "the deferred cleanup did not run"
         ;;
     reinstall)
         installed_by_app

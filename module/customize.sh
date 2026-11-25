@@ -47,14 +47,22 @@ ui_print "- Architecture: $ARCH"
 # The shared Android tables must accept the same owner and routing rules
 # as the daemon. If the device hides its config, runtime staging checks this
 # before enabling capture.
-if zcat /proc/config.gz >/dev/null 2>&1; then
+if kernel_config=$(zcat /proc/config.gz 2>/dev/null); then
+    # Android may run an external printf. A full config can exceed the
+    # kernel's limit on the length of one command argument.
+    newline='
+'
+    kernel_config=$newline$kernel_config$newline
     for option in NETFILTER_XT_MATCH_OWNER NETFILTER_XT_TARGET_TPROXY \
         NETFILTER_XT_MARK NETFILTER_XT_MATCH_MULTIPORT NETFILTER_XT_MATCH_QUOTA2 \
         IP_MULTIPLE_TABLES IP_NF_MANGLE; do
-        zcat /proc/config.gz | grep -E "^CONFIG_$option=(y|m)$" >/dev/null ||
-            abort "! The kernel lacks CONFIG_$option"
+        case "$kernel_config" in
+        *"$newline"CONFIG_"$option"=[ym]"$newline"*) ;;
+        *) abort "! The kernel lacks CONFIG_$option" ;;
+        esac
     done
 fi
+unset kernel_config newline
 for tool in timeout ip iptables iptables-restore ip6tables ip6tables-restore; do
     [ -x "/system/bin/$tool" ] || abort "! The system has no $tool"
 done
@@ -73,8 +81,8 @@ unzip -o -j "$ZIPFILE" "bin/$ARCH/abd" -d "$MODPATH/bin" >&2 ||
 for file in $MODULE_FILES bin/abd; do
     [ -f "$MODPATH/$file" ] || abort "! $file is missing from the archive"
 done
-set_perm_recursive "$MODPATH" 0 0 0755 0644
-set_perm "$MODPATH/bin/abd" 0 0 0755
+set_perm_recursive "$MODPATH" 0 0 0755 0644 || abort "! Could not set module permissions"
+set_perm "$MODPATH/bin/abd" 0 0 0755 || abort "! Could not make the daemon executable"
 
 # Flashed from a root manager, the archive installs the app as well.
 # Installed by the app, the archive is the app's own package where the
@@ -97,7 +105,7 @@ elif unzip -l "$ZIPFILE" AndroidManifest.xml >/dev/null 2>&1; then
         ui_print "- Installing the app"
         # Binder can pass a pipe to PackageManager even when SELinux
         # prevents it receiving the installer's archive descriptor.
-        size=$(wc -c <"$ZIPFILE")
+        size=$(wc -c <"$ZIPFILE" | tr -d '[:space:]')
         if cat "$ZIPFILE" | pm install -r -S "$size" >&2; then
             ui_print "- App installed"
         else

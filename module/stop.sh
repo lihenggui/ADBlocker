@@ -19,8 +19,12 @@
 #
 # The rules are removed whatever became of the stopping: a daemon that
 # could not be stopped then filters nothing, which is the lesser harm.
+case "$0" in
+*/*) MODDIR=${0%/*} ;;
+*) MODDIR=. ;;
+esac
 abd_stopped=0
 abd_unhooked=0
-"${0%/*}/bin/abd" module-stop || abd_stopped=$?
-"${0%/*}/bin/abd" unhook || abd_unhooked=$?
+"$MODDIR/bin/abd" module-stop || abd_stopped=$?
+"$MODDIR/bin/abd" unhook || abd_unhooked=$?
 [ "$abd_stopped" -eq 0 ] && [ "$abd_unhooked" -eq 0 ] || exit 1

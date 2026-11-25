@@ -64,6 +64,19 @@ fn said(output: &Output) -> &str {
     std::str::from_utf8(&output.stdout).unwrap()
 }
 
+#[test]
+fn vpn_reports_the_version_of_the_packaged_module() {
+    use abd_engine::cli::Host as _;
+
+    let (session, _, _dir) = session();
+    let program = Path::new(env!("CARGO_MANIFEST_DIR")).join("../module/abd");
+    let expected = abd_engine::protocol::version(&program).unwrap();
+    assert_eq!(
+        InApp(&session).version().as_deref(),
+        Some(expected.as_str())
+    );
+}
+
 fn close_with_a_delayed_callback() -> Duration {
     let (session, _, _dir) = session();
     let (started, ready) = mpsc::sync_channel(1);

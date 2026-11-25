@@ -56,6 +56,7 @@ pub enum Verdict {
 
 /// An app, by package name, and a host it would not talk to through us.
 type Pinned = (String, String);
+type Pins = HashMap<String, HashMap<String, u64>>;
 
 /// How long a host is taken as pinned, in seconds: 30 days.
 const KEEP: u64 = 30 * 24 * 3600;
@@ -83,7 +84,7 @@ pub struct Policy {
     /// Kept in memory only: an app is known again by its next page.
     apps_with_pages: Mutex<HashSet<String>>,
     /// When each was found, in seconds since the epoch.
-    pinned: Mutex<HashMap<Pinned, u64>>,
+    pinned: Mutex<Pins>,
     /// Connections in a row that completed the handshake and then closed
     /// at once without a request: how a pin checked after the handshake
     /// looks.
@@ -140,15 +141,41 @@ fn fresh(when: u64, now: u64) -> bool {
 }
 
 /// The saved table, with the time, package and host on each line.
-fn pinned_text(pinned: &HashMap<Pinned, u64>) -> String {
+fn pinned_text<'a>(pinned: impl Iterator<Item = (&'a str, &'a str, u64)>) -> String {
     pinned
-        .iter()
-        .map(|((package, host), when)| format!("{when} {package} {host}\n"))
+        .map(|(package, host, when)| format!("{when} {package} {host}\n"))
         .collect()
 }
 
 pub(crate) fn write_pinned_durable(file: &Path, pinned: &HashMap<Pinned, u64>) -> io::Result<()> {
-    crate::files::replace_durable(file, pinned_text(pinned).as_bytes())
+    let text = pinned_text(
+        pinned
+            .iter()
+            .map(|((p, h), &when)| (p.as_str(), h.as_str(), when)),
+    );
+    crate::files::replace_durable(file, text.as_bytes())
+}
+
+fn runtime_pinned_text(pinned: &Pins) -> String {
+    pinned_text(pinned.iter().flat_map(|(package, hosts)| {
+        hosts
+            .iter()
+            .map(|(host, &when)| (package.as_str(), host.as_str(), when))
+    }))
+}
+
+fn forget_pins(pinned: &mut Pins, package: &str, host: Option<&str>) -> bool {
+    let Some(host) = host else {
+        return pinned.remove(package).is_some();
+    };
+    let Some(hosts) = pinned.get_mut(package) else {
+        return false;
+    };
+    let removed = hosts.remove(host).is_some();
+    if hosts.is_empty() {
+        pinned.remove(package);
+    }
+    removed
 }
 
 /// Removes from `pinned` the hosts of `package`, or only `host` of them.
@@ -169,9 +196,13 @@ impl Policy {
                 (HashMap::new(), Some(error.kind()))
             }
         };
+        let mut by_package = Pins::new();
+        for ((package, host), when) in pinned {
+            by_package.entry(package).or_default().insert(host, when);
+        }
         Self {
             apps_with_pages: Mutex::default(),
-            pinned: Mutex::new(pinned),
+            pinned: Mutex::new(by_package),
             silent: Mutex::default(),
             retries: Mutex::default(),
             retries_full: AtomicBool::new(false),
@@ -266,18 +297,19 @@ impl Policy {
         // A try of a pinned host is no part of the decision: it is taken
         // for a connection that this passes through as pinned, and that
         // can be decrypted (`take_try`).
-        if self.is_pinned(&(package.to_owned(), host.to_owned())) {
+        if self.is_pinned(package, host) {
             return Some(Reason::Pinned);
         }
         // Until every exclusion list has been read, any host may be on one.
         (!exclusions.ready()).then_some(Reason::ExclusionsPending)
     }
 
-    fn is_pinned(&self, key: &Pinned) -> bool {
+    fn is_pinned(&self, package: &str, host: &str) -> bool {
         self.pinned
             .lock()
             .unwrap()
-            .get(key)
+            .get(package)
+            .and_then(|hosts| hosts.get(host))
             .is_some_and(|&when| fresh(when, now()))
     }
 
@@ -286,11 +318,10 @@ impl Policy {
     /// can be decrypted: the ticket the connection ends it with, if there
     /// is a try to take.
     pub fn take_try(&self, package: &str, host: &str) -> Option<u64> {
-        let key = (package.to_owned(), host.to_owned());
-        if !self.is_pinned(&key) {
+        if !self.is_pinned(package, host) {
             return None;
         }
-        self.retries.lock().unwrap().take(&key, now())
+        self.retries.lock().unwrap().take((package, host), now())
     }
 
     /// A process of `package` has started, and trusts us: each host it
@@ -298,18 +329,24 @@ impl Policy {
     pub fn process_started(&self, package: &str) {
         let now = now();
         let pinned = self.pinned.lock().unwrap();
-        let hosts: Vec<String> = pinned
-            .iter()
-            .filter(|((p, _), when)| p == package && fresh(**when, now))
-            .map(|((_, host), _)| host.clone())
-            .collect();
+        let hosts = pinned
+            .get(package)
+            .into_iter()
+            .flatten()
+            .filter(|(_, when)| fresh(**when, now))
+            .map(|(host, _)| host.as_str());
         let mut retries = self.retries.lock().unwrap();
         // What was tried of hosts no longer pinned, gone old or pushed out
         // by others of their app, is of no use.
-        retries.retain(|key| pinned.get(key).is_some_and(|&when| fresh(when, now)));
+        retries.retain(|p, h| {
+            pinned
+                .get(p)
+                .and_then(|hosts| hosts.get(h))
+                .is_some_and(|&when| fresh(when, now))
+        });
         // Full only with as many hosts pinned as the table holds: those left
         // out stay pinned, and are tried again after their 30 days.
-        if retries.grant(package, &hosts, now) && !self.retries_full.swap(true, Relaxed) {
+        if retries.grant(package, hosts, now) && !self.retries_full.swap(true, Relaxed) {
             eprintln!("pins: too many pinned hosts to try again; some wait for their 30 days");
         }
     }
@@ -318,12 +355,19 @@ impl Policy {
     /// without a request. The host was found pinned again: it is kept for
     /// [`KEEP`] from now.
     pub fn try_refused(&self, package: &str, host: &str, ticket: u64) {
-        let key = (package.to_owned(), host.to_owned());
         let mut pinned = self.pinned.lock().unwrap();
-        if !self.retries.lock().unwrap().refused(&key, ticket, now()) {
+        if !self
+            .retries
+            .lock()
+            .unwrap()
+            .refused((package, host), ticket, now())
+        {
             return;
         }
-        if let Some(when) = pinned.get_mut(&key) {
+        if let Some(when) = pinned
+            .get_mut(package)
+            .and_then(|hosts| hosts.get_mut(host))
+        {
             *when = now();
             self.changed.notify_one();
         }
@@ -332,17 +376,22 @@ impl Policy {
     /// The connection of the try of `ticket` is over. If it never came to
     /// show the app our certificate, the try is left for the next one.
     pub fn try_over(&self, package: &str, host: &str, ticket: u64) {
-        let key = (package.to_owned(), host.to_owned());
-        self.retries.lock().unwrap().unresolved(&key, ticket);
+        self.retries
+            .lock()
+            .unwrap()
+            .unresolved((package, host), ticket);
     }
 
     /// Forgets that `package` pins `host`, or every host it pins, so that
     /// it is decrypted again. Returns whether anything was forgotten.
     pub fn forget(&self, package: &str, host: Option<&str>) -> bool {
-        let matches = |(p, h): &Pinned| p == package && host.is_none_or(|host| host == h);
-        let forgotten = forget(&mut self.pinned.lock().unwrap(), package, host);
-        self.silent.lock().unwrap().retain(|(key, _)| !matches(key));
-        self.retries.lock().unwrap().retain(|key| !matches(key));
+        let matches = |p: &str, h: &str| p == package && host.is_none_or(|host| host == h);
+        let forgotten = forget_pins(&mut self.pinned.lock().unwrap(), package, host);
+        self.silent
+            .lock()
+            .unwrap()
+            .retain(|((p, h), _)| !matches(p, h));
+        self.retries.lock().unwrap().retain(|p, h| !matches(p, h));
         forgotten
     }
 
@@ -363,7 +412,7 @@ impl Policy {
         let sensitive = self.sensitive.lock().unwrap();
         sensitive
             .get(host)
-            .is_some_and(|when| when + KEEP_SENSITIVE > now())
+            .is_some_and(|when| when.saturating_add(KEEP_SENSITIVE) > now())
     }
 
     /// The client refused our certificate during the handshake. Returns
@@ -407,14 +456,19 @@ impl Policy {
     /// decrypted before the host was pinned may be another client of the
     /// app's, which does not check its pins.
     pub fn spoke(&self, package: &str, host: &str, ticket: Option<u64>) {
-        let key = (package.to_owned(), host.to_owned());
         self.silent
             .lock()
             .unwrap()
-            .retain(|(counted, _)| counted != &key);
+            .retain(|((p, h), _)| p != package || h != host);
         let Some(ticket) = ticket else { return };
         let mut pinned = self.pinned.lock().unwrap();
-        if self.retries.lock().unwrap().accepted(&key, ticket) && pinned.remove(&key).is_some() {
+        if self
+            .retries
+            .lock()
+            .unwrap()
+            .accepted((package, host), ticket)
+            && forget_pins(&mut pinned, package, Some(host))
+        {
             self.changed.notify_one();
         }
     }
@@ -424,7 +478,7 @@ impl Policy {
     pub fn keep_only(&self, packages: &BTreeSet<&str>) {
         let mut pinned = self.pinned.lock().unwrap();
         let before = pinned.len();
-        pinned.retain(|(package, _), _| packages.contains(package.as_str()));
+        pinned.retain(|package, _| packages.contains(package.as_str()));
         if pinned.len() != before {
             self.changed.notify_one();
         }
@@ -435,25 +489,25 @@ impl Policy {
         self.retries
             .lock()
             .unwrap()
-            .retain(|(package, _)| packages.contains(package.as_str()));
+            .retain(|package, _| packages.contains(package));
     }
 
     fn pin(&self, package: &str, host: &str) -> bool {
         let mut pinned = self.pinned.lock().unwrap();
         let now = now();
-        let new = pinned
-            .insert((package.to_owned(), host.to_owned()), now)
+        let own = pinned.entry(package.to_owned()).or_default();
+        let new = own
+            .insert(host.to_owned(), now)
             .is_none_or(|when| !fresh(when, now));
-        let mut own: Vec<(u64, String)> = pinned
-            .iter()
-            .filter(|((p, _), _)| p == package)
-            .map(|((_, host), when)| (*when, host.clone()))
-            .collect();
         if own.len() > MAX_PER_PACKAGE {
-            // The oldest go; among those of one second, any.
-            own.sort_unstable();
-            for (_, host) in own.drain(..own.len() - MAX_PER_PACKAGE) {
-                pinned.remove(&(package.to_owned(), host));
+            let mut by_age: Vec<_> = own.iter().map(|(h, &when)| (when, h)).collect();
+            by_age.sort_unstable();
+            let expired: Vec<_> = by_age[..own.len() - MAX_PER_PACKAGE]
+                .iter()
+                .map(|(_, h)| (*h).clone())
+                .collect();
+            for host in expired {
+                own.remove(&host);
             }
         }
         self.changed.notify_one();
@@ -465,7 +519,7 @@ impl Policy {
         self.check_loaded()?;
         let _writer = self.writing.lock().unwrap();
         let pinned = self.pinned.lock().unwrap().clone();
-        crate::files::replace(&self.file, pinned_text(&pinned).as_bytes())
+        crate::files::replace(&self.file, runtime_pinned_text(&pinned).as_bytes())
     }
 
     /// Keep the active pins until the requested removals can survive a restart.
@@ -474,9 +528,9 @@ impl Policy {
         let _writer = self.writing.lock().unwrap();
         let mut pinned = self.pinned.lock().unwrap().clone();
         for &(package, host) in requests {
-            forget(&mut pinned, package, host);
+            forget_pins(&mut pinned, package, host);
         }
-        write_pinned_durable(&self.file, &pinned)?;
+        crate::files::replace_durable(&self.file, runtime_pinned_text(&pinned).as_bytes())?;
         // Connections can learn pins while the file is being written.
         // Preserve unrelated changes and publish the successful removals.
         for &(package, host) in requests {
@@ -737,9 +791,52 @@ mod tests {
             policy.rejected("com.hostile", &format!("h{n}.example"));
         }
         let pinned = policy.pinned.lock().unwrap();
-        assert!(pinned.contains_key(&("com.bank".to_owned(), "api.bank.example".to_owned())));
-        let hostile = pinned.keys().filter(|(p, _)| p == "com.hostile").count();
+        assert!(pinned["com.bank"].contains_key("api.bank.example"));
+        let hostile = pinned["com.hostile"].len();
         assert!(hostile <= MAX_PER_PACKAGE, "{hostile}");
+    }
+
+    #[test]
+    fn adding_pins_keeps_existing_hosts_until_the_package_reaches_capacity() {
+        let (policy, _dir) = policy();
+        let old = now().saturating_sub(60);
+        policy.rejected("com.app", "old.example");
+        *policy
+            .pinned
+            .lock()
+            .unwrap()
+            .get_mut("com.app")
+            .unwrap()
+            .get_mut("old.example")
+            .unwrap() = old;
+        for n in 1..MAX_PER_PACKAGE {
+            assert!(policy.rejected("com.app", &format!("h{n}.example")));
+        }
+        assert!(policy.is_pinned("com.app", "old.example"));
+        assert!(!policy.is_pinned("com.other", "old.example"));
+        policy.process_started("com.app");
+        let request = String::from("https://old.example");
+        let host = &request["https://".len()..];
+        assert!(policy.take_try("com.app", host).is_some());
+        policy.spoke("com.app", host, None);
+        assert!(policy.is_pinned("com.app", host));
+        assert!(policy.rejected("com.app", "new.example"));
+        assert!(!policy.is_pinned("com.app", host));
+        assert_eq!(
+            policy.pinned.lock().unwrap()["com.app"].len(),
+            MAX_PER_PACKAGE
+        );
+    }
+
+    #[test]
+    fn a_sensitive_host_at_the_end_of_time_is_kept_without_overflow() {
+        let (policy, _dir) = policy();
+        policy
+            .sensitive
+            .lock()
+            .unwrap()
+            .insert("bank.example".to_owned(), u64::MAX);
+        assert!(policy.is_sensitive("bank.example"));
     }
 
     #[test]
@@ -943,7 +1040,10 @@ mod tests {
         .unwrap();
         let policy = Policy::open(file);
         let pinned = policy.pinned.lock().unwrap();
-        let hosts: Vec<&str> = pinned.keys().map(|(_, host)| host.as_str()).collect();
+        let hosts: Vec<&str> = pinned["com.bank"]
+            .keys()
+            .map(|host| host.as_str())
+            .collect();
         assert_eq!(hosts, ["max.example"]);
         assert!(fresh(u64::MAX, now) && !fresh(0, KEEP));
     }

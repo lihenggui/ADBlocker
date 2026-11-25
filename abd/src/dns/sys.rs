@@ -40,23 +40,29 @@ pub(super) fn open_tun(name: &str) -> io::Result<OwnedFd> {
 }
 
 fn set_iff(file: &File, name: &str) -> io::Result<()> {
-    // `struct ifreq`: the name, then the flags. 40 bytes is its size on
-    // 64-bit systems and more than it on 32-bit ones.
-    let mut request = [0u8; 40];
-    let name = name.as_bytes();
-    if name.len() >= libc::IFNAMSIZ {
-        return Err(io::ErrorKind::InvalidInput.into());
-    }
-    request[..name.len()].copy_from_slice(name);
-    let flags = (libc::IFF_TUN | libc::IFF_NO_PI) as libc::c_short;
-    request[libc::IFNAMSIZ..libc::IFNAMSIZ + 2].copy_from_slice(&flags.to_ne_bytes());
-    // SAFETY: TUNSETIFF reads and writes one `struct ifreq`, which fits in
-    // the buffer; the buffer lives through the call.
-    let result = unsafe { libc::ioctl(file.as_raw_fd(), libc::TUNSETIFF, request.as_mut_ptr()) };
+    let mut request = tun_request(name)?;
+    // SAFETY: TUNSETIFF reads and writes one ifreq, which lives through
+    // the call and is aligned for the platform ABI.
+    let result = unsafe { libc::ioctl(file.as_raw_fd(), libc::TUNSETIFF, &raw mut request) };
     if result < 0 {
         return Err(io::Error::last_os_error());
     }
     Ok(())
+}
+
+fn tun_request(name: &str) -> io::Result<libc::ifreq> {
+    let name = name.as_bytes();
+    if name.len() >= libc::IFNAMSIZ || name.contains(&0) {
+        return Err(io::ErrorKind::InvalidInput.into());
+    }
+    // SAFETY: zero is valid for the name and every scalar field of the
+    // union, including the null pointer.
+    let mut request: libc::ifreq = unsafe { std::mem::zeroed() };
+    for (slot, &byte) in request.ifr_name.iter_mut().zip(name) {
+        *slot = byte as libc::c_char;
+    }
+    request.ifr_ifru.ifru_flags = (libc::IFF_TUN | libc::IFF_NO_PI) as libc::c_short;
+    Ok(request)
 }
 
 /// One datagram as it came: how much of the buffer it filled, who sent
@@ -125,21 +131,19 @@ fn socket_address(raw: &[u8]) -> Option<SocketAddr> {
 fn original_destination(control: &[u8]) -> Option<SocketAddr> {
     const WORD: usize = size_of::<usize>();
     let header = size_of::<libc::cmsghdr>().next_multiple_of(WORD);
-    let mut at = 0;
-    while let Some(fields) = control.get(at..at + header) {
+    let mut rest = control;
+    while let Some(fields) = rest.get(..header) {
         let len = usize::from_ne_bytes(fields[..WORD].try_into().ok()?);
         let level = i32::from_ne_bytes(fields[WORD..WORD + 4].try_into().ok()?);
         let kind = i32::from_ne_bytes(fields[WORD + 4..WORD + 8].try_into().ok()?);
-        if len < header {
-            return None;
-        }
+        let data = rest.get(header..len)?;
         if matches!(
             (level, kind),
             (libc::SOL_IP, libc::IP_ORIGDSTADDR) | (libc::SOL_IPV6, libc::IPV6_ORIGDSTADDR)
         ) {
-            return socket_address(control.get(at + header..at + len)?);
+            return socket_address(data);
         }
-        at += len.next_multiple_of(WORD);
+        rest = rest.get(len.checked_next_multiple_of(WORD)?..)?;
     }
     None
 }
@@ -149,6 +153,31 @@ mod tests {
     use std::os::fd::AsFd as _;
 
     use super::*;
+
+    #[test]
+    fn tun_requests_fill_the_native_name_and_flags() {
+        let request = tun_request("abd_dns").unwrap();
+        let name = request.ifr_name.map(|byte| byte as u8);
+        assert_eq!(&name[..8], b"abd_dns\0");
+        assert!(name[8..].iter().all(|&byte| byte == 0));
+        // SAFETY: tun_request initialized the flags member of this union.
+        let flags = unsafe { request.ifr_ifru.ifru_flags };
+        assert_eq!(i32::from(flags), libc::IFF_TUN | libc::IFF_NO_PI);
+        assert!(tun_request(&"a".repeat(libc::IFNAMSIZ)).is_err());
+        assert!(tun_request("abd\0dns").is_err());
+    }
+
+    #[test]
+    fn overflowing_control_message_lengths_are_rejected() {
+        for (level, kind) in [
+            (libc::SOL_IP, libc::IP_PKTINFO),
+            (libc::SOL_IP, libc::IP_ORIGDSTADDR),
+        ] {
+            let mut control = cmsg(level, kind, &[]);
+            control[..size_of::<usize>()].copy_from_slice(&usize::MAX.to_ne_bytes());
+            assert_eq!(original_destination(&control), None);
+        }
+    }
 
     fn sockaddr_in(ip: [u8; 4], port: u16) -> Vec<u8> {
         let mut raw = (libc::AF_INET as u16).to_ne_bytes().to_vec();

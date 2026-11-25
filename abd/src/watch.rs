@@ -34,7 +34,7 @@ use std::time::Duration;
 
 use tokio::io::Interest;
 use tokio::io::unix::AsyncFd;
-use tokio::io::{AsyncBufReadExt as _, AsyncReadExt as _, BufReader};
+use tokio::io::{AsyncBufRead, AsyncBufReadExt as _, BufReader};
 
 use crate::android::package_settings::{BACKUP, PRIMARY};
 
@@ -232,26 +232,12 @@ impl Packages {
     }
 
     /// Returns once Android updates packages, managed users, or their trust.
-    pub async fn changed(&mut self) -> Change {
+    pub async fn changed(&mut self) -> std::io::Result<Change> {
         loop {
             let mut buf = [0u8; 4096];
-            let n = {
-                let Ok(mut ready) = self.fd.readable().await else {
-                    // Nothing to wait on any more: never, rather than at once
-                    // and for ever.
-                    return std::future::pending().await;
-                };
-                // SAFETY: reads at most the length of `buf` into it.
-                let n =
-                    unsafe { libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
-                if n <= 0 {
-                    ready.clear_ready();
-                    continue;
-                }
-                n
-            };
+            let n = read_inotify(&self.fd, &mut buf).await?;
             let mut changed = Change::default();
-            for (wd, mask, name) in events(&buf[..n as usize]) {
+            for (wd, mask, name) in events(&buf[..n]) {
                 if wd == -1 {
                     // Inotify overflow makes every cached result suspect.
                     self.settings_backup = self.user_dir.with_file_name(BACKUP).exists();
@@ -285,7 +271,7 @@ impl Packages {
                 || !changed.profile_users.is_empty()
                 || !changed.trust.is_empty()
             {
-                return changed;
+                return Ok(changed);
             }
         }
     }
@@ -348,7 +334,7 @@ fn user_records_changed(dir: &Path, mask: u32, name: &[u8]) -> bool {
 /// of persistent profile metadata. A filtered event stream avoids polling.
 pub struct UserStates {
     _process: tokio::process::Child,
-    output: BufReader<tokio::process::ChildStdout>,
+    lines: UserStateLines<BufReader<tokio::process::ChildStdout>>,
 }
 
 impl UserStates {
@@ -397,23 +383,55 @@ impl UserStates {
         );
         Ok(Self {
             _process: process,
-            output,
+            lines: UserStateLines::new(output),
         })
     }
 
     pub async fn changed(&mut self) -> Option<(u32, u32)> {
-        let mut line = Vec::new();
+        self.lines.changed().await
+    }
+}
+
+struct UserStateLines<R> {
+    output: R,
+    line: Vec<u8>,
+    discarding: bool,
+}
+
+impl<R: AsyncBufRead + Unpin> UserStateLines<R> {
+    fn new(output: R) -> Self {
+        Self {
+            output,
+            line: Vec::new(),
+            discarding: false,
+        }
+    }
+
+    async fn changed(&mut self) -> Option<(u32, u32)> {
+        const MAX_LINE: usize = 256;
         loop {
-            line.clear();
-            let n = (&mut self.output)
-                .take(256)
-                .read_until(b'\n', &mut line)
-                .await
-                .ok()?;
-            if n == 0 {
+            let chunk = self.output.fill_buf().await.ok()?;
+            if chunk.is_empty() {
                 return None;
             }
-            if let Some(id) = std::str::from_utf8(&line).ok().and_then(user_state_id) {
+            let end = chunk.iter().position(|&byte| byte == b'\n');
+            let len = end.map_or(chunk.len(), |index| index + 1);
+            // Retain the discard state across cancelled waits so a suffix
+            // can never be mistaken for a fresh logcat header.
+            self.discarding |= len > MAX_LINE - self.line.len();
+            if !self.discarding {
+                self.line.extend_from_slice(&chunk[..len]);
+            }
+            self.output.consume(len);
+            if end.is_none() {
+                continue;
+            }
+            let found = (!self.discarding)
+                .then(|| std::str::from_utf8(&self.line).ok().and_then(user_state_id))
+                .flatten();
+            self.line.clear();
+            self.discarding = false;
+            if let Some(id) = found {
                 return Some(id);
             }
         }
@@ -510,25 +528,16 @@ impl Starts {
     }
 
     /// Returns the UID of a filtered app when a process of it starts.
-    pub async fn started(&mut self) -> u32 {
+    pub async fn started(&mut self) -> std::io::Result<u32> {
         loop {
             // Each of several in a buffer in its turn; one for an app is
             // enough, as all its processes are gone through for any.
             if let Some(uid) = self.found.pop_first() {
-                return uid;
+                return Ok(uid);
             }
-            let Ok(mut ready) = self.fd.readable().await else {
-                return std::future::pending().await;
-            };
             let mut buf = [0u8; 4096];
-            // SAFETY: reads at most the length of `buf` into it.
-            let n = unsafe { libc::read(self.fd.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
-            if n <= 0 {
-                ready.clear_ready();
-                continue;
-            }
-            drop(ready);
-            for (watch, mask, name) in events(&buf[..n as usize]) {
+            let n = read_inotify(&self.fd, &mut buf).await?;
+            for (watch, mask, name) in events(&buf[..n]) {
                 let name = std::str::from_utf8(name).unwrap_or_default();
                 if mask & libc::IN_IGNORED != 0 {
                     // The app's last process ended and its directory went
@@ -582,6 +591,27 @@ fn events(mut buf: &[u8]) -> impl Iterator<Item = (i32, u32, &[u8])> {
     })
 }
 
+async fn read_inotify(fd: &AsyncFd<OwnedFd>, buf: &mut [u8]) -> std::io::Result<usize> {
+    loop {
+        let result = fd
+            .async_io(Interest::READABLE, |inner| {
+                // SAFETY: reads at most the length of `buf` into it.
+                let n =
+                    unsafe { libc::read(inner.as_raw_fd(), buf.as_mut_ptr().cast(), buf.len()) };
+                match n {
+                    ..0 => Err(std::io::Error::last_os_error()),
+                    0 => Err(std::io::ErrorKind::UnexpectedEof.into()),
+                    _ => Ok(n as usize),
+                }
+            })
+            .await;
+        match result {
+            Err(error) if error.kind() == std::io::ErrorKind::Interrupted => {}
+            result => return result,
+        }
+    }
+}
+
 /// The file names in a buffer of inotify events.
 #[cfg(test)]
 fn names(buf: &[u8]) -> impl Iterator<Item = &[u8]> {
@@ -591,6 +621,42 @@ fn names(buf: &[u8]) -> impl Iterator<Item = &[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test(start_paused = true)]
+    async fn a_long_app_line_cannot_supply_a_system_event_after_a_cancelled_read() {
+        use tokio::io::AsyncWriteExt as _;
+
+        let (mut log, output) = tokio::io::duplex(1024);
+        let mut lines = UserStateLines::new(BufReader::with_capacity(32, output));
+        let mut prefix = b"I/am_user_state_changed(11089:561): ".to_vec();
+        prefix.resize(256, b'x');
+        log.write_all(&prefix).await.unwrap();
+        assert!(
+            tokio::time::timeout(Duration::from_secs(1), lines.changed())
+                .await
+                .is_err()
+        );
+        log.write_all(b"I/am_user_state_changed(1000:561): [10,3]\nI/am_user_state_changed(1000:561): [11,4]\n")
+            .await.unwrap();
+        assert_eq!(lines.changed().await, Some((11, 4)));
+        drop(log);
+        assert_eq!(lines.changed().await, None);
+    }
+
+    #[tokio::test]
+    async fn a_permanent_inotify_read_error_is_returned_without_losing_readiness() {
+        let system = tempfile::tempdir().unwrap();
+        let mut packages = Packages::watch_system(system.path()).unwrap();
+        std::fs::write(system.path().join("packages.list"), b"").unwrap();
+        let result = tokio::time::timeout(
+            Duration::from_secs(1),
+            read_inotify(&packages.fd, &mut [0; 1]),
+        )
+        .await
+        .unwrap();
+        assert_eq!(result.unwrap_err().raw_os_error(), Some(libc::EINVAL));
+        assert!(packages.changed().await.unwrap().package_owners);
+    }
 
     fn event(name: &[u8], padded: usize) -> Vec<u8> {
         let mut e = vec![0u8; EVENT_HEADER];
@@ -633,23 +699,23 @@ mod tests {
             let replacement = std::fs::File::create(&primary).unwrap();
             let copy = uses_reserve.then(|| std::fs::File::create(&reserve).unwrap());
             signal();
-            let started = packages.changed().await;
+            let started = packages.changed().await.unwrap();
             assert!(started.profile_users.contains(&0));
             assert!(!started.package_owners);
 
             drop(replacement);
             signal();
-            let main_closed = packages.changed().await;
+            let main_closed = packages.changed().await.unwrap();
             assert!(main_closed.profile_users.contains(&0));
             assert!(!main_closed.package_owners);
 
             std::fs::remove_file(&backup).unwrap();
             signal();
-            assert!(packages.changed().await.package_owners);
+            assert!(packages.changed().await.unwrap().package_owners);
 
             drop(copy);
             signal();
-            let finished = packages.changed().await;
+            let finished = packages.changed().await.unwrap();
             assert!(finished.profile_users.contains(&0));
             assert!(!finished.package_owners);
         }
@@ -661,7 +727,7 @@ mod tests {
         let mut packages = Packages::watch_system(system.path()).unwrap();
         std::fs::write(system.path().join(PRIMARY), b"initial").unwrap();
         let change = tokio::time::timeout(Duration::from_secs(1), packages.changed()).await;
-        assert!(change.unwrap().package_owners);
+        assert!(change.unwrap().unwrap().package_owners);
     }
 
     #[tokio::test]
@@ -689,7 +755,7 @@ mod tests {
         // This unrelated watched write is queued after the rename and
         // creation, so we can drain those events without a timer.
         std::fs::write(owner.join("package-restrictions.xml"), b"<packages/>").unwrap();
-        let before_publication = packages.changed().await;
+        let before_publication = packages.changed().await.unwrap();
         assert!(before_publication.profile_users.contains(&0));
         assert!(!before_publication.users);
 
@@ -700,11 +766,11 @@ mod tests {
         // Drain the primary close separately. The reader may still see
         // the backup at that point, so its deletion must signal again.
         std::fs::write(owner.join("package-restrictions.xml"), b"<packages/>").unwrap();
-        assert!(packages.changed().await.profile_users.contains(&0));
+        assert!(packages.changed().await.unwrap().profile_users.contains(&0));
 
         std::fs::remove_file(&backup).unwrap();
         let change = tokio::time::timeout(Duration::from_secs(1), packages.changed()).await;
-        assert!(change.unwrap().users);
+        assert!(change.unwrap().unwrap().users);
     }
 
     #[tokio::test]
@@ -718,13 +784,13 @@ mod tests {
 
         std::fs::write(&staged, b"<users/>").unwrap();
         std::fs::write(owner.join("package-restrictions.xml"), b"<packages/>").unwrap();
-        let change = packages.changed().await;
+        let change = packages.changed().await.unwrap();
         assert!(change.profile_users.contains(&0));
         assert!(!change.users);
 
         std::fs::rename(staged, users.join("userlist.xml")).unwrap();
         let change = tokio::time::timeout(Duration::from_secs(1), packages.changed()).await;
-        assert!(change.unwrap().users);
+        assert!(change.unwrap().unwrap().users);
     }
 
     #[tokio::test]
@@ -743,7 +809,7 @@ mod tests {
                 std::fs::remove_file(record).unwrap();
             }
             std::fs::write(system.path().join("packages.list"), b"").unwrap();
-            assert!(packages.changed().await.users);
+            assert!(packages.changed().await.unwrap().users);
         }
     }
 
@@ -798,17 +864,17 @@ mod tests {
         std::fs::create_dir(tree.path().join("uid_10009")).unwrap();
         std::fs::create_dir(tree.path().join("uid_10009/pid_5")).unwrap();
         std::fs::create_dir(tree.path().join("uid_10001/pid_6")).unwrap();
-        assert_eq!(starts.started().await, 10001);
+        assert_eq!(starts.started().await.unwrap(), 10001);
         // The first process of a filtered app that had none.
         std::fs::create_dir(tree.path().join("uid_10002")).unwrap();
-        assert_eq!(starts.started().await, 10002);
+        assert_eq!(starts.started().await.unwrap(), 10002);
         std::fs::create_dir(tree.path().join("uid_10002/pid_7")).unwrap();
-        assert_eq!(starts.started().await, 10002);
+        assert_eq!(starts.started().await.unwrap(), 10002);
         // No longer filtered.
         starts.set(&BTreeSet::from([10002]));
         std::fs::create_dir(tree.path().join("uid_10001/pid_8")).unwrap();
         std::fs::create_dir(tree.path().join("uid_10002/pid_9")).unwrap();
-        assert_eq!(starts.started().await, 10002);
+        assert_eq!(starts.started().await.unwrap(), 10002);
     }
 
     #[tokio::test]
@@ -821,7 +887,7 @@ mod tests {
         for _ in 0..3 {
             std::fs::remove_dir(&app).unwrap();
             std::fs::create_dir(&app).unwrap();
-            assert_eq!(starts.started().await, 10001);
+            assert_eq!(starts.started().await.unwrap(), 10001);
         }
         assert_eq!(starts.apps.len(), 1);
     }

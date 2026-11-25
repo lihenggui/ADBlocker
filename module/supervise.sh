@@ -19,7 +19,10 @@
 #
 # Disarm and remove the packet filter rules after the daemon exits. Stale
 # rules can divert connections when no daemon is listening.
-MODDIR=${0%/*}
+case "$0" in
+*/*) MODDIR=${0%/*} ;;
+*) MODDIR=. ;;
+esac
 DATA=/data/adb/adblocker
 LOG=$DATA/abd.log
 ABD=$MODDIR/bin/abd
@@ -73,11 +76,12 @@ unhook() {
 
 # If publication failed, a stop request cannot find this supervisor.
 published=
+owns_pid_file() {
+    [ -f "$DATA/supervisor.pid" ] &&
+        IFS= read -r published <"$DATA/supervisor.pid" && [ "$published" = "$$" ]
+}
 for attempt in 1 2 3; do
-    if [ -f "$DATA/supervisor.pid" ] &&
-        IFS= read -r published <"$DATA/supervisor.pid" && [ "$published" = "$$" ]; then
-        break
-    fi
+    owns_pid_file && break
     published=
     [ "$attempt" -eq 3 ] || sleep 1
 done
@@ -90,16 +94,29 @@ fi
 pid=
 sleeping=
 clear_pids() {
+    owns_pid_file || return 0
     rm -f "$DATA/supervisor.pid" "$DATA/abd.pid" || log "could not clear the process PID files"
 }
 trap clear_pids EXIT
+
+stop_child() {
+    kill "$pid" 2>/dev/null || return 0
+    # Leave time for unhook before module-stop can kill this supervisor.
+    for attempt in 1 2 3 4; do
+        kill -0 "$pid" 2>/dev/null || return 0
+        sleep 1
+    done
+    if kill -0 "$pid" 2>/dev/null; then
+        log "daemon did not stop in time; killing it"
+        kill -9 "$pid" 2>/dev/null || :
+    fi
+}
+
 # Asked to stop: take the daemon down too, and wait while it removes its
 # rules and writes its counts.
 stop() {
-    if [ -n "$pid" ]; then
-        kill "$pid" 2>/dev/null
-        wait "$pid" 2>/dev/null
-    fi
+    trap '' TERM INT
+    [ -z "$pid" ] || stop_child
     [ -n "$sleeping" ] && kill "$sleeping" 2>/dev/null
     unhook
     exit "$?"
@@ -132,6 +149,7 @@ while :; do
     ran=$(($(uptime_seconds) - started))
     # A daemon that was killed left its rules behind.
     unhook || exit 1
+    owns_pid_file || exit 0
     if ! rm -f "$pid_file"; then
         log "could not clear the daemon PID after exit"
         exit 1

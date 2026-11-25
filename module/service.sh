@@ -16,7 +16,10 @@
 
 # Starts the daemon under its supervisor. Runs at late_start, and again after a hot install, in which
 # case a previous instance is stopped first.
-MODDIR=${0%/*}
+case "$0" in
+*/*) MODDIR=${0%/*} ;;
+*) MODDIR=. ;;
+esac
 DATA=/data/adb/adblocker
 LOG=$DATA/abd.log
 
@@ -112,8 +115,14 @@ if [ "$(getprop sys.boot_completed)" != 1 ]; then
 fi
 
 # Start a new log once the old one passes 1 MiB. Checked at each start only.
-if [ -f "$LOG" ] && [ "$(stat -c %s "$LOG")" -gt 1048576 ]; then
-    mv -f "$LOG" "$LOG.old"
+if [ -f "$LOG" ]; then
+    size=$(stat -c %s "$LOG" 2>/dev/null) || size=0
+    case "$size" in
+    '' | *[!0-9]*) size=0 ;;
+    esac
+    if [ "$size" -gt 1048576 ]; then
+        mv -f "$LOG" "$LOG.old" || log "could not rotate the log"
+    fi
 fi
 
 # Started again, by whoever turned the module back on.

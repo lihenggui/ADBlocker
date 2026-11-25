@@ -51,8 +51,9 @@ set_perm() {
     chown "$2:$3" "$1" && chmod "$4" "$1"
 }
 set_perm_recursive() {
-    find "$1" -type d | while read -r dir; do set_perm "$dir" "$2" "$3" "$4"; done
-    find "$1" -type f | while read -r file; do set_perm "$file" "$2" "$3" "$5"; done
+    find "$1" \( -type d -o -type f \) -exec chown "$2:$3" {} + &&
+        find "$1" -type d -exec chmod "$4" {} + &&
+        find "$1" -type f -exec chmod "$5" {} +
 }
 
 # Stops the daemon of the installation about to be replaced, with the new
@@ -71,8 +72,13 @@ stop_installed() {
 into_service_d() {
     # As the managers make it, where none has.
     [ -d "${LAUNCHER%/*}" ] || mkdir -m 755 "${LAUNCHER%/*}" || return 1
-    cat >/data/adb/.adblocker-launcher || return 1
-    chmod 700 /data/adb/.adblocker-launcher && mv -f /data/adb/.adblocker-launcher "$LAUNCHER"
+    launcher_tmp=$(mktemp /data/adb/.adblocker-launcher.XXXXXX) || return 1
+    if cat >"$launcher_tmp" && chmod 700 "$launcher_tmp" &&
+        mv -f "$launcher_tmp" "$LAUNCHER"; then
+        return 0
+    fi
+    rm -f "$launcher_tmp"
+    return 1
 }
 
 write_launcher() {
@@ -101,7 +107,8 @@ EOF
 # deletion cut short leaves the whole module there or none of it, not a
 # part that can neither run nor be uninstalled.
 drop_direct() {
-    rm -rf "$DIRECT.gone" && mv "$DIRECT" "$DIRECT.gone" && rm -rf "$DIRECT.gone"
+    rm -rf "$DIRECT.gone" && mv "$DIRECT" "$DIRECT.gone" || return 1
+    rm -rf "$DIRECT.gone" || return 2
 }
 
 # Replaces the module the app installed before, or installs the first.
@@ -213,10 +220,22 @@ uninstall() {
         rm -rf "$DATA/ca"
         rm -rf "$DATA" || return 1
     fi
-    drop_direct && rm -f "$LAUNCHER" || return 1
-    if [ -e "$DATA" ]; then
-        leave_cleanup || echo "! What apps still use of the data stays in $DATA"
+    detached=0
+    drop_direct || detached=$?
+    [ "$detached" -ne 1 ] || return 1
+    cleanup=0
+    if [ "$detached" -eq 2 ]; then
+        echo "! Could not delete the detached module at $DIRECT.gone"
+        cleanup=1
     fi
+    rm -f "$LAUNCHER" || cleanup=1
+    if [ -e "$DATA" ]; then
+        if ! leave_cleanup; then
+            echo "! What apps still use of the data stays in $DATA"
+            cleanup=1
+        fi
+    fi
+    return "$cleanup"
 }
 
 boot() {

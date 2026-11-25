@@ -316,6 +316,7 @@ async fn serve_decrypted(
     let since = std::time::Instant::now();
     let app_closed = if h2 {
         let conn = hyper::server::conn::http2::Builder::new(TokioExecutor::new())
+            .max_concurrent_streams(128)
             .serve_connection(app_io, svc);
         carry(conn, up_task, |conn| conn.graceful_shutdown()).await
     } else {

@@ -53,11 +53,16 @@ impl Process {
             events: libc::POLLIN,
             revents: 0,
         };
-        // SAFETY: `pfd` is one valid pollfd, as the count says.
-        if unsafe { libc::poll(&mut pfd, 1, timeout_ms) } < 0 {
-            return Err(io::Error::last_os_error());
-        }
-        Ok(pfd.revents & (libc::POLLIN | libc::POLLHUP) != 0)
+        poll_until(timeout_ms, |remaining_ms| {
+            // SAFETY: `pfd` is one valid pollfd, as the count says.
+            if unsafe { libc::poll(&mut pfd, 1, remaining_ms) } < 0 {
+                return Err(io::Error::last_os_error());
+            }
+            if pfd.revents & libc::POLLNVAL != 0 {
+                return Err(io::Error::from_raw_os_error(libc::EBADF));
+            }
+            Ok(pfd.revents & (libc::POLLIN | libc::POLLHUP) != 0)
+        })
     }
 
     /// Send `signal`. A process that has ended in the meantime gets none.
@@ -76,6 +81,24 @@ impl Process {
             Err(io::Error::last_os_error())
         } else {
             Ok(())
+        }
+    }
+}
+
+fn poll_until(timeout_ms: i32, mut poll: impl FnMut(i32) -> io::Result<bool>) -> io::Result<bool> {
+    let timeout = Duration::from_millis(timeout_ms as u64);
+    let started = Instant::now();
+    let mut remaining_ms = timeout_ms;
+    loop {
+        match poll(remaining_ms) {
+            Err(error) if error.kind() == io::ErrorKind::Interrupted => {
+                let remaining = timeout.saturating_sub(started.elapsed());
+                if remaining.is_zero() {
+                    return Ok(false);
+                }
+                remaining_ms = remaining.as_nanos().div_ceil(1_000_000) as i32;
+            }
+            result => return result,
         }
     }
 }
@@ -249,6 +272,25 @@ fn matches_command(cmdline: &[u8], program: Program) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn an_interrupted_poll_retries_only_for_the_time_left() {
+        let mut calls = 0;
+        let exited = poll_until(2000, |remaining_ms| {
+            calls += 1;
+            if calls == 1 {
+                assert_eq!(remaining_ms, 2000);
+                std::thread::sleep(Duration::from_millis(10));
+                Err(io::Error::from_raw_os_error(libc::EINTR))
+            } else {
+                assert!((1..=1990).contains(&remaining_ms));
+                Ok(true)
+            }
+        });
+        assert!(exited.unwrap());
+        assert_eq!(calls, 2);
+        assert!(!poll_until(0, |_| Err(io::ErrorKind::Interrupted.into())).unwrap());
+    }
 
     #[test]
     fn recognizes_the_supervisor_from_android_or_the_root_manager_shell() {

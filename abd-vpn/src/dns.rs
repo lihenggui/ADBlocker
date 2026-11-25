@@ -41,7 +41,7 @@ pub(crate) const MAX_PENDING: usize = 64;
 const RESOLVER_TIME: Duration = Duration::from_secs(1);
 const TCP_LIFETIME: Duration = Duration::from_secs(30);
 const MAX_TCP_CLIENTS: usize = 32;
-const TTL: u32 = 30;
+const BLOCKED_TTL: u32 = 0;
 const IPV4_UDP_HEADERS: usize = 20 + 8;
 const IPV6_UDP_HEADERS: usize = 40 + 8;
 
@@ -164,7 +164,7 @@ impl Resolver {
             .await
             .filter(|uid| self.ctx.selection.apps.read().unwrap().contains_key(uid));
         if let Some(uid) = filtered_uid
-            && let Some(answer) = dns::blocked_answer(&self.ctx, uid, &question, TTL)
+            && let Some(answer) = dns::blocked_answer(&self.ctx, uid, &question, BLOCKED_TTL)
         {
             return Some(answer);
         }
@@ -183,7 +183,7 @@ impl Resolver {
         // A resolver can advertise a larger datagram than the TUN can
         // carry. Signal truncation so the client can retry using TCP.
         Some(if udp_payload.is_some_and(|max| answer.len() > max) {
-            question.local_answer(TTL, true)
+            question.local_answer(BLOCKED_TTL, true)
         } else {
             answer
         })
@@ -367,7 +367,7 @@ mod tests {
         assert_eq!(reply.server, app);
         let local = Question::parse(&request, false)
             .unwrap()
-            .local_answer(TTL, false);
+            .local_answer(BLOCKED_TTL, false);
         assert_eq!(reply.payload, local);
         assert_eq!(device.0.load(Relaxed), 0);
         tunnel.abort();
@@ -435,6 +435,7 @@ mod tests {
 
         let blocked = dns.answer(app, server, &query, None).await.unwrap();
         assert_eq!(blocked[7], 1);
+        assert_eq!(&blocked[blocked.len() - 10..blocked.len() - 6], &[0; 4]);
         assert_eq!(&blocked[blocked.len() - 4..], &[0; 4]);
         assert!(lookups.lock().unwrap().is_empty());
 

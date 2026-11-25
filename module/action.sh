@@ -15,11 +15,18 @@
 # along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 # Action button in the root manager: show the daemon's status.
-MODDIR=${0%/*}
+case "$0" in
+*/*) MODDIR=${0%/*} ;;
+*) MODDIR=. ;;
+esac
 DATA=/data/adb/adblocker
 
 pid="$(cat "$DATA/abd.pid" 2>/dev/null)"
-if [ -n "$pid" ] && [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = abd ]; then
+case "$pid" in
+'' | *[!0-9]*) pid=0 ;;
+esac
+if [ "$pid" -gt 1 ] 2>/dev/null && kill -0 "$pid" 2>/dev/null &&
+    [ "$(cat /proc/"$pid"/comm 2>/dev/null)" = abd ]; then
     echo "Daemon: running (pid $pid)"
 else
     echo "Daemon: NOT running"

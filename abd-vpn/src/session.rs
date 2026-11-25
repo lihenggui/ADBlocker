@@ -103,7 +103,10 @@ impl Host for InApp<'_> {
         Ok(())
     }
     fn version(&self) -> Option<String> {
-        Some(format!("v{}", env!("CARGO_PKG_VERSION")))
+        include_str!("../../module/module.prop")
+            .lines()
+            .find_map(|line| line.strip_prefix("version="))
+            .map(|version| version.trim().to_owned())
     }
     fn boot_guard(&self) -> Option<u64> {
         None
