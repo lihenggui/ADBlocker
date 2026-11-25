@@ -247,9 +247,10 @@ a connection, brings no try. Work apps, which are not mounted into, and
 VPN mode, where no process start is seen, are checked again only after
 the 30 days.
 
-The APK is also a module for LSPosed (`android/hook`, Xposed API 102),
-which the user enables for the apps of their choice in LSPosed. In those
-apps it hooks the certificate checks an app adds to Android's own:
+The APK is also a module for LSPosed/Vector (`android/hook`, Xposed API
+102), which the user enables for the apps of their choice in
+LSPosed/Vector. In those apps it hooks the certificate checks an app adds
+to Android's own:
 
 - Network Security Config pin sets
   (`NetworkSecurityTrustManager.checkPins`);
