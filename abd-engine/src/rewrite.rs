@@ -39,6 +39,7 @@ use crate::rule::action::{ActionKind, Place, ResponseAction, hls, html};
 
 #[derive(Default)]
 pub(crate) struct RewritePlan {
+    pub(crate) url_transforms: Vec<Arc<ResponseAction>>,
     pub(crate) request_headers: Vec<HeaderName>,
     pub(crate) response_headers: Vec<HeaderName>,
     pub(crate) body: BodyPlan,
@@ -57,6 +58,7 @@ impl RewritePlan {
         for action in actions {
             match action.place() {
                 Place::Request(name) => plan.request_headers.push(name.clone()),
+                Place::RequestUrl => plan.url_transforms.push(action),
                 Place::ResponseHead(name) => plan.response_headers.push(name.clone()),
                 Place::ResponseBody if permits_body_rewrite => plan.body.actions.push(action),
                 Place::ResponseBody => (),

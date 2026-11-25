@@ -68,6 +68,8 @@ pub(crate) const MAX_RESPONSE_RULES: usize = 1024;
 pub(crate) const MAX_RESPONSE_REGEX_BYTES: usize = 32 << 20;
 /// The largest response rule retained or compiled.
 pub(crate) const MAX_RESPONSE_RULE: usize = 8 << 10;
+/// Longest URL accepted by a request transformation, before and after editing.
+pub(crate) const MAX_TRANSFORM_URL: usize = 8 << 10;
 /// The longest `$jsonprune` expression, unescaped. A rule with a longer
 /// one is invalid.
 pub(crate) const MAX_JSON_PATH: usize = 4 << 10;

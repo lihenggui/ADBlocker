@@ -22,6 +22,7 @@ pub(crate) mod html;
 mod prune;
 mod removeheader;
 mod replace;
+mod urltransform;
 
 #[cfg(test)]
 pub(crate) use replace::value_end;
@@ -38,6 +39,7 @@ pub(crate) enum ActionSpec {
         single_line: bool,
     },
     RemoveHeader(removeheader::Spec),
+    UrlTransform(urltransform::Spec),
 }
 
 /// A compiled action that can safely be shared among concurrent jobs.
@@ -46,10 +48,12 @@ pub(crate) enum ResponseAction {
     Hls(hls::Compiled),
     Replace(replace::Compiled),
     RemoveHeader(removeheader::Compiled),
+    UrlTransform(urltransform::Compiled),
 }
 
 pub(crate) enum Place<'a> {
     Request(&'a HeaderName),
+    RequestUrl,
     ResponseHead(&'a HeaderName),
     ResponseBody,
 }
@@ -68,6 +72,7 @@ pub(crate) enum ActionKind {
     Hls,
     Replace,
     RemoveHeader,
+    UrlTransform,
 }
 
 impl ActionKind {
@@ -78,6 +83,7 @@ impl ActionKind {
             Self::RemoveHeader => removeheader::parse(value)
                 .ok()
                 .map(ActionSpec::RemoveHeader),
+            Self::UrlTransform => urltransform::parse(value).map(ActionSpec::UrlTransform),
             Self::Replace => {
                 let replace::Parsed {
                     pattern,
@@ -99,7 +105,7 @@ impl ActionKind {
         match self {
             Self::Prune => prune::disables(value),
             Self::Hls => value.is_none(),
-            Self::Replace => replace::disables(value),
+            Self::Replace | Self::UrlTransform => replace::disables(value),
             Self::RemoveHeader => value.is_none(),
         }
     }
@@ -108,13 +114,13 @@ impl ActionKind {
         match self {
             Self::Prune => prune::overrides_block(),
             Self::Replace => replace::overrides_block(),
-            Self::Hls | Self::RemoveHeader => false,
+            Self::Hls | Self::RemoveHeader | Self::UrlTransform => false,
         }
     }
 
     pub(crate) fn deduplicates(self) -> bool {
         match self {
-            Self::Prune | Self::RemoveHeader => false,
+            Self::Prune | Self::RemoveHeader | Self::UrlTransform => false,
             Self::Hls | Self::Replace => true,
         }
     }
@@ -124,7 +130,7 @@ impl ActionKind {
             || match self {
                 Self::Prune | Self::Hls => page.content || page.urlblock,
                 Self::Replace => page.content,
-                Self::RemoveHeader => page.urlblock,
+                Self::RemoveHeader | Self::UrlTransform => page.urlblock,
             }
     }
 
@@ -132,7 +138,7 @@ impl ActionKind {
         match self {
             Self::Hls => hls::takes(mime),
             Self::Prune | Self::Replace => crate::media_type::text(mime),
-            Self::RemoveHeader => false,
+            Self::RemoveHeader | Self::UrlTransform => false,
         }
     }
 }
@@ -144,6 +150,7 @@ impl ActionSpec {
             Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
             Self::Hls(spec) => spec.compile().map(ResponseAction::Hls),
             Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
+            Self::UrlTransform(spec) => spec.compile().map(ResponseAction::UrlTransform),
             Self::Replace {
                 pattern,
                 replacement,
@@ -162,12 +169,14 @@ impl ResponseAction {
             Self::Hls(_) => ActionKind::Hls,
             Self::Replace(_) => ActionKind::Replace,
             Self::RemoveHeader(_) => ActionKind::RemoveHeader,
+            Self::UrlTransform(_) => ActionKind::UrlTransform,
         }
     }
 
     pub(crate) fn place(&self) -> Place<'_> {
         match self {
             Self::Prune(_) | Self::Hls(_) | Self::Replace(_) => Place::ResponseBody,
+            Self::UrlTransform(_) => Place::RequestUrl,
             Self::RemoveHeader(removeheader::Removal::Request(name)) => Place::Request(name),
             Self::RemoveHeader(removeheader::Removal::Response(name)) => Place::ResponseHead(name),
         }
@@ -184,6 +193,7 @@ impl ResponseAction {
             Self::Prune(_) | Self::RemoveHeader(_) => 0,
             Self::Hls(_) => hls::REGEX_CHARGE,
             Self::Replace(action) => action.regex_bytes(),
+            Self::UrlTransform(action) => action.regex_bytes(),
         }
     }
 
@@ -196,7 +206,7 @@ impl ResponseAction {
             Self::Prune(action) => action.apply(input, within_budget),
             Self::Replace(action) => action.apply(input, within_budget),
             // HLS actions operate on the same playlist in one pass.
-            Self::Hls(_) | Self::RemoveHeader(_) => None,
+            Self::Hls(_) | Self::RemoveHeader(_) | Self::UrlTransform(_) => None,
         }
     }
 }

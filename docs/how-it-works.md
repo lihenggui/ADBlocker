@@ -365,6 +365,14 @@ removals for matching URLs. Adding a value to the exception limits it to
 that header and direction.
 The `$document` and `$urlblock` page exceptions also disable header removal.
 
+A `$urltransform` rule from the same trusted sources can change the path
+and query of an allowed request before it is sent. The engine matches the
+changed URL again for blocking and response changes. A rule that changes
+the scheme, host, or port of a GET or HEAD request sends the app an empty
+`307` redirect with `Cache-Control: no-store`. The app opens any new
+connection itself. The engine counts and reports the redirect as a block
+and uses the original URL in the recording.
+
 A rule can name the apps it is for with AdGuard's `$app=` option.
 Entries separated by `|` can be package names, prefixes ending in `*`,
 or regular expressions enclosed in `/`. Names and prefixes ignore ASCII

@@ -24,6 +24,7 @@ pub(super) const PRUNE: &str = "jsonprune";
 pub(super) const HLS: &str = "hls";
 pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
+pub(super) const URLTRANSFORM: &str = "urltransform";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum PageModifier {
@@ -58,6 +59,7 @@ pub(super) enum Compatibility {
     /// Qualifiers are removed and adblock-rust checks the rest with CSP.
     Matcher,
     RemoveHeader,
+    UrlTransform,
     /// Only explicitly supported qualifiers and matcher options are accepted.
     Only(&'static [Allowed]),
 }
@@ -150,10 +152,16 @@ static MODIFIERS: &[Modifier] = &[
         Action(ActionKind::RemoveHeader, Compatibility::RemoveHeader),
         Optional,
     ),
+    modifier(
+        &[URLTRANSFORM],
+        Action(ActionKind::UrlTransform, Compatibility::UrlTransform),
+        Optional,
+    ),
     modifier(&["domain", "from"], Source, Required),
     modifier(&["third-party", "3p"], Source, FlagValue),
     modifier(&["first-party", "1p"], Source, FlagValue),
     modifier(&["to"], Destination, Required),
+    modifier(&["method"], Flag, Required),
     modifier(&[DENYALLOW], DenyAllow, Required),
     modifier(&["_"], Noop, FlagValue),
     modifier(&["tag"], Flag, Required),
@@ -196,7 +204,6 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["cookie"], Unsupported, Optional),
     modifier(&["header"], Unsupported, Required),
     modifier(&["xmlprune"], Unsupported, Required),
-    modifier(&["urltransform"], Unsupported, Required),
     modifier(&["referrerpolicy"], Unsupported, Required),
     modifier(&["strict-third-party", "strict3p"], Unsupported, FlagValue),
     modifier(&["strict-first-party", "strict1p"], Unsupported, FlagValue),
@@ -274,7 +281,7 @@ impl Compatibility {
     pub(super) fn accepts(self, raw_name: &str, value: Option<&str>) -> bool {
         match self {
             Self::Matcher => true,
-            Self::Only(_) | Self::RemoveHeader => {
+            Self::Only(_) | Self::RemoveHeader | Self::UrlTransform => {
                 let (name, negated) = raw_name
                     .strip_prefix('~')
                     .map_or((raw_name, false), |name| (name, true));
@@ -304,6 +311,23 @@ impl Compatibility {
                                 | "important"
                                 | "match-case"
                         ))
+            }
+            Self::UrlTransform => {
+                matches!(modifier.kind, Type(_) | Page(Document))
+                    || name == "third-party"
+                    || (!negated
+                        && matches!(
+                            name,
+                            "domain"
+                                | "important"
+                                | "match-case"
+                                | "badfilter"
+                                | "to"
+                                | "method"
+                                | DENYALLOW
+                                | "all"
+                        ))
+                // Popup traffic cannot be identified by the HTTP engine.
             }
         }
     }

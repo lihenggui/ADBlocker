@@ -15,7 +15,7 @@
 //! Option boundaries and quoting shared by the rule reader and action values.
 
 use super::modifiers::{
-    APP, DENYALLOW, HLS, NETWORK, PRUNE, REPLACE, is_noop, is_removeheader_option,
+    APP, DENYALLOW, HLS, NETWORK, PRUNE, REPLACE, URLTRANSFORM, is_noop, is_removeheader_option,
 };
 use super::quoting::{delimiter, unescaped};
 
@@ -224,12 +224,14 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
         }
         let option = &line[cursor..];
         if is_removeheader_option(option)
-            || [APP, DENYALLOW, HLS, NETWORK].into_iter().any(|name| {
-                option
-                    .trim_start_matches('~')
-                    .strip_prefix(name)
-                    .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-            })
+            || [APP, DENYALLOW, HLS, NETWORK, URLTRANSFORM]
+                .into_iter()
+                .any(|name| {
+                    option
+                        .trim_start_matches('~')
+                        .strip_prefix(name)
+                        .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+                })
         {
             owned_options = true;
         }

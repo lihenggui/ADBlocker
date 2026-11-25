@@ -15,6 +15,7 @@
 use std::borrow::Cow;
 
 use super::action::{ActionKind, ActionSpec};
+use super::denyallow;
 use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
 use super::options::{OptionToken, Options};
 use crate::limits::MAX_RESPONSE_RULE;
@@ -28,7 +29,7 @@ pub(crate) struct ResponseRule<'a> {
 
 pub(crate) struct Action<'a> {
     pub(crate) pattern: Cow<'a, str>,
-    pub(crate) options: Vec<&'a str>,
+    pub(crate) options: Vec<Cow<'a, str>>,
     pub(crate) spec: Option<ActionSpec>,
     pub(crate) kind: ActionKind,
     pub(crate) include: u16,
@@ -64,7 +65,7 @@ impl<'a> ResponseRule<'a> {
 
     pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
         // An incompatible noop must not share the valid rule's budget key.
-        if matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) {
+        if self.rejects_noop() {
             return Cow::Borrowed(line);
         }
         self.options
@@ -72,11 +73,42 @@ impl<'a> ResponseRule<'a> {
             .map_or(Cow::Borrowed(line), Cow::Owned)
     }
 
+    fn rejects_noop(&self) -> bool {
+        matches!(
+            self.kind,
+            ActionKind::Hls | ActionKind::RemoveHeader | ActionKind::UrlTransform
+        )
+    }
+
+    /// Numbered CSP directives give distinct rules distinct identities, so
+    /// match a transform's badfilter against its source options instead.
+    pub(crate) fn transform_identity(&self) -> Option<(String, bool)> {
+        if self.kind != ActionKind::UrlTransform {
+            return None;
+        }
+        let mut badfilter = false;
+        let mut options: Vec<_> = self
+            .options
+            .tokens()
+            .filter_map(|token| {
+                if token.raw == "badfilter" {
+                    badfilter = true;
+                    None
+                } else {
+                    Some(token.raw)
+                }
+            })
+            .collect();
+        options.sort_unstable();
+        Some((
+            format!("{}${}", self.options.pattern, options.join(",")),
+            badfilter,
+        ))
+    }
+
     pub(crate) fn action(&self) -> Option<Action<'a>> {
         let options = &self.options;
-        if options.written_len() > MAX_RESPONSE_RULE
-            || (matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) && options.noop)
-        {
+        if options.written_len() > MAX_RESPONSE_RULE || (self.rejects_noop() && options.noop) {
             return None;
         }
         let exception = options.pattern.starts_with("@@");
@@ -96,6 +128,13 @@ impl<'a> ResponseRule<'a> {
             strict_third_party: None,
             exception,
         };
+        let mut has_type = false;
+        let mut all_types = false;
+        let denyallow = if self.kind == ActionKind::UrlTransform {
+            denyallow::Condition::read(options).ok()?
+        } else {
+            None
+        };
         for (index, token) in options.tokens().enumerate() {
             if index == self.action_index {
                 continue;
@@ -105,7 +144,15 @@ impl<'a> ResponseRule<'a> {
             {
                 return None;
             }
-            if token.raw_name == APP
+            all_types |= token.raw == "all";
+            has_type |= kind_bit(token.name()).is_some();
+            if token.raw_name == "badfilter" && self.kind == ActionKind::UrlTransform {
+                continue;
+            }
+            if token.name() == super::modifiers::DENYALLOW {
+                let rewritten = denyallow.as_ref()?.option(token);
+                action.options.push(Cow::Owned(rewritten.to_owned()));
+            } else if token.raw_name == APP
                 && let Some(names) = token.value
             {
                 if action.apps.replace(names).is_some() {
@@ -115,8 +162,15 @@ impl<'a> ResponseRule<'a> {
                 action.take_qualifier(token)?;
             }
         }
-        if matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) {
-            let match_case = action.options.contains(&"match-case");
+        if self.kind == ActionKind::UrlTransform {
+            if all_types {
+                action.include = 0;
+            } else if !has_type {
+                action.include = kind_bit("document").expect("document has a type bit");
+            }
+        }
+        if self.rejects_noop() {
+            let match_case = action.options.iter().any(|option| option == "match-case");
             if match_case {
                 action.pattern = super::regex::case_sensitive_pattern(pattern);
             }
@@ -184,7 +238,7 @@ impl<'a> Action<'a> {
         match option.value.is_none().then(|| kind_bit(name)).flatten() {
             Some(bit) if negated => self.exclude |= bit,
             Some(bit) => self.include |= bit,
-            None => self.options.push(option.raw),
+            None => self.options.push(Cow::Borrowed(option.raw)),
         }
         Some(())
     }

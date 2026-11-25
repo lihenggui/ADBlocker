@@ -161,6 +161,7 @@ pub(crate) fn read_with_scripts<'a>(
         !options.pattern.contains('#')
             && options.tokens().any(|option| {
                 option.name() == modifiers::HLS
+                    || option.name() == modifiers::URLTRANSFORM
                     || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
             })
     }) {

@@ -27,7 +27,6 @@ use tokio::sync::mpsc;
 use tokio_rustls::{TlsAcceptor, TlsConnector};
 
 use super::plaintext::HTTP_LOOK;
-use super::request::{address, kind, response_kind};
 use super::upstream::{HANDSHAKE_TIME, LINGER_TIME, no_way};
 
 use http_body_util::Empty;
@@ -46,6 +45,7 @@ use super::*;
 
 mod hls;
 mod removeheader;
+mod urltransform;
 
 const HOST: &str = "site.test";
 const PACKAGE: &str = "com.app";
@@ -195,6 +195,7 @@ async fn rig(setup: Setup) -> Rig {
                     if let Some(response) = replacement_fixture(&req)
                         .or_else(|| removeheader::fixture(&req))
                         .or_else(|| hls::fixture(&req))
+                        .or_else(|| urltransform::fixture(&req))
                     {
                         return std::future::ready(Ok(response));
                     }
@@ -2630,170 +2631,6 @@ async fn measures_connections_and_throughput() {
         "handed on: {:.0} MiB/s",
         megabytes as f64 / started.elapsed().as_secs_f64()
     );
-}
-
-#[test]
-fn a_request_is_of_the_kind_the_browser_says_or_its_name_suggests() {
-    let with = |dest: Option<&str>, path: &str| {
-        let mut req = Request::get(path);
-        if let Some(dest) = dest {
-            req = req.header("sec-fetch-dest", dest);
-        }
-        kind(&req.body(()).unwrap())
-    };
-    use RequestKind::{Assumed, Known};
-    assert_eq!(with(Some("script"), "/a"), Known("script"));
-    assert_eq!(with(Some("empty"), "/api.png"), Known("xmlhttprequest"));
-    assert_eq!(with(Some("iframe"), "/frame"), Known("subdocument"));
-    assert_eq!(with(None, "/static/app.js"), Known("script"));
-    assert_eq!(with(None, "/img/logo.png"), Known("image"));
-    assert_eq!(with(None, "/v1/feed"), Assumed);
-}
-
-#[test]
-fn a_single_recognized_response_media_type_identifies_the_resource() {
-    use hyper::header::{CONTENT_TYPE, HeaderValue};
-
-    for (mime, resource) in [
-        ("Image/PNG; Q=1", "image"),
-        ("text/css", "stylesheet"),
-        ("text/javascript", "script"),
-        ("application/javascript", "script"),
-        ("application/x-javascript", "script"),
-        ("application/ecmascript", "script"),
-        ("text/ecmascript", "script"),
-        ("video/mp4", "media"),
-        ("audio/mpeg", "media"),
-        ("application/vnd.apple.mpegurl", "media"),
-        ("application/x-mpegurl", "media"),
-        ("application/dash+xml", "media"),
-        ("font/woff2", "font"),
-        ("application/font-woff", "font"),
-        ("application/x-font-ttf", "font"),
-        ("application/vnd.ms-fontobject", "font"),
-        ("application/json", "xmlhttprequest"),
-        ("text/json", "xmlhttprequest"),
-        ("application/problem+json", "xmlhttprequest"),
-        ("application/xml", "xmlhttprequest"),
-        ("text/xml", "xmlhttprequest"),
-        ("application/x-protobuf", "xmlhttprequest"),
-        ("application/grpc", "xmlhttprequest"),
-        ("application/grpc+proto", "xmlhttprequest"),
-    ] {
-        let mut headers = hyper::HeaderMap::new();
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static(mime));
-        assert_eq!(
-            response_kind(&headers),
-            Some(RequestKind::Known(resource)),
-            "{mime}"
-        );
-    }
-    let mut headers = hyper::HeaderMap::new();
-    assert_eq!(response_kind(&headers), None);
-    for mime in [
-        "application/octet-stream",
-        "text/html",
-        "image/",
-        "image/png, text/html",
-    ] {
-        headers.insert(CONTENT_TYPE, HeaderValue::from_static(mime));
-        assert_eq!(response_kind(&headers), None, "{mime}");
-    }
-    headers.insert(CONTENT_TYPE, HeaderValue::from_static("image/png"));
-    headers.append(CONTENT_TYPE, HeaderValue::from_static("text/html"));
-    assert_eq!(response_kind(&headers), None);
-}
-
-#[test]
-fn a_page_gone_to_is_its_own_first_party_whatever_led_there() {
-    let dir = tempfile::tempdir().unwrap();
-    let rules = "||ads.example/own$document,script,first-party\n\
-                 ||ads.example/other$document,script,third-party\n";
-    std::fs::write(dir.path().join("list.txt"), rules).unwrap();
-    let filters = Filters::load(&[dir.path()], false).unwrap();
-    let blocked = |path: &str, dest: Option<&str>, referer: Option<&str>| {
-        let mut req = Request::get(path);
-        if let Some(dest) = dest {
-            req = req.header("sec-fetch-dest", dest);
-        }
-        if let Some(referer) = referer {
-            req = req.header(REFERER, referer);
-        }
-        let url = format!("https://ads.example{path}");
-        evaluate_request(&filters.for_app("com.app"), &req.body(()).unwrap(), &url).blocked
-    };
-    let news = Some("https://news.example/");
-    for referer in [None, news] {
-        assert!(blocked("/own", Some("document"), referer), "{referer:?}");
-        assert!(!blocked("/other", Some("document"), referer), "{referer:?}");
-    }
-    assert!(blocked("/other", Some("script"), news));
-    assert!(!blocked("/own", Some("script"), news));
-    // Made by no page it names: there is no other party to be the third.
-    assert!(blocked("/own", Some("script"), None));
-    assert!(!blocked("/other", Some("script"), None));
-}
-
-#[test]
-fn a_browser_that_names_no_page_still_says_whose_request_it_is() {
-    let dir = tempfile::tempdir().unwrap();
-    let rules = "||ads.example/own$script,first-party\n\
-                 ||ads.example/other$script,third-party\n\
-                 ||ads.example/page$domain=~ads.example\n";
-    std::fs::write(dir.path().join("list.txt"), rules).unwrap();
-    let filters = Filters::load(&[dir.path()], false).unwrap();
-    let blocked = |path: &str, headers: &[(&str, &str)]| {
-        let mut req = Request::get(path);
-        for (name, value) in headers {
-            req = req.header(*name, *value);
-        }
-        let url = format!("https://ads.example{path}");
-        evaluate_request(&filters.for_app("com.app"), &req.body(()).unwrap(), &url).blocked
-    };
-    let script = ("sec-fetch-dest", "script");
-    let cross_site = [script, ("sec-fetch-site", "cross-site")];
-    assert!(blocked("/other", &cross_site));
-    assert!(!blocked("/own", &cross_site));
-    for site in ["same-origin", "same-site"] {
-        let same = [script, ("sec-fetch-site", site)];
-        assert!(blocked("/own", &same), "{site}");
-        assert!(!blocked("/other", &same), "{site}");
-    }
-    // Over HTTP a browser sends no Sec-Fetch-Dest: going to a page, it
-    // asks for an upgrade, and the page is its own. An app's request for
-    // the same is of no page, which is not the one page the rule spares.
-    assert!(!blocked("/page", &[("upgrade-insecure-requests", "1")]));
-    assert!(blocked("/page", &[]));
-    // Led there from another page, it is not the user's own going there.
-    let led = [
-        ("upgrade-insecure-requests", "1"),
-        ("referer", "https://news.example/"),
-    ];
-    assert!(blocked("/page", &led));
-}
-
-#[test]
-fn an_https_request_can_only_name_the_verified_site() {
-    let get = |uri: &str, host: &str| {
-        Request::get(uri)
-            .header(HOST_HEADER, host)
-            .body(())
-            .unwrap()
-    };
-    assert_eq!(
-        address(&get("/a?b=1", "site.test"), HOST, 443).as_deref(),
-        Some("https://site.test/a?b=1")
-    );
-    for req in [
-        get("/a", "other.test"),
-        get("https://other.test/a", HOST),
-        get("https://site.test/a", "other.test"),
-        get("http://site.test/a", HOST),
-        get("/a", "site.test:81"),
-        get("/a", "user@site.test"),
-    ] {
-        assert!(address(&req, HOST, 443).is_none());
-    }
 }
 
 fn replacement_fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>> {

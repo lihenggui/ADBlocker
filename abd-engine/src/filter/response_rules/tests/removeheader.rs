@@ -29,7 +29,7 @@ fn removals(
         .filter_map(|action| match action.place() {
             Place::Request(name) => Some(format!("request:{name}")),
             Place::ResponseHead(name) => Some(name.to_string()),
-            Place::ResponseBody => None,
+            Place::RequestUrl | Place::ResponseBody => None,
         })
         .collect();
     headers.sort();

@@ -19,6 +19,7 @@ use adblock::Engine;
 use adblock::filters::network::NetworkFilter;
 use adblock::utils::fast_hash;
 
+use super::action::ActionKind;
 use super::host_token;
 use super::modifiers::{DENYALLOW, Kind, lookup};
 use super::options::{OptionToken, Options, literal_tokens};
@@ -50,6 +51,7 @@ impl Condition {
         for other in options.tokens() {
             match lookup(other.name()).map(|modifier| modifier.kind) {
                 Some(Kind::Destination) => return Err(Rejection::WithTo),
+                Some(Kind::Action(ActionKind::UrlTransform, _)) => (),
                 Some(Kind::Action(..)) => return Err(Rejection::WithResponseAction),
                 _ => (),
             }

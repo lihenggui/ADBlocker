@@ -23,6 +23,7 @@ use std::sync::Arc;
 
 use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions};
+use adblock::utils::Hash;
 use serde::{Deserialize, Serialize};
 
 use super::app_patterns::{Condition, Patterns, Prepared, Scope};
@@ -41,21 +42,27 @@ struct Qualifiers {
     /// The app condition can only match a known package.
     apps: Option<Condition>,
     strict_third_party: Option<bool>,
+    exclude_destinations: Vec<Hash>,
 }
 
 impl Qualifiers {
     /// Require a package identity for app options, even for negated names.
-    fn matches(&self, kind: &str, scope: Option<&Scope<'_>>, strict_third_party: bool) -> bool {
+    fn matches(&self, kind: &str, context: &ResponseMatches<'_>) -> bool {
         let bit = kind_bit(kind).unwrap_or(0);
         (self.include == 0 || self.include & bit != 0)
             && self.exclude & bit == 0
             && self
                 .strict_third_party
-                .is_none_or(|required| required == strict_third_party)
+                .is_none_or(|required| required == context.strict_third_party)
             && self
                 .apps
                 .as_ref()
-                .is_none_or(|condition| scope.is_some_and(|app| condition.matches(app)))
+                .is_none_or(|condition| context.scope.is_some_and(|app| condition.matches(app)))
+            && (self.exclude_destinations.is_empty()
+                || !context
+                    .destinations
+                    .iter()
+                    .any(|hash| self.exclude_destinations.binary_search(hash).is_ok()))
     }
 }
 
@@ -68,6 +75,7 @@ struct Parsed<'a> {
     qualifiers: Qualifiers,
     apps: Option<String>,
     exception: bool,
+    transform_identity: Option<(String, bool)>,
 }
 
 impl<'a> Parsed<'a> {
@@ -83,24 +91,41 @@ impl<'a> Parsed<'a> {
             strict_third_party,
             exception,
         } = rule.action()?;
-        let parsed = Self {
+        let mut parsed = Self {
             pattern,
             options: options.join(","),
             action: spec,
             kind,
             apps: apps.map(str::to_owned),
             exception,
+            transform_identity: rule.transform_identity(),
             qualifiers: Qualifiers {
                 include,
                 exclude,
                 apps: None,
                 strict_third_party,
+                exclude_destinations: Vec::new(),
             },
         };
         let projected = parsed.project(0);
-        rule::read(&projected)
+        let source = rule::read(&projected);
+        let network = source
             .network()
             .filter(|rule| rule.is_csp() && !rule.is_badfilter())?;
+        // The CSP index can drop a condition with only excluded destinations.
+        // Defer those predicates to qualifiers, using the matcher's own hashes.
+        if kind == ActionKind::UrlTransform
+            && network.opt_to_domains.is_none()
+            && let Some(excluded) = network.opt_not_to_domains
+        {
+            parsed.options = parsed
+                .options
+                .split(',')
+                .filter(|opt| !opt.starts_with("to="))
+                .collect::<Vec<_>>()
+                .join(",");
+            parsed.qualifiers.exclude_destinations = excluded;
+        }
         Some(parsed)
     }
 
@@ -206,11 +231,26 @@ impl<'a> ResponseProjections<'a> {
     }
 
     fn compile_with_budget(self, budget: usize, patterns: &mut Patterns) -> Option<ResponseRules> {
-        ResponseRules::compile(
-            self.lines.into_values().flatten().collect(),
-            budget,
-            patterns,
-        )
+        let disabled: BTreeSet<_> = self
+            .lines
+            .values()
+            .flatten()
+            .filter_map(|rule| {
+                let (identity, badfilter) = rule.transform_identity.as_ref()?;
+                badfilter.then(|| identity.clone())
+            })
+            .collect();
+        let rules = self
+            .lines
+            .into_values()
+            .flatten()
+            .filter(|rule| {
+                rule.transform_identity
+                    .as_ref()
+                    .is_none_or(|(identity, badfilter)| !badfilter && !disabled.contains(identity))
+            })
+            .collect();
+        ResponseRules::compile(rules, budget, patterns)
     }
 }
 
@@ -316,22 +356,26 @@ impl ResponseRules {
 
     /// Resolve exceptions before applying any actions. Unvalued exceptions
     /// suppress only their own kind.
-    pub(super) fn actions(
+    fn actions(
         &self,
-        tokens: &str,
+        context: &ResponseMatches<'_>,
         kind: &str,
-        scope: Option<&Scope<'_>>,
-        page: PageExceptions,
-        strict_third_party: bool,
+        include_transforms: bool,
     ) -> Vec<Arc<ResponseAction>> {
-        let mut matched: Vec<_> = tokens
+        let mut matched: Vec<_> = context
+            .tokens
             .split(',')
             .filter_map(|token| {
                 let id = token.parse::<usize>().ok()?;
                 let rule = self.table.rules.get(id)?;
-                rule.qualifiers
-                    .matches(kind, scope, strict_third_party)
-                    .then_some((id, rule))
+                let action_kind = match rule.action {
+                    RuleAction::One(id) => self.compiled[id].kind(),
+                    RuleAction::All(kind) => kind,
+                };
+                if !include_transforms && action_kind == ActionKind::UrlTransform {
+                    return None;
+                }
+                rule.qualifiers.matches(kind, context).then_some((id, rule))
             })
             .collect();
         if matched.is_empty() {
@@ -355,7 +399,7 @@ impl ResponseRules {
             };
             let action = &self.compiled[id];
             let kind = action.kind();
-            if !kind.disabled_by(page) && !skipped.contains(&kind) && !seen[id] {
+            if !kind.disabled_by(context.page) && !skipped.contains(&kind) && !seen[id] {
                 seen[id] = kind.deduplicates();
                 actions.push(action.clone());
             }
@@ -379,17 +423,12 @@ pub(crate) struct ResponseMatches<'a> {
     scope: Option<&'a Scope<'a>>,
     page: PageExceptions,
     strict_third_party: bool,
+    destinations: Vec<Hash>,
 }
 
 impl ResponseMatches<'_> {
-    pub(crate) fn actions(&self, kind: &str) -> Vec<Arc<ResponseAction>> {
-        self.rules.actions(
-            &self.tokens,
-            kind,
-            self.scope,
-            self.page,
-            self.strict_third_party,
-        )
+    pub(crate) fn actions(&self, kind: &str, include_transforms: bool) -> Vec<Arc<ResponseAction>> {
+        self.rules.actions(self, kind, include_transforms)
     }
 }
 
@@ -403,7 +442,7 @@ impl super::AppFilters<'_> {
         method: &str,
     ) -> Vec<Arc<ResponseAction>> {
         self.response_matches(url, page, method)
-            .map_or_else(Vec::new, |matched| matched.actions(kind))
+            .map_or_else(Vec::new, |matched| matched.actions(kind, true))
     }
 
     /// Resolve page exceptions before looking up the URL in the request context.
@@ -433,6 +472,7 @@ impl super::AppFilters<'_> {
             scope: self.scope.as_ref(),
             page: exceptions,
             strict_third_party,
+            destinations: request.hostname_hashes.unwrap_or_default(),
         })
     }
 }

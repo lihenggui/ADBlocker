@@ -15,6 +15,7 @@
 use regex_automata::meta::Regex;
 use regex_automata::util::{iter::Searcher, syntax};
 use regex_automata::{Input, MatchKind};
+use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
@@ -45,11 +46,11 @@ fn value_fields(value: &str) -> Option<(usize, usize)> {
     Some((first, end))
 }
 
-#[cfg(test)]
 pub(crate) fn value_end(value: &str) -> Option<usize> {
     value_fields(value).map(|(_, end)| end)
 }
 
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(super) struct Parsed {
     pub(super) pattern: String,
     pub(super) replacement: String,
@@ -59,6 +60,14 @@ pub(super) struct Parsed {
 
 /// Decode a replacement after checking its quoting and optional flags.
 pub(super) fn parse(value: &str) -> Option<Parsed> {
+    parse_substitution(value, b"is", &['/']).map(|(parsed, _)| parsed)
+}
+
+pub(super) fn parse_substitution(
+    value: &str,
+    allowed: &[u8],
+    replacement_escapes: &[char],
+) -> Option<(Parsed, bool)> {
     if unescaped(value, b'$').next().is_some() {
         return None;
     }
@@ -66,15 +75,17 @@ pub(super) fn parse(value: &str) -> Option<Parsed> {
     let value = value.strip_prefix('/')?;
     let (first, end) = value_fields(value)?;
     let flags = &value[end..];
-    flags
-        .bytes()
-        .all(|b| matches!(b, b'i' | b's'))
-        .then(|| Parsed {
-            pattern: value[..first].to_owned(),
-            replacement: unescape(&value[first + 1..end - 1], &['/']),
-            insensitive: flags.contains('i'),
-            single_line: flags.contains('s'),
-        })
+    flags.bytes().all(|b| allowed.contains(&b)).then(|| {
+        (
+            Parsed {
+                pattern: value[..first].to_owned(),
+                replacement: unescape(&value[first + 1..end - 1], replacement_escapes),
+                insensitive: flags.contains('i'),
+                single_line: flags.contains('s'),
+            },
+            flags.contains('g'),
+        )
+    })
 }
 
 pub(super) fn compile(
@@ -114,6 +125,16 @@ impl Compiled {
     }
 
     pub(super) fn apply(&self, input: &[u8], within_budget: &dyn Fn() -> bool) -> Option<Vec<u8>> {
+        self.substitute(input, true, MAX_REWRITE_RESULT, within_budget)
+    }
+
+    pub(super) fn substitute(
+        &self,
+        input: &[u8],
+        global: bool,
+        limit: usize,
+        within_budget: &dyn Fn() -> bool,
+    ) -> Option<Vec<u8>> {
         let regex = &self.regex;
         let mut output = Vec::new();
         let mut end = 0;
@@ -127,23 +148,27 @@ impl Compiled {
         );
         while within_budget() {
             let Some(groups) = matches.next() else {
-                append(&mut output, &input[end..])?;
+                append(&mut output, &input[end..], limit)?;
                 return Some(output);
             };
             let groups = groups.ok()?;
             let matched = groups.get_match()?;
-            append(&mut output, &input[end..matched.start()])?;
+            append(&mut output, &input[end..matched.start()], limit)?;
             for part in &self.parts {
                 match part {
-                    Replacement::Text(text) => append(&mut output, text)?,
+                    Replacement::Text(text) => append(&mut output, text, limit)?,
                     Replacement::Group(n) => {
                         if let Some(found) = groups.get_group(*n) {
-                            append(&mut output, &input[found.range()])?;
+                            append(&mut output, &input[found.range()], limit)?;
                         }
                     }
                 }
             }
             end = matched.end();
+            if !global {
+                append(&mut output, &input[end..], limit)?;
+                return Some(output);
+            }
         }
         None
     }
@@ -171,8 +196,8 @@ fn replacement_parts(replacement: &str) -> Vec<Replacement> {
 }
 
 /// Refuse growth before allocating or writing any bytes past the result limit.
-fn append(output: &mut Vec<u8>, bytes: &[u8]) -> Option<()> {
-    if bytes.len() > MAX_REWRITE_RESULT - output.len() {
+fn append(output: &mut Vec<u8>, bytes: &[u8], limit: usize) -> Option<()> {
+    if bytes.len() > limit - output.len() {
         return None;
     }
     output.extend_from_slice(bytes);
