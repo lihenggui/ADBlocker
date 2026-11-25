@@ -1,0 +1,57 @@
+[workspace]
+
+[package]
+name = "abd-fuzz"
+version = "0.0.0"
+edition = "2024"
+license = "GPL-3.0-only"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+abd-engine = { path = "../abd-engine", features = ["fuzzing"] }
+libfuzzer-sys = "0.4.13"
+
+[[bin]]
+name = "json_prune"
+path = "fuzz_targets/json_prune.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "html_filter"
+path = "fuzz_targets/html_filter.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "playlist"
+path = "fuzz_targets/playlist.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "xml_prune"
+path = "fuzz_targets/xml_prune.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "set_cookie"
+path = "fuzz_targets/set_cookie.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "rule_list"
+path = "fuzz_targets/rule_list.rs"
+test = false
+doc = false
+bench = false

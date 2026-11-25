@@ -32,6 +32,9 @@ pub mod dns;
 pub mod exclusions;
 pub mod files;
 pub mod filter;
+#[cfg(feature = "fuzzing")]
+#[doc(hidden)]
+pub mod fuzzing;
 mod host;
 mod html;
 mod htmlfilter;

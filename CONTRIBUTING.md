@@ -98,6 +98,8 @@ The parsers have property tests, and
 engine's dependence on `adblock` behavior and should be read first when
 updating that crate.
 
+Run the parser [fuzz targets](fuzz/README.md) by hand with nightly Rust.
+
 ### HTTP/3 fixture
 
 The `abd-vpn` example runs a local HTTP/3 server and a client that offers

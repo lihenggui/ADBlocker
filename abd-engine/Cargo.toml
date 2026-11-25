@@ -6,6 +6,9 @@ authors.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+fuzzing = []
+
 [dependencies]
 adblock = { version = "0.13.6", default-features = false, features = ["css-validation", "full-regex-handling"] }
 anyhow = { workspace = true, default-features = true }

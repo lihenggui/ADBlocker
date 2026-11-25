@@ -1,0 +1,13 @@
+#EXTM3U
+#EXT-X-TARGETDURATION:10
+#EXTINF:6,sponsor
+#EXT-X-BYTERANGE:100@0
+part.ts
+#EXTINF:6,
+#EXT-X-BYTERANGE:200
+part.ts
+#EXTINF:8,
+../ads/relative.ts
+#EXTINF:2,
+ad.ts
+#EXT-X-ENDLIST

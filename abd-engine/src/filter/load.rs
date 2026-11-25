@@ -198,7 +198,7 @@ impl Filters {
         }
     }
 
-    pub(super) fn build<'a>(
+    pub(crate) fn build<'a>(
         entries: impl Iterator<Item = std::io::Result<(&'a Path, String)>>,
         generation: Option<u64>,
         debug: bool,

@@ -1,0 +1,2 @@
+<?xml version="1.0"?>
+<feed xmlns:x="urn:example" ad="yes"><!--note--><item ad="true"/><item/><x:item/><ad>gone</ad><item><![CDATA[keep]]></item></feed>

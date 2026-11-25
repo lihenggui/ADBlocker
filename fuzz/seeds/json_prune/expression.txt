@@ -1,0 +1,2 @@
+$.items[?(key-eq 'type' 'ad')]
+player.load({"items":[{"type":"ad"},{"type":"clip","title":"a \"quote\""}]});
