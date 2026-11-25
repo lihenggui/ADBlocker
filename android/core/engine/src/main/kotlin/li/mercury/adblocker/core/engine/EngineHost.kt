@@ -20,6 +20,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import android.os.Process
+import android.os.SystemClock
 import android.os.UserHandle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
@@ -38,6 +39,7 @@ import timber.log.Timber
 import java.io.File
 import java.net.InetAddress
 import java.net.InetSocketAddress
+import java.util.concurrent.atomic.AtomicLong
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -93,6 +95,7 @@ class EngineHost @Inject internal constructor(
     @Dispatcher(IO) private val ioDispatcher: CoroutineDispatcher,
 ) {
     private val opening = Mutex()
+    private val connectionOwners = ConnectionOwners({ context.getSystemService(ConnectivityManager::class.java) })
 
     // Written under [opening]; stop() reads it without, on another thread.
     @Volatile
@@ -125,18 +128,7 @@ class EngineHost @Inject internal constructor(
     private val callbacks = object : Callbacks {
         override fun protect(fd: Int): Boolean = vpn?.protect(fd) ?: false
 
-        override fun ownerUid(protocol: Int, local: ByteArray, localPort: Int, remote: ByteArray, remotePort: Int): Int = try {
-            val connectivity = context.getSystemService(ConnectivityManager::class.java)
-            connectivity.getConnectionOwnerUid(
-                protocol,
-                InetSocketAddress(InetAddress.getByAddress(local), localPort),
-                InetSocketAddress(InetAddress.getByAddress(remote), remotePort),
-            )
-        } catch (e: Exception) {
-            // Not known: the connection is handed on unread.
-            Timber.w("owner uid: %s", e.javaClass.simpleName)
-            -1
-        }
+        override fun ownerUid(protocol: Int, local: ByteArray, localPort: Int, remote: ByteArray, remotePort: Int): Int = connectionOwners.lookup(protocol, local, localPort, remote, remotePort)
 
         override fun uidOf(packageName: String): Int = context.packageManager.exclusiveAppUid(packageName) ?: -1
 
@@ -197,6 +189,38 @@ class EngineHost @Inject internal constructor(
     private companion object {
         const val MAX_STDERR = 16 * 1024
         const val WATCH_WRITE_TIMEOUT_MILLIS = 30_000L
+    }
+}
+
+/** Shares the Android service and bounds diagnostics across native connection threads. */
+internal class ConnectionOwners(
+    connectivity: () -> ConnectivityManager?,
+    private val elapsedMillis: () -> Long = SystemClock::elapsedRealtime,
+) {
+    private val manager by lazy(connectivity)
+    private val lastWarning = AtomicLong(Long.MIN_VALUE)
+
+    fun lookup(protocol: Int, local: ByteArray, localPort: Int, remote: ByteArray, remotePort: Int): Int = try {
+        checkNotNull(manager).getConnectionOwnerUid(
+            protocol,
+            InetSocketAddress(InetAddress.getByAddress(local), localPort),
+            InetSocketAddress(InetAddress.getByAddress(remote), remotePort),
+        )
+    } catch (e: Exception) {
+        warn(e)
+        -1
+    }
+
+    private fun warn(error: Exception) {
+        val last = lastWarning.get()
+        val now = elapsedMillis()
+        if ((last == Long.MIN_VALUE || now - last >= WARNING_INTERVAL_MS) && lastWarning.compareAndSet(last, now)) {
+            Timber.w("owner uid: %s", error.javaClass.simpleName)
+        }
+    }
+
+    private companion object {
+        const val WARNING_INTERVAL_MS = 60_000L
     }
 }
 
