@@ -26,6 +26,10 @@ pub(crate) fn disabled_by(page: PageExceptions) -> bool {
     page.document || page.content
 }
 
+pub(crate) fn takes(mime: &str) -> bool {
+    crate::media_type::text(mime)
+}
+
 /// The host index supplies one operation for all the rules of a document.
 pub(crate) struct Action {
     pub(crate) rules: Vec<Arc<Compiled>>,

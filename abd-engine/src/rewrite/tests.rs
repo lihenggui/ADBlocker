@@ -86,6 +86,7 @@ async fn replacement_uses_captures_both_flags_and_literal_dollars() {
         text(Full::new(Bytes::from_static(b"BEFORE A\nB AFTER"))),
         action("(a).(b)", "$2$1 $0 $word", true),
         None,
+        "",
         &Slots::new(1),
     );
     assert_eq!(
@@ -108,6 +109,7 @@ async fn replacement_sees_every_frame_and_keeps_the_trailers() {
         text(stream(frames)),
         action("start end", "changed", false),
         None,
+        "",
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -135,6 +137,7 @@ async fn a_body_one_byte_over_the_limit_passes_through_in_order() {
         text(stream(frames)),
         action("x", "q", false),
         None,
+        "",
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -163,6 +166,7 @@ async fn a_stalled_body_releases_its_original_prefix_and_streams_the_rest() {
         text(inner),
         action("before", "changed", false),
         None,
+        "",
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -184,6 +188,7 @@ async fn an_error_follows_the_original_data() {
         text(stream(frames)),
         action("before", "changed", false),
         None,
+        "",
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -205,6 +210,7 @@ async fn a_result_over_the_limit_discards_even_preceding_changes() {
         text(Full::new(original.clone())),
         actions,
         None,
+        "",
         &Slots::new(1),
     );
     assert_eq!(
@@ -230,7 +236,7 @@ async fn the_fifth_response_is_passed_through_without_waiting() {
                 .headers_mut()
                 .insert(name, HeaderValue::from_static(value));
         }
-        wrap_with(response, action("X", "changed", false), None, &slots)
+        wrap_with(response, action("X", "changed", false), None, "", &slots)
     };
     let held: Vec<_> = (0..MAX_REWRITES).map(|_| response()).collect();
     let passed = response();
@@ -248,6 +254,11 @@ async fn the_fifth_response_is_passed_through_without_waiting() {
 
 #[test]
 fn only_eligible_text_responses_are_buffered() {
+    let eligible = |response: &Response<()>| {
+        takes(response)
+            && crate::media_type::read(response.headers())
+                .is_some_and(|mime| ActionKind::Replace.takes(&mime.to_ascii_lowercase()))
+    };
     for mime in [
         "text/html",
         "application/json",
@@ -262,7 +273,7 @@ fn only_eligible_text_responses_are_buffered() {
         "application/rss+xml",
     ] {
         assert!(
-            takes(
+            eligible(
                 &Response::builder()
                     .header(CONTENT_TYPE, mime)
                     .body(())
@@ -286,7 +297,7 @@ fn only_eligible_text_responses_are_buffered() {
             .header(CONTENT_LENGTH, size)
             .body(())
             .unwrap();
-        assert!(!takes(&response), "{response:?}");
+        assert!(!eligible(&response), "{response:?}");
     }
 }
 
@@ -302,8 +313,10 @@ async fn held_work(
 
     let mut body = Rewrite::new(
         Full::new(Bytes::new()),
-        action("original", "changed", false),
-        None,
+        BodyEdit {
+            actions: action("original", "changed", false),
+            ..BodyEdit::default()
+        },
         slots.responses.clone().try_acquire_owned().unwrap(),
         slots.workers.clone(),
     );
@@ -315,16 +328,12 @@ async fn held_work(
     let (began, started) = channel();
     let (release, wait) = channel();
     let (report, reported) = channel();
-    body.state = State::Rewriting(Work::start(
-        collected,
-        worker,
-        move |input, actions, html, check| {
-            began.send(()).ok()?;
-            wait.blocking_recv().ok()?;
-            report.send(check()).ok()?;
-            apply_actions(input, actions, html, check)
-        },
-    ));
+    body.state = State::Rewriting(Work::start(collected, worker, move |input, edit, check| {
+        began.send(()).ok()?;
+        wait.blocking_recv().ok()?;
+        report.send(check()).ok()?;
+        apply_actions(input, edit, check)
+    }));
     tokio::time::timeout(REWRITE_WORK, started)
         .await
         .unwrap()
@@ -384,8 +393,10 @@ async fn a_worker_that_panics_returns_the_original() {
     let slots = Slots::new(1);
     let mut body = Rewrite::new(
         Full::new(Bytes::new()),
-        action("original", "changed", false),
-        None,
+        BodyEdit {
+            actions: action("original", "changed", false),
+            ..BodyEdit::default()
+        },
         slots.responses.clone().try_acquire_owned().unwrap(),
         slots.workers.clone(),
     );
@@ -394,7 +405,7 @@ async fn a_worker_that_panics_returns_the_original() {
     };
     collected.bytes = b"original".to_vec();
     let worker = slots.workers.clone().try_acquire_owned().unwrap();
-    body.state = State::Rewriting(Work::start(collected, worker, |_, _, _, _| {
+    body.state = State::Rewriting(Work::start(collected, worker, |_, _, _| {
         panic!("failed search")
     }));
     assert_eq!(
@@ -414,9 +425,35 @@ async fn a_collected_json_body_is_pruned_before_replacement() {
         .header(CONTENT_TYPE, "application/json")
         .body(body)
         .unwrap();
-    let response = wrap_with(response, actions, None, &Slots::new(1));
+    let response = wrap_with(response, actions, None, "", &Slots::new(1));
     assert_eq!(
         response.into_body().collect().await.unwrap().to_bytes(),
         r#"{"keep":"changed"}"#
+    );
+}
+
+#[tokio::test]
+async fn a_playlist_over_the_line_limit_passes_through_without_replacement() {
+    let hls = ActionKind::Hls.parse("ad").unwrap().compile().unwrap();
+    let mut actions = action("ad", "changed", false);
+    actions.insert(0, Arc::new(hls));
+    let data = Bytes::from(format!(
+        "#EXTM3U\nad.ts\n{}",
+        "\n".repeat(crate::limits::MAX_PLAYLIST_LINES)
+    ));
+    let response = Response::builder()
+        .header(CONTENT_TYPE, "application/vnd.apple.mpegurl")
+        .body(Full::new(data.clone()))
+        .unwrap();
+    let response = wrap_with(
+        response,
+        actions,
+        None,
+        "https://site.test/index.m3u8",
+        &Slots::new(1),
+    );
+    assert_eq!(
+        response.into_body().collect().await.unwrap().to_bytes(),
+        data
     );
 }

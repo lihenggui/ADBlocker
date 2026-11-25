@@ -21,6 +21,7 @@ pub(super) const APP: &str = "app";
 pub(super) const NETWORK: &str = "network";
 pub(super) const DENYALLOW: &str = "denyallow";
 pub(super) const PRUNE: &str = "jsonprune";
+pub(super) const HLS: &str = "hls";
 pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
 
@@ -91,6 +92,16 @@ const PRUNE_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
 ];
+const HLS_OPTIONS: &[Allowed] = &[
+    allow(APP),
+    allow("domain"),
+    allow_negation("third-party"),
+    allow("important"),
+    allow("match-case"),
+    allow("xmlhttprequest"),
+    // The reference permits the strict forms. Their matching semantics
+    // are unavailable to HLS rules, as with jsonprune.
+];
 const NETWORK_OPTIONS: &[Allowed] = &[allow(NETWORK), allow(APP), allow("important")];
 
 #[derive(Clone, Copy, Debug)]
@@ -127,6 +138,11 @@ static MODIFIERS: &[Modifier] = &[
     modifier(
         &[PRUNE],
         Action(ActionKind::Prune, Compatibility::Only(PRUNE_OPTIONS)),
+        Optional,
+    ),
+    modifier(
+        &[HLS],
+        Action(ActionKind::Hls, Compatibility::Only(HLS_OPTIONS)),
         Optional,
     ),
     modifier(
@@ -179,7 +195,6 @@ static MODIFIERS: &[Modifier] = &[
     ),
     modifier(&["cookie"], Unsupported, Optional),
     modifier(&["header"], Unsupported, Required),
-    modifier(&["hls"], Unsupported, Required),
     modifier(&["xmlprune"], Unsupported, Required),
     modifier(&["urltransform"], Unsupported, Required),
     modifier(&["referrerpolicy"], Unsupported, Required),
@@ -193,10 +208,13 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
             .iter()
             .filter(|modifier| matches!(modifier.kind, App | Address(..) | Action(..) | DenyAllow))
             .flat_map(|modifier| modifier.names.iter().copied())
+            .filter(|name| *name != HLS)
             .collect()
     });
     line.contains("$_")
         || line.contains(",_")
+        || line.contains("$hls")
+        || line.contains(",hls")
         || OWNED_NAMES.iter().any(|name| line.contains(name))
         || line
             .split_once('$')

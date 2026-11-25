@@ -32,3 +32,25 @@ pub(crate) fn read(headers: &HeaderMap) -> Option<&str> {
         })
         .then_some(mime)
 }
+
+/// Lowercase types whose bodies a response rule can treat as text.
+pub(crate) fn text(mime: &str) -> bool {
+    let Some((group, subtype)) = mime.split_once('/') else {
+        return false;
+    };
+    group == "text"
+        || subtype.ends_with("+json")
+        || subtype.ends_with("+xml")
+        || group == "application"
+            && matches!(
+                subtype,
+                "json"
+                    | "javascript"
+                    | "x-javascript"
+                    | "xml"
+                    | "xhtml+xml"
+                    | "x-www-form-urlencoded"
+                    | "vnd.apple.mpegurl"
+                    | "x-mpegurl"
+            )
+}

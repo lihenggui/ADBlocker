@@ -597,7 +597,7 @@ async fn forward_response(
             resp.headers_mut().remove(name);
         }
     }
-    crate::rewrite::wrap(resp, rewrite.body.actions, html)
+    crate::rewrite::wrap(resp, rewrite.body.actions, html, url)
 }
 
 fn guard_site(

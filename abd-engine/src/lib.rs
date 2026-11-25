@@ -46,6 +46,7 @@ pub mod mitm;
 pub mod paths;
 pub mod pause;
 pub mod pins;
+mod playlist;
 pub mod policy;
 pub mod protocol;
 mod protocol_types;

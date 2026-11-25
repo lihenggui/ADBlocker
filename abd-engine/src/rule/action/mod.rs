@@ -17,9 +17,10 @@
 use hyper::header::HeaderName;
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod hls;
 pub(crate) mod html;
 mod prune;
-pub(super) mod removeheader;
+mod removeheader;
 mod replace;
 
 #[cfg(test)]
@@ -29,6 +30,7 @@ pub(crate) use replace::value_end;
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(crate) enum ActionSpec {
     Prune(String),
+    Hls(hls::Spec),
     Replace {
         pattern: String,
         replacement: String,
@@ -41,6 +43,7 @@ pub(crate) enum ActionSpec {
 /// A compiled action that can safely be shared among concurrent jobs.
 pub(crate) enum ResponseAction {
     Prune(prune::Compiled),
+    Hls(hls::Compiled),
     Replace(replace::Compiled),
     RemoveHeader(removeheader::Compiled),
 }
@@ -60,8 +63,9 @@ pub(crate) struct PageExceptions {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub(crate) enum ActionKind {
-    // Sort pruning first so replacements see the remaining text.
+    // Sort body actions in the order in which rewrite applies them.
     Prune,
+    Hls,
     Replace,
     RemoveHeader,
 }
@@ -70,6 +74,7 @@ impl ActionKind {
     pub(crate) fn parse(self, value: &str) -> Option<ActionSpec> {
         match self {
             Self::Prune => prune::parse(value).map(ActionSpec::Prune),
+            Self::Hls => hls::parse(value).ok().map(ActionSpec::Hls),
             Self::RemoveHeader => removeheader::parse(value)
                 .ok()
                 .map(ActionSpec::RemoveHeader),
@@ -93,6 +98,7 @@ impl ActionKind {
     pub(crate) fn disables(self, value: Option<&str>) -> bool {
         match self {
             Self::Prune => prune::disables(value),
+            Self::Hls => value.is_none(),
             Self::Replace => replace::disables(value),
             Self::RemoveHeader => value.is_none(),
         }
@@ -102,24 +108,32 @@ impl ActionKind {
         match self {
             Self::Prune => prune::overrides_block(),
             Self::Replace => replace::overrides_block(),
-            Self::RemoveHeader => false,
+            Self::Hls | Self::RemoveHeader => false,
         }
     }
 
     pub(crate) fn deduplicates(self) -> bool {
         match self {
             Self::Prune | Self::RemoveHeader => false,
-            Self::Replace => true,
+            Self::Hls | Self::Replace => true,
         }
     }
 
     pub(crate) fn disabled_by(self, page: PageExceptions) -> bool {
         page.document
             || match self {
-                Self::Prune => page.content || page.urlblock,
+                Self::Prune | Self::Hls => page.content || page.urlblock,
                 Self::Replace => page.content,
                 Self::RemoveHeader => page.urlblock,
             }
+    }
+
+    pub(crate) fn takes(self, mime: &str) -> bool {
+        match self {
+            Self::Hls => hls::takes(mime),
+            Self::Prune | Self::Replace => crate::media_type::text(mime),
+            Self::RemoveHeader => false,
+        }
     }
 }
 
@@ -128,6 +142,7 @@ impl ActionSpec {
     pub(crate) fn compile(&self) -> Option<ResponseAction> {
         match self {
             Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
+            Self::Hls(spec) => spec.compile().map(ResponseAction::Hls),
             Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
             Self::Replace {
                 pattern,
@@ -144,6 +159,7 @@ impl ResponseAction {
     pub(crate) fn kind(&self) -> ActionKind {
         match self {
             Self::Prune(_) => ActionKind::Prune,
+            Self::Hls(_) => ActionKind::Hls,
             Self::Replace(_) => ActionKind::Replace,
             Self::RemoveHeader(_) => ActionKind::RemoveHeader,
         }
@@ -151,7 +167,7 @@ impl ResponseAction {
 
     pub(crate) fn place(&self) -> Place<'_> {
         match self {
-            Self::Prune(_) | Self::Replace(_) => Place::ResponseBody,
+            Self::Prune(_) | Self::Hls(_) | Self::Replace(_) => Place::ResponseBody,
             Self::RemoveHeader(removeheader::Removal::Request(name)) => Place::Request(name),
             Self::RemoveHeader(removeheader::Removal::Response(name)) => Place::ResponseHead(name),
         }
@@ -166,6 +182,7 @@ impl ResponseAction {
     pub(crate) fn regex_bytes(&self) -> usize {
         match self {
             Self::Prune(_) | Self::RemoveHeader(_) => 0,
+            Self::Hls(_) => hls::REGEX_CHARGE,
             Self::Replace(action) => action.regex_bytes(),
         }
     }
@@ -178,7 +195,8 @@ impl ResponseAction {
         match self {
             Self::Prune(action) => action.apply(input, within_budget),
             Self::Replace(action) => action.apply(input, within_budget),
-            Self::RemoveHeader(_) => None,
+            // HLS actions operate on the same playlist in one pass.
+            Self::Hls(_) | Self::RemoveHeader(_) => None,
         }
     }
 }

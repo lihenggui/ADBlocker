@@ -331,11 +331,13 @@ A `$replace` rule searches the text of a response with a regular
 expression and substitutes the replacement for each match. With URL
 filtering on, a matching `$replace` rule takes precedence over
 request-level blocks. A matching `$jsonprune` rule removes items from a
-JSON or JSONP response and leaves request blocking in effect. The engine
-applies `$jsonprune`, HTML filtering, and `$replace` in that order,
-then inserts cosmetic styles and scripts. The inferred resource type also
-applies to response rules. It can rewrite an eligible
-uncompressed text response up to 2 MiB. It takes these rules from the
+JSON or JSONP response and leaves request blocking in effect. A matching
+`$hls` rule removes segments from a UTF-8 HLS playlist by URL or tag. It
+removes a segment's tags when none of the segments they apply to remain.
+The engine applies `$jsonprune`, HTML filtering, `$hls`, and `$replace`
+in that order, then inserts cosmetic styles and scripts. The inferred
+resource type also applies to response rules. The engine can rewrite an
+eligible uncompressed text response up to 2 MiB. It takes these rules from the
 user's custom rules and catalog lists marked as trusted for response
 rules.
 

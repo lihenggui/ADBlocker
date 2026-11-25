@@ -122,10 +122,12 @@ With URL filtering on, ADBlocker can rewrite uncompressed text responses
 up to 2 MiB in decrypted HTTPS and plaintext HTTP traffic. Only the user's
 custom rules and the AdGuard and uBlock Origin lists marked for response
 rewriting in the subscription catalog can supply `$replace`,
-`$jsonprune` and `$removeheader` rules. A matching
+`$jsonprune`, `$hls` and `$removeheader` rules. A matching
 `$replace` rule can override a request block and change text the app
 displays or code it runs. A matching `$jsonprune` rule removes items from
 a JSON or JSONP response and leaves request blocking in effect.
+A matching `$hls` rule removes segments and their associated tags from an
+UTF-8 HLS playlist and leaves request blocking in effect.
 A matching `$removeheader` rule can remove an HTTP request or response
 header. The engine rejects rules for the headers protected by AdGuard
 and the additional headers listed for each direction.

@@ -28,14 +28,14 @@ use bytes::Bytes;
 use http_body_util::{BodyExt, combinators::BoxBody};
 use hyper::body::{Body, Frame};
 use hyper::header::{ACCEPT_RANGES, CONTENT_ENCODING, CONTENT_LENGTH, ETAG, HeaderName};
-use hyper::{Response, StatusCode};
+use hyper::{Response, StatusCode, Uri};
 use tokio::sync::{OwnedSemaphorePermit, Semaphore};
 use tokio::task::JoinHandle;
 use tokio::time::{Sleep, sleep};
 
 use crate::htmlfilter::Compiled;
 use crate::limits::{MAX_REWRITE_BODY, MAX_REWRITES, REWRITE_WAIT, REWRITE_WORK};
-use crate::rule::action::{ActionKind, Place, ResponseAction, html};
+use crate::rule::action::{ActionKind, Place, ResponseAction, hls, html};
 
 #[derive(Default)]
 pub(crate) struct RewritePlan {
@@ -84,29 +84,6 @@ impl Slots {
     }
 }
 
-/// Types whose bodies a response rule can treat as text.
-fn text_type(value: &str) -> bool {
-    let mime = value.to_ascii_lowercase();
-    let Some((group, subtype)) = mime.split_once('/') else {
-        return false;
-    };
-    group == "text"
-        || subtype.ends_with("+json")
-        || subtype.ends_with("+xml")
-        || group == "application"
-            && matches!(
-                subtype,
-                "json"
-                    | "javascript"
-                    | "x-javascript"
-                    | "xml"
-                    | "xhtml+xml"
-                    | "x-www-form-urlencoded"
-                    | "vnd.apple.mpegurl"
-                    | "x-mpegurl"
-            )
-}
-
 /// Require a whole, unencoded response whose declared size can fit.
 fn takes<B>(response: &Response<B>) -> bool {
     let status = response.status();
@@ -127,7 +104,6 @@ fn takes<B>(response: &Response<B>) -> bool {
                 .and_then(|value| value.parse::<usize>().ok())
                 .is_some_and(|size| size <= MAX_REWRITE_BODY)
         })
-        && crate::media_type::read(headers).is_some_and(text_type)
 }
 
 /// Leave the response intact if it cannot be collected right away.
@@ -135,18 +111,20 @@ pub(crate) fn wrap<B>(
     response: Response<B>,
     actions: Vec<Arc<ResponseAction>>,
     html: Option<html::Action>,
+    url: &str,
 ) -> Response<BoxBody<Bytes, B::Error>>
 where
     B: Body<Data = Bytes> + Send + Sync + Unpin + 'static,
     B::Error: Send + Sync + Unpin + 'static,
 {
-    wrap_with(response, actions, html, &SLOTS)
+    wrap_with(response, actions, html, url, &SLOTS)
 }
 
 fn wrap_with<B>(
     response: Response<B>,
-    actions: Vec<Arc<ResponseAction>>,
+    mut actions: Vec<Arc<ResponseAction>>,
     html: Option<html::Action>,
+    url: &str,
     slots: &Slots,
 ) -> Response<BoxBody<Bytes, B::Error>>
 where
@@ -154,6 +132,30 @@ where
     B::Error: Send + Sync + Unpin + 'static,
 {
     if (actions.is_empty() && html.is_none()) || !takes(&response) {
+        return response.map(BodyExt::boxed);
+    }
+    let Some(mime) = crate::media_type::read(response.headers()) else {
+        return response.map(BodyExt::boxed);
+    };
+    let mime = mime.to_ascii_lowercase();
+    actions.retain(|action| action.kind().takes(&mime));
+    let playlist_url = if actions
+        .iter()
+        .any(|action| action.kind() == ActionKind::Hls)
+    {
+        match url.parse::<Uri>() {
+            Ok(url) if url.scheme().is_some() && url.authority().is_some() => Some(url),
+            _ => {
+                // The playlist's URL is needed to resolve relative segments.
+                actions.retain(|action| action.kind() != ActionKind::Hls);
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let html = html.filter(|_| html::takes(&mime));
+    if actions.is_empty() && html.is_none() {
         return response.map(BodyExt::boxed);
     }
     let Ok(slot) = slots.responses.clone().try_acquire_owned() else {
@@ -167,7 +169,17 @@ where
     parts.headers.remove("digest");
     Response::from_parts(
         parts,
-        Rewrite::new(body, actions, html, slot, slots.workers.clone()).boxed(),
+        Rewrite::new(
+            body,
+            BodyEdit {
+                actions,
+                html,
+                playlist_url,
+            },
+            slot,
+            slots.workers.clone(),
+        )
+        .boxed(),
     )
 }
 
@@ -176,8 +188,7 @@ struct Collection {
     bytes: Vec<u8>,
     trailers: Option<Frame<Bytes>>,
     timer: Pin<Box<Sleep>>,
-    actions: Vec<Arc<ResponseAction>>,
-    html: Option<html::Action>,
+    edit: BodyEdit,
     slot: OwnedSemaphorePermit,
 }
 
@@ -197,14 +208,7 @@ impl Work {
     fn start(
         collection: Collection,
         worker: OwnedSemaphorePermit,
-        run: impl FnOnce(
-            Bytes,
-            Vec<Arc<ResponseAction>>,
-            Option<html::Action>,
-            &dyn Fn() -> bool,
-        ) -> Option<Bytes>
-        + Send
-        + 'static,
+        run: impl FnOnce(Bytes, BodyEdit, &dyn Fn() -> bool) -> Option<Bytes> + Send + 'static,
     ) -> Self {
         let original = Bytes::from(collection.bytes);
         let input = original.clone();
@@ -218,7 +222,7 @@ impl Work {
             if !within_budget() {
                 return None;
             }
-            let changed = run(input, collection.actions, collection.html, &within_budget)?;
+            let changed = run(input, collection.edit, &within_budget)?;
             within_budget().then_some(changed)
         });
         Self {
@@ -251,22 +255,47 @@ impl Drop for Work {
     }
 }
 
+#[derive(Default)]
+struct BodyEdit {
+    actions: Vec<Arc<ResponseAction>>,
+    html: Option<html::Action>,
+    playlist_url: Option<Uri>,
+}
+
 /// Keep intermediate results off the body until every action succeeds.
 fn apply_actions(
     mut body: Bytes,
-    actions: Vec<Arc<ResponseAction>>,
-    mut html: Option<html::Action>,
+    BodyEdit {
+        actions,
+        mut html,
+        playlist_url,
+    }: BodyEdit,
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Bytes> {
-    // AdGuard's reference leaves HTML filtering and replacement order
-    // unspecified. Remove elements after pruning and before replacement.
-    for action in actions {
-        if action.kind() == ActionKind::Replace
+    // Prune JSON, filter HTML, edit the playlist, then replace text. The
+    // AdGuard reference directs filters to use $replace on whole-playlist
+    // tags, so replacement must see the tags preserved by $hls.
+    for group in actions.chunk_by(|a, b| a.kind() == b.kind()) {
+        let kind = group[0].kind();
+        if kind != ActionKind::Prune
             && let Some(html) = html.take()
         {
             body = html.apply(body, within_budget)?;
         }
-        body = Bytes::from(action.apply(&body, within_budget)?);
+        if kind == ActionKind::Hls {
+            let rules: Vec<_> = group
+                .iter()
+                .filter_map(|action| match action.as_ref() {
+                    ResponseAction::Hls(rule) => Some(rule),
+                    _ => None,
+                })
+                .collect();
+            body = hls::apply(body, playlist_url.as_ref()?, &rules, within_budget)?;
+        } else {
+            for action in group {
+                body = Bytes::from(action.apply(&body, within_budget)?);
+            }
+        }
     }
     if let Some(html) = html {
         body = html.apply(body, within_budget)?;
@@ -295,21 +324,14 @@ struct Rewrite<B: Body> {
 }
 
 impl<B: Body<Data = Bytes> + Unpin> Rewrite<B> {
-    fn new(
-        inner: B,
-        actions: Vec<Arc<ResponseAction>>,
-        html: Option<html::Action>,
-        slot: OwnedSemaphorePermit,
-        workers: Arc<Semaphore>,
-    ) -> Self {
+    fn new(inner: B, edit: BodyEdit, slot: OwnedSemaphorePermit, workers: Arc<Semaphore>) -> Self {
         Self {
             inner,
             state: State::Collecting(Collection {
                 bytes: Vec::new(),
                 trailers: None,
                 timer: Box::pin(sleep(REWRITE_WAIT)),
-                actions,
-                html,
+                edit,
                 slot,
             }),
             workers,

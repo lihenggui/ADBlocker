@@ -155,12 +155,13 @@ pub(crate) fn read_with_scripts<'a>(
         };
         return rule;
     }
-    // A header name can contain the characters that mark a cosmetic rule.
+    // An action value can contain the characters that mark a cosmetic rule.
     if custom.as_ref().is_some_and(|options| {
         !options.pattern.contains('#')
-            && options
-                .tokens()
-                .any(|option| option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER))
+            && options.tokens().any(|option| {
+                option.name() == modifiers::HLS
+                    || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
+            })
     }) {
         rule.read_options(custom);
         return rule;

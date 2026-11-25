@@ -14,7 +14,7 @@
 
 use std::borrow::Cow;
 
-use super::action::{ActionKind, ActionSpec, removeheader};
+use super::action::{ActionKind, ActionSpec};
 use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
 use super::options::{OptionToken, Options};
 use crate::limits::MAX_RESPONSE_RULE;
@@ -64,7 +64,7 @@ impl<'a> ResponseRule<'a> {
 
     pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
         // An incompatible noop must not share the valid rule's budget key.
-        if self.kind == ActionKind::RemoveHeader {
+        if matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) {
             return Cow::Borrowed(line);
         }
         self.options
@@ -75,7 +75,7 @@ impl<'a> ResponseRule<'a> {
     pub(crate) fn action(&self) -> Option<Action<'a>> {
         let options = &self.options;
         if options.written_len() > MAX_RESPONSE_RULE
-            || (self.kind == ActionKind::RemoveHeader && options.noop)
+            || (matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) && options.noop)
         {
             return None;
         }
@@ -115,10 +115,10 @@ impl<'a> ResponseRule<'a> {
                 action.take_qualifier(token)?;
             }
         }
-        if self.kind == ActionKind::RemoveHeader {
+        if matches!(self.kind, ActionKind::Hls | ActionKind::RemoveHeader) {
             let match_case = action.options.contains(&"match-case");
             if match_case {
-                action.pattern = removeheader::case_sensitive_pattern(pattern);
+                action.pattern = super::regex::case_sensitive_pattern(pattern);
             }
             if !super::regex::network_pattern_supported(&action.pattern, match_case) {
                 return None;

@@ -44,6 +44,7 @@ use tokio::net::TcpListener;
 
 use super::*;
 
+mod hls;
 mod removeheader;
 
 const HOST: &str = "site.test";
@@ -191,8 +192,9 @@ async fn rig(setup: Setup) -> Rig {
                             .body(Full::new(Bytes::new()))
                             .unwrap()));
                     }
-                    if let Some(response) =
-                        replacement_fixture(&req).or_else(|| removeheader::fixture(&req))
+                    if let Some(response) = replacement_fixture(&req)
+                        .or_else(|| removeheader::fixture(&req))
+                        .or_else(|| hls::fixture(&req))
                     {
                         return std::future::ready(Ok(response));
                     }

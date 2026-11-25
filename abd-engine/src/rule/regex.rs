@@ -15,6 +15,8 @@
 
 //! Translate the list regex dialect before compiling a response expression.
 
+use std::borrow::Cow;
+
 use regex::bytes::RegexBuilder;
 
 /// Full URL regexes are compiled lazily by adblock-rust. Check them before
@@ -112,4 +114,53 @@ fn repeat_count(tail: &str) -> Option<&str> {
     });
     end.starts_with('}')
         .then(|| &tail[..tail.len() - end.len() + 1])
+}
+
+/// The condition matcher only accepts `$match-case` on a full regex.
+pub(super) fn case_sensitive_pattern(pattern: &str) -> Cow<'_, str> {
+    if pattern.len() > 1 && pattern.starts_with('/') && pattern.ends_with('/') {
+        return Cow::Borrowed(pattern);
+    }
+    let mut regex = String::from("/");
+    let pattern = if let Some(host_pattern) = pattern.strip_prefix("||") {
+        regex.push_str(r"^https?://(?:[^./:?#]+\.)*(?i:");
+        let end = host_pattern
+            .find(['/', '^', ':', '|'])
+            .unwrap_or(host_pattern.len());
+        let (host, tail) = host_pattern.split_at(end);
+        write_pattern(&mut regex, host, r"[^/:?#]*");
+        regex.push(')');
+        tail
+    } else if let Some(pattern) = pattern.strip_prefix('|') {
+        regex.push('^');
+        pattern
+    } else {
+        pattern
+    };
+    let tail = pattern.strip_suffix('|');
+    write_pattern(&mut regex, tail.unwrap_or(pattern), ".*");
+    if tail.is_some() {
+        regex.push('$');
+    }
+    regex.push('/');
+    Cow::Owned(regex)
+}
+
+fn write_pattern(regex: &mut String, pattern: &str, wildcard: &str) {
+    let mut parts = pattern.split_inclusive(['*', '^']).peekable();
+    while let Some(part) = parts.next() {
+        if let Some(text) = part.strip_suffix('*') {
+            regex.push_str(&regex::escape(text));
+            regex.push_str(wildcard);
+        } else if let Some(text) = part.strip_suffix('^') {
+            regex.push_str(&regex::escape(text));
+            regex.push_str(if parts.peek().is_none() {
+                r"(?:[^\w.%-]|$)"
+            } else {
+                r"[^\w.%-]"
+            });
+        } else {
+            regex.push_str(&regex::escape(part));
+        }
+    }
 }

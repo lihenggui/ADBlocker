@@ -96,6 +96,8 @@ pub(crate) const MAX_HTML_ELEMENTS: usize = 100_000;
 pub(crate) const MAX_HTML_DECODED: usize = 4 << 20;
 /// The largest original response that can be rewritten on a phone.
 pub(crate) const MAX_REWRITE_BODY: usize = 2 << 20;
+/// The most lines in a playlist that can be edited, including its header.
+pub(crate) const MAX_PLAYLIST_LINES: usize = 32_768;
 /// The most bytes a replacement may produce.
 pub(crate) const MAX_REWRITE_RESULT: usize = 2 * MAX_REWRITE_BODY;
 /// The most time an upstream body can be held for rewriting.
