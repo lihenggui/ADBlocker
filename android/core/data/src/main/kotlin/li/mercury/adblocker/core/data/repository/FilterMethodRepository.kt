@@ -32,6 +32,9 @@ interface FilterMethodRepository {
     /** Whether root is granted, so that the root module can be chosen. */
     suspend fun rootAvailable(): Boolean
 
+    /** Whether this process already knows root was granted, without opening a shell. */
+    fun rootGrantKnown(): Boolean
+
     /**
      * Makes [method] the one in use and carries over the configuration.
      * Root can remain pending. VPN can be selected even if some settings could not be carried.

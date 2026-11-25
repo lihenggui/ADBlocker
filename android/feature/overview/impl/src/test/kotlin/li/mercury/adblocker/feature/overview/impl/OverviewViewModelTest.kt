@@ -77,7 +77,7 @@ class OverviewViewModelTest {
     /** What was done, in order: the order is what the tests are about. */
     private val done = mutableListOf<String>()
 
-    private var root = true
+    private var root = false
     private var rootAsked = 0
     private var snapshotsRead = 0
     private var appsRead = 0
@@ -126,6 +126,8 @@ class OverviewViewModelTest {
     }
 
     private val methods = object : FilterMethodRepository by unexpected() {
+        override fun rootGrantKnown() = root
+
         override suspend fun rootAvailable(): Boolean {
             rootAsked++
             return root
@@ -219,26 +221,61 @@ class OverviewViewModelTest {
     }
 
     @Test
-    fun givenVpnMode_whenStateIsCollectedWithoutStartingTheScreen_thenRootIsNotRequested() = runTest {
+    fun givenVpnMode_whenTheScreenStarts_thenRootIsNotRequested() = runTest {
         shown()
+        viewModel.onStart()
+        viewModel.onStart()
+
+        assertNull((viewModel.uiState.value as OverviewUiState.Ready).notice)
         assertEquals(0, rootAsked)
-        viewModel.onStart()
-        assertEquals(OverviewNotice.RootAvailable, (viewModel.uiState.value as OverviewUiState.Ready).notice)
-        viewModel.onStart()
-        assertEquals(1, rootAsked)
     }
 
     @Test
-    fun rootGrantedSinceTheVpnWasChosenIsOfferedUntilDismissed() = runTest {
+    fun givenTheRootOverviewIsCollected_whenTheScreenFirstStarts_thenItReadsOnlyOnce() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        shown()
+        viewModel.onStart()
+        runCurrent()
+
+        assertEquals(1, snapshotsRead)
+
+        viewModel.onStart()
+        runCurrent()
+        assertEquals(2, snapshotsRead)
+    }
+
+    @Test
+    fun givenTheRootOverviewStopsCollecting_whenItReopens_thenTheNewSubscriptionReadsOnlyOnce() = runTest {
+        userData.setFilterMethod(FilterMethod.Root)
+        val first = backgroundScope.launch { viewModel.uiState.collect {} }
+        viewModel.onStart()
+        runCurrent()
+        assertEquals(1, snapshotsRead)
+
+        first.cancel()
+        runCurrent()
+        advanceTimeBy(5_001)
+        runCurrent()
+        shown()
+        viewModel.onStart()
+        runCurrent()
+
+        assertEquals(2, snapshotsRead)
+    }
+
+    @Test
+    fun givenAKnownRootGrant_whenTheVpnOverviewStarts_thenTheTipAppearsWithoutProbing() = runTest {
+        root = true
         viewModel.onStart()
         assertEquals(OverviewNotice.RootAvailable, shown().notice)
         viewModel.dismissNotice(OverviewNotice.RootAvailable)
         assertNull((viewModel.uiState.value as OverviewUiState.Ready).notice)
-        assertEquals(1, rootAsked)
+        assertEquals(0, rootAsked)
     }
 
     @Test
     fun lockdownIsNoticedBeforeRoot() = runTest {
+        root = true
         vpnStatus.value = VpnStatus(state = VpnState.On, alwaysOn = true, lockdown = true)
         viewModel.onStart()
         assertEquals(OverviewNotice.Lockdown, shown().notice)
@@ -478,6 +515,7 @@ class OverviewViewModelTest {
 
     @Test
     fun givenListsMissingAndRootGranted_whenShown_thenTheListsComeBeforeTheTips() = runTest {
+        root = true
         subscriptions = listOf(list("ads"))
         vpnStatus.value = VpnStatus(state = VpnState.On, alwaysOn = true, lockdown = true)
         viewModel.onStart()
