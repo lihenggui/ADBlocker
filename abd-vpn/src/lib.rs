@@ -27,6 +27,9 @@ mod engine;
 #[cfg(test)]
 mod fake;
 mod fd;
+#[cfg(any(test, feature = "fuzzing"))]
+#[doc(hidden)]
+pub mod fuzzing;
 mod jni;
 mod log;
 mod platform;

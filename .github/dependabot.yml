@@ -17,6 +17,12 @@ updates:
     schedule:
       interval: weekly
 
+  # The standalone parser fuzz targets.
+  - package-ecosystem: cargo
+    directory: /fuzz
+    schedule:
+      interval: weekly
+
   # The Rust release of rust-toolchain.toml.
   - package-ecosystem: rust-toolchain
     directory: /

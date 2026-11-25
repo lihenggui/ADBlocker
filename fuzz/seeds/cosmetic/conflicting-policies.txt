@@ -1,0 +1,4 @@
+style-src 'nonce-YWJj'; style-src 'unsafe-inline', style-src-elem 'nonce-ZGVm'
+style-src 'unsafe-inline'
+#sponsor
+<html><head></head><body id = 'sponsor' CLASS = sponsored></body></html>

@@ -1,0 +1,4 @@
+style-src 'unsafe-inline' 'sha256-not_a_hash'; script-src 'none'
+style-src-elem 'none'
+[data-title='<example>']
+<html><script>const html = "<head>";</script><head></head>

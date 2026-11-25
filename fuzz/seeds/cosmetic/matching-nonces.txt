@@ -1,0 +1,5 @@
+default-src 'none'; style-src 'nonce-YWJj', style-src-elem 'nonce-YWJj'
+
+.реклама
+<!-- banner --><HTML><HEAD><style nonce=YWJj>p{color:black}</style></HEAD>
+<body><p id=article class="article body">Text</p></body></HTML>
