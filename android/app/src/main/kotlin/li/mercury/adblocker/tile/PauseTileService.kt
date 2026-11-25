@@ -23,6 +23,7 @@ import android.os.Build
 import android.service.quicksettings.TileService
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
@@ -61,6 +62,7 @@ class PauseTileService : TileService() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var listening: Job? = null
     private var view: TileView? = null
+    private val clicks = TileClicks(scope, { view?.click }, { isLocked }, { unlockAndRun { it() } }, ::performClick)
 
     override fun onStartListening() {
         super.onStartListening()
@@ -79,14 +81,18 @@ class PauseTileService : TileService() {
 
     override fun onClick() {
         super.onClick()
-        when (view?.click ?: return) {
+        clicks.click()
+    }
+
+    private suspend fun performClick(click: TileClick) {
+        when (click) {
             TileClick.None -> Unit
 
             TileClick.Pause -> act { daemon.pause(minutes = null) }
 
             TileClick.Resume -> act { daemon.resume() }
 
-            TileClick.StartVpn -> scope.launch {
+            TileClick.StartVpn -> {
                 // Started or not, the app says why: no engine, or consent taken back.
                 suspendRunCatching { vpn.start() }.onFailure {
                     Timber.w("tile: vpn start: %s", it.javaClass.simpleName)
@@ -103,11 +109,9 @@ class PauseTileService : TileService() {
         super.onDestroy()
     }
 
-    private fun act(change: suspend () -> Unit) {
-        scope.launch {
-            suspendRunCatching { change() }.onFailure { Timber.w("tile: %s", it.javaClass.simpleName) }
-            show(load())
-        }
+    private suspend fun act(change: suspend () -> Unit) {
+        suspendRunCatching { change() }.onFailure { Timber.w("tile: %s", it.javaClass.simpleName) }
+        show(load())
     }
 
     private suspend fun load(): TileView {
@@ -149,5 +153,30 @@ class PauseTileService : TileService() {
             }
         }
         if (isLocked) unlockAndRun(open) else open()
+    }
+}
+
+/** Serializes tile actions on the main thread, including callbacks after unlocking. */
+internal class TileClicks(
+    private val scope: CoroutineScope,
+    private val current: () -> TileClick?,
+    private val isLocked: () -> Boolean,
+    private val unlock: (() -> Unit) -> Unit,
+    private val perform: suspend (TileClick) -> Unit,
+) {
+    private var action: Job? = null
+
+    fun click() {
+        val requested = current() ?: return
+        if (requested == TileClick.None || action?.isActive == true) return
+        if (isLocked()) unlock { performIfCurrent(requested) } else performIfCurrent(requested)
+    }
+
+    private fun performIfCurrent(requested: TileClick) {
+        // The tile may have changed while the unlock prompt was open.
+        if (requested != current() || action?.isActive == true) return
+        val next = scope.launch(start = CoroutineStart.LAZY) { perform(requested) }
+        action = next
+        next.start()
     }
 }

@@ -179,8 +179,8 @@ private key and the app's data. Android stores the certificate separately.
   the next recording or until ADBlocker exits.
 
 The Quick Settings tile pauses and resumes filtering, and in VPN mode
-starts the VPN. Settings links to Android's Always-on VPN setting and
-holds the HTTPS filtering setup.
+starts the VPN. These actions require unlocking the device. Settings links
+to Android's Always-on VPN setting and holds the HTTPS filtering setup.
 
 <details>
 <summary>Root command-line reference</summary>
