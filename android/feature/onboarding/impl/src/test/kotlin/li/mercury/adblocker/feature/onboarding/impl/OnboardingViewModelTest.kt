@@ -86,12 +86,14 @@ class OnboardingViewModelTest {
     private var suspendDownload = false
     private var downloadCancelled = false
     private val userData = TestUserDataRepository()
-    private val subscriptions = FilterCatalog.setupLists(listOf("zh-Hans-CN")).toMutableMap()
+    private val subscriptions = FilterCatalog.setupLists(listOf("zh-Hans-CN"), "Etc/UTC").toMutableMap()
     private val browser = InstalledApp("com.example.browser", "Browser", AppIconSource("com.example.browser", "test"), isSystem = false)
     private val ordinaryApp = InstalledApp("com.example.notes", "Notes", AppIconSource("com.example.notes", "test"), isSystem = false)
 
     private val device = object : DeviceRepository {
         override fun languageTags() = languages
+
+        override fun timeZoneId() = "Etc/UTC"
 
         override suspend fun check(kind: DeviceCheckKind) = DeviceCheck(
             kind,
@@ -405,24 +407,23 @@ class OnboardingViewModelTest {
     }
 
     @Test
-    fun givenDeviceLanguages_whenSuggestingLists_thenOnlyTheirRegionalListsAreSelected() {
+    fun givenDeviceLocales_whenSuggestingLists_thenLanguageOrRegionSelectsRegionalDefaults() {
         fun url(id: String) = FilterCatalog.entries.first { it.id == id }.url
         val china = url("easylist_china")
         val japan = url("japanese_filters")
-        val chinese = FilterCatalog.setupLists(listOf("zh-Hans-CN"))
+        val chinese = FilterCatalog.setupLists(listOf("zh-Hans-CN"), "Etc/UTC")
 
         assertEquals(true, chinese[china])
         assertEquals(true, chinese[url("adguard_chinese")])
         assertEquals(true, chinese[url("awavenue")])
         assertEquals(null, chinese[japan])
-        assertEquals(false, FilterCatalog.setupLists(listOf("ja-JP"))[china])
-        assertEquals(true, FilterCatalog.setupLists(listOf("ja-JP"))[japan])
-        assertEquals(true, FilterCatalog.setupLists(listOf("en-US", "ja-JP"))[japan])
-        // A region is not a language.
-        assertEquals(null, FilterCatalog.setupLists(listOf("en-JP"))[japan])
-        assertEquals(true, FilterCatalog.setupLists(listOf("pt-BR"))[url("easylist_portuguese")])
-        assertEquals(false, FilterCatalog.setupLists(listOf("en-US"))[china])
-        assertEquals(FilterCatalog.setupLists(listOf("en-US")), FilterCatalog.setupLists(emptyList()))
+        assertEquals(false, FilterCatalog.setupLists(listOf("ja-JP"), "Etc/UTC")[china])
+        assertEquals(true, FilterCatalog.setupLists(listOf("ja-JP"), "Etc/UTC")[japan])
+        assertEquals(true, FilterCatalog.setupLists(listOf("en-US", "ja-JP"), "Etc/UTC")[japan])
+        assertEquals(true, FilterCatalog.setupLists(listOf("en-JP"), "Etc/UTC")[japan])
+        assertEquals(true, FilterCatalog.setupLists(listOf("pt-BR"), "Etc/UTC")[url("easylist_portuguese")])
+        assertEquals(false, FilterCatalog.setupLists(listOf("en-US"), "Etc/UTC")[china])
+        assertEquals(FilterCatalog.setupLists(listOf("en-US"), "Etc/UTC"), FilterCatalog.setupLists(emptyList(), "Etc/UTC"))
     }
 
     @Test

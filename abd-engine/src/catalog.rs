@@ -14,6 +14,8 @@
  * along with this program. If not, see <https://www.gnu.org/licenses/>.
  */
 
+mod time_zones;
+
 use serde::Deserialize;
 use std::sync::{LazyLock, OnceLock};
 
@@ -36,6 +38,8 @@ struct List<'a> {
     /// a default for.
     #[serde(default, borrow)]
     default_languages: Vec<&'a str>,
+    #[serde(default, borrow)]
+    default_regions: Vec<&'a str>,
     #[serde(default)]
     trusted_scriptlets: bool,
     #[serde(default)]
@@ -63,7 +67,34 @@ fn primary_language(tag: &str) -> Option<String> {
     (letters && primary != "und").then_some(primary)
 }
 
-fn defaults_for(languages: &[String]) -> String {
+/// Find the region in a BCP 47 tag, after its language, extlangs and script.
+fn locale_region(tag: &str) -> Option<String> {
+    let mut subtags = tag.trim().split(['-', '_']).peekable();
+    let language = subtags.next()?;
+    let letters = |s: &str| s.bytes().all(|b| b.is_ascii_alphabetic());
+    if !(2..=8).contains(&language.len()) || !letters(language) {
+        return None;
+    }
+    if language.len() <= 3 {
+        for _ in 0..3 {
+            if subtags.next_if(|s| s.len() == 3 && letters(s)).is_none() {
+                break;
+            }
+        }
+    }
+    subtags.next_if(|s| s.len() == 4 && letters(s));
+    let region = subtags.next()?;
+    (region.len() == 2 && letters(region)).then(|| region.to_ascii_uppercase())
+}
+
+fn defaults_for<'a>(locale_tags: impl IntoIterator<Item = &'a str>, time_zone: &str) -> String {
+    let mut languages = Vec::new();
+    let mut regions = Vec::new();
+    for tag in locale_tags {
+        languages.extend(primary_language(tag));
+        regions.extend(locale_region(tag));
+    }
+    regions.extend(time_zones::region(time_zone).map(str::to_owned));
     source_text(
         catalog()
             .lists
@@ -74,15 +105,18 @@ fn defaults_for(languages: &[String]) -> String {
                         .default_languages
                         .iter()
                         .any(|language| languages.iter().any(|l| l == language))
+                    || entry
+                        .default_regions
+                        .iter()
+                        .any(|region| regions.iter().any(|r| r == region))
             })
             .map(|entry| entry.url),
     )
 }
 
 // The defaults are read deep under every command that lists, changes or
-// downloads the sources, and the device's languages, like the catalog,
-// stay the same for the life of a process: set once when it starts, they
-// are one value for all of these without a parameter through each.
+// downloads the sources. Capture the defaults once per process so all
+// of these commands use the same selection without passing it through each.
 static SOURCES: OnceLock<String> = OnceLock::new();
 static EXCLUSIONS: LazyLock<String> = LazyLock::new(|| source_text(catalog().https_exclusions));
 
@@ -107,13 +141,14 @@ fn trusted_urls(takes: impl Fn(&List<'_>) -> bool) -> Vec<&'static str> {
         .collect()
 }
 
-/// Makes the lists for `tags`, the device's language tags, defaults
-/// besides the general ones. The host calls it once, before anything reads
-/// the defaults; a later call changes nothing and returns false. A tag
-/// that names no language adds nothing.
-pub fn set_device_languages<'a>(tags: impl IntoIterator<Item = &'a str>) -> bool {
-    let languages: Vec<String> = tags.into_iter().filter_map(primary_language).collect();
-    SOURCES.set(defaults_for(&languages)).is_ok()
+/// Sets the general defaults and those for the device's locale tags and
+/// time zone. The host calls it before anything reads the defaults.
+/// A later call changes nothing and returns false.
+pub fn set_device_locale<'a>(
+    locale_tags: impl IntoIterator<Item = &'a str>,
+    time_zone: &str,
+) -> bool {
+    SOURCES.set(defaults_for(locale_tags, time_zone)).is_ok()
 }
 
 impl Trust {
@@ -127,16 +162,15 @@ impl Trust {
 }
 
 /// What compiled lists depend on here: the catalog, and the defaults it
-/// gave for the device's languages.
+/// gave for the device.
 pub(crate) fn cache_identity() -> (&'static str, &'static str) {
     (DATA, default_sources())
 }
 
 /// Standalone defaults when the user has not saved subscriptions: the
-/// general lists, and those for the device's languages once the host has
-/// told them (`set_device_languages`).
+/// general lists, and the regional defaults set by the host.
 pub fn default_sources() -> &'static str {
-    SOURCES.get_or_init(|| defaults_for(&[]))
+    SOURCES.get_or_init(|| defaults_for([], ""))
 }
 
 pub(crate) fn exclusion_sources() -> &'static str {
@@ -149,7 +183,8 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn the_shared_catalog_contains_distinct_https_sources_and_language_free_general_defaults() {
+    fn the_shared_catalog_contains_distinct_https_sources_and_only_regional_lists_have_locale_defaults()
+     {
         let data = catalog();
         let mut urls = HashSet::new();
         for url in data
@@ -163,17 +198,24 @@ mod tests {
         }
         let full: serde_json::Value = serde_json::from_str(DATA).unwrap();
         for entry in full["lists"].as_array().unwrap() {
+            let regional = entry["category"] == "Regional";
+            assert_eq!(entry.get("defaultLanguages").is_some(), regional);
+            assert_eq!(entry.get("defaultRegions").is_some(), regional);
             if entry["defaultEnabled"] == true {
-                assert!(entry.get("defaultLanguages").is_none());
-                assert_ne!(entry["category"], "Regional");
+                assert!(!regional);
             }
-            if entry["category"] == "Regional" {
-                assert!(entry.get("defaultLanguages").is_some());
+            if regional {
+                assert!(!entry["defaultLanguages"].as_array().unwrap().is_empty());
+                assert!(!entry["defaultRegions"].as_array().unwrap().is_empty());
             }
         }
         for entry in data.lists {
             for language in entry.default_languages {
                 assert_eq!(primary_language(language).as_deref(), Some(language));
+            }
+            for region in entry.default_regions {
+                assert_eq!(region.len(), 2);
+                assert!(region.bytes().all(|b| b.is_ascii_uppercase()));
             }
         }
         assert!(!default_sources().is_empty());
@@ -191,35 +233,80 @@ mod tests {
         entry["url"].as_str().unwrap().to_owned()
     }
 
-    fn languages(tags: &[&str]) -> Vec<String> {
-        tags.iter().copied().filter_map(primary_language).collect()
+    const CHINESE: &[&str] = &["easylist_china", "adguard_chinese", "awavenue"];
+
+    #[test]
+    fn a_language_locale_region_or_time_zone_can_each_enable_a_regional_default() {
+        let general = defaults_for(["en-US"], "Etc/UTC");
+        assert_eq!(general, defaults_for([], ""));
+        for (locale, zone) in [
+            ("zh", "Etc/UTC"),
+            ("en-CN", "Etc/UTC"),
+            ("en-HK", "Etc/UTC"),
+            ("en-MO", "Etc/UTC"),
+            ("en-TW", "Etc/UTC"),
+            ("en-US", "Asia/Shanghai"),
+            ("en-US", "Asia/Hong_Kong"),
+            ("en-US", "Asia/Macau"),
+            ("en-US", "Asia/Taipei"),
+        ] {
+            let defaults = defaults_for([locale], zone);
+            for line in general.lines() {
+                assert!(defaults.lines().any(|l| l == line), "{line}");
+            }
+            for id in CHINESE {
+                assert!(defaults.contains(&url_of(id)), "{locale} {zone}: {id}");
+                assert!(!general.contains(&url_of(id)), "{id}");
+            }
+            assert!(!defaults.contains(&url_of("japanese_filters")));
+        }
     }
 
     #[test]
-    fn the_lists_of_a_device_language_are_defaults_besides_the_general_ones() {
-        let general = defaults_for(&[]);
-        let chinese = defaults_for(&languages(&["zh-Hans-CN"]));
-        for line in general.lines() {
-            assert!(chinese.lines().any(|l| l == line), "{line}");
+    fn all_locale_tags_and_the_time_zone_contribute_defaults() {
+        let both = defaults_for(["ja", "en-BE"], "Asia/Shanghai");
+        for id in ["japanese_filters", "easylist_dutch", "liste_fr", "awavenue"] {
+            assert!(both.contains(&url_of(id)), "{id}");
         }
-        for id in ["easylist_china", "adguard_chinese", "awavenue"] {
-            assert!(chinese.contains(&url_of(id)), "{id}");
-            assert!(!general.contains(&url_of(id)), "{id}");
-        }
-        assert!(!chinese.contains(&url_of("japanese_filters")));
-        let both = defaults_for(&languages(&["ja-JP", "zh-TW"]));
-        assert!(both.contains(&url_of("japanese_filters")));
-        assert!(both.contains(&url_of("awavenue")));
     }
 
     #[test]
-    fn only_the_primary_language_subtag_is_matched() {
+    fn only_the_primary_language_and_region_subtags_are_matched() {
         assert_eq!(
-            languages(&["pt-BR", "de_AT", "ES", "fr"]),
+            ["pt-BR", "de_AT", "ES", "fr"].map(|tag| primary_language(tag).unwrap()),
             ["pt", "de", "es", "fr"]
         );
-        // Nothing, an undetermined language, or a script names no language.
-        assert!(languages(&["", " ", "und", "Hans", "-zh", "zh1"]).is_empty());
-        assert_eq!(defaults_for(&languages(&["en-US", ""])), defaults_for(&[]));
+        for tag in ["", " ", "und", "Hans", "-zh", "zh1"] {
+            assert_eq!(primary_language(tag), None, "{tag}");
+        }
+        assert_eq!(locale_region("en_hans_cn").as_deref(), Some("CN"));
+        assert_eq!(locale_region("zh-yue-Hant-HK").as_deref(), Some("HK"));
+        assert_eq!(locale_region("und-CN").as_deref(), Some("CN"));
+        for tag in ["en-419", "en-u-rg-cnzzzz", "en-x-CN", "x-en-CN"] {
+            assert_eq!(locale_region(tag), None, "{tag}");
+        }
+    }
+
+    #[test]
+    fn new_regional_defaults_respect_both_kinds_of_saved_choice() {
+        let directory = tempfile::tempdir().unwrap();
+        let file = directory.path().join("sources");
+        let disabled = url_of("easylist_china");
+        let enabled = url_of("adguard_chinese");
+        let saved = format!("#{disabled}\n{enabled}\n");
+        std::fs::write(&file, &saved).unwrap();
+        let defaults = defaults_for(["en-US"], "Asia/Shanghai");
+        let selected = crate::sources::selection(&file, &defaults).unwrap();
+        for id in CHINESE {
+            let url = url_of(id);
+            let enabled = crate::sources::subscribed(&selected).any(|source| source == url);
+            assert_eq!(enabled, url != disabled, "{id}");
+            let copies = selected
+                .lines()
+                .filter(|line| line.trim_start_matches('#') == url)
+                .count();
+            assert_eq!(copies, 1, "{id}");
+        }
+        assert_eq!(std::fs::read_to_string(file).unwrap(), saved);
     }
 }

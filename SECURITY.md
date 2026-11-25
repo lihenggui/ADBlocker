@@ -371,6 +371,9 @@ connection falls back to TCP.
 - By default, logs omit the destinations that apps connect to. ADBlocker
   sends no telemetry. It downloads subscribed lists and forwards allowed
   traffic to its destination.
+- ADBlocker uses only the system's languages, their locale regions and
+  the system time zone to choose regional list defaults on the device.
+  It keeps these settings and the inferred regions in memory.
 
 ## Scope
 

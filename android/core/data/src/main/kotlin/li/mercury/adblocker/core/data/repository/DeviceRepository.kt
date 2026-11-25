@@ -22,6 +22,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import li.mercury.adblocker.core.data.AbdException
 import li.mercury.adblocker.core.data.root.RootShell
 import li.mercury.adblocker.core.engine.systemLanguageTags
+import li.mercury.adblocker.core.engine.systemTimeZoneId
 import li.mercury.adblocker.core.model.DeviceCheck
 import li.mercury.adblocker.core.model.DeviceCheckKind
 import javax.inject.Inject
@@ -35,6 +36,8 @@ interface DeviceRepository {
 
     /** The language tags of the device's locales, in the user's order. */
     fun languageTags(): List<String>
+
+    fun timeZoneId(): String
 }
 
 internal class RootDeviceRepository @Inject constructor(
@@ -43,6 +46,8 @@ internal class RootDeviceRepository @Inject constructor(
     private val module: ModuleRepository,
 ) : DeviceRepository {
     override fun languageTags(): List<String> = systemLanguageTags(context)
+
+    override fun timeZoneId(): String = systemTimeZoneId()
 
     override suspend fun check(kind: DeviceCheckKind): DeviceCheck = when (kind) {
         DeviceCheckKind.Root -> try {

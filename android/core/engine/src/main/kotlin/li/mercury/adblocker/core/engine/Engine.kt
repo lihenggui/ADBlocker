@@ -22,7 +22,7 @@ package li.mercury.adblocker.core.engine
  * a change here changes it and the library together.
  */
 internal object Engine {
-    external fun open(dataDir: String, roots: Array<ByteArray>, languages: Array<String>, callbacks: Callbacks): Long
+    external fun open(dataDir: String, roots: Array<ByteArray>, localeTags: Array<String>, timeZoneId: String, callbacks: Callbacks): Long
 
     external fun command(handle: Long, args: Array<String>, stdin: ByteArray?): Result
 

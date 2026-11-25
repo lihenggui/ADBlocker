@@ -46,3 +46,8 @@ pub(crate) fn get(name: &CStr) -> Option<String> {
 pub(crate) fn locale() -> Option<String> {
     get(c"persist.sys.locale").or_else(|| get(c"ro.product.locale"))
 }
+
+/// The system time zone ID, if Android has set it.
+pub(crate) fn time_zone() -> Option<String> {
+    get(c"persist.sys.timezone")
+}

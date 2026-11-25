@@ -76,7 +76,7 @@ class OnboardingScreenScreenshotTests {
         checks = noRoot,
         method = FilterMethod.Vpn,
         picks = setOf(DemoApp.Browser.packageName),
-        lists = FilterCatalog.setupLists(listOf("zh-Hans-CN")),
+        lists = FilterCatalog.setupLists(listOf("zh-Hans-CN"), "Etc/UTC"),
     )
 
     private fun vpnDone() = vpn(OnboardingStep.Install).copy(

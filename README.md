@@ -113,9 +113,12 @@ permission and can open ADBlocker's system settings. Without root, **All
 apps** filters only the apps the system shows, so until it is allowed
 **Overview** says that most apps are not filtered.
 
-Setup suggests the general lists and the regional lists for the
-languages of the device, such as EasyList China, AdGuard Chinese and
-AWAvenue Ads Rule for Chinese.
+Setup suggests the general lists and regional lists. A regional list is
+on by default when it matches a system language, a region in the system
+locales, or the country of a time zone that belongs to one country.
+EasyList China, AdGuard Chinese and AWAvenue Ads Rule are on by default
+when the system language is Chinese or the region is mainland China,
+Hong Kong, Macau or Taiwan.
 
 ADBlocker saves the selected subscriptions, downloads the lists, and
 updates them in the background at the configured interval. It follows
@@ -231,7 +234,7 @@ In `/data/adb/adblocker`, `sources` holds the addresses of the filter lists
 and `exclusion-sources` those of the lists of hosts that are never
 decrypted, one a line. Until the filter lists are chosen, there is no
 `sources`, and the lists are the general ones and the regional lists for
-the system language (`persist.sys.locale`). One of these that `sources`
+the system locale and time zone. One of these that `sources`
 does not name is on, and `#` before its address turns it off. Updates add missing bundled exclusion sources to
 an existing selection. An empty exclusion selection keeps decryption off.
 Custom rules go in `rules/*.txt`, in the syntax of the filter lists.

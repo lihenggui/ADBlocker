@@ -18,6 +18,11 @@ package li.mercury.adblocker.core.engine
 
 import android.content.Context
 import androidx.core.app.LocaleManagerCompat
+import java.util.TimeZone
+
+// Regional list defaults use only the system's locale and time zone
+// settings. They need no permission or network lookup. The settings and
+// their inferred regions are kept in memory and never logged or sent.
 
 /**
  * The language tags of the device's locales, in the user's order: those the
@@ -28,3 +33,5 @@ fun systemLanguageTags(context: Context): List<String> {
     val locales = LocaleManagerCompat.getSystemLocales(context)
     return (0 until locales.size()).mapNotNull { locales[it]?.toLanguageTag() }
 }
+
+fun systemTimeZoneId(): String = TimeZone.getDefault().id

@@ -22,7 +22,9 @@ plugins {
 
 android {
     namespace = "li.mercury.adblocker.core.data"
-    sourceSets.named("main") { resources.srcDir(rootDir.resolve("../config")) }
+    sourceSets.named("main") {
+        resources.srcDirs(rootDir.resolve("../config"), rootDir.resolve("../abd-engine/src/catalog/data"))
+    }
 }
 
 dependencies {
@@ -45,7 +47,10 @@ dependencies {
 
 // The tests read the daemon's outputs shared with its own tests.
 val protocolCases = rootDir.resolve("../testdata/protocol")
+val timeZoneCases = rootDir.resolve("../testdata/regional-time-zone-cases.tsv")
 tasks.withType<Test>().configureEach {
     inputs.dir(protocolCases).withPropertyName("protocolCases").withPathSensitivity(PathSensitivity.RELATIVE)
     systemProperty("protocolCases", protocolCases.absolutePath)
+    inputs.file(timeZoneCases).withPropertyName("timeZoneCases").withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("timeZoneCases", timeZoneCases.absolutePath)
 }

@@ -20,7 +20,7 @@ Declared in `li.mercury.adblocker.core.engine.Engine`:
 
 | Function | Purpose |
 | --- | --- |
-| `open(dataDir: String, roots: Array<ByteArray>, languages: Array<String>, callbacks: Callbacks): Long` | Opens the engine on `dataDir` (the app's `filesDir/engine`). `roots` are the DER certificates servers are verified against. `languages` are the language tags of the system's locales. Returns a handle, or 0 if the engine cannot open. |
+| `open(dataDir: String, roots: Array<ByteArray>, localeTags: Array<String>, timeZoneId: String, callbacks: Callbacks): Long` | Opens the engine on `dataDir` (the app's `filesDir/engine`). `roots` are the DER certificates servers are verified against. `localeTags` are the language tags of the system's locales, and `timeZoneId` is the system time zone's identifier. Returns a handle, or 0 if the engine cannot open. |
 | `command(handle: Long, args: Array<String>, stdin: ByteArray?): Result` | Runs one command of the `abd` dispatcher, synchronously, on the caller's thread. |
 | `stream(handle: Long, args: Array<String>, sink: LineSink): Long` | Runs `watch --json` or `update --json [--list <url>]`. Returns a stream id. |
 | `cancel(handle: Long, id: Long)` | Ends a stream, as closing standard input ends it under root. |
@@ -31,10 +31,10 @@ Declared in `li.mercury.adblocker.core.engine.Engine`:
 - `open` without `start` serves commands while the VPN is off: lists, rules,
   stats and settings are available whether or not filtering runs. When
   `open` returns 0, the reason is in logcat under the tag `abd`.
-- Without saved subscriptions, the lists are the general defaults of the
-  catalog and the regional lists whose `defaultLanguages` hold the primary
-  subtag of one of `languages`. The first `open` of the process sets them;
-  a tag that names no language adds nothing.
+- The first `open` of the process sets the catalog defaults. A regional
+  list is a default if its `defaultLanguages` matches a primary language
+  subtag or its `defaultRegions` matches a locale region or the country
+  of a single-country time zone. A saved choice takes precedence.
 - `command` runs every command except `watch` and `update`, which only
   `stream` runs. Commands that exist only under root (`run`, `trust`,
   `unhook`, `module-stop`) exit with 2. `command` may be called from several

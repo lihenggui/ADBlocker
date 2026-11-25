@@ -105,7 +105,7 @@ data class OnboardingUiState(
     /** Waiting for the installed app list. */
     val appsLoading: Boolean = false,
     /** The default lists, and whether each is kept. */
-    val lists: Map<String, Boolean> = FilterCatalog.setupLists(emptyList()),
+    val lists: Map<String, Boolean> = FilterCatalog.setupLists(emptyList(), ""),
     val install: InstallState = InstallState.Idle,
     /** With the VPN: whether notifications may be shown, once asked; null before. */
     val notifications: Boolean? = null,
@@ -160,7 +160,7 @@ class OnboardingViewModel @Inject constructor(
     private val vpn: VpnController,
     private val daemon: DaemonRepository,
 ) : ViewModel() {
-    private val state = MutableStateFlow(OnboardingUiState(lists = FilterCatalog.setupLists(device.languageTags())))
+    private val state = MutableStateFlow(OnboardingUiState(lists = FilterCatalog.setupLists(device.languageTags(), device.timeZoneId())))
     val uiState: StateFlow<OnboardingUiState> = state.asStateFlow()
 
     private var checking: Job? = null

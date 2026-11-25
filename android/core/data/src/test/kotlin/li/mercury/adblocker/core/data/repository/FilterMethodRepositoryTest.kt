@@ -203,7 +203,7 @@ class FilterMethodRepositoryTest {
     @Test
     fun givenAnUnconfiguredModuleWithElementHidingOnAndBundledDefaults_whenChoosingVpn_thenNoVpnSettingsAreReplaced() = runTest {
         fixture.userData.userData.value = UserData()
-        val defaults = FilterCatalog.setupLists(listOf("zh")).filterValues { it } +
+        val defaults = FilterCatalog.setupLists(listOf("zh"), "Etc/UTC").filterValues { it } +
             ("https://filters.adtidy.org/extension/ublock/filters/224.txt" to true)
         val root = FakeAbd(lists = defaults).apply { failing += "rules get" }
         val engine = FakeAbd(apps = setOf("com.example.saved"), cosmetic = false)

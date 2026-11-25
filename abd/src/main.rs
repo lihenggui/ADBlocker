@@ -72,10 +72,13 @@ fn main() -> Result<()> {
     if args == ["unhook"] {
         return unhook();
     }
-    // Before any command reads the default lists, so that the daemon and
-    // every command see the same ones. A device without a locale has the
-    // general defaults.
-    abd_engine::catalog::set_device_languages(properties::locale().as_deref());
+    // Use only the system's locale and time zone settings for regional
+    // defaults. No permission, network lookup, logging or storage of
+    // these settings or the regions they indicate is needed.
+    abd_engine::catalog::set_device_locale(
+        properties::locale().as_deref(),
+        properties::time_zone().as_deref().unwrap_or_default(),
+    );
     // So must leaving the user's store as Android has it, which every app
     // reads: first at each start, and last on uninstall, after which
     // nothing of ours runs. Filtering goes on whatever becomes of it.

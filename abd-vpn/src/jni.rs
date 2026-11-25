@@ -222,17 +222,19 @@ pub extern "system" fn Java_li_mercury_adblocker_core_engine_Engine_open<'l>(
     _this: JObject<'l>,
     data_dir: JString<'l>,
     roots: JObjectArray<'l, JByteArray<'l>>,
-    languages: JObjectArray<'l, JString<'l>>,
+    locale_tags: JObjectArray<'l, JString<'l>>,
+    time_zone: JString<'l>,
     callbacks: JObject<'l>,
 ) -> jlong {
     env.with_env(|env| -> Result<jlong> {
         let dir = data_dir.try_to_string(env)?;
         // Once per process, as the contract has it: a later open keeps the
         // defaults the commands have already shown.
-        if !abd_engine::catalog::set_device_languages(
-            strings(env, &languages)?.iter().map(String::as_str),
+        if !abd_engine::catalog::set_device_locale(
+            strings(env, &locale_tags)?.iter().map(String::as_str),
+            &time_zone.try_to_string(env)?,
         ) {
-            log("the device's languages were already given");
+            log("the list defaults were already set");
         }
         let mut certificates = Vec::new();
         for i in 0..roots.len(env)? {
