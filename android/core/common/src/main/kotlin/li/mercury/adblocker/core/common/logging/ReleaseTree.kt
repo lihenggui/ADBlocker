@@ -20,6 +20,7 @@ import android.annotation.SuppressLint
 import android.util.Log
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import li.mercury.adblocker.core.common.di.ApplicationScope
@@ -27,7 +28,9 @@ import li.mercury.adblocker.core.common.di.FilesDir
 import li.mercury.adblocker.core.common.dispatchers.ADBlockerDispatchers.IO
 import li.mercury.adblocker.core.common.dispatchers.Dispatcher
 import timber.log.Timber
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -66,13 +69,16 @@ class ReleaseTree internal constructor(
     ) : this(filesDir, scope, ioDispatcher, LocalDate::now, LocalDateTime::now)
 
     private val directory = File(filesDir, LOG_DIR)
-    private val lines = Channel<String>(Channel.UNLIMITED)
+    private val lines = Channel<String>(MAX_PENDING_LINES, BufferOverflow.DROP_OLDEST)
+    private val writes = Channel<Unit>(Channel.CONFLATED)
+    private var lastDay: LocalDate? = null
+    private var reportedWriteFailure = false
 
     init {
         scope.launch(ioDispatcher) {
             directory.mkdirs()
             deleteOldFiles()
-            for (line in lines) append(line)
+            for (ignored in writes) appendBatch()
         }
     }
 
@@ -81,6 +87,7 @@ class ReleaseTree internal constructor(
     override fun log(priority: Int, tag: String?, message: String, t: Throwable?) {
         // Timber has already appended the stack trace of t to the message.
         lines.trySend(format(priority, tag, message))
+        writes.trySend(Unit)
     }
 
     /**
@@ -89,8 +96,7 @@ class ReleaseTree internal constructor(
      * classes and frames are written (see [withoutMessages]).
      */
     fun logCrash(thread: Thread, error: Throwable) {
-        while (true) append(lines.tryReceive().getOrNull() ?: break)
-        append(format(Log.ERROR, null, "Crash on thread ${thread.name}\n${error.withoutMessages()}"))
+        appendBatch(crash = format(Log.ERROR, null, "Crash on thread ${thread.name}\n${error.withoutMessages()}"))
     }
 
     private fun format(priority: Int, tag: String?, message: String): String {
@@ -102,29 +108,69 @@ class ReleaseTree internal constructor(
             else -> 'A'
         }
         val time = now().format(TIME_FORMAT)
-        return if (tag == null) "$time $level $message" else "$time $level/$tag $message"
+        val prefix = if (tag == null) "$time $level " else "$time $level/${tag.take(MAX_TAG_CHARS)} "
+        return prefix + message.take(MAX_ENTRY_CHARS - prefix.length)
     }
 
     // The log can't report its own failure through itself.
     @SuppressLint("LogNotTimber")
     @Synchronized
-    private fun append(line: String) {
+    private fun appendBatch(crash: String? = null) {
+        val first = lines.tryReceive().getOrNull()
+        if (first == null && crash == null) return
         try {
             directory.mkdirs()
-            File(directory, "${today()}.log").appendText(line + "\n")
+            val day = today()
+            val file = File(directory, "$day.log")
+            var remaining = MAX_FILE_BYTES - file.length()
+            val batch = sequence {
+                if (first != null) yield(first)
+                repeat(MAX_PENDING_LINES - 1) {
+                    yield(lines.tryReceive().getOrNull() ?: return@sequence)
+                }
+            }
+            FileOutputStream(file, true).buffered().use { out ->
+                // Leave room for the crash report even after ordinary logging reaches its limit.
+                for (line in batch) {
+                    remaining -= writeLine(out, line, remaining - MAX_ENTRY_BYTES)
+                }
+                if (crash != null) writeLine(out, crash, remaining)
+            }
+            if (lastDay != day) {
+                lastDay = day
+                deleteOldFiles(keep = file)
+            }
         } catch (e: IOException) {
-            Log.e(LOG_TAG, "Could not write the log", e)
+            if (!reportedWriteFailure) {
+                reportedWriteFailure = true
+                Log.e(LOG_TAG, "Could not write the log: ${e.javaClass.simpleName}")
+            }
         }
     }
 
+    private fun writeLine(out: BufferedOutputStream, line: String, remaining: Long): Int {
+        if (remaining <= 0) return 0
+        val bytes = (line + "\n").toByteArray()
+        if (bytes.size > remaining) return 0
+        out.write(bytes)
+        return bytes.size
+    }
+
     /** Files are named by date, so the oldest sort first. */
-    private fun deleteOldFiles() {
-        val files = directory.listFiles { file -> file.name.endsWith(".log") } ?: return
-        files.sortedBy { it.name }.dropLast(DAYS_KEPT).forEach { it.delete() }
+    private fun deleteOldFiles(keep: File? = null) {
+        val files = directory.listFiles { file -> file != keep && file.name.endsWith(".log") } ?: return
+        val otherDays = if (keep == null) DAYS_KEPT else DAYS_KEPT - 1
+        // A file that could not be removed is tried again at the next rollover or startup.
+        files.sortedBy { it.name }.dropLast(otherDays).forEach { it.delete() }
     }
 
     internal companion object {
         const val DAYS_KEPT = 7
+        internal const val MAX_PENDING_LINES = 256
+        internal const val MAX_FILE_BYTES = 2 * 1024 * 1024L
+        private const val MAX_TAG_CHARS = 64
+        private const val MAX_ENTRY_CHARS = 8 * 1024
+        private const val MAX_ENTRY_BYTES = MAX_ENTRY_CHARS * 3 + 1
         private const val LOG_TAG = "ReleaseTree"
         private val TIME_FORMAT: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss.SSS")
     }
