@@ -27,7 +27,13 @@ use crate::list_files::MAX_COMPILED;
 use crate::rule::javascript::{MAX_CACHED_SCRIPTS, ScriptTable};
 
 /// The files of the rules for apps, in the order they are kept in.
-const APPS: [&str; 4] = ["app-blocks", "app-exceptions", "app-hosts", "app-guards"];
+const APPS: [&str; 5] = [
+    "app-blocks",
+    "app-exceptions",
+    "app-hosts",
+    "app-guards",
+    "app-remove-params",
+];
 
 fn read_part(cache: &Path, name: &str, remaining: &mut usize) -> Option<Vec<u8>> {
     let bytes = files::read_bytes(&cache.join(name), *remaining).ok()?;
@@ -36,8 +42,9 @@ fn read_part(cache: &Path, name: &str, remaining: &mut usize) -> Option<Vec<u8>>
 }
 
 fn read_apps(cache: &Path, remaining: &mut usize) -> Option<AppRules> {
-    let [blocks, exceptions, hosts, guards] = APPS.map(|name| read_part(cache, name, remaining));
-    AppRules::compiled([&blocks?, &exceptions?, &hosts?, &guards?])
+    let [blocks, exceptions, hosts, guards, parameters] =
+        APPS.map(|name| read_part(cache, name, remaining));
+    AppRules::compiled([&blocks?, &exceptions?, &hosts?, &guards?, &parameters?])
 }
 
 fn optional_engine(present: bool, read: impl FnOnce() -> Option<Engine>) -> Option<Option<Engine>> {
@@ -130,6 +137,7 @@ impl Filters {
         Some(Self {
             generation: Some(key),
             requests,
+            parameters: engine("remove-params")?,
             scripts,
             page_exceptions: PageExceptions {
                 all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
@@ -170,6 +178,7 @@ impl Filters {
             ("address-rules", Some(self.addresses.serialized())),
             ("html-rules", self.html.serialized()),
             ("full", Some(self.requests.full.serialize())),
+            ("remove-params", Some(self.parameters.serialize())),
             (
                 "redirects",
                 self.requests.redirects.as_ref().map(Engine::serialize),

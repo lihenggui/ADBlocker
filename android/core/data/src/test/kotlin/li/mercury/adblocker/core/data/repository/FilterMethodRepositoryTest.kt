@@ -141,16 +141,36 @@ class FilterMethodRepositoryTest {
     @Test
     fun givenRootOrItsModuleIsUnavailable_whenChoosingVpn_thenTheSwitchIsComplete() = runTest {
         for (absent in listOf(AbdException.NoRoot(), AbdException.ModuleMissing())) {
-            for (settings in listOf(UserData(), UserData(filterMethod = FilterMethod.Root, onboardingDone = true))) {
+            fixture.userData.userData.value = UserData()
+            val root = FakeAbd().apply { unreachable = absent }
+            val engine = FakeAbd(apps = setOf("com.example.shop"))
+
+            assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+            assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+            assertEquals(setOf("com.example.shop"), engine.apps)
+            assertTrue(engine.ran.isEmpty())
+        }
+    }
+
+    @Test
+    fun givenRootSetupAndRevokedAccessOrAMissingModule_whenChoosingVpn_thenTheTransferIsIncomplete() = runTest {
+        val configured = listOf(
+            UserData(filterMethod = FilterMethod.Root, onboardingDone = true),
+            UserData(filterMethod = FilterMethod.Root),
+            UserData(onboardingDone = true),
+        )
+        for (settings in configured) {
+            for (absent in listOf(AbdException.NoRoot(), AbdException.ModuleMissing())) {
                 fixture.userData.userData.value = settings
                 val root = FakeAbd().apply { unreachable = absent }
                 val engine = FakeAbd(apps = setOf("com.example.shop"))
 
-                assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+                assertEquals(FilterMethodSwitch.VpnTransferIncomplete(), fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
 
                 assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
                 assertEquals(setOf("com.example.shop"), engine.apps)
-                assertEquals(emptyList(), engine.ran)
+                assertTrue(engine.ran.isEmpty())
             }
         }
     }
@@ -205,6 +225,38 @@ class FilterMethodRepositoryTest {
 
         assertFalse(engine.cosmetic)
         assertTrue("cosmetic off" in engine.ran)
+    }
+
+    @Test
+    fun givenDifferentRootUrlAndHidingOptions_whenChoosingVpn_thenBothValuesAreCarried() = runTest {
+        for (urlFiltering in listOf(false, true)) {
+            for (cosmetic in listOf(false, true)) {
+                fixture.userData.userData.value = UserData(filterMethod = FilterMethod.Root, onboardingDone = true)
+                val root = FakeAbd(urlFiltering = urlFiltering, cosmetic = cosmetic)
+                val engine = FakeAbd(urlFiltering = !urlFiltering, cosmetic = !cosmetic)
+
+                assertEquals(FilterMethodSwitch.Complete, fixture.repository(root, engine).switchTo(FilterMethod.Vpn))
+
+                assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+                assertEquals(urlFiltering, engine.urlFiltering)
+                assertEquals(cosmetic, engine.cosmetic)
+            }
+        }
+    }
+
+    @Test
+    fun givenARejectedUrlFilteringWrite_whenChoosingVpn_thenHidingIsStillCarried() = runTest {
+        fixture.userData.userData.value = UserData(filterMethod = FilterMethod.Root)
+        val root = FakeAbd(urlFiltering = false, cosmetic = false)
+        val engine = FakeAbd().apply { failing += "url-filtering" }
+
+        assertEquals(
+            FilterMethodSwitch.VpnTransferIncomplete(setOf(VpnTransferPart.UrlFiltering)),
+            fixture.repository(root, engine).switchTo(FilterMethod.Vpn),
+        )
+        assertEquals(FilterMethod.Vpn, fixture.userData.userData.value.filterMethod)
+        assertTrue(engine.urlFiltering)
+        assertFalse(engine.cosmetic)
     }
 
     @Test
@@ -410,12 +462,11 @@ class FilterMethodRepositoryTest {
     }
 
     @Test
-    fun decryptionTurnedOffIsCarriedIntoTheVpn() = runTest {
+    fun givenBothRootOptionsOffAndNoSavedMethod_whenChoosingVpn_thenBothOptionsStayOff() = runTest {
         val engine = FakeAbd(urlFiltering = true, cosmetic = true)
         fixture.repository(FakeAbd(urlFiltering = false, cosmetic = false), engine).switchTo(FilterMethod.Vpn)
         assertFalse(engine.urlFiltering)
-        // Hiding elements means nothing without decryption: left as it was.
-        assertTrue(engine.cosmetic)
+        assertFalse(engine.cosmetic)
     }
 
     @Test

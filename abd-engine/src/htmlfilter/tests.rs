@@ -308,6 +308,101 @@ fn void_and_self_closed_elements_have_empty_content() {
 }
 
 #[test]
+fn an_omitted_list_item_end_tag_preserves_the_next_item() {
+    check(
+        "example.org$$li[data-promo]",
+        "<!doctype html><title>List</title><ul><li data-promo>Promotion<li>Article</ul>",
+        "<!doctype html><title>List</title><ul><li>Article</ul>",
+    );
+}
+
+#[test]
+fn a_nested_list_start_tag_closes_items_only_in_its_own_list() {
+    check(
+        "$$li[data-promo]",
+        "<ul><li data-promo>Ad<ul><li>nested</ul>more ad<li>Article</ul>",
+        "<ul><li>Article</ul>",
+    );
+    check(
+        "$$li[data-promo]",
+        "<ol><li>Article<ul><li data-promo>Ad<li>Nested article</ul></ol>",
+        "<ol><li>Article<ul><li>Nested article</ul></ol>",
+    );
+}
+
+#[test]
+fn a_block_start_tag_ends_the_preceding_paragraph() {
+    check(
+        "$$p[data-promo]",
+        "<main><P data-promo>Ad<DIV>Article</DIV></main>",
+        "<main><DIV>Article</DIV></main>",
+    );
+}
+
+#[test]
+fn a_cell_without_an_end_tag_ends_before_its_sibling_or_row_end_tag() {
+    check(
+        "$$td[data-promo]",
+        "<table><tr><td data-promo>Ad<th>Article<td data-promo>Ad</tr></table>",
+        "<table><tr><th>Article</tr></table>",
+    );
+}
+
+#[test]
+fn an_option_ends_before_the_next_option_or_group() {
+    check(
+        "$$option[data-promo]",
+        "<select><option data-promo>Ad<option>Keep<option data-promo>Ad<optgroup><option>Keep</optgroup></select>",
+        "<select><option>Keep<optgroup><option>Keep</optgroup></select>",
+    );
+}
+
+#[test]
+fn a_description_list_entry_ends_before_the_next_term_or_description() {
+    check(
+        "$$dd[data-promo]\n$$dt[data-promo]",
+        "<dl><dt data-promo>Ad<dd>Keep<dd data-promo>Ad<dt>Term</dl>",
+        "<dl><dd>Keep<dt>Term</dl>",
+    );
+}
+
+#[test]
+fn implied_table_boundaries_preserve_the_next_group_section_and_row() {
+    check(
+        "$$caption[data-promo]\n$$colgroup[data-promo]\n$$thead[data-promo]\n$$tr[data-promo]",
+        "<table><caption data-promo>Ad<colgroup data-promo><col><thead data-promo><tr><th>Ad<tbody><tr data-promo><td>Ad<tr><td>Article</table>",
+        "<table><tbody><tr><td>Article</table>",
+    );
+}
+
+#[test]
+fn a_nested_table_does_not_close_the_containing_cell() {
+    check(
+        "$$td[data-promo]",
+        "<table><tr><td data-promo>Ad<table><tr><td>Nested</table>More ad<td>Article</tr></table>",
+        "<table><tr><td>Article</tr></table>",
+    );
+}
+
+#[test]
+fn ruby_annotations_and_option_groups_end_before_their_siblings() {
+    check(
+        "$$rt[data-promo]\n$$optgroup[data-promo]",
+        "<ruby>base<rt data-promo>Ad<rp>Keep</ruby><select><optgroup data-promo><option>Ad<optgroup><option>Keep</select>",
+        "<ruby>base<rp>Keep</ruby><select><optgroup><option>Keep</select>",
+    );
+}
+
+#[test]
+fn a_final_optional_end_tag_still_needs_a_known_boundary_for_removal() {
+    check(
+        "$$li[data-promo]",
+        "<ul><li data-promo>Ad<li data-promo>Unclosed",
+        "<ul><li data-promo>Unclosed",
+    );
+}
+
+#[test]
 fn open_at_end_elements_have_no_known_extent() {
     check(
         "$$div\n$$script",

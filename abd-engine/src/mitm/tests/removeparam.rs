@@ -75,6 +75,79 @@ async fn supported_methods_remove_named_parameters_in_place() {
 }
 
 #[tokio::test]
+async fn parameter_removal_reaches_the_origin_when_the_response_is_replaced() {
+    for rules in [
+        "$removeparam=utm_source\n||site.test/transformed/page$replace=/another/changed/",
+        "||site.test/transformed/page$document\n$removeparam=utm_source\n\
+         ||site.test/transformed/page$replace=/another/changed/",
+        "||site.test/transformed/page$document,important\n$removeparam=utm_source\n\
+         ||site.test/transformed/page$replace=/another/changed/",
+        "||site.test/transformed/page$document,important,app=com.app\n\
+         ||site.test/transformed/page$document,app=com.app,removeparam=utm_source\n\
+         ||site.test/transformed/page$replace=/another/changed/",
+    ] {
+        let rig = rig(Setup {
+            rules,
+            ..Setup::default()
+        })
+        .await;
+        let (_, status, body) = request(
+            &rig,
+            H1,
+            Method::GET,
+            "/transformed/page?utm_source=1&another=2",
+            Some("document"),
+        )
+        .await;
+        assert_eq!(status, StatusCode::OK);
+        assert_eq!(body, "/transformed/page?changed=2", "{rules}");
+        assert_eq!(rig.hits(), 1);
+    }
+}
+
+#[tokio::test]
+async fn url_transformation_reaches_the_origin_when_the_response_is_replaced() {
+    let rig = rig(Setup {
+        rules: "||site.test/transformed/$urltransform=/page/next/\n\
+                ||site.test/transformed/$replace=/another/changed/",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, body) = request(
+        &rig,
+        H1,
+        Method::GET,
+        "/transformed/page?another=2",
+        Some("document"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "/transformed/next?changed=2");
+    assert_eq!(rig.hits(), 1);
+}
+
+#[tokio::test]
+async fn parameter_removal_matches_the_transformed_url() {
+    let rig = rig(Setup {
+        rules: "||site.test/transformed/$urltransform=/tracking/utm_source/\n\
+                ||site.test/transformed/page?$removeparam=utm_source",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, body) = request(
+        &rig,
+        H1,
+        Method::GET,
+        "/transformed/page?tracking=1&another=2",
+        Some("document"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "/transformed/page?another=2");
+    assert_eq!(rig.hits(), 1);
+}
+
+#[tokio::test]
 async fn the_changed_url_is_judged_once_and_the_original_url_is_reported() {
     let start = "/transformed/page?param=1&another=2";
     for (rules, expected, hits) in [

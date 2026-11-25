@@ -160,13 +160,31 @@ fn prepare_request<'a>(
     if decision.blocked {
         return RequestPlan::Respond(request.blocked(decision));
     }
-    match transform::apply(
-        &request.url,
-        req.uri(),
-        req.method(),
-        decision.rewritten_url.take().as_deref(),
-        &rewrite.url_transforms,
-    ) {
+    let original_removal = decision.rewritten_url.take();
+    let transformed = if original_removal.is_some() || !rewrite.url_transforms.is_empty() {
+        transform::apply(
+            &request.url,
+            req.uri(),
+            req.method(),
+            &rewrite.url_transforms,
+            |url| {
+                if url == request.url {
+                    transform::remove_parameters(url, original_removal, &rewrite.url_transforms)
+                } else {
+                    let (decision, rewrite) =
+                        request.metadata.evaluate(request.filters, url, kind, true);
+                    transform::remove_parameters(
+                        url,
+                        decision.rewritten_url,
+                        &rewrite.url_transforms,
+                    )
+                }
+            },
+        )
+    } else {
+        None
+    };
+    match transformed {
         Some(Transformed::Redirect(location)) => {
             decision.blocked = true;
             request.record(&decision);

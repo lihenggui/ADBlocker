@@ -131,6 +131,44 @@ async fn replace_moved_list(previous: &str, current: &str, only: Option<&str>) {
 }
 
 #[tokio::test]
+async fn a_successful_update_replaces_the_parked_previous_copy_of_a_disabled_list() {
+    let &(previous, current) = crate::list_url::MOVED.first().unwrap();
+    let (_dir, paths, _) = moved_list(previous, current);
+    let old = paths
+        .lists()
+        .join(crate::list_url::copy_names(previous).next().unwrap());
+    let new = paths.lists().join(file_name(current));
+    sources::edit(&paths, current, sources::Change::Disable).unwrap();
+
+    let sub = Subscription {
+        sources: &paths.sources(),
+        default: "",
+        kind: ListKind::Filter,
+        dir: &paths.lists(),
+        info: Some(&paths.list_info()),
+        only: Some(current),
+    };
+    let fetch = |url, validator: Option<Validator>| {
+        assert_eq!(url, current);
+        assert!(validator.is_none());
+        std::future::ready(Ok(Download::Body(
+            Bytes::from_static(b"||new.example^\n"),
+            None,
+        )))
+    };
+    let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
+
+    assert_eq!((tally.updated, tally.failed), (1, 0));
+    assert!(!old.exists() && !old.with_extension("disabled").exists());
+    assert!(!sources::info_file(&paths.list_info(), previous).exists());
+    assert!(!new.exists() && new.with_extension("disabled").is_file());
+    sources::edit(&paths, current, sources::Change::Enable).unwrap();
+    let filters = crate::filter::Filters::load(&[&paths.lists()], false).unwrap();
+    assert!(filters.blocks_host("new.example"));
+    assert!(!filters.blocks_host("old.example"));
+}
+
+#[tokio::test]
 async fn a_full_update_keeps_the_moved_list_until_its_replacement_is_validated() {
     for &(previous, current) in crate::list_url::MOVED {
         replace_moved_list(previous, current, None).await;

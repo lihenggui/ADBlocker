@@ -12,7 +12,9 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Segment edits on UTF-8 playlists, preserving every surviving line verbatim.
+//! Segment edits on UTF-8 playlists. The only rewritten line is a kept
+//! byte-range tag whose implicit offset depended on a removed predecessor
+//! (RFC 8216 §4.3.2.2). Other surviving lines are copied verbatim.
 
 use std::borrow::Cow;
 
@@ -91,19 +93,60 @@ struct RangingTag {
     used_by_survivor: bool,
 }
 
+struct ByteRange<'a> {
+    line: usize,
+    value: &'a str,
+}
+
+impl ByteRange<'_> {
+    fn bounds(&self, preceding_end: Option<u64>) -> Option<(u64, u64)> {
+        let decimal = |text: &str| {
+            text.bytes()
+                .all(|byte| byte.is_ascii_digit())
+                .then(|| text.parse::<u64>().ok())
+                .flatten()
+        };
+        let (length, offset) = match self.value.split_once('@') {
+            Some((length, offset)) => (decimal(length)?, decimal(offset)?),
+            None => (decimal(self.value)?, preceding_end?),
+        };
+        Some((offset, offset.checked_add(length)?))
+    }
+}
+
+struct PreviousSegment<'a> {
+    uri: &'a str,
+    end: Option<u64>,
+    removed: bool,
+}
+
+#[derive(Clone, Copy)]
+enum LineEdit {
+    Keep,
+    Remove,
+    AddOffset(u64),
+}
+
+impl LineEdit {
+    fn removal(remove: bool) -> Self {
+        if remove { Self::Remove } else { Self::Keep }
+    }
+}
+
 #[derive(Default)]
-struct SegmentTags {
+struct SegmentTags<'a> {
     next: Vec<usize>,
     next_matches: bool,
-    byte_range: bool,
+    byte_range: Option<ByteRange<'a>>,
+    ambiguous_range: bool,
     ranges: [Option<RangingTag>; Range::UplynkKey as usize + 1],
 }
 
-impl SegmentTags {
+impl<'a> SegmentTags<'a> {
     fn add(
         &mut self,
         index: usize,
-        text: &str,
+        text: &'a str,
         matches: &impl Fn(&str) -> Option<bool>,
     ) -> Option<()> {
         let name = if text.starts_with("#EXTINF,") {
@@ -113,10 +156,16 @@ impl SegmentTags {
             text.split_once(':').map_or(text, |(name, _)| name)
         };
         match tag(name) {
-            Some(Tag::Next | Tag::ByteRange) => {
+            Some(kind @ (Tag::Next | Tag::ByteRange)) => {
                 self.next.push(index);
                 self.next_matches = self.next_matches || matches(text)?;
-                self.byte_range |= name == "#EXT-X-BYTERANGE";
+                if matches!(kind, Tag::ByteRange) {
+                    let value = text.split_once(':').map_or("", |(_, value)| value);
+                    self.ambiguous_range |= self
+                        .byte_range
+                        .replace(ByteRange { line: index, value })
+                        .is_some();
+                }
             }
             Some(Tag::Range(range)) => {
                 self.ranges[range as usize] = Some(RangingTag {
@@ -135,9 +184,9 @@ impl SegmentTags {
         index: usize,
         line: &str,
         url_matches: &impl Fn(&str) -> Option<bool>,
-        discard: &mut [bool],
+        edits: &mut [LineEdit],
     ) -> Option<bool> {
-        let byte_range = self.byte_range;
+        let byte_range = self.byte_range.is_some();
         let applies = |kind| kind != Range::Bitrate as usize || !byte_range;
         let remove =
             self.next_matches
@@ -145,20 +194,19 @@ impl SegmentTags {
                     applies(kind) && tag.as_ref().is_some_and(|tag| tag.matches)
                 })
                 || url_matches(line)?;
-        discard[index] = remove;
+        edits[index] = LineEdit::removal(remove);
         for index in self.next.drain(..) {
-            discard[index] = remove;
+            edits[index] = LineEdit::removal(remove);
         }
         for (kind, tag) in self.ranges.iter_mut().enumerate() {
             if applies(kind)
                 && let Some(tag) = tag
             {
                 tag.used_by_survivor |= !remove;
-                discard[tag.line] = !tag.used_by_survivor;
+                edits[tag.line] = LineEdit::removal(!tag.used_by_survivor);
             }
         }
         self.next_matches = false;
-        self.byte_range = false;
         Some(remove)
     }
 }
@@ -188,8 +236,9 @@ pub(crate) fn edit<'a>(
     if count > MAX_PLAYLIST_LINES {
         return None;
     }
-    let mut discard = vec![false; count];
+    let mut edits = vec![LineEdit::Keep; count];
     let mut tags = SegmentTags::default();
+    let mut previous: Option<PreviousSegment<'_>> = None;
     let mut changed = false;
     for (index, line) in lines.clone().enumerate().skip(1) {
         if !within_budget() {
@@ -199,19 +248,55 @@ pub(crate) fn edit<'a>(
         if line.starts_with('#') {
             tags.add(index, line, &tag_matches)?;
         } else if !line.is_empty() {
-            changed |= tags.segment(index, line, &url_matches, &mut discard)?;
+            let removed = tags.segment(index, line, &url_matches, &mut edits)?;
+            let byte_range = tags.byte_range.take();
+            // A segment can only have one EXT-X-BYTERANGE.
+            if std::mem::take(&mut tags.ambiguous_range) {
+                return Some(Cow::Borrowed(body));
+            }
+            let preceding_end = previous
+                .as_ref()
+                .filter(|segment| segment.uri == line)
+                .and_then(|segment| segment.end);
+            let bounds = byte_range
+                .as_ref()
+                .and_then(|range| range.bounds(preceding_end));
+            if let Some(range) = byte_range
+                && !range.value.contains('@')
+                && !removed
+                && previous.as_ref().is_some_and(|segment| segment.removed)
+            {
+                let Some((offset, _)) = bounds else {
+                    return Some(Cow::Borrowed(body));
+                };
+                edits[range.line] = LineEdit::AddOffset(offset);
+            }
+            previous = Some(PreviousSegment {
+                uri: line,
+                end: bounds.map(|(_, end)| end),
+                removed,
+            });
+            changed |= removed;
         }
     }
     if !changed {
         return Some(Cow::Borrowed(body));
     }
     let mut edited = Vec::with_capacity(body.len());
-    for (line, discard) in lines.zip(discard) {
+    for (line, edit) in lines.zip(edits) {
         if !within_budget() {
             return None;
         }
-        if !discard {
-            edited.extend_from_slice(line.as_bytes());
+        match edit {
+            LineEdit::Keep => edited.extend_from_slice(line.as_bytes()),
+            LineEdit::Remove => (),
+            LineEdit::AddOffset(offset) => {
+                let (tag, ending) = line.split_at(text(line).len());
+                edited.extend_from_slice(tag.as_bytes());
+                edited.push(b'@');
+                edited.extend_from_slice(offset.to_string().as_bytes());
+                edited.extend_from_slice(ending.as_bytes());
+            }
         }
     }
     Some(Cow::Owned(edited))
@@ -242,6 +327,59 @@ mod tests {
             remove_ads(input).as_ref(),
             b"#EXTM3U\r\n#EXT-X-VERSION:6\n#EXT-X-TARGETDURATION:10\r\n\r\n\
               #EXT-X-UNRECOGNIZED:ad\r\n# ad comment\r\n#EXTINF:10,\r\nkeep.ts\n#EXT-X-ENDLIST"
+        );
+    }
+
+    #[test]
+    fn a_kept_range_preserves_its_offset_after_the_first_segment_is_removed() {
+        let input = "#EXTM3U\n#EXT-X-VERSION:4\n#EXT-X-TARGETDURATION:10\n\
+            #EXTINF:10,promotion\n#EXT-X-BYTERANGE:100@0\nclip.ts\n\
+            #EXTINF:10,article\n#EXT-X-BYTERANGE:100\nclip.ts\n#EXT-X-ENDLIST\n";
+        let result = edit(
+            input.as_bytes(),
+            |tag| Some(tag.ends_with(",promotion")),
+            |_| Some(false),
+            &|| true,
+        );
+        assert_eq!(
+            result.as_deref(),
+            Some(
+                &b"#EXTM3U\n#EXT-X-VERSION:4\n#EXT-X-TARGETDURATION:10\n\
+                #EXTINF:10,article\n#EXT-X-BYTERANGE:100@100\nclip.ts\n#EXT-X-ENDLIST\n"[..]
+            )
+        );
+    }
+
+    #[test]
+    fn a_kept_range_accounts_for_a_removed_implicit_range() {
+        let input = "#EXTM3U\n#EXT-X-BYTERANGE:12@100\nclip.ts\n\
+            #EXTINF:10,ad\n#EXT-X-BYTERANGE:13\nclip.ts\n\
+            #EXT-X-BYTERANGE:14\r\nclip.ts\n";
+        assert_eq!(
+            remove_ads(input).as_ref(),
+            b"#EXTM3U\n#EXT-X-BYTERANGE:12@100\nclip.ts\n#EXT-X-BYTERANGE:14@125\r\nclip.ts\n"
+        );
+    }
+
+    #[test]
+    fn a_kept_range_with_no_known_offset_leaves_the_playlist_intact() {
+        for input in [
+            "#EXTM3U\n#EXTINF:10,ad\nclip.ts\n#EXT-X-BYTERANGE:100\nclip.ts\n",
+            "#EXTM3U\n#EXT-X-BYTERANGE:12@0\nother.ts\n\
+             #EXTINF:10,ad\n#EXT-X-BYTERANGE:13\nclip.ts\n\
+             #EXT-X-BYTERANGE:14\nclip.ts\n",
+        ] {
+            assert_eq!(remove_ads(input).as_ref(), input.as_bytes());
+        }
+    }
+
+    #[test]
+    fn an_implicit_range_after_a_kept_segment_keeps_its_original_tag() {
+        let input = "#EXTM3U\n#EXT-X-BYTERANGE:12@0\nclip.ts\n\
+            #EXT-X-BYTERANGE:13\nclip.ts\nad.ts\n";
+        assert_eq!(
+            remove_ads(input).as_ref(),
+            b"#EXTM3U\n#EXT-X-BYTERANGE:12@0\nclip.ts\n#EXT-X-BYTERANGE:13\nclip.ts\n"
         );
     }
 

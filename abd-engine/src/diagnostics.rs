@@ -183,7 +183,7 @@ impl Diagnostics {
         }
         let (full, rest) = engine(rest)?;
         let mut rest = rest;
-        let mut apps = [&[][..]; 4];
+        let mut apps = [&[][..]; 5];
         for kept in &mut apps {
             (*kept, rest) = Self::read_part(rest)?;
         }

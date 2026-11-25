@@ -109,7 +109,7 @@ internal class DefaultFilterMethodRepository(
             return FilterMethodSwitch.Complete
         }
         // VPN setup always records its method. Root setup can finish with the method unset.
-        val rootWasConfigured = settings.filterMethod == FilterMethod.Root || settings.onboardingDone
+        val rootWasConfigured = settings.filterMethod == FilterMethod.Root || (settings.filterMethod == null && settings.onboardingDone)
         val transfer = writes.mutex.withLock { switchToVpn(rootWasConfigured) }
         if (transfer.listsAdded) scheduleUpdates()
         when {
@@ -285,8 +285,7 @@ internal class DefaultFilterMethodRepository(
         val from = transportOf(FilterMethod.Root).fixedAbdClient()
         val carried = suspendRunCatching { read(from) }.getOrElse { e ->
             userData.setFilterMethod(FilterMethod.Vpn)
-            if (e is AbdException.NoRoot || e is AbdException.ModuleMissing) return@changing Written()
-            Timber.w("method switch: read apps: %s", e.javaClass.simpleName)
+            if (rootWasConfigured) Timber.w("method switch: read apps: %s", e.javaClass.simpleName)
             return@changing Written(rootUnreadable = rootWasConfigured)
         }
         if (!rootWasConfigured && !carried.hasChoices) {
@@ -404,22 +403,19 @@ internal class DefaultFilterMethodRepository(
             return ok
         }
 
-        // The option travels with the other settings. Each method still checks its own trust.
-        val urlFiltering = carried.urlFiltering
+        val current = suspendRunCatching { to.status() }.getOrNull()
         val urlPart = VpnTransferPart.UrlFiltering
+        val urlFiltering = carried.urlFiltering
+        val cosmetic = carried.cosmetic
         if (urlFiltering == null) {
             written.failed += urlPart
-        } else {
-            val current = suspendRunCatching { to.status() }.getOrNull()
-            val copiedUrl = current?.urlFiltering == urlFiltering || each(urlPart) { to.setUrlFiltering(urlFiltering) }
-            if (copiedUrl && urlFiltering) {
-                val cosmetic = carried.cosmetic
-                if (cosmetic == null) {
-                    written.failed += urlPart
-                } else if (current?.cosmetic != cosmetic) {
-                    each(urlPart) { to.setCosmetic(cosmetic) }
-                }
-            }
+        } else if (current?.urlFiltering != urlFiltering) {
+            each(urlPart) { to.setUrlFiltering(urlFiltering) }
+        }
+        if (cosmetic == null) {
+            written.failed += urlPart
+        } else if (current?.cosmetic != cosmetic) {
+            each(urlPart) { to.setCosmetic(cosmetic) }
         }
 
         val trustedPart = VpnTransferPart.TrustedSites

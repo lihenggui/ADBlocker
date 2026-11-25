@@ -30,32 +30,27 @@ pub(super) enum Transformed {
     Redirect(HeaderValue),
 }
 
-/// The matcher selects all URL changes from the original request. Apply
-/// native parameter removal first, then the selected transforms in source order.
+/// Transform the URL before choosing and applying parameter removals.
 pub(super) fn apply(
     original: &str,
     target: &Uri,
     method: &Method,
-    rewritten: Option<&str>,
     transforms: &[Arc<ResponseAction>],
+    remove_parameters: impl FnOnce(&str) -> Option<String>,
 ) -> Option<Transformed> {
-    if (rewritten.is_none() && transforms.is_empty()) || original.len() > MAX_TRANSFORM_URL {
-        return None;
-    }
     let previous = validated_url(original)?;
-    let parameters = remove_parameters(original, &previous, rewritten, transforms);
     let redirects = matches!(*method, Method::GET | Method::HEAD);
-    let url = transform_url(&parameters, redirects, transforms)
-        .unwrap_or_else(|| Cow::Borrowed(parameters.as_ref()));
+    let url = transform_url(original, redirects, transforms).unwrap_or(Cow::Borrowed(original));
+    if !same_origin(&previous, &validated_url(&url)?) {
+        // The destination is judged when the client follows the redirect.
+        return HeaderValue::from_str(&url).ok().map(Transformed::Redirect);
+    }
+    let removed = remove_parameters(&url);
+    let url = removed.as_deref().unwrap_or(&url);
     if url == original {
         return None;
     }
-    let parsed = validated_url(&url)?;
-
-    if !same_origin(&previous, &parsed) {
-        return HeaderValue::from_str(&url).ok().map(Transformed::Redirect);
-    }
-    let (origin, rest) = split_url(&url)?;
+    let (origin, rest) = split_url(url)?;
     let path = request_path(rest);
     let mut parts = target.clone().into_parts();
     let path = path_and_query(&path)?;
@@ -73,17 +68,15 @@ pub(super) fn apply(
     })
 }
 
-fn remove_parameters<'a>(
-    original: &'a str,
-    previous: &Uri,
-    rewritten: Option<&'a str>,
+pub(super) fn remove_parameters(
+    url: &str,
+    rewritten: Option<String>,
     actions: &[Arc<ResponseAction>],
-) -> Cow<'a, str> {
-    let Some(rewritten) =
-        rewritten.filter(|url| validated_url(url).is_some_and(|uri| same_origin(previous, &uri)))
-    else {
-        return Cow::Borrowed(original);
-    };
+) -> Option<String> {
+    let rewritten = rewritten?;
+    if !same_origin(&validated_url(url)?, &validated_url(&rewritten)?) {
+        return None;
+    }
     let exempt: HashSet<_> = actions
         .iter()
         .filter_map(|action| match action.as_ref() {
@@ -92,10 +85,9 @@ fn remove_parameters<'a>(
         })
         .collect();
     if exempt.is_empty() {
-        Cow::Borrowed(rewritten)
+        Some(rewritten)
     } else {
-        removeparam::preserve(original, rewritten, &exempt)
-            .map_or(Cow::Borrowed(original), Cow::Owned)
+        removeparam::preserve(url, &rewritten, &exempt)
     }
 }
 

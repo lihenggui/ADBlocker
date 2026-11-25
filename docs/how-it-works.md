@@ -343,6 +343,9 @@ request-level blocks. A matching `$jsonprune` rule removes items from a
 JSON or JSONP response and leaves request blocking in effect. A matching
 `$hls` rule removes segments from a UTF-8 HLS playlist by URL or tag. It
 removes a segment's tags when none of the segments they apply to remain.
+If removing a segment would change the next segment's implicit byte
+offset, the engine writes that offset explicitly. If it cannot determine
+the offset, it forwards the playlist as received.
 The engine applies `$jsonprune`, HTML filtering, `$hls`,
 `$xmlprune`, and `$replace` in that order, then inserts cosmetic styles
 and scripts. The inferred resource type also applies to response rules.
@@ -413,9 +416,10 @@ query parameter on GET, HEAD, OPTIONS and POST requests. Any list can
 supply one. Without a resource type qualifier the rule applies to
 documents. Names can use ASCII letters, digits, hyphens and underscores.
 `@@...$removeparam=name` preserves that parameter. The `$document` and
-`$urlblock` exceptions preserve the query. The engine applies parameter
-removal before any matching URL transformations, keeps same-origin
-changes on the existing connection and judges the changed URL once.
+`$urlblock` exceptions preserve the query. The engine applies matching
+URL transformations before matching and removing parameters. It keeps
+same-origin changes on the existing connection and judges the resulting
+URL before forwarding.
 The original URL appears in a live recording.
 
 With URL filtering on, any list can use `$csp=policy` to add a Content
@@ -652,8 +656,11 @@ with its removal, while the VPN is in use.
 - When a catalog list moves, its saved selection follows the new address.
   An enabled list keeps filtering with the rules and trust of its previous
   copy until an update validates and publishes the replacement. A failed
-  download is reported while the previous copy remains in use. Publishing
-  the replacement removes the previous copy and its download metadata.
+  download is reported while the previous copy remains in use. Turning
+  the list off parks its previous copy under the same cache limit as other
+  disabled lists. A targeted update can replace that parked copy while the
+  list is disabled. Publishing a replacement removes the previous copy
+  and its download metadata.
 - The daemon resumes TLS sessions on both sides, so the many connections
   a browser opens to one site do not each cost two full handshakes.
 - On startup, the daemon can load compiled lists from its cache.

@@ -209,7 +209,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         HeaderValue::from_str(&directives).ok()
     }
 
-    fn evaluate(
+    pub(super) fn evaluate(
         &self,
         filters: &AppFilters<'_>,
         url: &str,
@@ -227,18 +227,14 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         if !plan.cookies.is_empty() && filters.url_rules_disabled(url, self.page, self.method) {
             plan.cookies.clear();
         }
+        let check = filters.check_with_page(url, self.page, kind.as_str(), self.method);
         // Only replacement rules take precedence after the connection passes host filtering.
-        let check = if plan
-            .body
-            .actions
-            .iter()
-            .any(|action| action.overrides_block())
-        {
-            Default::default()
-        } else {
-            filters.check_with_page(url, self.page, kind.as_str(), self.method)
-        };
-        let blocked = check.blocked;
+        let blocked = check.blocked
+            && !plan
+                .body
+                .actions
+                .iter()
+                .any(|action| action.overrides_block());
         if !blocked && self.permits_actions {
             plan.csp = self.csp(filters, url, kind);
         }
@@ -257,9 +253,18 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         (
             RequestDecision {
                 blocked,
-                redirect: check.redirect,
-                rewritten_url: if include_transforms && self.permits_actions {
-                    check.rewritten_url
+                redirect: check.redirect.filter(|_| blocked),
+                rewritten_url: if !blocked && include_transforms && self.permits_actions {
+                    if check.blocked {
+                        filters.parameters_for_replacement(
+                            url,
+                            self.page,
+                            kind.as_str(),
+                            self.method,
+                        )
+                    } else {
+                        check.rewritten_url
+                    }
                 } else {
                     None
                 },

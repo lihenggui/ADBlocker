@@ -63,7 +63,7 @@ usage: abd <command>, as root
   list configure                    read subscription choices from standard input
   list add|remove|enable|disable <url>
   update [--json]                     download the filter lists
-  update [--json] --list <url>         download one enabled filter list
+  update [--json] --list <url>         download one enabled list or refresh a parked previous copy
   rules get                           print your own rules
   rules set                           replace them with standard input
   rules append [--unique]             append input, or one rule only if new

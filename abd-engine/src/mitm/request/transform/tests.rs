@@ -83,7 +83,9 @@ mod properties {
             let actions: Vec<_> = values.iter().filter_map(|value| compile(value)).collect();
             let target = original.parse::<Uri>().unwrap_or_else(|_| Uri::from_static("/"));
             let method = if is_get { Method::GET } else { Method::POST };
-            let result = apply(&original, &target, &method, rewritten.as_deref(), &actions);
+            let result = apply(&original, &target, &method, &actions, |url| {
+                remove_parameters(url, rewritten, &actions)
+            });
             let url = match result {
                 None => return Ok(()), // The caller forwards the original URL.
                 Some(Transformed::Forward { url, .. }) => url,
@@ -101,7 +103,7 @@ mod properties {
             let original = format!("https://a.test/old/{leaf}");
             let target = format!("/old/{leaf}").parse().unwrap();
             let actions = [compile("/old/new/").unwrap()];
-            let result = apply(&original, &target, &Method::GET, None, &actions);
+            let result = apply(&original, &target, &Method::GET, &actions, |_| None);
             let Some(Transformed::Forward { url, uri }) = result else {
                 return Err(TestCaseError::fail("expected a forwarded request"));
             };

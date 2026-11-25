@@ -87,6 +87,9 @@ fn a_command_answers_where_it_is_told_to_and_reads_what_it_is_given() {
     ask(&paths, &["url-filtering", "off"], "").unwrap();
     let json = ask(&paths, &["app", "list", "--json"], "").unwrap();
     assert!(json.contains("\"level\":\"hosts\",\"reason\":\"url_filtering_off\""));
+    ask(&paths, &["cosmetic", "off"], "").unwrap();
+    let status = ask(&paths, &["status", "--json"], "").unwrap();
+    assert!(status.contains("\"url_filtering\":false") && status.contains("\"cosmetic\":false"));
     ask(&paths, &["url-filtering", "on"], "").unwrap();
     let json = ask(&paths, &["app", "list", "--json"], "").unwrap();
     assert!(json.contains("\"level\":\"full\",\"reason\":null"));

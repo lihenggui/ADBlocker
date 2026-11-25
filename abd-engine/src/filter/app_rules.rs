@@ -46,6 +46,7 @@ pub(super) const SOURCE: &str = "domain=";
 
 pub(crate) struct AppRules {
     pub(super) blocks: Engine,
+    pub(super) parameters: Engine,
     pub(crate) block_originals: OriginalLines,
     exceptions: Engine,
     /// The blocks of a whole host, for a connection that stays encrypted.
@@ -81,6 +82,7 @@ struct Projected<'a> {
     bad: bool,
     is_redirect: bool,
     is_csp: bool,
+    is_removeparam: bool,
     redirect_exception: bool,
     line: String,
     original: Option<&'a str>,
@@ -117,6 +119,7 @@ fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Result<Projected<'
         bad: parsed.is_badfilter(),
         is_redirect: parsed.is_redirect(),
         is_csp: parsed.is_csp(),
+        is_removeparam: parsed.is_removeparam(),
         redirect_exception: source.redirect_exception,
         line: source.normalized().into_owned(),
         original,
@@ -223,13 +226,14 @@ impl<'a> AppProjections<'a> {
             .filter_map(|entry| entry.bad.then_some(entry.id))
             .collect();
         let mut blocks = MatcherList::with_capacity(0);
-        let [mut exceptions, mut hosts, mut guards] = [const { String::new() }; 3];
+        let [mut exceptions, mut hosts, mut guards, mut parameters] = [const { String::new() }; 4];
         for Projected {
             rule,
             id,
             bad,
             is_redirect,
             is_csp,
+            is_removeparam,
             redirect_exception,
             line,
             original,
@@ -252,6 +256,10 @@ impl<'a> AppProjections<'a> {
                 exceptions.push_str(&line);
                 exceptions.push('\n');
             } else {
+                if is_removeparam {
+                    parameters.push_str(&line);
+                    parameters.push('\n');
+                }
                 if let Some((line, host)) = rule.whole_host() {
                     visit_host(host, &rule.apps);
                     hosts.push_str(&line);
@@ -271,6 +279,7 @@ impl<'a> AppProjections<'a> {
         let (blocks, block_originals) = matcher.compile();
         Some(AppRules {
             blocks,
+            parameters: engine(parameters, false),
             block_originals,
             exceptions: engine(exceptions, debug),
             hosts: engine(hosts, false),
@@ -282,18 +291,19 @@ impl<'a> AppProjections<'a> {
 impl AppRules {
     /// The engines as they are kept, each to be read back by
     /// [`AppRules::compiled`] in this order.
-    pub(crate) fn serialized(&self) -> [Vec<u8>; 4] {
+    pub(crate) fn serialized(&self) -> [Vec<u8>; 5] {
         [
             self.blocks.serialize(),
             self.exceptions.serialize(),
             self.hosts.serialize(),
             self.guards.serialize(),
+            self.parameters.serialize(),
         ]
     }
 
     /// What [`AppRules::serialized`] kept, if it is whole.
-    pub(crate) fn compiled(kept: [&[u8]; 4]) -> Option<Self> {
-        let [blocks, exceptions, hosts, guards] = kept;
+    pub(crate) fn compiled(kept: [&[u8]; 5]) -> Option<Self> {
+        let [blocks, exceptions, hosts, guards, parameters] = kept;
         let engine = |compiled: &[u8]| {
             let mut engine = Engine::default();
             // Checked by the engine against its own checksum.
@@ -302,6 +312,7 @@ impl AppRules {
         };
         Some(Self {
             blocks: engine(blocks)?,
+            parameters: engine(parameters)?,
             block_originals: OriginalLines::default(),
             exceptions: engine(exceptions)?,
             hosts: engine(hosts)?,

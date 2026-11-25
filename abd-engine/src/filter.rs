@@ -64,6 +64,7 @@ pub(crate) use response_rules::validate as validate_response_rule;
 pub struct Filters {
     pub generation: Option<u64>,
     requests: RequestRules,
+    parameters: Engine,
     scripts: ScriptTable,
     page_exceptions: PageExceptions,
     hosts: Engine,
@@ -509,6 +510,37 @@ impl AppFilters<'_> {
         }
     }
 
+    pub(crate) fn parameters_for_replacement(
+        &self,
+        url: &str,
+        page: Page<'_>,
+        kind: &str,
+        method: &str,
+    ) -> Option<String> {
+        if !url.contains('?') || !self.permits_parameter_removal(url, page, method) {
+            return None;
+        }
+        let mut req = RequestRules::request_with_page(url, page, kind, method)?;
+        let web = self
+            .filters
+            .parameters
+            .check_network_request(&req)
+            .rewritten_url;
+        let app = self.app_rules().and_then(|(rules, scope)| {
+            scope.with_source(&mut req, |req| {
+                rules.parameters.check_network_request(req).rewritten_url
+            })
+        });
+        match (web, app) {
+            (Some(web), Some(app)) => removeparam::merge(&req.url, web, app),
+            (web, app) => web.or(app),
+        }
+    }
+
+    fn permits_parameter_removal(&self, url: &str, page: Page<'_>, method: &str) -> bool {
+        removeparam::supported_method(method) && !self.url_rules_disabled(url, page, method)
+    }
+
     pub(crate) fn check_with_page(
         &self,
         url: &str,
@@ -521,13 +553,7 @@ impl AppFilters<'_> {
             return Check::default();
         };
         let mut check = requests.check_request(&mut req, self.app_rules());
-        if check.rewritten_url.is_some()
-            && (!removeparam::supported_method(method)
-                || self
-                    .filters
-                    .page_exceptions
-                    .url_rules_disabled(url, page, method))
-        {
+        if check.rewritten_url.is_some() && !self.permits_parameter_removal(url, page, method) {
             check.rewritten_url = None;
         }
         check

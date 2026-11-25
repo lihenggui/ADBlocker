@@ -17,7 +17,7 @@
 mod http;
 mod kind;
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -195,11 +195,11 @@ where
         let configured = lists.kind.start_sources(lists.sources, lists.default)?;
         let mut enabled = subscribed(&configured);
         match lists.only {
-            Some(target) => enabled
-                .find(|url| *url == target)
-                .map(str::to_owned)
-                .into_iter()
-                .collect(),
+            Some(target) => (enabled.any(|url| url == target)
+                || lists.parked_previous(target, &configured).is_some())
+            .then(|| target.to_owned())
+            .into_iter()
+            .collect(),
             None => enabled.map(str::to_owned).collect(),
         }
     };
@@ -236,6 +236,13 @@ where
 }
 
 impl Subscription<'_> {
+    fn parked_previous(self, url: &str, configured: &str) -> Option<PathBuf> {
+        match self.kind {
+            ListKind::Filter => sources::parked_previous_copy(self.dir, url, configured),
+            ListKind::HttpsExclusion => None,
+        }
+    }
+
     async fn fetch_one<G, F>(self, url: &str, get: &G) -> Result<Outcome>
     where
         G: Fn(String, Option<Validator>) -> F,
@@ -281,19 +288,29 @@ impl Subscription<'_> {
     ) -> Result<Commit> {
         let _lock = files::lock(self.sources)?;
         let configured = self.kind.sources(self.sources, self.default)?;
-        if !subscribed(&configured).any(|source| source == url) {
+        let enabled = subscribed(&configured).any(|source| source == url);
+        let parked_previous = (!enabled)
+            .then(|| self.parked_previous(url, &configured))
+            .flatten();
+        if !enabled && parked_previous.is_none() {
             return Ok(Commit::Finished(Outcome {
                 state: ListState::Unchanged,
                 rules: None,
                 error: None,
             }));
         }
-        let fetched = fetched.and_then(|download| match download {
-            Download::Body(body, validator) => self
-                .prepare_body(url, file, body)
-                .map(|body| Download::Body(body, validator))
-                .map_err(|e| reason(&e)),
-            Download::Unchanged => Ok(Download::Unchanged),
+        // An explicitly refreshed or in-flight moved list can replace its
+        // parked fallback without contributing any active rules.
+        let parked_file;
+        let file = if enabled {
+            file
+        } else {
+            parked_file = file.with_extension("disabled");
+            &parked_file
+        };
+        let fetched = fetched.and_then(|download| {
+            self.prepare_download(url, file, parked_previous.as_deref(), download)
+                .map_err(|error| reason(&error))
         });
         let previous = || {
             self.info
@@ -344,6 +361,25 @@ impl Subscription<'_> {
             },
             error: known.error,
         }))
+    }
+
+    fn prepare_download(
+        self,
+        url: &str,
+        file: &Path,
+        parked_previous: Option<&Path>,
+        download: Download,
+    ) -> Result<Download> {
+        let Download::Body(body, validator) = download else {
+            return Ok(download);
+        };
+        let body = if let Some(previous) = parked_previous {
+            sources::check_parked_replacement(self.dir, previous, file, body.len())?;
+            body
+        } else {
+            self.prepare_body(url, file, body)?
+        };
+        Ok(Download::Body(body, validator))
     }
 
     fn prepare_body(self, url: &str, file: &Path, body: Bytes) -> Result<Bytes> {

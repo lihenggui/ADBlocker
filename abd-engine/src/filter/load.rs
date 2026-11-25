@@ -19,6 +19,7 @@ use std::path::Path;
 
 use adblock::Engine;
 use adblock::filters::network::NetworkFilter;
+use adblock::lists::FilterSet;
 use anyhow::Result;
 
 use super::host_rules::{AppHostBlocks, HostProjections};
@@ -99,6 +100,17 @@ fn compile_apps(
     (apps, app_blocks)
 }
 
+fn add_parameters(list: &mut String, source: &rule::Rule<'_>, disabled: &HashSet<u64>) {
+    if source.line.contains("removeparam")
+        && source.network().is_some_and(|rule| {
+            rule.is_removeparam() && !rule.is_badfilter() && !disabled.contains(&rule.get_id())
+        })
+    {
+        list.push_str(&source.normalized());
+        list.push('\n');
+    }
+}
+
 fn compile_requests(
     matcher: MatcherLists,
     redirects: redirects::RedirectProjections,
@@ -166,6 +178,9 @@ impl Filters {
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
         let mut matcher = MatcherLists::new(debug);
+        // A native block can suppress parameter removal. Keep a parameter-only
+        // matcher for a request that a replacement rule lets through.
+        let mut parameters = FilterSet::new(false);
         let mut redirects = redirects::RedirectProjections::default();
         let mut hosts = HostProjections::new();
         let mut pages = PageProjections::default();
@@ -178,6 +193,7 @@ impl Filters {
         for (path, text) in &lists {
             let permissions = SourcePermissions::for_path(path);
             let mut normalized = MatcherList::with_capacity(text.len());
+            let mut parameter_list = String::new();
             for line in preprocess::lines(text) {
                 let source =
                     rule::read_with_scripts(line, permissions.scripts().then_some(&mut scripts));
@@ -186,6 +202,7 @@ impl Filters {
                 }
                 rules_count += 1;
                 matcher.add(&mut normalized, &source);
+                add_parameters(&mut parameter_list, &source, &disabled);
                 redirects.add_web(&source, &disabled);
                 hosts.add(&source, &disabled);
                 pages.add(&source);
@@ -206,6 +223,9 @@ impl Filters {
             }
             hosts.finish_list();
             matcher.finish_list(normalized, permissions.matcher());
+            if !parameter_list.is_empty() {
+                parameters.add_filter_list(parameter_list, permissions.matcher());
+            }
         }
         let (apps, app_blocks) = compile_apps(apps, debug, &mut redirects);
         let host_rules = hosts.finish(&app_blocks, guard_budget);
@@ -216,6 +236,7 @@ impl Filters {
         Ok(Self {
             generation,
             requests,
+            parameters: Engine::new_with_filter_set(parameters),
             scripts,
             page_exceptions: pages.compile(texts()),
             hosts: Engine::new_with_filter_set(host_rules.whole),

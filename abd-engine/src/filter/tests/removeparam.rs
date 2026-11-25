@@ -42,6 +42,12 @@ fn matching_parameter_removals_from_web_and_app_rules_survive_cache_reload() {
             let check = filters.check_with_page(url, Page::Itself, "document", "GET");
             assert!(!check.blocked);
             assert_eq!(check.rewritten_url.as_deref(), Some(expected));
+            assert_eq!(
+                filters
+                    .parameters_for_replacement(url, Page::Itself, "document", "GET")
+                    .as_deref(),
+                Some(expected),
+            );
             let actions = filters.response_actions(url, Page::Itself, "document", "GET");
             assert!(matches!(actions.as_slice(), [action]
                 if matches!(action.as_ref(),
