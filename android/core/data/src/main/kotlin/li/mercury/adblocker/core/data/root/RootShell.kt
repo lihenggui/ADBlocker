@@ -89,6 +89,9 @@ open class RootShell @Inject constructor(
         )
     }
 
+    /** Reads libsu's cached root grant without starting a shell. */
+    internal fun rootGrantKnown(): Boolean = Shell.isAppGrantedRoot() == true
+
     /** The payload goes directly to the child's stdin, including its exact final newline. */
     open suspend fun runWithInput(command: String, label: String, input: String): CommandResult = withContext(ioDispatcher) {
         rootShell()

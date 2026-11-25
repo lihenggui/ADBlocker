@@ -33,7 +33,9 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.merge
+import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -180,9 +182,8 @@ class OverviewViewModel @Inject constructor(
      */
     private var appsStale = true
 
-    /** Whether root is granted, asked once while the VPN is in use: asking can show the root manager's prompt. */
-    private var rootAvailable = false
-    private var rootProbeStarted = false
+    private var collecting = false
+    private var initialReadUsed = false
 
     private var download: Job? = null
 
@@ -204,21 +205,20 @@ class OverviewViewModel @Inject constructor(
         updater.state.drop(1).map { false },
         // An update started or ended, wherever it was asked: the lists notice waits for it.
         lists.updating.drop(1).map { false },
-    ).onEach { withApps -> if (withApps) appsStale = true }
+    ).onStart { collecting = true }
+        .onCompletion {
+            collecting = false
+            initialReadUsed = false
+        }
+        .onEach { withApps -> if (withApps) appsStale = true }
         .mapLatest { load() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), OverviewUiState.Loading)
 
     fun onStart() {
-        refresh()
-        // Opening this screen may ask the root manager for a grant. Observing state cannot do that.
-        if (rootProbeStarted) return
-        rootProbeStarted = true
-        viewModelScope.launch {
-            val data = userData.userData.first()
-            if (!data.capabilities.usesVpn || ROOT_TIP in data.dismissedTips) return@launch
-            rootAvailable = suspendRunCatching { methods.rootAvailable() }.getOrDefault(false)
-            if (rootAvailable) refresh()
-        }
+        // Each new subscription reads on its own. A return during the
+        // sharing grace period still needs a refresh.
+        if (collecting && initialReadUsed) refresh()
+        initialReadUsed = true
     }
 
     private suspend fun load(): OverviewUiState {
@@ -256,7 +256,7 @@ class OverviewViewModel @Inject constructor(
             !data.capabilities.usesVpn -> null
             vpnStatus.lockdown && LOCKDOWN_TIP !in dismissed -> OverviewNotice.Lockdown
             withContext(io) { vpn.shouldOfferBatteryExemption() } -> OverviewNotice.BatteryExemption
-            rootAvailable && !data.rootSwitchPending && ROOT_TIP !in dismissed -> OverviewNotice.RootAvailable
+            !data.rootSwitchPending && ROOT_TIP !in dismissed && withContext(io) { methods.rootGrantKnown() } -> OverviewNotice.RootAvailable
             else -> null
         }
         withContext(defaultDispatcher) {

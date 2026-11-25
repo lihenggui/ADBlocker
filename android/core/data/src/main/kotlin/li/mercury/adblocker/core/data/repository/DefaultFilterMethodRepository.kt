@@ -86,6 +86,8 @@ internal class DefaultFilterMethodRepository(
 
     private val switching = Mutex()
 
+    override fun rootGrantKnown(): Boolean = rootShell.rootGrantKnown()
+
     override suspend fun rootAvailable(): Boolean = try {
         rootShell.run("true", label = "root check").isSuccess
     } catch (_: AbdException.NoRoot) {
