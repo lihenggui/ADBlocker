@@ -21,7 +21,7 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
-use regex_automata::meta::Regex;
+use regex_automata::meta::{Cache, Regex};
 use serde::{Deserialize, Serialize};
 
 use crate::html::{self, Tag};
@@ -122,6 +122,7 @@ pub(crate) fn apply(
         input: &document.text,
         xhtml,
         rules,
+        caches: (0..rules.len()).map(|_| Vec::new()).collect(),
         within_budget,
         open: Vec::new(),
         removed: Vec::new(),
@@ -419,6 +420,7 @@ struct Scan<'a> {
     input: &'a str,
     xhtml: bool,
     rules: &'a [Arc<Compiled>],
+    caches: Vec<Vec<Option<Box<Cache>>>>,
     within_budget: &'a dyn Fn() -> bool,
     open: Vec<Element<'a>>,
     removed: Vec<Range<usize>>,
@@ -586,7 +588,7 @@ impl<'a> Scan<'a> {
         }
         let inner = &self.input[element.start + element.tag.end..inner_end];
         let mut length = None;
-        for rule in self.rules {
+        for (rule, caches) in self.rules.iter().zip(&mut self.caches) {
             let (target, parents) = rule.steps.split_last()?;
             if !matches_step(self.input, &element, target) || self.open.len() < parents.len() {
                 continue;
@@ -606,11 +608,11 @@ impl<'a> Scan<'a> {
                 break;
             }
             let mut matches = true;
-            for condition in &rule.content {
+            for (index, condition) in rule.content.iter().enumerate() {
                 if !(self.within_budget)() {
                     return None;
                 }
-                if !matches_content(condition, inner, &mut length) {
+                if !matches_content(condition, inner, &mut length, caches, index) {
                     matches = false;
                     break;
                 }
@@ -661,11 +663,21 @@ fn matches_step(input: &str, element: &Element<'_>, step: &Selector) -> bool {
     })
 }
 
-fn matches_content(condition: &Content, text: &str, length: &mut Option<usize>) -> bool {
+fn matches_content(
+    condition: &Content,
+    text: &str,
+    length: &mut Option<usize>,
+    caches: &mut Vec<Option<Box<Cache>>>,
+    index: usize,
+) -> bool {
     match condition {
         Content::Contains(needle) => text.contains(needle),
         Content::Matches(regex) | Content::Glob(regex) => {
-            crate::list_regex::matches(regex, text.as_bytes())
+            if index >= caches.len() {
+                caches.resize_with(index + 1, || None);
+            }
+            let cache = caches[index].get_or_insert_with(|| Box::new(regex.create_cache()));
+            crate::list_regex::matches_with(regex, cache, text.as_bytes())
         }
         Content::Length {
             min,

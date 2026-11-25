@@ -45,7 +45,7 @@ pub(crate) type Ends = (SocketAddr, SocketAddr);
 /// has its two buffers, and this many are 64 MiB. An app is held to far
 /// fewer by the engine (`limits.rs`), once its connection is known to be
 /// its own; this is what cannot be exceeded before that.
-const MAX_FLOWS: usize = 512;
+pub(crate) const MAX_FLOWS: usize = 512;
 
 /// What is held of a connection in each direction until it is passed on.
 const BUFFER: usize = 64 << 10;

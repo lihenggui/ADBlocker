@@ -16,7 +16,7 @@
 //! Translate and compile list expressions used by the engine's body and header rules.
 
 use regex_automata::Input;
-use regex_automata::meta::Regex;
+use regex_automata::meta::{Cache, Regex};
 use regex_automata::util::syntax;
 
 use crate::limits::{
@@ -119,13 +119,45 @@ fn long_repetition(pattern: &str, syntax: &syntax::Config) -> bool {
     false
 }
 
-/// Keep the search cache local to the search. The generation budgets
-/// account for the compiled expressions, and no thread retains a cache
-/// for every expression it has encountered.
-pub(crate) fn matches(regex: &Regex, text: &[u8]) -> bool {
+/// The caller keeps each cache for one evaluation of its compiled expression.
+pub(crate) fn matches_with(regex: &Regex, cache: &mut Cache, text: &[u8]) -> bool {
     regex
-        .search_half_with(&mut regex.create_cache(), &Input::new(text).earliest(true))
+        .search_half_with(cache, &Input::new(text).earliest(true))
         .is_some()
+}
+
+/// Retain a bounded amount of scratch across all expressions in one pass.
+const MAX_RETAINED_SCRATCH: usize = 8 << 20;
+
+#[derive(Default)]
+pub(crate) struct SearchBudget {
+    retained_bytes: usize,
+}
+
+pub(crate) type MatchCache = Option<(Box<Cache>, usize)>;
+
+impl SearchBudget {
+    pub(crate) fn matches(&mut self, regex: &Regex, slot: &mut MatchCache, text: &[u8]) -> bool {
+        let mut cache = match slot.take() {
+            Some((cache, size)) => {
+                self.retained_bytes -= size;
+                cache
+            }
+            None => Box::new(regex.create_cache()),
+        };
+        let matched = matches_with(regex, &mut cache, text);
+        let size = cache.memory_usage();
+        if self.retained_bytes + size <= MAX_RETAINED_SCRATCH {
+            self.retained_bytes += size;
+            *slot = Some((cache, size));
+        }
+        matched
+    }
+}
+
+#[cfg(test)]
+pub(crate) fn matches(regex: &Regex, text: &[u8]) -> bool {
+    matches_with(regex, &mut regex.create_cache(), text)
 }
 
 pub(crate) fn normalize_pattern(
@@ -346,4 +378,49 @@ fn repeat_count(tail: &str) -> Option<&str> {
     });
     end.starts_with('}')
         .then(|| &tail[..tail.len() - end.len() + 1])
+}
+
+#[cfg(test)]
+mod tests {
+    use std::hint::black_box;
+    use std::time::Instant;
+
+    use super::*;
+
+    #[test]
+    #[ignore = "a measurement, run by hand"]
+    fn measures_reusing_a_list_regex_cache() {
+        let regex = compile(
+            r"(?:[a-z]+-[0-9]+)+-tracker",
+            RegexInput::Text,
+            false,
+            false,
+            MAX_HTML_REGEX,
+        )
+        .ok()
+        .unwrap();
+        const MATCHES: usize = 100_000;
+        let measure = |search: &mut dyn FnMut(&[u8]) -> bool| {
+            let start = Instant::now();
+            let count = (0..MATCHES)
+                .map(|index| {
+                    let text: &[u8] = if index % 2 == 0 {
+                        b"source-012-tracker"
+                    } else {
+                        b"source-012-content"
+                    };
+                    search(black_box(text))
+                })
+                .filter(|&found| found)
+                .count();
+            assert_eq!(count, MATCHES / 2);
+            start.elapsed().as_nanos() as f64 / MATCHES as f64
+        };
+        let fresh = measure(&mut |text| matches(&regex, text));
+        let (mut budget, mut cache) = (SearchBudget::default(), None);
+        let reused = measure(&mut |text| budget.matches(&regex, &mut cache, text));
+        println!(
+            "list regex: {fresh:.1} ns/match with fresh caches, {reused:.1} ns/match with reuse"
+        );
+    }
 }

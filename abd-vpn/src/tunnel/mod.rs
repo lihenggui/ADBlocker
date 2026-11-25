@@ -106,7 +106,7 @@ async fn drive(
     let mut stack = Stack::new(mtu);
     let (mut ingress, mut answers, mut finds) =
         Ingress::new(mtu, protect, policy, dns.as_ref(), reach);
-    let (mut flows, mut from_sockets) = Flows::new(tcp_handler(handler, dns.as_ref()));
+    let (mut flows, mut from_sockets) = Flows::new(tcp_handler(handler, dns.as_ref())).await?;
     let mut packet = vec![0u8; mtu];
     let mut tcp = TcpSchedule {
         deadline: None,

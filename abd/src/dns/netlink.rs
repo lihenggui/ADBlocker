@@ -403,12 +403,24 @@ pub(super) struct Netlink {
 
 impl Netlink {
     pub(super) fn open() -> io::Result<Self> {
+        Self::with_mode(false)
+    }
+
+    pub(super) fn open_lookup() -> io::Result<Self> {
+        Self::with_mode(true)
+    }
+
+    fn with_mode(nonblocking: bool) -> io::Result<Self> {
         let socket = Socket::new(
             Domain::from(libc::AF_NETLINK),
             Type::RAW,
             Some(Protocol::from(libc::NETLINK_ROUTE)),
         )?;
-        socket.set_read_timeout(Some(ANSWER_TIME))?;
+        if nonblocking {
+            socket.set_nonblocking(true)?;
+        } else {
+            socket.set_read_timeout(Some(ANSWER_TIME))?;
+        }
         Ok(Self {
             socket,
             seq: 0,
@@ -427,8 +439,14 @@ impl Netlink {
         let seq = self.seq;
         (&self.socket).write_all(&request.finish(seq))?;
         let mut read = 0;
-        while read < MAX_MESSAGES {
+        for _ in 0..MAX_MESSAGES {
+            if read >= MAX_MESSAGES {
+                break;
+            }
             let n = (&self.socket).read(&mut self.buffer)?;
+            if n < NLMSG_HDRLEN {
+                return Err(io::ErrorKind::InvalidData.into());
+            }
             for message in messages(&self.buffer[..n]) {
                 read += 1;
                 // An answer to an earlier request that came too late.
@@ -493,7 +511,14 @@ impl Netlink {
         match asked {
             Ok(()) => Ok(kind.is_some_and(|kind| (RTN_LOCAL..=RTN_MULTICAST).contains(&kind))),
             // No route at all: nothing here either.
-            Err(error) if error.raw_os_error().is_some() => Ok(false),
+            Err(error)
+                if matches!(
+                    error.raw_os_error(),
+                    Some(libc::ENETUNREACH | libc::EHOSTUNREACH | libc::ESRCH)
+                ) =>
+            {
+                Ok(false)
+            }
             Err(error) => Err(error),
         }
     }

@@ -147,7 +147,7 @@ impl<'a> SegmentTags<'a> {
         &mut self,
         index: usize,
         text: &'a str,
-        matches: &impl Fn(&str) -> Option<bool>,
+        matches: &mut impl FnMut(&str) -> Option<bool>,
     ) -> Option<()> {
         let name = if text.starts_with("#EXTINF,") {
             // The reference's worked playlist uses a comma after EXTINF.
@@ -183,7 +183,7 @@ impl<'a> SegmentTags<'a> {
         &mut self,
         index: usize,
         line: &str,
-        url_matches: &impl Fn(&str) -> Option<bool>,
+        url_matches: &mut impl FnMut(&str) -> Option<bool>,
         edits: &mut [LineEdit],
     ) -> Option<bool> {
         let byte_range = self.byte_range.is_some();
@@ -220,8 +220,8 @@ fn text(line: &str) -> &str {
 /// response can pass through. An unchanged playlist borrows the input.
 pub(crate) fn edit<'a>(
     body: &'a [u8],
-    tag_matches: impl Fn(&str) -> Option<bool>,
-    url_matches: impl Fn(&str) -> Option<bool>,
+    mut tag_matches: impl FnMut(&str) -> Option<bool>,
+    mut url_matches: impl FnMut(&str) -> Option<bool>,
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Cow<'a, [u8]>> {
     let Ok(playlist) = std::str::from_utf8(body) else {
@@ -246,9 +246,9 @@ pub(crate) fn edit<'a>(
         }
         let line = text(line);
         if line.starts_with('#') {
-            tags.add(index, line, &tag_matches)?;
+            tags.add(index, line, &mut tag_matches)?;
         } else if !line.is_empty() {
-            let removed = tags.segment(index, line, &url_matches, &mut edits)?;
+            let removed = tags.segment(index, line, &mut url_matches, &mut edits)?;
             let byte_range = tags.byte_range.take();
             // A segment can only have one EXT-X-BYTERANGE.
             if std::mem::take(&mut tags.ambiguous_range) {

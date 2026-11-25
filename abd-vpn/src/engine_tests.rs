@@ -342,7 +342,7 @@ async fn all_apps_filters_nothing_until_unreadable_exclusions_can_be_read_again(
     let saved = "!com.app\n";
     std::fs::write(paths.apps(), saved).unwrap();
     engine.reload();
-    let group = BTreeMap::from([(UID + 1, "@com.group".to_owned())]);
+    let group = BTreeMap::from([(UID + 1, Arc::<str>::from("@com.group"))]);
     assert_eq!(**engine.ctx.selection.apps.read().unwrap(), group);
 
     std::fs::write(paths.apps(), [0xff]).unwrap();

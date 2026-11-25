@@ -231,26 +231,15 @@ async fn forward(host: &dyn Host, origin: &Origin, query: &[u8]) -> io::Result<V
 /// that does not answer it.
 pub(super) async fn exchange(socket: &UdpSocket, query: &[u8]) -> io::Result<Vec<u8>> {
     socket.send(query).await?;
-    let mut strays = 0;
-    while strays < MAX_STRAYS {
-        socket.readable().await?;
-        match answer_of(socket, query) {
-            Ok(Some(answer)) => return Ok(answer),
-            Ok(None) => strays += 1,
-            Err(error) if error.kind() == io::ErrorKind::WouldBlock => {}
-            Err(error) => return Err(error),
+    let mut buffer = Vec::with_capacity(MAX_DATAGRAM);
+    for _ in 0..MAX_STRAYS {
+        socket.recv_buf(&mut buffer).await?;
+        if dns::is_answer_to(query, &buffer) {
+            return Ok(buffer);
         }
+        buffer.clear();
     }
     Err(io::ErrorKind::InvalidData.into())
-}
-
-/// The datagram waiting on `socket`, if it answers `query`. The buffer is
-/// on the stack only while it is read, never held while waiting.
-fn answer_of(socket: &UdpSocket, query: &[u8]) -> io::Result<Option<Vec<u8>>> {
-    let mut buffer = [0u8; MAX_DATAGRAM];
-    let n = socket.try_recv(&mut buffer)?;
-    let answer = &buffer[..n];
-    Ok(dns::is_answer_to(query, answer).then(|| answer.to_vec()))
 }
 
 /// A connection over TCP, its queries answered in turn until it ends,

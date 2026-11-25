@@ -18,7 +18,7 @@ use regex_automata::meta::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
-use crate::list_regex::{self, RegexInput};
+use crate::list_regex::{self, MatchCache, RegexInput, SearchBudget};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
 
 mod date;
@@ -235,11 +235,11 @@ impl Compiled {
         }
     }
 
-    fn matches(&self, name: &[u8]) -> bool {
+    fn matches(&self, name: &[u8], cache: &mut MatchCache, budget: &mut SearchBudget) -> bool {
         match &self.selector {
             Matcher::Any => true,
             Matcher::Name(expected) => expected.as_bytes() == name,
-            Matcher::Pattern(regex) => list_regex::matches(regex, name),
+            Matcher::Pattern(regex) => budget.matches(regex, cache, name),
         }
     }
 }

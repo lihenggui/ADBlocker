@@ -60,6 +60,7 @@ struct Rig {
     ctx: Arc<Ctx>,
     /// Where the app connects: the daemon.
     proxy: SocketAddr,
+    origin: Origin,
     /// The requests that reached the server.
     hits: Arc<AtomicUsize>,
     dials: Arc<AtomicUsize>,
@@ -339,7 +340,7 @@ async fn rig(setup: Setup) -> Rig {
             allow: RwLock::new(Arc::new(Allow::load(&dir.path().join("allow")))),
         },
         selection: Selection {
-            apps: RwLock::new(Arc::new(BTreeMap::from([(UID, PACKAGE.to_owned())]))),
+            apps: RwLock::new(Arc::new(BTreeMap::from([(UID, Arc::from(PACKAGE))]))),
             profile_tls: RwLock::default(),
             url_filtering: AtomicBool::new(!setup.domain_only),
             https_inspection_available: AtomicBool::new(true),
@@ -405,6 +406,7 @@ async fn rig(setup: Setup) -> Rig {
     Rig {
         ctx,
         proxy,
+        origin,
         hits,
         dials,
         server_leaf: leaf.der().clone(),
@@ -1819,17 +1821,28 @@ async fn an_app_that_still_pins_loses_one_connection_at_a_new_process() {
 
 #[tokio::test]
 async fn a_try_whose_server_cannot_be_verified_is_left_for_the_next_connection() {
-    let rig = rig(Setup {
+    let mut rig = rig(Setup {
         server_trusted: false,
         ..Setup::default()
     })
     .await;
     rig.ctx.services.policy.rejected(PACKAGE, HOST);
     rig.ctx.services.policy.process_started(PACKAGE);
-    // The app is given the server itself: it never saw our certificate.
-    let (_, _, real) = rig.get(Trust::ServerOnly, H1, "/", None).await.unwrap();
+    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+    rig.proxy = listener.local_addr().unwrap();
+    // Returning from the relay releases the try. Finishing the response
+    // alone does not establish that the relay has returned.
+    let (response, relay) = tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::join!(rig.get(Trust::ServerOnly, H1, "/", None), async {
+            let (app, _) = listener.accept().await?;
+            conduct(rig.ctx.clone(), app, rig.origin).await
+        })
+    })
+    .await
+    .unwrap();
+    let (_, _, real) = response.unwrap();
     assert!(real);
-    tokio::time::sleep(Duration::from_millis(100)).await;
+    relay.unwrap();
     assert!(rig.ctx.services.policy.take_try(PACKAGE, HOST).is_some());
 }
 
@@ -1901,7 +1914,7 @@ async fn work_tls_uses_only_its_profile_trust_and_respects_opaque_exceptions() {
     })
     .await;
     *rig.ctx.selection.apps.write().unwrap() =
-        Arc::new(BTreeMap::from([(work_uid, "31:com.app".to_owned())]));
+        Arc::new(BTreeMap::from([(work_uid, Arc::from("31:com.app"))]));
     let real = || rig.get(Trust::ServerOnly, H1, "/ads/asset.png", None);
     // The absent local CA and a profile that distrusts the upstream
     // root both leave the ClientHello untouched for the work app.
@@ -1947,7 +1960,7 @@ async fn replacing_a_work_profile_verifier_retires_its_existing_http2_connection
     })
     .await;
     *rig.ctx.selection.apps.write().unwrap() =
-        Arc::new(BTreeMap::from([(uid, "31:com.app".to_owned())]));
+        Arc::new(BTreeMap::from([(uid, Arc::from("31:com.app"))]));
     let publish_verifier = || {
         let verifier = rig
             .ctx

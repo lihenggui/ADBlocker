@@ -494,17 +494,17 @@ fn only_previously_active_groups_keep_their_uid_while_a_member_is_published() {
             aliases: BTreeMap::new(),
         })
     };
-    let enabled = BTreeMap::from([(1010002, "37:@com.group".to_owned())]);
+    let enabled = BTreeMap::from([(1010002, std::sync::Arc::from("37:@com.group"))]);
     assert_eq!(
         resolve(named(wanted), &roster, &enabled, installed).0,
-        enabled
+        BTreeMap::from([(1010002, "37:@com.group".to_owned())])
     );
     assert!(
         resolve(named(wanted), &roster, &BTreeMap::new(), installed)
             .0
             .is_empty()
     );
-    let old_serial = BTreeMap::from([(1010002, "36:@com.group".to_owned())]);
+    let old_serial = BTreeMap::from([(1010002, std::sync::Arc::from("36:@com.group"))]);
     assert!(
         resolve(named(wanted), &roster, &old_serial, installed)
             .0

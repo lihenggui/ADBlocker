@@ -242,7 +242,7 @@ fn resolve_selection(
 fn resolve_android(
     packages: &mut std::io::Result<watch::Packages>,
     wanted: Option<&str>,
-    previous: &BTreeMap<u32, String>,
+    previous: &mitm::ActiveApps,
     scope: Scope,
     cleanup_unavailable: bool,
 ) -> Resolved {
@@ -410,19 +410,16 @@ fn publish(
 
 /// Compare complete profile/package identities before removing paused
 /// choices from the resolved set. Missing or changed owners force disarm.
-pub(super) fn same_owners(
-    previous: &BTreeMap<u32, String>,
-    resolved: &BTreeMap<u32, String>,
-) -> bool {
+pub(super) fn same_owners(previous: &mitm::ActiveApps, resolved: &BTreeMap<u32, String>) -> bool {
     previous
         .iter()
-        .all(|(uid, owner)| resolved.get(uid) == Some(owner))
+        .all(|(uid, owner)| resolved.get(uid).is_some_and(|name| name == owner.as_ref()))
 }
 
 // The context also controls whether a captured connection can be read.
 // If installing capture fails, clear the active identities so any detoured app passes.
 pub(super) fn set_capture(
-    apps: &RwLock<Arc<BTreeMap<u32, String>>>,
+    apps: &RwLock<Arc<mitm::ActiveApps>>,
     install: impl FnOnce(&BTreeSet<u32>) -> Result<()>,
 ) -> Result<()> {
     let uids = apps.read().unwrap().keys().copied().collect();
@@ -592,7 +589,7 @@ fn retire_changed_groups(
 }
 /// Only a surviving group needs the slower scoped membership query.
 pub(super) fn changed_group_users(
-    active: &BTreeMap<u32, String>,
+    active: &mitm::ActiveApps,
     affected: &BTreeSet<u32>,
 ) -> BTreeSet<u32> {
     active
@@ -616,8 +613,8 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());
         let previous = BTreeMap::from([
-            (10_001, "@com.group".to_owned()),
-            (1_010_001, "37:com.work".to_owned()),
+            (10_001, Arc::from("@com.group")),
+            (1_010_001, Arc::from("37:com.work")),
         ]);
         std::fs::write(paths.apps(), [0xff]).unwrap();
         let wanted = android::selection(&paths.apps());

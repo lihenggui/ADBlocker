@@ -18,8 +18,8 @@
 
 use std::collections::{HashMap, VecDeque};
 use std::net::{Ipv4Addr, Ipv6Addr, SocketAddr};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
+use std::sync::{Arc, Weak};
 use std::time::{Duration, Instant};
 
 use abd_engine::filter::AddressDecision;
@@ -30,7 +30,7 @@ use smoltcp::wire::{
     Icmpv4Packet, Icmpv6Packet, IpProtocol, Ipv4Packet, Ipv4Repr, Ipv6Packet, Ipv6Repr,
 };
 use tokio::net::UdpSocket;
-use tokio::sync::{Semaphore, mpsc};
+use tokio::sync::{Notify, Semaphore, mpsc};
 
 use crate::datagram::{Datagram, packet, parse};
 use crate::log::log;
@@ -170,9 +170,9 @@ fn port_unreachable(original: &[u8], mtu: usize) -> Option<Vec<u8>> {
 struct Port {
     /// Recent destinations for a shared, unconnected UDP socket.
     peers: VecDeque<SocketAddr>,
-    /// To send on by: the same socket its task takes the answers from.
-    socket: std::net::UdpSocket,
-    /// When something last passed, in seconds since `Forwarder::started`.
+    /// The answer task owns the socket so it closes even if the relay is busy.
+    socket: Weak<UdpSocket>,
+    /// When something last passed, in milliseconds since `Forwarder::started`.
     used: Arc<AtomicU64>,
     task: tokio::task::AbortHandle,
     /// Whether its task still takes the answers.
@@ -205,7 +205,8 @@ pub struct Forwarder {
     protect: Protect,
     policy: Policy,
     mtu: usize,
-    started: Instant,
+    started: tokio::time::Instant,
+    closed: Arc<Notify>,
     // One bucket per relay, shared by all sockets in that relay.
     refusal_tokens: u32,
     last_refill: Instant,
@@ -222,7 +223,8 @@ impl Forwarder {
             protect,
             policy,
             mtu,
-            started: Instant::now(),
+            started: tokio::time::Instant::now(),
+            closed: Arc::new(Notify::new()),
             refusal_tokens: 32,
             last_refill: Instant::now(),
             told_open_failure: false,
@@ -240,7 +242,7 @@ impl Forwarder {
         }
         if !self.ports.contains_key(&key) {
             if self.ports.len() >= MAX_PORTS {
-                self.ports.retain(|_, port| port.open.load(Relaxed));
+                self.reap_closed();
             }
             // Still full: the one unused for longest makes room. Its
             // task ends when it finds itself closed.
@@ -250,8 +252,8 @@ impl Forwarder {
                     .iter()
                     .min_by_key(|(_, port)| port.used.load(Relaxed))
                     .map(|(key, _)| *key);
-                if let Some(port) = oldest.and_then(|key| self.ports.remove(&key)) {
-                    port.open.store(false, Relaxed);
+                if let Some(key) = oldest {
+                    self.ports.remove(&key);
                 }
             }
             let any: SocketAddr = if datagram.server.is_ipv4() {
@@ -265,18 +267,24 @@ impl Forwarder {
             if owner.is_some() {
                 socket.connect(datagram.server)?;
             }
-            let upstream = socket.try_clone()?;
-            let used = Arc::new(AtomicU64::new(self.started.elapsed().as_secs()));
+            let socket = Arc::new(UdpSocket::from_std(socket)?);
+            let upstream = Arc::downgrade(&socket);
+            let used = Arc::new(AtomicU64::new(self.started.elapsed().as_millis() as u64));
             let open = Arc::new(AtomicBool::new(true));
-            let task = tokio::spawn(answers(
-                Arc::new(UdpSocket::from_std(socket)?),
+            let closed = self.closed.clone();
+            let receiving = answers(
+                socket,
                 used.clone(),
                 open.clone(),
                 (datagram.app, owner),
                 self.back.clone(),
                 self.mtu,
                 self.started,
-            ));
+            );
+            let task = tokio::spawn(async move {
+                receiving.await;
+                closed.notify_one();
+            });
             let port = Port {
                 peers: VecDeque::new(),
                 socket: upstream,
@@ -287,6 +295,10 @@ impl Forwarder {
             self.ports.insert(key, port);
         }
         Ok(self.ports.get_mut(&key).expect("open UDP port"))
+    }
+
+    fn reap_closed(&mut self) {
+        self.ports.retain(|_, port| port.open.load(Relaxed));
     }
 
     fn cached(&self, app: SocketAddr, peer: SocketAddr, now: Instant) -> Option<Admission> {
@@ -365,7 +377,7 @@ impl Forwarder {
     }
 
     async fn forward(&mut self, datagram: &Datagram<'_>, owner: Option<Owner>) {
-        let now = self.started.elapsed().as_secs();
+        let now = self.started.elapsed().as_millis() as u64;
         let port = match self.open(datagram, owner).await {
             Ok(port) => port,
             // The datagram is dropped, as the network may drop it: the app
@@ -378,13 +390,17 @@ impl Forwarder {
                 return;
             }
         };
-        port.used.store(now, Relaxed);
-        // Not waited for: a socket that cannot take it now drops it.
+        let Some(socket) = port.socket.upgrade() else {
+            return;
+        };
+        port.used.fetch_max(now, Relaxed);
+        // Try the nonblocking syscall even before Tokio sees the first
+        // writable event for a newly registered socket.
+        let socket = socket2::SockRef::from(&*socket);
         if owner.is_some() {
-            let _ = port.socket.send(datagram.payload);
-        } else if port
-            .socket
-            .send_to(datagram.payload, datagram.server)
+            let _ = socket.send(datagram.payload);
+        } else if socket
+            .send_to(datagram.payload, &datagram.server.into())
             .is_ok()
         {
             // Ordinary UDP can use one local port with several peers, as
@@ -448,6 +464,7 @@ pub async fn relay(
 ) {
     let (to_relay, mut replies) = mpsc::channel(256);
     let mut forwarder = Forwarder::new(to_relay, protect, policy, mtu);
+    let closed = forwarder.closed.clone();
     loop {
         tokio::select! {
             sent = outbound.recv() => {
@@ -459,6 +476,7 @@ pub async fn relay(
                     let _ = to_tun.try_send(error);
                 }
             }
+            () = closed.notified() => forwarder.reap_closed(),
             Some(reply) = replies.recv() => {
                 if let Some(packet) = forwarder.deliver(reply).await {
                     let _ = to_tun.try_send(packet);
@@ -477,13 +495,14 @@ async fn answers(
     (app, owner): (SocketAddr, Option<Owner>),
     back: mpsc::Sender<Reply>,
     mtu: usize,
-    started: Instant,
+    started: tokio::time::Instant,
 ) {
     let mut buf = vec![0u8; mtu];
     while open.load(Relaxed) {
-        match tokio::time::timeout(IDLE, socket.recv_from(&mut buf)).await {
+        let deadline = || started + Duration::from_millis(used.load(Relaxed)) + IDLE;
+        match tokio::time::timeout_at(deadline(), socket.recv_from(&mut buf)).await {
             Ok(Ok((n, from))) => {
-                used.store(started.elapsed().as_secs(), Relaxed);
+                used.fetch_max(started.elapsed().as_millis() as u64, Relaxed);
                 // An answer longer than a packet may be is dropped: the
                 // app asked with one that was not.
                 if let Some(packet) = packet(from, app, &buf[..n], mtu) {
@@ -498,8 +517,7 @@ async fn answers(
             }
             Ok(Err(_)) => break,
             Err(_) => {
-                let idle = started.elapsed().as_secs() - used.load(Relaxed);
-                if idle >= IDLE.as_secs() {
+                if tokio::time::Instant::now() >= deadline() {
                     break;
                 }
             }
@@ -513,6 +531,34 @@ mod tests {
     use super::*;
 
     const MTU: usize = 1500;
+
+    #[tokio::test(start_paused = true)]
+    async fn an_idle_port_releases_its_fd_and_is_removed_without_another_datagram() {
+        let server = UdpSocket::bind("127.0.0.1:0").await.unwrap();
+        let (back, _) = mpsc::channel(1);
+        let mut forwarder = Forwarder::new(back, Arc::new(|_| true), Policy::test(None), MTU);
+        let query = Datagram {
+            app: "10.0.0.2:3070".parse().unwrap(),
+            server: server.local_addr().unwrap(),
+            payload: b"query",
+        };
+        forwarder.send(&query).await;
+        let mut bytes = [0; 32];
+        let (n, address) = server.recv_from(&mut bytes).await.unwrap();
+        assert_eq!(&bytes[..n], b"query");
+        let weak = forwarder.ports.values().next().unwrap().socket.clone();
+        assert!(weak.upgrade().is_some());
+
+        tokio::time::advance(IDLE - Duration::from_secs(1)).await;
+        assert!(weak.upgrade().is_some());
+        tokio::time::advance(Duration::from_secs(1)).await;
+        forwarder.closed.notified().await;
+        forwarder.reap_closed();
+
+        assert!(forwarder.ports.is_empty());
+        assert!(weak.upgrade().is_none());
+        std::net::UdpSocket::bind(address).unwrap();
+    }
 
     #[test]
     fn port_unreachable_quotes_the_original_udp_header_and_has_valid_checksums() {

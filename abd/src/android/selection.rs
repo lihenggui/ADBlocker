@@ -122,7 +122,7 @@ pub(super) fn all_personal(
 pub fn chosen(
     wanted: &str,
     profiles: &[Profile],
-    previous: &BTreeMap<u32, String>,
+    previous: &abd_engine::mitm::ActiveApps,
     scope: abd_engine::settings::Scope,
 ) -> (BTreeMap<u32, String>, bool) {
     abd_engine::apps::in_scope(
@@ -139,7 +139,7 @@ pub fn chosen(
 pub(super) fn resolve(
     wanted: Vec<&str>,
     profiles: &[Profile],
-    previous: &BTreeMap<u32, String>,
+    previous: &abd_engine::mitm::ActiveApps,
     installed: impl Fn(u32) -> Result<Installed>,
 ) -> (BTreeMap<u32, String>, bool) {
     let mut by_user: BTreeMap<u32, Vec<(&str, &str)>> = BTreeMap::new();
@@ -170,7 +170,10 @@ pub(super) fn resolve(
         found.extend(wanted.into_iter().filter_map(|(token, package)| {
             let uid = packages.selectable.get(package).copied().or_else(|| {
                 let uid = *packages.retained.get(package)?;
-                (previous.get(&uid).is_some_and(|active| active == token)).then_some(uid)
+                (previous
+                    .get(&uid)
+                    .is_some_and(|active| active.as_ref() == token))
+                .then_some(uid)
             })?;
             Some((uid, token.to_owned()))
         }));
