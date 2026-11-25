@@ -85,6 +85,8 @@
     <string name="feature_filters_kind_other">其他</string>
     <string name="feature_filters_issue_cosmetic">页面规则适用于已解密的网页。部分写法不受支持，或仅限受信任的订阅使用。</string>
     <string name="feature_filters_issue_invalid">不是有效的规则。</string>
+    <string name="feature_filters_issue_malformed_directive">条件指令格式不正确。</string>
+    <string name="feature_filters_issue_unsupported_include">不支持引用其他列表文件。</string>
     <string name="feature_filters_issue_line">第 %1$d 行</string>
     <plurals name="feature_filters_more_issues">
         <item quantity="other">另有 %1$d 处。</item>

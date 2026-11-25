@@ -439,14 +439,33 @@ pub struct Info {
     pub url: String,
     /// From its `! Title:` line.
     pub title: Option<String>,
-    /// Its lines that are not comments.
+    /// Its active rule lines.
     pub rules: Option<usize>,
+    /// Which rule-counting policy produced the saved count.
+    #[serde(default)]
+    pub rules_format: u8,
     /// When it was last fetched and found to be a list.
     pub updated: Option<u64>,
     /// Why it was not, the last time; none once it is.
     pub error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub validator: Option<Validator>,
+}
+
+pub(crate) const RULE_COUNT_FORMAT: u8 = 1;
+
+impl Info {
+    pub(crate) fn refresh_rule_count(&mut self, path: &Path) {
+        if self.rules_format == RULE_COUNT_FORMAT && self.rules.is_some() {
+            return;
+        }
+        self.rules = None;
+        if let Ok(Some(text)) = read_list(path, MAX_LIST) {
+            self.rules = Some(crate::rule::count(&text));
+            self.rules_format = RULE_COUNT_FORMAT;
+            self.title = self.title.take().or_else(|| title(&text));
+        }
+    }
 }
 
 /// A validator belongs to exactly one representation at one URL.
@@ -494,12 +513,7 @@ pub(crate) fn list_info(dir: &Path, info_dir: &Path, source: &Source) -> (Info, 
         known.error = info(info_dir, &source.url).and_then(|current| current.error);
     }
     if has_copy {
-        if known.rules.is_none()
-            && let Ok(Some(text)) = read_list(&path, MAX_LIST)
-        {
-            known.rules = Some(crate::rule::count(&text));
-            known.title = known.title.or_else(|| title(&text));
-        }
+        known.refresh_rule_count(&path);
     } else {
         known.rules = None;
         known.updated = None;
@@ -731,6 +745,33 @@ pub(crate) mod tests {
         assert_eq!(status[1].rules, None);
         assert_eq!(status[1].updated, None);
         assert_eq!(status[1].error.as_deref(), Some("timed out"));
+    }
+
+    #[test]
+    fn list_status_recounts_legacy_metadata_by_active_lines() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.lists()).unwrap();
+        std::fs::create_dir_all(paths.list_info()).unwrap();
+        std::fs::write(
+            paths.lists().join(file_name(A)),
+            "! Title: Conditional\n!#if false\n||hidden.example^\n!#else\n||active.example^\n!#endif\n",
+        )
+        .unwrap();
+        std::fs::write(
+            info_file(&paths.list_info(), A),
+            format!(r#"{{"url":"{A}","rules":2,"updated":5}}"#),
+        )
+        .unwrap();
+        let source = Source {
+            url: A.to_owned(),
+            enabled: true,
+        };
+        let (known, previous) = list_info(&paths.lists(), &paths.list_info(), &source);
+        assert!(!previous);
+        assert_eq!(known.rules, Some(1));
+        assert_eq!(known.updated, Some(5));
+        assert_eq!(known.title.as_deref(), Some("Conditional"));
     }
 
     #[test]

@@ -5,6 +5,6 @@
   { "url": "https://filters.adtidy.org/android/filters/2.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
   { "url": "https://filters.adtidy.org/android/filters/11.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
   { "url": "https://cdn.jsdelivr.net/gh/hagezi/dns-blocklists@latest/adblock/light.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
-  { "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
+  { "url": "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null },
   { "url": "https://easylist.to/easylist/easyprivacy.txt", "enabled": false, "title": null, "rules": null, "updated": null, "error": null }
 ]

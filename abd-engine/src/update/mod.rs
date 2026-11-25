@@ -304,7 +304,9 @@ impl Subscription<'_> {
                 })
         };
         let (state, known) = match fetched {
-            Ok(Download::Body(body, validator)) => commit_body(url, file, body, validator)?,
+            Ok(Download::Body(body, validator)) => {
+                commit_body(self.kind, url, file, body, validator)?
+            }
             Ok(Download::Unchanged) => {
                 let mut known = previous();
                 // A concurrent edit or replacement invalidates the response.
@@ -316,6 +318,9 @@ impl Subscription<'_> {
                 }
                 known.error = None;
                 known.updated = Some(crate::clock::now());
+                if matches!(self.kind, ListKind::Filter) {
+                    known.refresh_rule_count(file);
+                }
                 (ListState::Unchanged, known)
             }
             Err(why) => {
@@ -363,6 +368,7 @@ impl Subscription<'_> {
 }
 
 fn commit_body(
+    kind: ListKind,
     url: &str,
     file: &Path,
     body: Bytes,
@@ -379,7 +385,8 @@ fn commit_body(
     let known = Info {
         url: url.to_owned(),
         title: sources::title(text),
-        rules: Some(crate::rule::count(text)),
+        rules: Some(kind.count(text)),
+        rules_format: sources::RULE_COUNT_FORMAT,
         updated: Some(crate::clock::now()),
         error: None,
         validator: validator.and_then(|mut v| {

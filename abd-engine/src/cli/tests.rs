@@ -23,6 +23,22 @@ fn ask(paths: &Paths, args: &[&str], input: &str) -> Result<String> {
 }
 
 #[test]
+fn rules_check_reports_include_and_malformed_directives_on_their_original_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(dir.path());
+    let text = "!#include child.txt\n!#if adguard &&\n||inactive.example^$unsupported\n!#else\n\
+                ||active.example^\n!#endif\n!#endif\n";
+    assert_eq!(
+        ask(&paths, &["rules", "check"], text).unwrap(),
+        "1: UnsupportedInclude: !#include child.txt\n\
+         2: MalformedDirective: !#if adguard &&\n\
+         7: MalformedDirective: !#endif\n"
+    );
+    assert_eq!(crate::rulecheck::count(text), 1);
+    assert_eq!(crate::rulecheck::check(text).rules, 1);
+}
+
+#[test]
 fn setup_commands_apply_choices_from_standard_input() {
     let dir = tempfile::tempdir().unwrap();
     let paths = Paths::new(dir.path());

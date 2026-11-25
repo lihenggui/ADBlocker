@@ -33,7 +33,7 @@ use crate::{
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     paths::Paths,
     protocol_types::Check,
-    rule::{self, Kind, Rule},
+    rule::{self, Kind, Rule, preprocess},
     sources,
 };
 
@@ -110,7 +110,7 @@ impl Diagnostics {
         for (file, text) in &lists {
             let mut normalized = MatcherList::with_capacity(text.len());
             let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
-            for line in text.lines() {
+            for line in preprocess::lines(text) {
                 let source = rule::read(line);
                 matcher.add(&mut normalized, &source);
                 if let Kind::App(app) = &source.kind {
@@ -143,7 +143,7 @@ impl Diagnostics {
         // Very dense lists still get exact attribution within the text budget.
         if self.index.is_empty() {
             for (file, text) in read_lists(files).flatten() {
-                if text.lines().any(|line| {
+                if preprocess::lines(&text).any(|line| {
                     let source = rule::read(line);
                     indexed_line(&source) == rule || app_name(&source).as_deref() == Some(rule)
                 }) {
@@ -307,6 +307,41 @@ pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn diagnostics_skip_inactive_rules_in_the_matcher_and_in_source_attribution() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir(paths.lists()).unwrap();
+        std::fs::create_dir(paths.rules()).unwrap();
+        let url = "https://lists.example/a.txt";
+        let list = paths.lists().join(crate::list_url::file_name(url));
+        std::fs::write(paths.sources(), url).unwrap();
+        let active = "||active.example^";
+        std::fs::write(
+            &list,
+            format!("!#if false\n{active}\n||inactive.example^\n!#endif\n"),
+        )
+        .unwrap();
+        std::fs::write(paths.user_rules(), active).unwrap();
+
+        let check_host =
+            |host| check(&paths, None, &format!("https://{host}/"), "", "script").unwrap();
+        for _ in 0..2 {
+            let active = check_host("active.example");
+            assert!(active.blocked);
+            assert_eq!(active.source.as_deref(), Some("rules"));
+            assert!(!check_host("inactive.example").blocked);
+        }
+        let mut files = vec![list, paths.user_rules()];
+        files.sort();
+        let mut diagnostics = Diagnostics::build(&files, read_lists(&files)).unwrap();
+        diagnostics.index.clear();
+        assert_eq!(
+            diagnostics.source(&files, active),
+            Some(paths.user_rules().as_path())
+        );
+    }
 
     #[test]
     fn diagnostics_fail_when_a_list_cannot_be_read() {

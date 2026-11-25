@@ -162,8 +162,9 @@ internal fun ruleColors() = RuleColors(
     cosmetic = MaterialTheme.colorScheme.onSurfaceVariant,
 )
 
-/** Unused issues kinds are named here so that the editor and this tab agree. */
 internal fun issueText(kind: RuleIssueKind) = when (kind) {
     RuleIssueKind.Cosmetic -> R.string.feature_filters_issue_cosmetic
     RuleIssueKind.Invalid -> R.string.feature_filters_issue_invalid
+    RuleIssueKind.MalformedDirective -> R.string.feature_filters_issue_malformed_directive
+    RuleIssueKind.UnsupportedInclude -> R.string.feature_filters_issue_unsupported_include
 }

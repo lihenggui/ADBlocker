@@ -23,6 +23,18 @@ pub(crate) use crate::catalog::Trust;
 /// The longest address taken.
 pub(crate) const MAX_URL: usize = 1024;
 
+const PREVIOUS_UBLOCK_FILTERS: &str =
+    "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt";
+const PREVIOUS_UBLOCK_PRIVACY: &str =
+    "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt";
+const PREVIOUS_UBLOCK_BADWARE: &str =
+    "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt";
+const PREVIOUS_TRUSTED: &[&str] = &[
+    PREVIOUS_UBLOCK_FILTERS,
+    PREVIOUS_UBLOCK_PRIVACY,
+    PREVIOUS_UBLOCK_BADWARE,
+];
+
 /// Catalog addresses saved by earlier releases and their replacements.
 pub(crate) const MOVED: &[(&str, &str)] = &[
     (
@@ -36,6 +48,18 @@ pub(crate) const MOVED: &[(&str, &str)] = &[
     (
         "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt",
         "https://filters.adtidy.org/android/filters/2.txt",
+    ),
+    (
+        PREVIOUS_UBLOCK_FILTERS,
+        "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt",
+    ),
+    (
+        PREVIOUS_UBLOCK_PRIVACY,
+        "https://ublockorigin.github.io/uAssetsCDN/filters/privacy.min.txt",
+    ),
+    (
+        PREVIOUS_UBLOCK_BADWARE,
+        "https://ublockorigin.github.io/uAssetsCDN/filters/badware.min.txt",
     ),
 ];
 
@@ -62,12 +86,16 @@ const MAX_NAME: usize = 100;
 /// what was replaced or cut off would have one file, and the list of one
 /// be taken for the other's, and deleted with it.
 pub fn file_name(url: &str) -> String {
-    let base = base_file_name(url);
     if trusted_download(url) {
-        format!("{}.trusted.txt", base.trim_end_matches(".txt"))
+        trusted_file_name(url)
     } else {
-        base
+        base_file_name(url)
     }
+}
+
+fn trusted_file_name(url: &str) -> String {
+    let base = base_file_name(url);
+    format!("{}.trusted.txt", base.trim_end_matches(".txt"))
 }
 
 /// The name without the suffix reserved for trusted lists: that of every
@@ -128,18 +156,27 @@ pub(crate) fn untrusted_file_name(url: &str) -> Option<String> {
 }
 
 pub(crate) fn copy_names(url: &str) -> impl Iterator<Item = String> {
-    std::iter::once(file_name(url)).chain(untrusted_file_name(url))
+    let (primary, fallback) = if PREVIOUS_TRUSTED.contains(&url) {
+        (trusted_file_name(url), Some(base_file_name(url)))
+    } else {
+        (file_name(url), untrusted_file_name(url))
+    };
+    std::iter::once(primary).chain(fallback)
 }
 
 pub(crate) fn trusted_list_file(path: &Path, trust: Trust) -> bool {
+    let was_trusted = matches!(trust, Trust::Scriptlets | Trust::ResponseRules);
     // User rules live in a separate directory. A custom URL cannot produce
     // the reserved suffix, even if its base filename hash collides.
     path.parent().and_then(Path::file_name) == Some("lists".as_ref())
         && path.file_name().is_some_and(|name| {
-            trust
-                .urls()
-                .iter()
-                .any(|url| name == file_name(url).as_str())
+            trust.urls().iter().any(|url| name == file_name(url).as_str())
+                // Only copies published with the old trusted suffix keep
+                // their permissions while waiting for the replacement.
+                || (was_trusted
+                    && PREVIOUS_TRUSTED
+                        .iter()
+                        .any(|url| name == trusted_file_name(url).as_str()))
         })
 }
 
@@ -147,6 +184,37 @@ pub(crate) fn trusted_list_file(path: &Path, trust: Trust) -> bool {
 mod tests {
     use super::*;
 
+    #[test]
+    fn ublock_trust_moves_to_the_exact_cdn_addresses_and_preserves_already_trusted_copies() {
+        let lists = Path::new("lists");
+        for &(old, new) in MOVED
+            .iter()
+            .filter(|(old, _)| PREVIOUS_TRUSTED.contains(old))
+        {
+            assert!(!trusted_download(old));
+            assert!(trusted_download(new));
+            let old_plain = lists.join(file_name(old));
+            let old_trusted = lists.join(trusted_file_name(old));
+            let new_trusted = lists.join(file_name(new));
+            let renamed = lists.join(file_name(&format!("{new}?custom")));
+            let forged = lists.join(trusted_file_name(&format!("{new}?custom")));
+            for trust in [Trust::Scriptlets, Trust::ResponseRules] {
+                let urls = trust.urls();
+                assert!(urls.contains(&new));
+                assert!(!urls.contains(&old));
+            }
+            for path in [old_trusted, new_trusted] {
+                assert!(trusted_list_file(&path, Trust::Scriptlets));
+                assert!(trusted_list_file(&path, Trust::ResponseRules));
+                assert!(!trusted_list_file(&path, Trust::Scripts));
+            }
+            for path in [old_plain, renamed, forged] {
+                assert!(!trusted_list_file(&path, Trust::Scriptlets));
+                assert!(!trusted_list_file(&path, Trust::ResponseRules));
+                assert!(!trusted_list_file(&path, Trust::Scripts));
+            }
+        }
+    }
     #[test]
     fn splits_an_address_into_host_port_and_path() {
         assert_eq!(

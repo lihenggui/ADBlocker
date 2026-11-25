@@ -29,6 +29,16 @@ pub(crate) enum ListKind {
 }
 
 impl ListKind {
+    pub(super) fn count(self, text: &str) -> usize {
+        match self {
+            Self::Filter => crate::rule::count(text),
+            Self::HttpsExclusion => text
+                .lines()
+                .filter(|line| !crate::rule::is_comment(line))
+                .count(),
+        }
+    }
+
     /// The selection in effect. Rollback can restore the file's absence
     /// during a download: the defaults are still subscribed then.
     pub(super) fn sources(self, file: &Path, bundled: &str) -> Result<String> {

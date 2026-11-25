@@ -279,6 +279,7 @@ class AbdProtocolTest {
         assertEquals("adguard_chinese", FilterCatalog.byUrl(lists[2].url)?.id)
         assertFalse(lists[3].enabled)
         assertEquals("adguard_base", FilterCatalog.byUrl(lists[3].url)?.id)
+        assertEquals("ublock", FilterCatalog.byUrl(lists[6].url)?.id)
     }
 
     @Test
@@ -348,7 +349,15 @@ class AbdProtocolTest {
     fun aRulesCheckNamesTheLinesThatAreNotApplied() {
         val check = parseRulesCheck(case("rules-check.json"))
         assertEquals(5, check.rules)
-        assertEquals(listOf(5 to RuleIssueKind.Cosmetic, 6 to RuleIssueKind.Invalid), check.issues.map { it.line to it.kind })
+        assertEquals(
+            listOf(
+                5 to RuleIssueKind.Cosmetic,
+                6 to RuleIssueKind.Invalid,
+                7 to RuleIssueKind.UnsupportedInclude,
+                8 to RuleIssueKind.MalformedDirective,
+            ),
+            check.issues.map { it.line to it.kind },
+        )
         // The lines the issues name are those of the input the daemon checked.
         val lines = case("rules.txt").lines()
         check.issues.forEach { assertEquals(it.text, lines[it.line - 1]) }

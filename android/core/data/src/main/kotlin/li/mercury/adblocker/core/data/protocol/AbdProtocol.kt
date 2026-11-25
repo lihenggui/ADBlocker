@@ -345,7 +345,13 @@ fun parseRulesCheck(text: String): RulesCheck = reading("rules check") {
     RulesCheck(
         rules = dto.rules,
         issues = dto.issues.map {
-            RuleIssue(it.line, it.text, if (it.kind == "cosmetic") RuleIssueKind.Cosmetic else RuleIssueKind.Invalid)
+            val kind = when (it.kind) {
+                "cosmetic" -> RuleIssueKind.Cosmetic
+                "malformed_directive" -> RuleIssueKind.MalformedDirective
+                "unsupported_include" -> RuleIssueKind.UnsupportedInclude
+                else -> RuleIssueKind.Invalid
+            }
+            RuleIssue(it.line, it.text, kind)
         },
     )
 }

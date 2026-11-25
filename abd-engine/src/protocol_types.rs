@@ -61,12 +61,16 @@ pub struct Issue {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum IssueKind {
     /// An unapplied cosmetic rule.
     Cosmetic,
     /// Not a rule.
     Invalid,
+    /// A malformed conditional directive.
+    MalformedDirective,
+    /// A list include, which the engine does not load.
+    UnsupportedInclude,
 }
 
 #[derive(Debug, Serialize)]

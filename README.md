@@ -232,6 +232,14 @@ the system language (`persist.sys.locale`). One of these that `sources`
 does not name is on, and `#` before its address turns it off. Updates add missing bundled exclusion sources to
 an existing selection. An empty exclusion selection keeps decryption off.
 Custom rules go in `rules/*.txt`, in the syntax of the filter lists.
+ADBlocker uses uBlock Origin's published filter lists. Filter lists and
+custom rules support nested `!#if`, `!#else`, and `!#endif` directives with
+`!`, `&&`, `||`, and parentheses. The true constants are `adguard`,
+`adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
+`cap_html_filtering`. `cap_user_stylesheet`, `false`, and all other names
+evaluate to false. ADBlocker skips `!#include` directives and reports
+active includes and malformed conditionals in `abd rules check`.
+
 A matching `$replace` rule can override a request block and rewrite the
 text response when URL filtering is on. A matching `$jsonprune` rule
 removes items from a JSON or JSONP response and leaves request blocking

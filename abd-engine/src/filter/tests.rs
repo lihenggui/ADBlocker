@@ -27,6 +27,52 @@ mod javascript;
 mod redirects;
 
 #[test]
+fn conditional_rules_and_badfilters_survive_a_cache_round_trip() {
+    let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    std::fs::write(
+        dir.path().join("a.txt"),
+        "!#if env_chromium\n||active.example/asset\n||whole.example^\n!#else\n\
+         ||inactive.example/asset\n||whole.example^$badfilter\n!#endif\n!#if false\n",
+    )
+    .unwrap();
+    std::fs::write(dir.path().join("b.txt"), "||next.example^\n").unwrap();
+
+    let built = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
+    let cached = Filters::read_cache(cache.path(), built.generation.unwrap()).unwrap();
+    for filters in [built, cached] {
+        assert_eq!(filters.rules, 3);
+        assert!(filters.blocks_host("whole.example"));
+        assert!(filters.blocks_host("next.example"));
+        let check = |host| {
+            filters
+                .check(&format!("https://{host}/asset"), "", "script", "GET")
+                .blocked
+        };
+        assert!(check("active.example"));
+        assert!(!check("inactive.example"));
+    }
+}
+
+#[test]
+fn inactive_generic_cosmetics_stay_out_of_the_specific_hide_exception_engine() {
+    let filters = filters(
+        "@@||page.example^$specifichide\n\
+         !#if env_mobile\n##.active\n!#else\n##.inactive\n!#endif\n",
+    );
+    let hiding = filters.hiding("https://page.example/");
+    assert_eq!(
+        filters
+            .hiding_by_name(
+                &hiding,
+                &HashSet::from(["active".to_owned(), "inactive".to_owned()]),
+                &HashSet::new(),
+            )
+            .as_deref(),
+        Some(".active{display:none!important}\n")
+    );
+}
+
+#[test]
 fn matcher_negated_to_excludes_destinations_and_their_subdomains() {
     crate::public_suffix::install();
     for (rule, cases) in [
@@ -270,8 +316,7 @@ mod lists {
         let cache = dir.path().join("cache");
         std::fs::create_dir(&lists).unwrap();
         std::fs::create_dir(&rules).unwrap();
-        let stock =
-            "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt";
+        let stock = "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt";
         let name = crate::list_url::file_name(stock);
         let custom = crate::list_url::file_name(&format!("{stock}?custom"));
         let mobile = "https://filters.adtidy.org/android/filters/11.txt";

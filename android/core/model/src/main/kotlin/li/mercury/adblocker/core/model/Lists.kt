@@ -70,6 +70,9 @@ enum class RuleIssueKind {
 
     /** Not a rule the engine can read. */
     Invalid,
+
+    MalformedDirective,
+    UnsupportedInclude,
 }
 
 /** What the lists say about one request (`abd check`). */

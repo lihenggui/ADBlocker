@@ -32,7 +32,7 @@
       "id": "ublock",
       "trustedResponseRules": true,
       "trustedScriptlets": true,
-      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
+      "url": "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt",
       "title": "uBlock filters",
       "descriptions": {"en": "Rules maintained by uBlock Origin", "zh": "uBlock Origin 维护的规则"},
       "category": "Ads",
@@ -84,7 +84,7 @@
       "id": "ublock_privacy",
       "trustedResponseRules": true,
       "trustedScriptlets": true,
-      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/privacy.txt",
+      "url": "https://ublockorigin.github.io/uAssetsCDN/filters/privacy.min.txt",
       "title": "uBlock filters – Privacy",
       "descriptions": {"en": "Supplements EasyPrivacy", "zh": "补充 EasyPrivacy"},
       "category": "Privacy"
@@ -100,7 +100,7 @@
       "id": "ublock_badware",
       "trustedResponseRules": true,
       "trustedScriptlets": true,
-      "url": "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/badware.txt",
+      "url": "https://ublockorigin.github.io/uAssetsCDN/filters/badware.min.txt",
       "title": "uBlock filters – Badware risks",
       "descriptions": {"en": "Scam and badware sites", "zh": "诈骗和恶意软件网站"},
       "category": "Security"

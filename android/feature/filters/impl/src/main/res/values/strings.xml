@@ -88,6 +88,8 @@
     <string name="feature_filters_kind_other">Other</string>
     <string name="feature_filters_issue_cosmetic">page rules apply to decrypted pages. Some forms are unsupported or require a trusted subscription.</string>
     <string name="feature_filters_issue_invalid">not a valid rule.</string>
+    <string name="feature_filters_issue_malformed_directive">malformed conditional directive.</string>
+    <string name="feature_filters_issue_unsupported_include">list includes are unsupported.</string>
     <string name="feature_filters_issue_line">Line %1$d</string>
     <plurals name="feature_filters_more_issues">
         <item quantity="one">%1$d more.</item>

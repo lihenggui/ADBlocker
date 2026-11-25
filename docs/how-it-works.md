@@ -292,6 +292,15 @@ decrypted again from the app's next start, as above.
 against the lists. For a decrypted request the full engine can check its
 URL, the page that made it and the kind of resource requested.
 
+The catalog uses uBlock Origin's published filter lists. The engine processes
+nested `!#if`, `!#else`, and `!#endif` in each list, including custom rules.
+Conditions use `!`, `&&`, `||`, and parentheses. `adguard`,
+`adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
+`cap_html_filtering` are true. `cap_user_stylesheet`, `false`, and all other
+names are false. A malformed condition selects its else branch if present.
+The engine skips `!#include`. `abd rules check` reports active includes
+and malformed conditionals with their original line numbers.
+
 When judging an encrypted connection by name, the engine uses a
 subset of the rules that can block a whole host, such as `||ads.example^`.
 Consider `||example.com^$third-party`: it can block a request to

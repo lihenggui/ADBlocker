@@ -168,7 +168,7 @@ fn compile(text: String, options: ParseOptions) -> Engine {
 fn generic_rules<'a>(lists: impl Iterator<Item = &'a str>) -> String {
     let mut generic = String::new();
     for line in lists
-        .flat_map(str::lines)
+        .flat_map(rule::preprocess::lines)
         .map(str::trim)
         .filter(|line| rule::generic_cosmetic(line))
     {

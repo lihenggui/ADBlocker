@@ -35,6 +35,7 @@ pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
+pub(crate) mod preprocess;
 pub(crate) mod quoting;
 mod regex;
 mod response;

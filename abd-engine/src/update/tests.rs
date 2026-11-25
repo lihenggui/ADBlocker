@@ -27,20 +27,22 @@ const SECOND: &str = "https://second.example/list.txt";
 const MOVED_FROM: &str = crate::list_url::MOVED[0].0;
 const MOVED_TO: &str = crate::list_url::MOVED[0].1;
 
-fn moved_list() -> (tempfile::TempDir, Paths, Info) {
+fn moved_list(previous: &str, current: &str) -> (tempfile::TempDir, Paths, Info) {
     let (dir, paths) = data();
-    let off = sources::tests::defaults_off(&[MOVED_TO]);
-    std::fs::write(paths.sources(), format!("{MOVED_FROM}\n{off}")).unwrap();
+    let off = sources::tests::defaults_off(&[current]);
+    std::fs::write(paths.sources(), format!("{previous}\n{off}")).unwrap();
     std::fs::create_dir_all(paths.lists()).unwrap();
-    let copy = paths.lists().join(file_name(MOVED_FROM));
+    let copy = paths
+        .lists()
+        .join(crate::list_url::copy_names(previous).next().unwrap());
     std::fs::write(&copy, "! Title: Previous copy\n||old.example^\n").unwrap();
     let known = Info {
-        url: MOVED_FROM.to_owned(),
+        url: previous.to_owned(),
         title: Some("Previous copy".to_owned()),
         rules: Some(1),
         updated: Some(123),
         validator: Some(Validator {
-            resource: MOVED_FROM.to_owned(),
+            resource: previous.to_owned(),
             tag: Some("\"old\"".to_owned()),
             modified: None,
             file: file_stamp(&copy).unwrap(),
@@ -51,8 +53,8 @@ fn moved_list() -> (tempfile::TempDir, Paths, Info) {
     (dir, paths, known)
 }
 
-async fn replace_moved_list(only: Option<&str>) {
-    let (_dir, paths, known) = moved_list();
+async fn replace_moved_list(previous: &str, current: &str, only: Option<&str>) {
+    let (_dir, paths, known) = moved_list(previous, current);
     let sub = Subscription {
         sources: &paths.sources(),
         default: "",
@@ -61,8 +63,10 @@ async fn replace_moved_list(only: Option<&str>) {
         info: Some(&paths.list_info()),
         only,
     };
-    let old = paths.lists().join(file_name(MOVED_FROM));
-    let new = paths.lists().join(file_name(MOVED_TO));
+    let old = paths
+        .lists()
+        .join(crate::list_url::copy_names(previous).next().unwrap());
+    let new = paths.lists().join(file_name(current));
     let unrelated = paths.lists().join(file_name(SECOND));
     if only.is_some() {
         std::fs::write(&unrelated, "||unrelated.example^\n").unwrap();
@@ -82,7 +86,7 @@ async fn replace_moved_list(only: Option<&str>) {
     ] {
         let result = std::cell::RefCell::new(Some(result));
         let fetch = |url, validator: Option<Validator>| {
-            assert_eq!(url, MOVED_TO);
+            assert_eq!(url, current);
             assert!(validator.is_none());
             std::future::ready(result.borrow_mut().take().unwrap())
         };
@@ -90,7 +94,7 @@ async fn replace_moved_list(only: Option<&str>) {
         assert_eq!((tally.failed, tally.changed()), (1, 0));
         assert!(old.exists() && !new.exists());
         assert_eq!(
-            sources::info(&paths.list_info(), MOVED_FROM).as_ref(),
+            sources::info(&paths.list_info(), previous).as_ref(),
             Some(&known)
         );
         let filters = load();
@@ -98,14 +102,14 @@ async fn replace_moved_list(only: Option<&str>) {
         assert!(filters.blocks_host("old.example"));
         let lists = crate::protocol::lists(&paths);
         let list = &lists[0];
-        assert_eq!(list.url, MOVED_TO);
+        assert_eq!(list.url, current);
         assert_eq!(list.error.as_deref(), Some(error));
         assert_eq!((list.rules, list.updated), (Some(1), Some(123)));
         assert!(list.using_previous_address);
     }
 
     let fetch = |url, validator: Option<Validator>| {
-        assert_eq!(url, MOVED_TO);
+        assert_eq!(url, current);
         assert!(validator.is_none());
         std::future::ready(Ok(Download::Body(
             Bytes::from_static(b"||new.example^\n"),
@@ -115,7 +119,7 @@ async fn replace_moved_list(only: Option<&str>) {
     let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
     assert_eq!((tally.failed, tally.changed()), (0, 1));
     assert!(!old.exists() && new.is_file());
-    assert!(!sources::info_file(&paths.list_info(), MOVED_FROM).exists());
+    assert!(!sources::info_file(&paths.list_info(), previous).exists());
     assert_eq!(unrelated.exists(), only.is_some());
     let filters = load();
     assert_ne!(filters.generation, before);
@@ -128,17 +132,21 @@ async fn replace_moved_list(only: Option<&str>) {
 
 #[tokio::test]
 async fn a_full_update_keeps_the_moved_list_until_its_replacement_is_validated() {
-    replace_moved_list(None).await;
+    for &(previous, current) in crate::list_url::MOVED {
+        replace_moved_list(previous, current, None).await;
+    }
 }
 
 #[tokio::test]
 async fn a_targeted_update_keeps_the_moved_list_until_its_replacement_is_validated() {
-    replace_moved_list(Some(MOVED_TO)).await;
+    for &(previous, current) in crate::list_url::MOVED {
+        replace_moved_list(previous, current, Some(current)).await;
+    }
 }
 
 #[tokio::test]
 async fn the_input_budget_counts_a_moved_list_replacement_in_place_of_its_previous_copy() {
-    let (_dir, paths, _) = moved_list();
+    let (_dir, paths, _) = moved_list(MOVED_FROM, MOVED_TO);
     let old = paths.lists().join(file_name(MOVED_FROM));
     let old_len = old.metadata().unwrap().len();
     std::fs::create_dir(paths.rules()).unwrap();
@@ -176,7 +184,7 @@ async fn the_input_budget_counts_a_moved_list_replacement_in_place_of_its_previo
 
 #[tokio::test]
 async fn an_update_prunes_the_previous_copy_of_a_disabled_moved_list() {
-    let (_dir, paths, _) = moved_list();
+    let (_dir, paths, _) = moved_list(MOVED_FROM, MOVED_TO);
     std::fs::write(paths.sources(), format!("#{MOVED_FROM}\n")).unwrap();
     let tally = fetch_all(
         &paths.sources(),

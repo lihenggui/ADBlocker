@@ -29,13 +29,13 @@ use super::matcher::{MatcherList, MatcherLists};
 use super::page_exceptions::PageProjections;
 use super::response_rules::ResponseProjections;
 use super::{
-    AddressProjections, AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules,
-    redirects,
+    AddressProjections, AppProjections, AppRules, Filters, ListFiles, Patterns, RequestRules,
+    app_rules, redirects,
 };
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
 use crate::rule::javascript::{self, ScriptTable, Scripts};
-use crate::rule::{self, Kind};
+use crate::rule::{self, Kind, preprocess};
 
 impl ListFiles {
     pub fn filters(&self, cache: Option<&Path>, debug: bool) -> Result<Filters> {
@@ -59,7 +59,7 @@ impl ListFiles {
 
 fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
     lists
-        .flat_map(str::lines)
+        .flat_map(preprocess::lines)
         .filter(|line| rule::badfilter_candidate(line))
         .filter_map(|line| {
             let source = rule::read(line);
@@ -102,6 +102,37 @@ fn source_options(path: &Path) -> (bool, ParseOptions) {
             ..ParseOptions::default()
         },
     )
+}
+
+fn compile_apps(
+    apps: AppProjections<'_>,
+    debug: bool,
+    redirects: &mut redirects::RedirectProjections,
+) -> (Option<AppRules>, AppHostBlocks) {
+    let mut app_blocks = AppHostBlocks::new();
+    let apps = apps.compile(
+        debug,
+        |host, apps| {
+            app_blocks
+                .entry(host.to_ascii_lowercase())
+                .or_default()
+                .push(format!("^${}{}", app_rules::SOURCE, apps));
+        },
+        Some(redirects),
+    );
+    (apps, app_blocks)
+}
+
+fn compile_requests(
+    matcher: MatcherLists,
+    redirects: redirects::RedirectProjections,
+) -> RequestRules {
+    let (full, originals) = matcher.compile();
+    RequestRules {
+        full,
+        originals,
+        redirects: redirects.compile(),
+    }
 }
 
 impl Filters {
@@ -155,7 +186,7 @@ impl Filters {
     ) -> Result<Self> {
         crate::public_suffix::install();
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
-        let rules_count = lists.iter().map(|(_, text)| text.lines().count()).sum();
+        let mut rules_count = 0;
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
         let mut matcher = MatcherLists::new(debug);
@@ -174,8 +205,12 @@ impl Filters {
             let trust_responses = user_rules(path) || trusted_list_file(path, Trust::ResponseRules);
             let (trust_scripts, options) = source_options(path);
             let mut normalized = MatcherList::with_capacity(text.len());
-            for line in text.lines() {
+            for line in preprocess::lines(text) {
                 let source = rule::read_with_scripts(line, trust_scripts.then_some(&mut scripts));
+                if matches!(source.kind, Kind::Comment) {
+                    continue;
+                }
+                rules_count += 1;
                 matcher.add(&mut normalized, &source);
                 redirects.add_web(&source, &disabled);
                 hosts.add(&source, &disabled);
@@ -197,24 +232,9 @@ impl Filters {
             hosts.finish_list();
             matcher.finish_list(normalized, options);
         }
-        let mut app_blocks = AppHostBlocks::new();
-        let apps = apps.compile(
-            debug,
-            |host, apps| {
-                app_blocks
-                    .entry(host.to_ascii_lowercase())
-                    .or_default()
-                    .push(format!("^${}{}", app_rules::SOURCE, apps));
-            },
-            Some(&mut redirects),
-        );
+        let (apps, app_blocks) = compile_apps(apps, debug, &mut redirects);
         let host_rules = hosts.finish(&app_blocks, guard_budget);
-        let (full, originals) = matcher.compile();
-        let mut requests = RequestRules {
-            full,
-            originals,
-            redirects: redirects.compile(),
-        };
+        let mut requests = compile_requests(matcher, redirects);
         let (scripts, responses) = (scripts.finish(), responses.compile(&mut patterns));
         use_resources(&mut requests, &scripts);
         patterns.report_dropped();

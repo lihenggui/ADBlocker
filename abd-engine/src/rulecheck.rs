@@ -20,6 +20,7 @@ use crate::filter::{
     AddressProjections, Patterns, valid_app_rule, valid_response_rule, valid_script_exception,
 };
 use crate::rule::javascript::Scripts;
+use crate::rule::preprocess::{self, DirectiveIssue};
 use crate::rule::{self, Kind, MatcherCheck};
 
 use crate::protocol_types::{Issue, IssueKind, RulesCheck};
@@ -33,7 +34,19 @@ pub fn check(text: &str) -> RulesCheck {
     let mut scripts = Scripts::default();
     let mut rules = 0;
     let mut issues = Vec::new();
-    for (n, line) in text.lines().enumerate() {
+    for ((number, line), directive) in preprocess::scan(text) {
+        if let Err(issue) = directive {
+            let kind = match issue {
+                DirectiveIssue::Malformed => IssueKind::MalformedDirective,
+                DirectiveIssue::Include => IssueKind::UnsupportedInclude,
+            };
+            issues.push(Issue {
+                line: number,
+                text: line.trim().to_owned(),
+                kind,
+            });
+            continue;
+        }
         let rule = rule::read_with_scripts(line, Some(&mut scripts));
         if matches!(rule.kind, Kind::Comment) {
             continue;
@@ -56,11 +69,12 @@ pub fn check(text: &str) -> RulesCheck {
             }
         };
         issues.push(Issue {
-            line: n + 1,
+            line: number,
             text: rule.line.to_owned(),
             kind,
         });
     }
+    issues.sort_by_key(|issue| issue.line);
     RulesCheck { rules, issues }
 }
 

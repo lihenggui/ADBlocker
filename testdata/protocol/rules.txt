@@ -4,3 +4,7 @@
 @@||cdn.news.example/player/ads.js^$script
 news.example##.ad-banner
 ||tracker.example^$frobnicate
+!#include extra.txt
+!#if adguard &&
+||inactive.example^$frobnicate
+!#endif

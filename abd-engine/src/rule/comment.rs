@@ -27,5 +27,7 @@ pub fn is_comment(line: &str) -> bool {
 
 /// The lines of `list` that are rules.
 pub fn count(list: &str) -> usize {
-    list.lines().filter(|l| !is_comment(l)).count()
+    super::preprocess::lines(list)
+        .filter(|line| !is_comment(line))
+        .count()
 }

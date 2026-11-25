@@ -440,6 +440,7 @@ mod tests {
             url: url.to_owned(),
             title: Some(title.to_owned()),
             rules: Some(rules),
+            rules_format: sources::RULE_COUNT_FORMAT,
             updated: Some(updated),
             error: error.map(str::to_owned),
             validator: None,

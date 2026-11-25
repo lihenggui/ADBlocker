@@ -116,14 +116,14 @@ object DemoData {
     const val EASYLIST = "https://easylist.to/easylist/easylist.txt"
     const val EASYPRIVACY = "https://easylist.to/easylist/easyprivacy.txt"
     const val ADGUARD_MOBILE = "https://filters.adtidy.org/android/filters/11.txt"
-    const val UBLOCK = "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt"
+    const val UBLOCK = "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt"
     const val EASYLIST_CHINA = "https://easylist-downloads.adblockplus.org/easylistchina.txt"
 
     val lists: List<FilterList>
         get() = listOf(
             FilterList(EASYLIST, enabled = true, title = "EasyList", rules = 71_402, updated = ago(60 * 5), error = null),
             FilterList(ADGUARD_MOBILE, enabled = true, title = "AdGuard Mobile Ads", rules = 12_118, updated = ago(60 * 5), error = null),
-            FilterList(UBLOCK, enabled = true, title = "uBlock filters", rules = 9_870, updated = ago(60 * 5), error = null),
+            FilterList(UBLOCK, enabled = true, title = "uBlock filters", rules = 23_657, updated = ago(60 * 5), error = null),
             FilterList(EASYPRIVACY, enabled = true, title = "EasyPrivacy", rules = 47_817, updated = ago(60 * 5), error = null),
             FilterList(EASYLIST_CHINA, enabled = false, title = "EasyList China", rules = 18_204, updated = ago(60 * 24 * 3), error = null),
         )

@@ -61,12 +61,17 @@ fn only_marked_catalog_lists_and_user_rules_can_supply_javascript() {
             (current, new.clone())
         );
         let trusted = load();
-        assert!(trusted.hiding(URL).script.unwrap().contains(BODY));
+        if crate::list_url::Trust::Scripts.urls().contains(&current) {
+            assert!(trusted.hiding(URL).script.unwrap().contains(BODY));
+        } else {
+            assert!(trusted.hiding(URL).script.is_none());
+            assert_eq!(trusted.scripts.resources().count(), 0);
+        }
         fs::remove_file(old).unwrap();
         fs::remove_file(new).unwrap();
     }
     for url in [
-        "https://raw.githubusercontent.com/uBlockOrigin/uAssets/master/filters/filters.txt",
+        "https://ublockorigin.github.io/uAssetsCDN/filters/filters.min.txt",
         "https://example.org/custom.txt",
     ] {
         let list = lists.join(file_name(url));
