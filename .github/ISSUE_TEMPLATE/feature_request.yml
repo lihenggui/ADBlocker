@@ -1,0 +1,33 @@
+name: Feature request
+description: Propose a change to ADBlocker.
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What are you trying to do, and where do you get stuck?
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Proposed behavior
+      description: What should ADBlocker do?
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Affected mode
+      options:
+        - Root
+        - VPN
+        - Both
+        - App UI
+    validations:
+      required: true
+  - type: textarea
+    id: security-privacy
+    attributes:
+      label: Security or privacy implications
+      description: Note any effects on permissions, certificate trust or user data.

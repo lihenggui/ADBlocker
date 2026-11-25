@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/lihenggui/ADBlocker/security/advisories/new
+    about: Submit a private report. See SECURITY.md for what to include.
+  - name: Documentation
+    url: https://github.com/lihenggui/ADBlocker/blob/main/docs/how-it-works.md
+    about: Read how filtering works in root and VPN modes.

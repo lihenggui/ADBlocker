@@ -1,0 +1,70 @@
+name: Bug report
+description: Report incorrect behavior in ADBlocker.
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This issue is public. [Report security vulnerabilities privately](https://github.com/lihenggui/ADBlocker/security/advisories/new).
+  - type: input
+    id: version
+    attributes:
+      label: ADBlocker version
+      description: Enter the version shown in Settings or in `module.prop`.
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: Filtering mode
+      options:
+        - Root mode (flashed module)
+        - Root mode (app direct install)
+        - VPN mode
+        - LSPosed / Vector hook
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device model
+    validations:
+      required: true
+  - type: input
+    id: android-version
+    attributes:
+      label: Android version
+    validations:
+      required: true
+  - type: input
+    id: root-manager
+    attributes:
+      label: Root manager
+      description: Include its name and version if you use one.
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Include any settings needed to reproduce the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or notes
+      description: >-
+        **Never attach or paste `ABD_VERBOSE=1` logs or private browsing or host data.**
+        Remove host names, addresses, URLs and other private details before sharing ordinary logs or screenshots.
+        See [SECURITY.md](https://github.com/lihenggui/ADBlocker/blob/main/SECURITY.md)
+        and [CONTRIBUTING.md](https://github.com/lihenggui/ADBlocker/blob/main/CONTRIBUTING.md#on-a-device).
