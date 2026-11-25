@@ -292,7 +292,7 @@ If you report the problem, include the name of the affected app.
 Some apps accept only their own certificate for a site, and ADBlocker
 then filters them by domain only. The app's entry in **Apps** lists these
 sites under **Domains that reject the certificate**. In root mode with
-LSPosed, enable ADBlocker in LSPosed for that app and restart the app:
+LSPosed/Vector, enable ADBlocker there for that app and restart the app:
 ADBlocker tries those sites again when the app starts, and filters them
 by URL from then on. A site the app refused less than a minute before is
 not tried again yet, and a connection the app opens but never uses counts

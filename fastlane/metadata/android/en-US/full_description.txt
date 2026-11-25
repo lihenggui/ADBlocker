@@ -16,4 +16,4 @@
 <li>Pausing for one app or for all, and a Quick Settings tile</li>
 </ul>
 
-<p>Root mode includes an LSPosed module, used only where an app checks certificates itself. Only 64-bit ARM and x86 devices are supported.</p>
+<p>Root mode includes an LSPosed/Vector module, used only where an app checks certificates itself. Only 64-bit ARM and x86 devices are supported.</p>

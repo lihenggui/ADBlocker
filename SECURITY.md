@@ -95,8 +95,8 @@ The filtering method determines which apps can see or trust the local CA.
   app starts, and filters the site by URL if the app accepts it. An app
   that still pins loses that one connection. A site that a domain rule
   blocks stays blocked and is not tried.
-- In root mode with LSPosed, enabling ADBlocker's module for an app makes
-  that app's own certificate checks accept a chain that ends in
+- In root mode with LSPosed/Vector, enabling ADBlocker's module for an
+  app makes that app's own certificate checks accept a chain that ends in
   ADBlocker's local CA for this device, once Android has validated it as
   for any connection of the app. The app then no longer refuses the
   decryption of the sites it pins, which are filtered like other sites,
@@ -106,8 +106,8 @@ The filtering method determines which apps can see or trust the local CA.
   accepted when it chains to any CA Android trusts. Chains that end in
   any other CA meet the app's checks unchanged. A check that fails
   because the certificate does not name the site keeps failing. The
-  module runs only in the apps you enable in LSPosed, and accepts the
-  local CA only where the module has mounted it into the app.
+  module runs only in the apps you enable in LSPosed/Vector, and accepts
+  the local CA only where the module has mounted it into the app.
 
 Connections to hosts on the exclusion lists for banks, payment services
 and other sensitive sites stay encrypted, as do connections to servers
@@ -337,9 +337,9 @@ connection falls back to TCP.
   another source. In the personal profile, only the processes of filtered apps
   see the local CA. Work apps use the certificates provisioned in their
   profile.
-- The LSPosed module recognizes the local CA by its key, as found in the
-  certificate store the module mounted into the app. It reads that key
-  only from a store that the app's mount table shows to be the module's
+- The LSPosed/Vector module recognizes the local CA by its key, as found
+  in the certificate store the module mounted into the app. It reads that
+  key only from a store that the app's mount table shows to be the module's
   own copy from `/data/adb/adblocker`, which only root can write to. A
   certificate that only carries ADBlocker's name, also one that another
   module copies into the system store, does not pass the app's checks in
