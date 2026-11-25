@@ -278,6 +278,14 @@ Run `abd update` or `abd reload` after a change.
 
 ## FAQ
 
+### The APK or the module in a root manager
+
+Both filter the same way and share the data in `/data/adb/adblocker`.
+A flashed module is also listed in the root manager, and filters only
+while it is turned on there. Either way, you choose apps and lists in the
+app: with **Chosen apps**, the default, only the apps you switch on in
+**Apps** are filtered.
+
 ### A filtered app stopped working
 
 Open the app's entry in **Apps**, pause filtering for an hour, and try
@@ -294,20 +302,23 @@ then filters them by domain only. The app's entry in **Apps** lists these
 sites under **Domains that reject the certificate**. In root mode with
 LSPosed/Vector, enable ADBlocker there for that app and restart the app:
 ADBlocker tries those sites again when the app starts, and filters them
-by URL from then on. A site the app refused less than a minute before is
-not tried again yet, and a connection the app opens but never uses counts
-as a refusal, so a site can need one more restart a minute later. See
-[what this changes](SECURITY.md#limits-of-https-inspection).
+by URL from then on. LSPosed/Vector is needed only for these apps, and
+they must stay switched on in **Apps**. A site the app refused less than
+a minute before is not tried again yet, and a connection the app opens
+but never uses counts as a refusal, so a site can need one more restart a
+minute later. See [what this changes](SECURITY.md#limits-of-https-inspection).
 
 ### Using a VPN or a proxy module
 
-In root mode, Android attributes forwarded connections to the original
-app. A VPN or proxy module can apply its per-app routing rules to those
-connections. If a filtered app loses connectivity with a particular VPN
-or proxy module, report the combination in an issue.
+Root mode leaves Android's VPN slot free for a VPN app such as Clash
+Meta. Android attributes forwarded connections to the original app, so
+the per-app rules of a VPN or proxy module apply to them. If a filtered
+app loses connectivity with a particular VPN or proxy module, report the
+combination in an issue.
 
-VPN mode uses Android's only VPN slot. Starting another VPN stops
-ADBlocker's VPN. If Android's "Block connections without VPN" setting is
+VPN mode uses Android's only VPN slot: starting another VPN stops
+ADBlocker's. A proxy module sees the filtered apps' traffic as
+ADBlocker's. If Android's "Block connections without VPN" setting is
 on, the selected apps lose network access while the VPN is down.
 
 ### Battery use
