@@ -18,10 +18,11 @@
 //! A request that names no page is taken as AdGuard takes one without a
 //! referrer: a rule for named pages is not for it, block or exception, and
 //! it is in the first party of what it asks for.
-//! Only a whole-host block can refuse a connection before its requests
-//! are read. An exception that names the host can keep it open.
+//! Address rules can decide a connection before it is read. A whole-host
+//! block can refuse it once the name is known, unless an exception names it.
 
 use std::collections::HashSet;
+use std::net::SocketAddr;
 
 use adblock::Engine;
 use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
@@ -40,6 +41,7 @@ use crate::apps::Identity;
 pub use crate::list_files::{ListFiles, MAX_LIST};
 use crate::rule::javascript::ScriptTable;
 
+mod address_rules;
 mod app_patterns;
 mod app_rules;
 mod cache;
@@ -51,6 +53,8 @@ mod page_exceptions;
 mod redirects;
 mod response_rules;
 
+pub use address_rules::AddressDecision;
+pub(crate) use address_rules::AddressProjections;
 pub(crate) use page_exceptions::valid_script_exception;
 pub use redirects::Redirect;
 pub(crate) use response_rules::valid as valid_response_rule;
@@ -75,6 +79,7 @@ pub struct Filters {
     /// `None` when no list has a rule for an app.
     apps: Option<AppRules>,
     patterns: Patterns,
+    addresses: address_rules::AddressRules,
     responses: Option<ResponseRules>,
     html: html_rules::HtmlRules,
     pub rules: usize,
@@ -249,6 +254,7 @@ impl Filters {
     ) -> AppFilters<'a> {
         AppFilters {
             filters: self,
+            app: Some(app),
             scope: if self.apps.is_some() || self.responses.is_some() {
                 self.patterns.scope(app)
             } else {
@@ -262,6 +268,7 @@ impl Filters {
     fn for_any_app(&self) -> AppFilters<'_> {
         AppFilters {
             filters: self,
+            app: None,
             scope: None,
             has_shown_page: true,
         }
@@ -270,6 +277,10 @@ impl Filters {
     /// [`AppFilters::blocks_host`], by the rules for every app.
     pub fn blocks_host(&self, host: &str) -> bool {
         self.for_any_app().blocks_host(host)
+    }
+
+    pub fn has_address_rules(&self) -> bool {
+        !self.addresses.is_empty()
     }
 
     /// [`AppFilters::blocks_domain`], by the rules for every app.
@@ -358,6 +369,7 @@ impl Filters {
 /// The rules as they apply to one app.
 pub struct AppFilters<'a> {
     filters: &'a Filters,
+    app: Option<&'a str>,
     scope: Option<Scope<'a>>,
     /// An exception for named pages can only apply to a request that shows
     /// one, and so only to an app that has.
@@ -373,6 +385,11 @@ fn unguarded(guards: &Engine, request: &Request) -> bool {
 }
 
 impl AppFilters<'_> {
+    /// Judge the socket's destination before reading the app's traffic.
+    pub fn address_decision(&self, endpoint: SocketAddr) -> AddressDecision {
+        self.filters.addresses.decide(endpoint, self.app)
+    }
+
     fn app_rules(&self) -> Option<(&AppRules, &Scope<'_>)> {
         self.filters.apps.as_ref().zip(self.scope.as_ref())
     }

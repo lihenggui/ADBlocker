@@ -514,6 +514,68 @@ async fn a_blocked_host_s_connection_is_closed_with_nothing_sent_on_it() {
 }
 
 #[tokio::test]
+async fn a_blocked_address_is_refused_before_the_vpn_connects_to_it() {
+    let mut rig = rig_with_config(CHOSEN, Way::Reached, |paths| {
+        std::fs::write(paths.rules().join("list.txt"), format!("{SERVER}$network")).unwrap();
+    })
+    .await;
+    let handle = rig.app.connect(SERVER);
+    let mut opened = false;
+    rig.app
+        .until(|app| {
+            opened |= app.socket(handle).may_send();
+            app.socket(handle).state() == tcp::State::Closed
+        })
+        .await;
+    assert!(!opened);
+    assert_eq!(rig.connects.load(Relaxed), 0);
+}
+
+#[tokio::test]
+async fn udp_address_rules_drop_only_the_named_port_and_exceptions_bypass_quic_refusal() {
+    let rig = rig_with_config(CHOSEN, Way::Reached, |paths| {
+        std::fs::write(
+            paths.rules().join("list.txt"),
+            "192.0.2.1:3478^$network,app=com.app\n@@192.0.2.1:443$network\n",
+        )
+        .unwrap();
+    })
+    .await;
+    let attempts = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+    let counted = attempts.clone();
+    let protect: Protect = Arc::new(move |_| {
+        counted.fetch_add(1, Relaxed);
+        false
+    });
+    let (back, _) = tokio::sync::mpsc::channel(1);
+    let mut forwarder = crate::udp::Forwarder::new(back, protect, rig.engine.udp_policy(), 1500);
+    let datagram = |port, payload| crate::datagram::Datagram {
+        app: "10.0.0.2:60000".parse().unwrap(),
+        server: ([192, 0, 2, 1], port).into(),
+        payload,
+    };
+    let blocked = datagram(3478, b"STUN");
+    assert!(forwarder.send(&blocked).await);
+    assert_eq!(attempts.load(Relaxed), 0);
+    let initial = include_bytes!("../../testdata/quic/aioquic-v2-initial.bin");
+    assert!(!forwarder.send(&datagram(443, initial)).await);
+    assert_eq!(attempts.load(Relaxed), 1);
+    for _ in 0..40 {
+        forwarder.send(&blocked).await;
+    }
+    assert_eq!(attempts.load(Relaxed), 1);
+    assert!(!forwarder.send(&datagram(3479, b"STUN")).await);
+    assert_eq!(attempts.load(Relaxed), 2);
+
+    let paths = rig.engine.paths();
+    let until = clock::now() + 600;
+    std::fs::write(paths.pauses(), format!("{until} com.app\n")).unwrap();
+    rig.engine.apply();
+    assert!(!forwarder.send(&blocked).await);
+    assert_eq!(attempts.load(Relaxed), 3);
+}
+
+#[tokio::test]
 async fn a_connection_that_is_nobody_s_is_refused_before_any_server_is_connected_to() {
     let device = Device {
         owner: None,

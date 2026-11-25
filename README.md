@@ -239,6 +239,14 @@ in effect. `$app=` accepts package names, prefixes ending in `*`, and
 regular expressions enclosed in `/`. Separate entries with `|` and
 prefix every entry with `~` to exclude the matching apps. In expressions,
 escape `/`, `$`, `,`, and `|` with a backslash.
+
+`$network` rules filter connections by remote IP address, with an
+optional port. Write IPv6 addresses in brackets. Enclose a regular
+expression in `/` to search the address both with and without its port.
+Exact address patterns also accept a leading `|` or `||`.
+`@@` passes a matching connection without further filtering.
+`$app` and `$important` are the only modifiers allowed alongside
+`$network`. An important block takes precedence over an exception.
 Run `abd update` or `abd reload` after a change.
 
 </details>
@@ -343,9 +351,14 @@ In VPN mode:
 - The VPN refuses the first packet of a recognized QUIC connection from a
   selected app that is not paused, on any port. Root mode refuses all UDP
   traffic to port 443 from such apps, including protocols other than QUIC.
-- The VPN opens a connection to the server before it receives the host
-  name. If a domain rule blocks the host, the VPN closes the connection
-  without sending application data.
+  A VPN address exception also bypasses QUIC refusal.
+- Address rules apply with URL filtering off. VPN mode checks TCP and UDP
+  destinations and handles queries sent to its virtual resolver separately.
+  Root mode checks the destination of captured TCP connections on ports 80
+  and 443.
+- After checking the address rules, the VPN opens a TCP connection to the
+  server before it receives the host name. If a domain rule blocks the
+  host, the VPN closes the connection without sending application data.
 - The system's data usage counts the selected apps' traffic under ADBlocker.
 - Another VPN cannot be used at the same time.
 

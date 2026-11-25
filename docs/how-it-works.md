@@ -36,7 +36,8 @@ sets a routing mark. The kernel routes the packet to the loopback interface
 original destination intact. The local address on the accepted socket tells
 the daemon which server the app requested. The rules exist only while at
 least one app is selected. Ordinary HTTP/1 traffic on TCP port 80 is
-filtered in cleartext.
+filtered in cleartext. Address rules apply to these captured TCP connections
+on ports 80 and 443.
 
 The TCP routing mark depends on a named kernel quota. The rules check its
 value without decrementing it, so one switch controls both address families.
@@ -45,7 +46,7 @@ The root module rejects outbound UDP 443 from active app UIDs with port
 unreachable. Linux can also return `EPERM` to the sending socket
 before it reads the ICMP error. The rejection uses the same named quota as
 TCP marking and stops when the quota closes. Other UDP ports keep their
-Android routes.
+Android routes. The daemon does not apply address rules to UDP.
 
 When a user pauses one copy of an app, the daemon can update the UID rules
 while the other copy stays protected. It does this after confirming that
@@ -291,7 +292,7 @@ decrypted again from the app's next start, as above.
 against the lists. For a decrypted request the full engine can check its
 URL, the page that made it and the kind of resource requested.
 
-For an encrypted connection the engine has only the host name. It uses a
+When judging an encrypted connection by name, the engine uses a
 subset of the rules that can block a whole host, such as `||ads.example^`.
 Consider `||example.com^$third-party`: it can block a request to
 `example.com` from another site while allowing a direct visit. Using it
@@ -352,6 +353,16 @@ decrypted requests alike. A blocking rule that names both an app and a
 page is left out. A response rule can match both.
 The apps of a shared UID are not told apart, and no rule for apps applies
 to them.
+
+AdGuard's `$network` rules match the remote IP address and optionally its
+port. Exact addresses use brackets for IPv6 and accept a leading `|` or
+`||` and a trailing `^`. Slash-delimited regular expressions match either
+the address alone or the address with its port. For example, an IPv6
+endpoint is searched as `[2001:db8::1]` and `[2001:db8::1]:443`. A rule may
+also use `$app` and `$important`. An important block wins over an
+exception, which otherwise bypasses further filtering. The engine checks
+the address before reading from the app, including when URL filtering is
+off. DNS queries still use the host rules.
 
 On TCP port 80 the engine recognizes a bounded HTTP/1 request header.
 With URL filtering off it judges the Host header. With it on, each ordinary
@@ -486,7 +497,8 @@ communicate through the [JNI interface](engine-jni.md).
   packets into connections. Android identifies the originating app through
   `getConnectionOwnerUid`. The engine applies the same filtering rules as
   the root daemon. Outbound sockets bypass the local VPN to avoid a loop.
-- The engine connects to the server before accepting the app's
+- The engine checks address rules before opening a TCP connection to the
+  server. It connects to eligible servers before accepting the app's
   connection. If the server is unreachable, the app can try another
   address. The host name arrives after the TCP connection opens. If a rule
   blocks the host, the engine closes the connection without sending
@@ -499,7 +511,11 @@ communicate through the [JNI interface](engine-jni.md).
   only the system's certificates are filtered by host name.
 - For a selected, unpaused app, a recognized QUIC Initial receives an
   ICMP port-unreachable response even when it uses an alternative port.
-  Clients that retry over TCP use the ordinary HTTPS path.
+  Clients that retry over TCP use the ordinary HTTPS path. The relay also
+  checks address rules for ordinary UDP. It drops blocked datagrams and
+  sends ICMP port-unreachable within its reply limit. An address exception
+  bypasses QUIC refusal. Queries sent to the virtual resolver use the
+  DNS path.
 - If the engine cannot start or stops, or another VPN app takes the VPN,
   the VPN service ends. Apps regain direct network access unless Android
   is configured to block connections without the VPN.

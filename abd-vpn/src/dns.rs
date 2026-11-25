@@ -302,7 +302,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn a_blocked_udp_query_gets_the_local_answer_without_opening_an_upstream_socket() {
+    async fn virtual_dns_uses_host_rules_even_when_an_address_rule_blocks_its_endpoint() {
         use std::os::fd::RawFd;
         use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
         use tokio::net::UdpSocket;
@@ -328,31 +328,49 @@ mod tests {
         let dir = tempfile::tempdir().unwrap();
         let paths = abd_engine::paths::Paths::new(dir.path());
         std::fs::create_dir_all(paths.rules()).unwrap();
-        std::fs::write(paths.rules().join("list.txt"), "||ads.example^\n").unwrap();
+        std::fs::write(
+            paths.rules().join("list.txt"),
+            "||ads.example^\n10.120.38.2:53$network\n",
+        )
+        .unwrap();
         std::fs::write(paths.apps(), "com.app\n").unwrap();
         let device = Arc::new(Device(AtomicUsize::new(0)));
         let engine =
             crate::engine::Engine::open(dir.path(), rustls::RootCertStore::empty(), device.clone())
                 .unwrap();
-        let mut dns = engine.dns(vec!["192.0.2.53:53".parse().unwrap()]).unwrap();
-        Arc::get_mut(&mut dns).unwrap().upstream =
+        let mut resolver = engine.dns(vec!["192.0.2.53:53".parse().unwrap()]).unwrap();
+        Arc::get_mut(&mut resolver).unwrap().upstream =
             vec![UdpResolver::new(server.local_addr().unwrap())];
 
+        let (mut client, tun) = crate::fake::app_and_channels();
+        let mtu = crate::fake::MTU;
+        let tunnel = tokio::spawn(crate::tunnel::run(
+            tun,
+            crate::tunnel::Config {
+                mtu,
+                handler: engine.handler(),
+                reach: Some(engine.reach()),
+                protect: engine.protect(),
+                policy: engine.udp_policy(),
+                dns: Some(resolver),
+            },
+        ));
         let request = query(1);
         let app = "10.120.38.1:30000".parse().unwrap();
         let destination = SocketAddr::new(VIRTUAL_V4, DNS);
-        let reply = timeout(
-            RESOLVER_TIME,
-            dns.answer(app, destination, &request, Some(1472)),
-        )
-        .await
-        .unwrap()
-        .unwrap();
+        client
+            .send(datagram::packet(app, destination, &request, mtu).unwrap())
+            .await;
+        let reply = client.given().await.unwrap();
+        let reply = datagram::parse(&reply).expect("DNS answer over UDP");
+        assert_eq!(reply.app, destination);
+        assert_eq!(reply.server, app);
         let local = Question::parse(&request, false)
             .unwrap()
             .local_answer(TTL, false);
-        assert_eq!(reply, local);
+        assert_eq!(reply.payload, local);
         assert_eq!(device.0.load(Relaxed), 0);
+        tunnel.abort();
     }
 
     fn query(kind: u16) -> Vec<u8> {

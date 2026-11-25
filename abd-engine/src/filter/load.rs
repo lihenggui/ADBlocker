@@ -28,7 +28,10 @@ use super::html_rules::HtmlProjections;
 use super::matcher::{MatcherList, MatcherLists};
 use super::page_exceptions::PageProjections;
 use super::response_rules::ResponseProjections;
-use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules, redirects};
+use super::{
+    AddressProjections, AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules,
+    redirects,
+};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
 use crate::rule::javascript::{self, ScriptTable, Scripts};
@@ -160,6 +163,7 @@ impl Filters {
         let mut hosts = HostProjections::new();
         let mut pages = PageProjections::default();
         let mut apps = AppProjections::default();
+        let mut addresses = AddressProjections::default();
         let mut responses = ResponseProjections::default();
         let mut html = HtmlProjections::default();
         let mut patterns = Patterns::default();
@@ -176,6 +180,9 @@ impl Filters {
                 pages.add(&source);
                 match source.kind {
                     Kind::App(app) => apps.add(&app, &mut patterns),
+                    Kind::Address(address) => {
+                        addresses.add(&address);
+                    }
                     // AdGuard allows any list to cut elements. This grants
                     // less power than the cosmetic rules any list can use.
                     Kind::Html(rule) => html.add(source.line, rule),
@@ -206,9 +213,8 @@ impl Filters {
             originals,
             redirects: redirects.compile(),
         };
-        let scripts = scripts.finish();
+        let (scripts, responses) = (scripts.finish(), responses.compile(&mut patterns));
         use_resources(&mut requests, &scripts);
-        let responses = responses.compile(&mut patterns);
         patterns.report_dropped();
         Ok(Self {
             generation,
@@ -223,6 +229,7 @@ impl Filters {
             guards_incomplete: host_rules.guards_incomplete,
             apps,
             patterns,
+            addresses: addresses.finish(),
             responses,
             html: html.finish(),
             rules: rules_count,

@@ -45,6 +45,15 @@ pub(crate) const MAX_APP_REGEX: usize = 64 << 10;
 /// Packages whose pattern matches are remembered in one list generation.
 pub(crate) const MAX_APP_PATTERN_PACKAGES: usize = 4096;
 
+/// Address rules kept per list generation. Later rules over the limit are skipped.
+pub(crate) const MAX_ADDRESS_RULES: usize = 4096;
+/// Address expression source bytes. Longer expressions are invalid.
+pub(crate) const MAX_ADDRESS_EXPRESSION: usize = MAX_APP_EXPRESSION;
+/// Heap for an individual address expression. Larger expressions are invalid.
+pub(crate) const MAX_ADDRESS_REGEX: usize = MAX_APP_REGEX;
+/// Compiled address set heap. Later expressions that would exceed it are skipped.
+pub(crate) const MAX_ADDRESS_REGEX_SET: usize = 32 << 20;
+
 /// The longest JavaScript rule body, in bytes. Longer bodies are skipped.
 pub(crate) const MAX_JS_RULE: usize = 16 << 10;
 /// Distinct JavaScript bodies kept in one generation. Rules needing another are skipped.

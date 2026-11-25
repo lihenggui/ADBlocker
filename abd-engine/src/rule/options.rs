@@ -14,7 +14,7 @@
 
 //! Option boundaries and quoting shared by the rule reader and action values.
 
-use super::modifiers::{APP, DENYALLOW, PRUNE, REPLACE, is_noop};
+use super::modifiers::{APP, DENYALLOW, NETWORK, PRUNE, REPLACE, is_noop};
 use super::quoting::{delimiter, unescaped};
 
 /// Split options after skipping the two slash-delimited replacement fields.
@@ -221,7 +221,7 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
             continue;
         }
         let option = &line[cursor..];
-        if [APP, DENYALLOW].into_iter().any(|name| {
+        if [APP, DENYALLOW, NETWORK].into_iter().any(|name| {
             option
                 .trim_start_matches('~')
                 .strip_prefix(name)

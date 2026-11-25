@@ -16,7 +16,9 @@
 //!
 //! The check uses the permissions of the user's own rules.
 
-use crate::filter::{Patterns, valid_app_rule, valid_response_rule, valid_script_exception};
+use crate::filter::{
+    AddressProjections, Patterns, valid_app_rule, valid_response_rule, valid_script_exception,
+};
 use crate::rule::javascript::Scripts;
 use crate::rule::{self, Kind, MatcherCheck};
 
@@ -27,6 +29,7 @@ pub use crate::rule::{count, is_comment};
 pub fn check(text: &str) -> RulesCheck {
     crate::public_suffix::install();
     let mut patterns = Patterns::default();
+    let mut addresses = AddressProjections::default();
     let mut scripts = Scripts::default();
     let mut rules = 0;
     let mut issues = Vec::new();
@@ -39,10 +42,11 @@ pub fn check(text: &str) -> RulesCheck {
         let kind = match &rule.kind {
             Kind::Comment => unreachable!(),
             Kind::Html(_) => continue,
+            Kind::Address(address) if addresses.add(address) => continue,
             Kind::Response(response) if valid_response_rule(response, &mut patterns) => continue,
             Kind::App(app) if valid_app_rule(app, &mut patterns) => continue,
             Kind::PageException(_) if valid_script_exception(&rule) => continue,
-            Kind::App(_) | Kind::Response(_) => IssueKind::Invalid,
+            Kind::App(_) | Kind::Address(_) | Kind::Response(_) => IssueKind::Invalid,
             Kind::Matcher | Kind::Cosmetic | Kind::PageException(_) | Kind::NotApplied(_) => {
                 match rule.matcher_check() {
                     MatcherCheck::Network | MatcherCheck::AppliedCosmetic => continue,

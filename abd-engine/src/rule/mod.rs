@@ -20,11 +20,14 @@ use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
-use self::modifiers::{APP, Kind as ModifierKind, PageModifier, lookup, may_have_owned_options};
+use self::modifiers::{
+    APP, Kind as ModifierKind, NETWORK, PageModifier, lookup, may_have_owned_options,
+};
 use self::options::{OptionToken, Options, Quoting};
 use self::quoting::unescaped;
 
 pub(crate) mod action;
+pub(crate) mod address;
 mod adguard;
 mod comment;
 mod denyallow;
@@ -58,6 +61,7 @@ pub(crate) enum Kind<'a> {
     Comment,
     Matcher,
     App(AppRule<'a>),
+    Address(address::AddressRule<'a>),
     Response(ResponseRule<'a>),
     PageException(PageException<'a>),
     Cosmetic,
@@ -71,6 +75,7 @@ pub(crate) enum Reason {
     DenyAllow(denyallow::Rejection),
     RegexSourceDomain,
     NetworkRegex,
+    Address(address::Rejection),
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
 }
@@ -129,6 +134,20 @@ pub(crate) fn read_with_scripts<'a>(
         rule.kind = Kind::Comment;
         return rule;
     }
+    // A regex condition can contain text that otherwise starts a cosmetic rule.
+    let custom = may_have_owned_options(line)
+        .then(|| Options::read(line, Quoting::AdGuard))
+        .flatten();
+    if let Some(address) = custom
+        .as_ref()
+        .and_then(|options| address::AddressRule::read(line, options))
+    {
+        rule.kind = match address {
+            Ok(address) => Kind::Address(address),
+            Err(reason) => Kind::NotApplied(Reason::Address(reason)),
+        };
+        return rule;
+    }
     if let Some(fields) = html::fields(line) {
         rule.kind = match html::read(line, fields) {
             Ok(parsed) => Kind::Html(parsed),
@@ -152,19 +171,13 @@ pub(crate) fn read_with_scripts<'a>(
         }
         return rule;
     }
-    rule.read_options();
+    rule.read_options(custom.filter(|options| network_condition(line, options.pattern)));
     rule
 }
 
 impl<'a> Rule<'a> {
-    fn read_options(&mut self) {
+    fn read_options(&mut self, custom: Option<Options<'a>>) {
         let line = self.line;
-        // Only engine-owned modifiers need their values scanned past escaped
-        // separators. Ordinary matcher options retain the matcher's spelling.
-        let custom = may_have_owned_options(line)
-            .then(|| Options::read(line, Quoting::AdGuard))
-            .flatten()
-            .filter(|options| network_condition(line, options.pattern));
         let mut denyallow = None;
         let mut app = None;
         if let Some(options) = custom {
@@ -293,6 +306,7 @@ impl<'a> Rule<'a> {
         }
         match self.kind {
             Kind::App(_)
+            | Kind::Address(_)
             | Kind::Response(_)
             | Kind::Html(_)
             | Kind::NotApplied(
@@ -300,7 +314,8 @@ impl<'a> Rule<'a> {
                 | Reason::HtmlFiltering(_)
                 | Reason::DenyAllow(_)
                 | Reason::RegexSourceDomain
-                | Reason::NetworkRegex,
+                | Reason::NetworkRegex
+                | Reason::Address(_),
             ) => None,
             _ => Some(self.normalized()),
         }
@@ -318,6 +333,12 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn whole_host(&self) -> Option<(Cow<'_, str>, &'a str)> {
+        if matches!(
+            self.kind,
+            Kind::Address(_) | Kind::NotApplied(Reason::Address(_))
+        ) {
+            return None;
+        }
         if let Some(host) = self.noop_host {
             return Some((Cow::Borrowed(self.rewritten.as_deref()?), host));
         }
@@ -362,6 +383,7 @@ impl<'a> Rule<'a> {
             || matches!(
                 self.kind,
                 Kind::App(_)
+                    | Kind::Address(_)
                     | Kind::Response(_)
                     | Kind::Html(_)
                     | Kind::NotApplied(
@@ -370,6 +392,7 @@ impl<'a> Rule<'a> {
                             | Reason::DenyAllow(_)
                             | Reason::RegexSourceDomain
                             | Reason::NetworkRegex
+                            | Reason::Address(_)
                     )
             )
         {
@@ -384,7 +407,10 @@ impl<'a> Rule<'a> {
         if matches!(
             self.kind,
             Kind::NotApplied(
-                Reason::DenyAllow(_) | Reason::RegexSourceDomain | Reason::NetworkRegex
+                Reason::DenyAllow(_)
+                    | Reason::RegexSourceDomain
+                    | Reason::NetworkRegex
+                    | Reason::Address(_)
             )
         ) {
             return MatcherCheck::Invalid;
@@ -639,6 +665,14 @@ fn cosmetic(line: &str) -> bool {
 /// lists, with the default permissions of that matcher.
 pub(crate) fn generic_cosmetic(line: &str) -> bool {
     if !line.contains('#') || html::fields(line).is_some() || javascript::uses_reserved_name(line) {
+        return false;
+    }
+    if line.contains(NETWORK)
+        && matches!(
+            read(line).kind,
+            Kind::Address(_) | Kind::NotApplied(Reason::Address(_))
+        )
+    {
         return false;
     }
     matches!(parse_filter(line, false, cosmetic_options()), Ok(ParsedLine::Cosmetic(rule))

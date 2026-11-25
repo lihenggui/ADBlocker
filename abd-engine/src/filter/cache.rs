@@ -18,6 +18,7 @@ use std::path::Path;
 
 use adblock::Engine;
 
+use super::address_rules::AddressRules;
 use super::html_rules::HtmlRules;
 use super::response_rules::ResponseRules;
 use super::{AppRules, Filters, PageExceptions, Patterns, RequestRules, load::use_resources};
@@ -28,12 +29,14 @@ use crate::rule::javascript::{MAX_CACHED_SCRIPTS, ScriptTable};
 /// The files of the rules for apps, in the order they are kept in.
 const APPS: [&str; 4] = ["app-blocks", "app-exceptions", "app-hosts", "app-guards"];
 
+fn read_part(cache: &Path, name: &str, remaining: &mut usize) -> Option<Vec<u8>> {
+    let bytes = files::read_bytes(&cache.join(name), *remaining).ok()?;
+    *remaining -= bytes.len();
+    Some(bytes)
+}
+
 fn read_apps(cache: &Path, remaining: &mut usize) -> Option<AppRules> {
-    let [blocks, exceptions, hosts, guards] = APPS.map(|name| {
-        let kept = files::read_bytes(&cache.join(name), *remaining).ok()?;
-        *remaining -= kept.len();
-        Some(kept)
-    });
+    let [blocks, exceptions, hosts, guards] = APPS.map(|name| read_part(cache, name, remaining));
     AppRules::compiled([&blocks?, &exceptions?, &hosts?, &guards?])
 }
 
@@ -46,8 +49,7 @@ fn optional_engine(present: bool, read: impl FnOnce() -> Option<Engine>) -> Opti
 }
 
 fn read_engine(cache: &Path, name: &str, remaining: &mut usize) -> Option<Engine> {
-    let compiled = files::read_bytes(&cache.join(name), *remaining).ok()?;
-    *remaining -= compiled.len();
+    let compiled = read_part(cache, name, remaining)?;
     let mut engine = Engine::default();
     // The engine's checksum rejects a truncated or damaged file.
     engine.deserialize(&compiled).ok()?;
@@ -58,8 +60,7 @@ fn read_html(cache: &Path, present: bool, remaining: &mut usize) -> Option<HtmlR
     if !present {
         return Some(HtmlRules::default());
     }
-    let specs = files::read_bytes(&cache.join("html-rules"), *remaining).ok()?;
-    *remaining -= specs.len();
+    let specs = read_part(cache, "html-rules", remaining)?;
     HtmlRules::cached(&specs)
 }
 
@@ -102,13 +103,10 @@ impl Filters {
         let has_urlblock: bool = f.next()?.parse().ok()?;
         let has_no_scripts: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
-        let patterns = files::read_bytes(&cache.join("app-patterns"), remaining).ok()?;
-        remaining -= patterns.len();
-        let patterns = Patterns::cached(&patterns)?;
+        let patterns = Patterns::cached(&read_part(cache, "app-patterns", &mut remaining)?)?;
+        let addresses = AddressRules::cached(&read_part(cache, "address-rules", &mut remaining)?)?;
         let actions = if has_responses {
-            let kept = files::read_bytes(&cache.join("response-actions"), remaining).ok()?;
-            remaining -= kept.len();
-            Some(kept)
+            Some(read_part(cache, "response-actions", &mut remaining)?)
         } else {
             None
         };
@@ -155,6 +153,7 @@ impl Filters {
             guards_incomplete,
             apps,
             patterns,
+            addresses,
             responses,
             html,
             rules,
@@ -168,6 +167,7 @@ impl Filters {
         let kept = self.apps.as_ref().map(|rules| rules.serialized().map(Some));
         APPS.into_iter().zip(kept.unwrap_or_default()).chain([
             ("app-patterns", Some(self.patterns.serialized())),
+            ("address-rules", Some(self.addresses.serialized())),
             ("html-rules", self.html.serialized()),
             ("full", Some(self.requests.full.serialize())),
             (

@@ -18,6 +18,7 @@ use std::sync::LazyLock;
 use super::action::ActionKind;
 
 pub(super) const APP: &str = "app";
+pub(super) const NETWORK: &str = "network";
 pub(super) const DENYALLOW: &str = "denyallow";
 pub(super) const PRUNE: &str = "jsonprune";
 pub(super) const REPLACE: &str = "replace";
@@ -36,6 +37,7 @@ pub(crate) enum PageModifier {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(super) enum Kind {
     App,
+    Address(Compatibility),
     Type(u16),
     Source,
     Destination,
@@ -87,6 +89,7 @@ const PRUNE_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
 ];
+const NETWORK_OPTIONS: &[Allowed] = &[allow(NETWORK), allow(APP), allow("important")];
 
 #[derive(Clone, Copy, Debug)]
 enum Value {
@@ -106,8 +109,8 @@ const fn modifier(names: &'static [&'static str], kind: Kind, value: Value) -> M
 }
 
 use Kind::{
-    Action, App, DenyAllow, Destination, Flag, LegacyRedirect, Noop, Page, Redirect, Source, Type,
-    Unsupported,
+    Action, Address, App, DenyAllow, Destination, Flag, LegacyRedirect, Noop, Page, Redirect,
+    Source, Type, Unsupported,
 };
 use PageModifier::{Content, Document, Element, Generic, Script, Specific, Urlblock};
 use Value::{None as FlagValue, Optional, Required};
@@ -162,7 +165,11 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["popunder"], Unsupported, FlagValue),
     modifier(&["stealth"], Unsupported, Optional),
     modifier(&["extension"], Unsupported, Optional),
-    modifier(&["network"], Unsupported, FlagValue),
+    modifier(
+        &[NETWORK],
+        Address(Compatibility::Only(NETWORK_OPTIONS)),
+        FlagValue,
+    ),
     modifier(&["cookie"], Unsupported, Optional),
     modifier(&["header"], Unsupported, Required),
     modifier(&["hls"], Unsupported, Required),
@@ -178,7 +185,7 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
     static OWNED_NAMES: LazyLock<Vec<&str>> = LazyLock::new(|| {
         MODIFIERS
             .iter()
-            .filter(|modifier| matches!(modifier.kind, App | Action(..) | DenyAllow))
+            .filter(|modifier| matches!(modifier.kind, App | Address(..) | Action(..) | DenyAllow))
             .flat_map(|modifier| modifier.names.iter().copied())
             .collect()
     });

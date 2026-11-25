@@ -14,7 +14,8 @@
 
 //! One intercepted connection, from the app's SYN to the end.
 //!
-//! The ClientHello is read without being consumed, and from the host name
+//! The destination can decide a connection before it is read. Otherwise
+//! the ClientHello is read without being consumed, and from the host name
 //! in it the connection is refused, handed on untouched, or decrypted
 //! (`policy`). To decrypt, the server is connected to first and verified
 //! against the system's roots; only then is the app answered, with the
@@ -42,7 +43,7 @@ use crate::allow::Allow;
 use crate::apps::{PER_USER_RANGE, PERSONAL_APP_UIDS};
 use crate::clienthello::{self, Hello, Peeked};
 use crate::exclusions::Exclusions;
-use crate::filter::{AppFilters, Filters};
+use crate::filter::{AddressDecision, AppFilters, Filters};
 use crate::limits::{self, Limits};
 use crate::live::Hub;
 use crate::paths::Paths;
@@ -397,6 +398,47 @@ impl Ctx {
             .is_some_and(|package| package == expected)
     }
 
+    pub fn has_address_rules(&self) -> bool {
+        self.lists.filters.read().unwrap().has_address_rules()
+    }
+
+    fn address_decision_for(&self, package: &str, dst: SocketAddr) -> AddressDecision {
+        let filters = self.filters();
+        if filters.has_address_rules() {
+            filters.for_app(package).address_decision(dst)
+        } else {
+            AddressDecision::NoMatch
+        }
+    }
+
+    /// Evaluate the endpoint of an attributed, active app.
+    pub fn address_decision(&self, origin: Origin) -> AddressDecision {
+        self.package(origin.uid)
+            .map_or(AddressDecision::NoMatch, |package| {
+                self.address_decision_for(&package, origin.dst())
+            })
+    }
+
+    /// The VPN normally dials before accepting TCP. Refuse a known block
+    /// before that dial, since `conduct` will never see this connection.
+    pub fn refuse_blocked_address(&self, origin: Origin) -> bool {
+        let Some(package) = self.package(origin.uid) else {
+            return false;
+        };
+        if self.address_decision_for(&package, origin.dst()) != AddressDecision::Block {
+            return false;
+        }
+        self.address_blocked(&package, origin.dst());
+        true
+    }
+
+    fn address_blocked(&self, package: &str, dst: SocketAddr) {
+        self.services
+            .stats
+            .count(Some(package), Counter::HostsBlocked);
+        self.services.live.host_blocked(package, dst);
+    }
+
     /// Evaluate a visible name only after the ingress has admitted the app.
     pub fn blocks_udp_host(&self, uid: u32, host: &str) -> bool {
         let Some(package) = self.package(uid) else {
@@ -493,6 +535,19 @@ pub async fn conduct(ctx: Arc<Ctx>, app: TcpStream, origin: Origin) -> Result<()
         ctx.services.stats.count(None, Counter::Passed);
         return splice(&ctx, app, origin).await;
     };
+    match ctx.address_decision_for(&package, origin.dst()) {
+        AddressDecision::Block => {
+            ctx.address_blocked(&package, origin.dst());
+            reset(&app);
+            return Ok(());
+        }
+        AddressDecision::Pass => {
+            ctx.services.stats.count(Some(&package), Counter::Passed);
+            ctx.services.live.address_passed(&package, origin.dst());
+            return splice(&ctx, app, origin).await;
+        }
+        AddressDecision::NoMatch => {}
+    }
     let url_filtering = ctx.selection.url_filtering.load(Relaxed);
     // Port 80 can also carry TLS or another protocol. Classify the
     // connection without consuming it, and leave opaque streams alone.

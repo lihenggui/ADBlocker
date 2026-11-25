@@ -1,15 +1,22 @@
 # Security
 
-With **URL filtering** off, ADBlocker checks only the host name in an
-HTTPS connection. The request path and contents stay encrypted. With
-**URL filtering** on, ADBlocker decrypts eligible connections of every
-filtered app on the device and inspects individual requests.
+With **URL filtering** off, ADBlocker can check the remote address and
+visible host name of an HTTPS connection. The request path and contents
+stay encrypted. With **URL filtering** on, ADBlocker decrypts eligible
+connections of every filtered app on the device and inspects individual
+requests.
 
 ADBlocker refuses QUIC from selected apps at once, so they can retry over
 TCP, where the usual HTTPS inspection and certificate checks apply. The
 root module refuses UDP 443 for selected apps that are not paused. The VPN
 refuses the first packet of a recognized QUIC connection on any UDP port.
-Apps that require QUIC may fail to connect.
+An address exception bypasses this refusal in VPN mode. Apps that require
+QUIC may fail to connect.
+
+A list can block a connection by remote address and optional port, or let it pass
+without inspection. The VPN applies these rules to TCP and UDP. Root mode
+applies them to captured TCP on ports 80 and 443. DNS queries handled by
+ADBlocker are judged by host name.
 
 ## Reporting a vulnerability
 
@@ -266,10 +273,11 @@ Installing a certificate is a separate choice.
 - The filtered apps' traffic leaves the device from ADBlocker's process. The
   system's data usage counts it under ADBlocker, and it does not pass
   through another VPN.
-- Outside TCP port 80, the VPN engine opens a TCP connection before the
-  app sends the host name. If a rule blocks that host, the engine closes
-  the connection without sending application data. The server can see the
-  device's IP address and the connection attempt. With root, a connection
+- The VPN engine checks address rules before connecting, then opens an
+  allowed TCP connection before the app sends the host name. If a rule
+  blocks that host, the engine closes the connection without sending
+  application data. The server can see the device's IP address and the
+  connection attempt. With root, a connection
   to a host that a rule blocks outright is refused before the module
   connects to the server.
 

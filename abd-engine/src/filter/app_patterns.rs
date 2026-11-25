@@ -264,12 +264,21 @@ impl Patterns {
     }
 
     pub(crate) fn serialized(&self) -> Vec<u8> {
-        let keys: Vec<_> = self.entries.iter().map(|pattern| &pattern.text).collect();
-        serde_json::to_vec(&keys).expect("serializing strings")
+        serde_json::to_vec(&self.keys()).expect("serializing strings")
+    }
+
+    pub(super) fn keys(&self) -> Vec<&str> {
+        self.entries
+            .iter()
+            .map(|pattern| pattern.text.as_str())
+            .collect()
     }
 
     pub(crate) fn cached(bytes: &[u8]) -> Option<Self> {
-        let keys: Vec<String> = serde_json::from_slice(bytes).ok()?;
+        Self::from_keys(serde_json::from_slice(bytes).ok()?)
+    }
+
+    pub(super) fn from_keys(keys: Vec<String>) -> Option<Self> {
         if keys.len() > MAX_APP_PATTERNS {
             return None;
         }

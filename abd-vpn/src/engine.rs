@@ -361,9 +361,8 @@ impl Engine {
     /// the engine. A connection that is nobody's or the system's is
     /// refused here, where the app is still connecting.
     ///
-    /// What the app asks for is not known yet, the server it connects to
-    /// only by its address: a server the lists block is connected to as
-    /// well, and that connection closed with nothing sent on it.
+    /// An address rule can refuse the connection here. A host rule can
+    /// only refuse it after the app says which name it asked for.
     pub fn reach(self: &Arc<Self>) -> crate::tunnel::Reach {
         let engine = self.clone();
         Arc::new(move |app, server| {
@@ -371,7 +370,10 @@ impl Engine {
             Box::pin(async move {
                 let refused = || Err(std::io::ErrorKind::ConnectionRefused.into());
                 let uid = tcp_owner(&engine.platform, app, server).await;
-                if Origin::of(server, 0, uid).is_none() || engine.made().len() >= MAX_MADE {
+                let Some(origin) = Origin::of(server, 0, uid) else {
+                    return refused();
+                };
+                if engine.ctx.refuse_blocked_address(origin) || engine.made().len() >= MAX_MADE {
                     return refused();
                 }
                 let connected = (engine.connect)(server).await?;
@@ -425,7 +427,11 @@ impl Engine {
                     .get(&admission.uid)
                     .is_some_and(|(_, epoch)| *epoch == admission.epoch)
         });
-        crate::udp::Policy { lookup, current }
+        crate::udp::Policy {
+            lookup,
+            current,
+            ctx: Some(self.ctx.clone()),
+        }
     }
 
     pub(crate) fn dns(&self, upstream: Vec<SocketAddr>) -> Option<Arc<crate::dns::Resolver>> {

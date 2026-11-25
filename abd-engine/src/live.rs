@@ -139,30 +139,35 @@ impl Hub {
     }
 
     /// A connection refused for its host.
-    pub fn host_blocked(&self, app: &str, host: &str) {
-        self.send(app, |time| Event {
-            time,
-            app: app.to_owned(),
-            verdict: Seen::HostBlocked,
-            host: host.to_owned(),
-            url: None,
-            page: None,
-            kind: None,
-            reason: None,
-        });
+    pub fn host_blocked(&self, app: &str, host: impl std::fmt::Display) {
+        self.connection(app, host, Seen::HostBlocked, None);
     }
 
     /// A connection handed on unread.
     pub fn passed(&self, app: &str, host: &str, reason: Reason) {
+        self.connection(app, host, Seen::Passed, Some(reason));
+    }
+
+    pub(crate) fn address_passed(&self, app: &str, endpoint: std::net::SocketAddr) {
+        self.connection(app, endpoint, Seen::Passed, None);
+    }
+
+    fn connection(
+        &self,
+        app: &str,
+        host: impl std::fmt::Display,
+        verdict: Seen,
+        reason: Option<Reason>,
+    ) {
         self.send(app, |time| Event {
             time,
             app: app.to_owned(),
-            verdict: Seen::Passed,
-            host: host.to_owned(),
+            verdict,
+            host: host.to_string(),
             url: None,
             page: None,
             kind: None,
-            reason: Some(reason),
+            reason,
         });
     }
 

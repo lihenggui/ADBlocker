@@ -12,8 +12,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! UDP relay for the apps Android routes into the VPN. Refuse recognized
-//! QUIC Initials when their owner is an active selection.
+//! UDP relay for the apps Android routes into the VPN. Apply address
+//! rules and QUIC fallback for active apps.
 //! Replies must come from the original peer.
 
 use std::collections::{HashMap, VecDeque};
@@ -22,6 +22,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering::Relaxed};
 use std::time::{Duration, Instant};
 
+use abd_engine::filter::AddressDecision;
+use abd_engine::mitm::{Ctx, Origin};
 use abd_engine::quic::is_initial;
 use smoltcp::phy::ChecksumCapabilities;
 use smoltcp::wire::{
@@ -65,6 +67,7 @@ type Lookup = Arc<dyn Fn(SocketAddr, SocketAddr) -> Option<Admission> + Send + S
 pub struct Policy {
     pub lookup: Lookup,
     pub current: Arc<dyn Fn(Admission) -> bool + Send + Sync>,
+    pub(crate) ctx: Option<Arc<Ctx>>,
 }
 
 #[cfg(test)]
@@ -80,11 +83,25 @@ impl Policy {
                 })
             }),
             current: Arc::new(|_| true),
+            ctx: None,
         }
     }
 }
 
 impl Policy {
+    fn has_address_rules(&self) -> bool {
+        self.ctx.as_ref().is_some_and(|ctx| ctx.has_address_rules())
+    }
+
+    fn address_decision(&self, admission: Admission, peer: SocketAddr) -> AddressDecision {
+        self.ctx
+            .as_ref()
+            .zip(Origin::of(peer, 0, Some(admission.uid)))
+            .map_or(AddressDecision::NoMatch, |(ctx, origin)| {
+                ctx.address_decision(origin)
+            })
+    }
+
     async fn admission(&self, app: SocketAddr, peer: SocketAddr) -> Option<Admission> {
         static LOOKUPS: Semaphore = Semaphore::const_new(4);
         let lookup = self.lookup.clone();
@@ -304,8 +321,7 @@ impl Forwarder {
         Some(admission)
     }
 
-    // Refill at 64 errors per second with a burst of 32. Above the
-    // limit, let traffic continue without synthesizing an error.
+    // Allow a burst of 32 ICMP replies and refill one slot every 16 ms.
     fn can_refuse(&mut self) -> bool {
         const TICK: Duration = Duration::from_millis(16);
         let now = Instant::now();
@@ -323,11 +339,11 @@ impl Forwarder {
         }
     }
 
-    /// Returns true when an Initial needs an immediate error in the TUN.
+    /// Returns true when a refused datagram needs an immediate error in the TUN.
     pub async fn send(&mut self, datagram: &Datagram<'_>) -> bool {
         let web = datagram.server.port() == 443;
         let initial = is_initial(datagram.payload);
-        if !web && !initial {
+        if !web && !initial && !self.policy.has_address_rules() {
             self.forward(datagram, None).await;
             return false;
         }
@@ -335,8 +351,14 @@ impl Forwarder {
             self.forward(datagram, None).await;
             return false;
         };
-        if initial && admission.filter && self.can_refuse() {
-            return true;
+        if admission.filter {
+            match self.policy.address_decision(admission, datagram.server) {
+                // Keep dropping traffic to a blocked peer when the budget
+                // for synthesizing an ICMP reply is exhausted.
+                AddressDecision::Block => return self.can_refuse(),
+                AddressDecision::NoMatch if initial && self.can_refuse() => return true,
+                _ => {}
+            }
         }
         self.forward(datagram, web.then(|| admission.owner())).await;
         false
@@ -555,6 +577,7 @@ mod tests {
                 let policy = Policy {
                     lookup,
                     current: Arc::new(|_| true),
+                    ctx: None,
                 };
                 // Passed on, as far as asking for a socket to send it by.
                 let passed = Arc::new(AtomicBool::new(false));
@@ -670,6 +693,7 @@ mod tests {
                 })
             }),
             current: Arc::new(|_| true),
+            ctx: None,
         };
         let owner = policy
             .admission(

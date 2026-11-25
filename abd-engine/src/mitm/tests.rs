@@ -1602,6 +1602,73 @@ async fn a_host_blocked_whole_is_refused_before_any_handshake() {
 }
 
 #[tokio::test]
+async fn an_address_block_refuses_a_silent_client_with_or_without_url_filtering() {
+    for domain_only in [false, true] {
+        let rig = rig(Setup {
+            rules: "192.0.2.42:80$network",
+            plaintext: Some((80, "127.0.0.1:1".parse().unwrap())),
+            domain_only,
+            ..Setup::default()
+        })
+        .await;
+        let mut watcher = rig.ctx.services.live.join(None).unwrap();
+        let mut app = TcpStream::connect(rig.proxy).await.unwrap();
+        let error = tokio::time::timeout(Duration::from_secs(2), app.read_u8())
+            .await
+            .expect("refused without waiting for the client's first byte")
+            .unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::ConnectionReset);
+        assert_eq!(rig.count(Counter::HostsBlocked), 1);
+        assert_eq!(rig.count(Counter::Refused), 0);
+        assert_eq!(rig.count(Counter::Decrypted), 0);
+        assert_eq!(rig.dials.load(Relaxed), 0);
+        assert_eq!(rig.made_to_trust.load(Relaxed), 0);
+        let event = only_watch_event(&mut watcher).await;
+        assert_eq!(event["app"], PACKAGE);
+        assert_eq!(event["host"], "192.0.2.42:80");
+        assert_eq!(event["verdict"], "host_blocked");
+        assert!(event["url"].is_null());
+    }
+}
+
+#[tokio::test]
+async fn an_address_exception_bypasses_even_a_host_block() {
+    let rig = rig(Setup {
+        rules: "127.0.0.1$network\n@@127.0.0.1$network\n||site.test^\n",
+        ..Setup::default()
+    })
+    .await;
+    let mut watcher = rig.ctx.services.live.join(None).unwrap();
+    let (status, _, real) = rig.get(Trust::ServerOnly, H1, "/", None).await.unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(real);
+    assert_eq!(rig.hits(), 1);
+    assert_eq!(rig.dials.load(Relaxed), 1);
+    assert_eq!(rig.made_to_trust.load(Relaxed), 0);
+    assert_eq!(rig.count(Counter::Passed), 1);
+    assert_eq!(rig.count(Counter::HostsBlocked), 0);
+    let event = only_watch_event(&mut watcher).await;
+    assert_eq!(event["verdict"], "passed");
+    let endpoint: SocketAddr = event["host"].as_str().unwrap().parse().unwrap();
+    assert!(endpoint.ip().is_loopback());
+    assert!(event["reason"].is_null());
+}
+
+#[tokio::test]
+async fn an_address_block_for_another_app_does_not_prevent_inspection() {
+    let rig = rig(Setup {
+        rules: "127.0.0.1$network,app=com.other",
+        ..Setup::default()
+    })
+    .await;
+    let (status, _, real) = rig.get(Trust::System, H1, "/", None).await.unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(!real);
+    assert_eq!(rig.count(Counter::Decrypted), 1);
+    assert_eq!(rig.count(Counter::HostsBlocked), 0);
+}
+
+#[tokio::test]
 async fn a_whole_host_rule_blocks_an_ech_hello_by_its_visible_name() {
     let rig = rig(Setup {
         rules: "||site.test^\n",
