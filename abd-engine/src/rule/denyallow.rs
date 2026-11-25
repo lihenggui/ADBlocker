@@ -173,7 +173,7 @@ pub(crate) fn matcher_applies(line: &str, rule: NetworkFilter<'_>) -> bool {
 }
 
 fn wildcard_sources(line: &str, domains: &[u64]) -> bool {
-    let Some((_, suffix)) = line.rsplit_once('$') else {
+    let Some((_, suffix)) = crate::rule::options::literal_parts(line) else {
         return false;
     };
     // The matcher hashes wildcard source domains literally. A rule with

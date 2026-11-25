@@ -33,7 +33,13 @@ use crate::{
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     paths::Paths,
     protocol_types::Check,
-    rule::{self, Kind, Rule, preprocess},
+    rule::{
+        self, AppRule, Kind, Reason, ResponseRule, Rule, SourcePermissions, address,
+        driver::{Sink, drive},
+        html,
+        javascript::Scripts,
+        preprocess,
+    },
     sources,
 };
 
@@ -92,6 +98,68 @@ fn index_rule(source: &Rule<'_>, number: usize, index: &mut Vec<Entry>) -> bool 
     true
 }
 
+struct DiagnosticSink<'a, 'build> {
+    matcher: &'build MatcherLists,
+    normalized: &'build mut MatcherList,
+    apps: &'build mut AppProjections<'a>,
+    patterns: &'build mut Patterns,
+    number: usize,
+    index: &'build mut Vec<Entry>,
+    indexing: &'build mut bool,
+}
+
+impl<'a> Sink<'a> for DiagnosticSink<'a, '_> {
+    fn script_table(&mut self) -> Option<&mut Scripts<'a>> {
+        None
+    }
+
+    fn observe(&mut self, source: &Rule<'a>) {
+        if *self.indexing {
+            *self.indexing = index_rule(source, self.number, self.index);
+        }
+    }
+
+    fn comment(&mut self, source: &Rule<'a>) {
+        self.matcher.add(self.normalized, source);
+    }
+
+    fn matcher(&mut self, _: usize, source: &Rule<'a>) {
+        self.matcher.add(self.normalized, source);
+    }
+
+    fn app(&mut self, _: usize, _: &Rule<'a>, app: &AppRule<'a>) {
+        self.apps.add(app, self.patterns);
+    }
+
+    fn response(&mut self, _: usize, _: &'a str, _: ResponseRule<'a>) {}
+
+    fn page_exception(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn cosmetic(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn html(&mut self, _: usize, _: &'a str, _: html::Rule) {}
+
+    fn address(&mut self, _: usize, _: &'a str, _: address::AddressRule<'a>) {}
+
+    fn script(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn redirect(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn not_applied(&mut self, number: usize, source: &Rule<'a>, _: &Reason) {
+        self.matcher(number, source);
+    }
+
+    fn directive(&mut self, _: usize, _: &'a str, _: preprocess::DirectiveIssue) {}
+}
+
 impl Diagnostics {
     fn build<'a>(
         paths: &[PathBuf],
@@ -110,16 +178,17 @@ impl Diagnostics {
         for (file, text) in &lists {
             let mut normalized = MatcherList::with_capacity(text.len());
             let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
-            for line in preprocess::lines(text) {
-                let source = rule::read(line);
-                matcher.add(&mut normalized, &source);
-                if let Kind::App(app) = &source.kind {
-                    apps.add(app, &mut patterns);
-                }
-                if indexing {
-                    indexing = index_rule(&source, number, &mut index);
-                }
-            }
+            let mut sink = DiagnosticSink {
+                matcher: &matcher,
+                normalized: &mut normalized,
+                apps: &mut apps,
+                patterns: &mut patterns,
+                number,
+                index: &mut index,
+                indexing: &mut indexing,
+            };
+            // Diagnostics builds only the request matchers and has no script table.
+            drive(text, SourcePermissions::default(), None, &mut sink);
             matcher.finish_list(normalized, options);
         }
         index.sort_unstable();

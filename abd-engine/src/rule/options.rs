@@ -48,6 +48,12 @@ pub(super) enum Quoting {
     AdGuard,
 }
 
+/// The upstream matcher's literal separator, including within quoted text.
+pub(crate) fn literal_parts(line: &str) -> Option<(&str, &str)> {
+    let at = line.rfind('$')?;
+    Some((&line[..at], &line[at + 1..]))
+}
+
 #[derive(Clone, Copy)]
 pub(crate) struct OptionToken<'a> {
     pub(crate) raw: &'a str,
@@ -100,11 +106,14 @@ fn spans(suffix: &str, quoting: Quoting) -> impl Iterator<Item = (usize, Span)> 
 
 impl<'a> Options<'a> {
     pub(super) fn read(line: &'a str, quoting: Quoting) -> Option<Self> {
-        let at = match quoting {
-            Quoting::Literal => line.rfind('$'),
-            Quoting::AdGuard => option_separator(line),
-        }?;
-        Some(Self::split(&line[..at], &line[at + 1..], quoting))
+        let (pattern, suffix) = match quoting {
+            Quoting::Literal => literal_parts(line)?,
+            Quoting::AdGuard => {
+                let at = option_separator(line)?;
+                (&line[..at], &line[at + 1..])
+            }
+        };
+        Some(Self::split(pattern, suffix, quoting))
     }
 
     /// The older page and host projections see every comma and the last dollar.
@@ -312,4 +321,37 @@ pub(super) fn literal_options(suffix: &str) -> impl Iterator<Item = &str> {
 
 pub(super) fn literal_tokens(suffix: &str) -> impl Iterator<Item = OptionToken<'_>> {
     spans(suffix, Quoting::Literal).map(|(start, span)| span.token(suffix, start))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn literal_parts_split_at_the_last_dollar(
+            pieces in prop::collection::vec(
+                prop_oneof![
+                    any::<String>(),
+                    Just("$".to_owned()),
+                    Just(r"\$".to_owned()),
+                    Just("$$".to_owned()),
+                    Just("/a$/".to_owned()),
+                ],
+                0..16,
+            ),
+        ) {
+            let line = pieces.concat();
+            for line in [line.as_str(), line.trim()] {
+                let mut reference = None;
+                for (at, ch) in line.char_indices() {
+                    if ch == '$' {
+                        reference = Some((&line[..at], &line[at + 1..]));
+                    }
+                }
+                prop_assert_eq!(literal_parts(line), reference);
+            }
+        }
+    }
 }

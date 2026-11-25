@@ -18,85 +18,128 @@ use crate::filter::{
     AddressProjections, Patterns, valid_page_exception, validate_app_rule, validate_response_rule,
 };
 use crate::protocol_types::{Issue, RulesCheck};
-use crate::rule::javascript::Scripts;
-use crate::rule::preprocess;
-use crate::rule::{self, Code, Kind, RuleReason};
+use crate::rule::{
+    self, AppRule, Code, Reason, ResponseRule, Rule, RuleReason, address,
+    driver::{Sink, drive},
+    html,
+    javascript::Scripts,
+    preprocess,
+};
 
 pub use crate::rule::{SourcePermissions, count, is_comment};
 
 /// The unapplied rules and active directive issues, in source order.
 pub fn check(text: &str, permissions: SourcePermissions) -> RulesCheck {
     crate::public_suffix::install();
-    let mut checker = Checker::default();
-    let mut rules = 0;
-    let mut issues = Vec::new();
-    let is_exception = |line: &str| {
-        rule::may_reserve_exception(line) || line.contains("$@$") || line.contains("#@#^")
+    let mut checker = Checker {
+        permissions,
+        ..Checker::default()
     };
-    let lines =
-        preprocess::scan(text).filter(|((_, line), issue)| issue.is_ok() && is_exception(line));
-    let rest =
-        preprocess::scan(text).filter(|((_, line), issue)| issue.is_err() || !is_exception(line));
-    for ((number, line), directive) in lines.chain(rest) {
-        let reason = match directive {
-            Err(issue) => issue.into(),
-            Ok(()) => {
-                let source = rule::read_with_scripts(
-                    line,
-                    permissions.scripts().then_some(&mut checker.scripts),
-                );
-                if matches!(source.kind, Kind::Comment) {
-                    continue;
-                }
-                rules += 1;
-                let Err(reason) = checker.validate(&source, permissions) else {
-                    continue;
-                };
-                reason
-            }
-        };
-        issues.push(Issue {
-            line: number,
-            text: line.trim().to_owned(),
-            kind: reason.kind(),
-            reason: reason.detail(),
-        });
+    let rules = drive(text, permissions, Some(first_exception), &mut checker);
+    checker.issues.sort_by_key(|issue| issue.line);
+    RulesCheck {
+        rules,
+        issues: checker.issues,
     }
-    issues.sort_by_key(|issue| issue.line);
-    RulesCheck { rules, issues }
+}
+
+fn first_exception(line: &str) -> bool {
+    rule::may_reserve_exception(line) || line.contains("$@$") || line.contains("#@#^")
 }
 
 #[derive(Default)]
 struct Checker<'a> {
+    permissions: SourcePermissions,
+    issues: Vec<Issue>,
     patterns: Patterns,
     addresses: AddressProjections,
-    html: rule::html::Budget,
+    html: html::Budget,
     scripts: Scripts<'a>,
 }
 
 impl Checker<'_> {
-    fn validate(
-        &mut self,
-        source: &rule::Rule<'_>,
-        permissions: SourcePermissions,
-    ) -> Result<(), RuleReason> {
-        match &source.kind {
-            Kind::Comment => Ok(()),
-            Kind::Html(rule) => Ok(self.html.keep(&rule.compiled)?),
-            Kind::Address(address) => self.addresses.add(address),
-            Kind::Response(response) => {
-                if permissions.allows_response(response) {
-                    return validate_response_rule(response, &mut self.patterns);
-                }
-                // A malformed action still needs a syntax diagnosis. It must
-                // not take any of the app-pattern budget of the actual list.
-                validate_response_rule(response, &mut Patterns::default())?;
-                Err(RuleReason::named(Code::ResponseTrust, response.option()))
-            }
-            Kind::App(app) => validate_app_rule(app, &mut self.patterns),
-            Kind::PageException(_) if valid_page_exception(source) => Ok(()),
-            _ => source.check_matcher(permissions),
+    fn report(&mut self, number: usize, line: &str, result: Result<(), RuleReason>) {
+        if let Err(reason) = result {
+            self.issues.push(Issue {
+                line: number,
+                text: line.trim().to_owned(),
+                kind: reason.kind(),
+                reason: reason.detail(),
+            });
         }
+    }
+
+    fn validate_response(&mut self, rule: &ResponseRule<'_>) -> Result<(), RuleReason> {
+        if self.permissions.allows_response(rule) {
+            return validate_response_rule(rule, &mut self.patterns);
+        }
+        // Diagnose malformed actions without taking from the list's app-pattern budget.
+        validate_response_rule(rule, &mut Patterns::default())?;
+        Err(RuleReason::named(Code::ResponseTrust, rule.option()))
+    }
+}
+
+impl<'a> Sink<'a> for Checker<'a> {
+    fn script_table(&mut self) -> Option<&mut Scripts<'a>> {
+        Some(&mut self.scripts)
+    }
+
+    fn observe(&mut self, _: &Rule<'a>) {}
+
+    fn comment(&mut self, _: &Rule<'a>) {}
+
+    fn matcher(&mut self, number: usize, source: &Rule<'a>) {
+        self.report(number, source.line, source.check_matcher(self.permissions));
+    }
+
+    fn app(&mut self, number: usize, source: &Rule<'a>, app: &AppRule<'a>) {
+        let result = validate_app_rule(app, &mut self.patterns);
+        self.report(number, source.line, result);
+    }
+
+    fn response(&mut self, number: usize, line: &'a str, rule: ResponseRule<'a>) {
+        let result = self.validate_response(&rule);
+        self.report(number, line, result);
+    }
+
+    fn page_exception(&mut self, number: usize, source: &Rule<'a>) {
+        if !valid_page_exception(source) {
+            self.matcher(number, source);
+        }
+    }
+
+    fn cosmetic(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn html(&mut self, number: usize, line: &'a str, rule: html::Rule) {
+        let result = self.html.keep(&rule.compiled).map_err(Into::into);
+        self.report(number, line, result);
+    }
+
+    fn address(&mut self, number: usize, line: &'a str, rule: address::AddressRule<'a>) {
+        let result = self.addresses.add(&rule);
+        self.report(number, line, result);
+    }
+
+    fn script(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn redirect(&mut self, number: usize, source: &Rule<'a>) {
+        self.matcher(number, source);
+    }
+
+    fn not_applied(&mut self, number: usize, source: &Rule<'a>, reason: &Reason) {
+        self.report(
+            number,
+            source.line,
+            source.check_rejection(reason, self.permissions),
+        );
+    }
+
+    fn directive(&mut self, number: usize, line: &'a str, issue: preprocess::DirectiveIssue) {
+        self.report(number, line, Err(issue.into()));
     }
 }
 

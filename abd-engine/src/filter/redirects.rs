@@ -111,7 +111,7 @@ impl RedirectProjections {
     }
 
     fn add(&mut self, line: &str, bare: bool, apps: Option<&str>) {
-        let Some((pattern, options)) = line.rsplit_once('$') else {
+        let Some((pattern, options)) = crate::rule::options::literal_parts(line) else {
             return;
         };
         let pattern = if bare {

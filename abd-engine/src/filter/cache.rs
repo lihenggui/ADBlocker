@@ -35,6 +35,55 @@ const APPS: [&str; 5] = [
     "app-remove-params",
 ];
 
+// Declare the positional wire order once. Construction by field name keeps
+// changes in the filter tables independent of this cache format.
+macro_rules! cache_key {
+    ($first:ident: $first_type:ty, $($field:ident: $type:ty),+ $(,)?) => {
+        struct CacheKey {
+            $first: $first_type,
+            $($field: $type),+
+        }
+
+        impl CacheKey {
+            fn read(line: &str) -> Option<Self> {
+                let mut fields = line.split_ascii_whitespace();
+                Some(Self {
+                    $first: fields.next()?.parse().ok()?,
+                    $($field: fields.next()?.parse().ok()?),+
+                })
+            }
+
+            fn write(&self) -> String {
+                format!(
+                    concat!("{", stringify!($first), "}", $(" {", stringify!($field), "}",)+ "\n"),
+                    $first = self.$first,
+                    $($field = self.$field),+
+                )
+            }
+        }
+    };
+}
+
+cache_key! {
+    generation: u64,
+    rules: usize,
+    host_rules: usize,
+    guards_incomplete: bool,
+    has_page_guards: bool,
+    has_app_guards: bool,
+    has_app_page_guards: bool,
+    has_no_cosmetic: bool,
+    has_no_elements: bool,
+    has_specific: bool,
+    has_apps: bool,
+    has_no_content: bool,
+    has_responses: bool,
+    has_urlblock: bool,
+    has_no_scripts: bool,
+    has_html: bool,
+    has_redirects: bool,
+}
+
 fn read_part(cache: &Path, name: &str, remaining: &mut usize) -> Option<Vec<u8>> {
     let bytes = files::read_bytes(&cache.join(name), *remaining).ok()?;
     *remaining -= bytes.len();
@@ -85,39 +134,43 @@ fn read_requests(
     Some(requests)
 }
 
+fn read_page_exceptions(
+    meta: &CacheKey,
+    mut engine: impl FnMut(&str) -> Option<Engine>,
+) -> Option<PageExceptions> {
+    Some(PageExceptions {
+        all: optional_engine(meta.has_no_cosmetic, || engine("no-cosmetic"))?,
+        content: optional_engine(meta.has_no_content, || engine("no-content"))?,
+        urlblock: optional_engine(meta.has_urlblock, || engine("no-urlblock"))?,
+        script: optional_engine(meta.has_no_scripts, || engine("no-scripts"))?,
+        element: optional_engine(meta.has_no_elements, || engine("no-element-hiding"))?,
+        specific: if meta.has_specific {
+            Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
+        } else {
+            None
+        },
+    })
+}
+
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
     pub(super) fn read_cache(cache: &Path, key: u64) -> Option<Self> {
         crate::public_suffix::install();
         let key_file = cache.join("key");
         let _lock = files::lock(&key_file).ok()?;
-        let meta = files::read_text(&key_file, 160).ok()?;
-        let mut f = meta.split_ascii_whitespace();
-        if f.next()?.parse::<u64>().ok()? != key {
+        let meta = CacheKey::read(&files::read_text(&key_file, 160).ok()?)?;
+        if meta.generation != key {
             return None;
         }
-        let (rules, host_rules) = (f.next()?.parse().ok()?, f.next()?.parse().ok()?);
-        let guards_incomplete = f.next()?.parse().ok()?;
-        let has_page_guards: bool = f.next()?.parse().ok()?;
-        let has_app_guards: bool = f.next()?.parse().ok()?;
-        let has_app_page_guards: bool = f.next()?.parse().ok()?;
-        let has_no_cosmetic: bool = f.next()?.parse().ok()?;
-        let has_no_elements: bool = f.next()?.parse().ok()?;
-        let has_specific: bool = f.next()?.parse().ok()?;
-        let has_apps: bool = f.next()?.parse().ok()?;
-        let has_no_content: bool = f.next()?.parse().ok()?;
-        let has_responses: bool = f.next()?.parse().ok()?;
-        let has_urlblock: bool = f.next()?.parse().ok()?;
-        let has_no_scripts: bool = f.next()?.parse().ok()?;
         let mut remaining = MAX_COMPILED;
         let patterns = Patterns::cached(&read_part(cache, "app-patterns", &mut remaining)?)?;
         let addresses = AddressRules::cached(&read_part(cache, "address-rules", &mut remaining)?)?;
-        let actions = if has_responses {
+        let actions = if meta.has_responses {
             Some(read_part(cache, "response-actions", &mut remaining)?)
         } else {
             None
         };
-        let apps = if has_apps {
+        let apps = if meta.has_apps {
             Some(read_apps(cache, &mut remaining)?)
         } else {
             None
@@ -126,46 +179,34 @@ impl Filters {
             files::read_bytes(&cache.join("scripts"), remaining.min(MAX_CACHED_SCRIPTS)).ok()?;
         remaining -= script_data.len();
         let scripts = ScriptTable::cached(&script_data)?;
-        let html = read_html(cache, f.next()?.parse().ok()?, &mut remaining)?;
-        let has_redirects = f.next()?.parse().ok()?;
+        let html = read_html(cache, meta.has_html, &mut remaining)?;
         let mut engine = |name: &str| read_engine(cache, name, &mut remaining);
         let responses = match actions {
             Some(actions) => Some(ResponseRules::cached(engine("response-rules")?, &actions)?),
             None => None,
         };
-        let requests = read_requests(&mut engine, has_redirects, &scripts)?;
+        let requests = read_requests(&mut engine, meta.has_redirects, &scripts)?;
         Some(Self {
             generation: Some(key),
             requests,
             parameters: engine("remove-params")?,
             scripts,
-            page_exceptions: PageExceptions {
-                all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
-                content: optional_engine(has_no_content, || engine("no-content"))?,
-                urlblock: optional_engine(has_urlblock, || engine("no-urlblock"))?,
-                script: optional_engine(has_no_scripts, || engine("no-scripts"))?,
-                element: optional_engine(has_no_elements, || engine("no-element-hiding"))?,
-                specific: if has_specific {
-                    Some((engine("no-specific-cosmetic")?, engine("generic-css")?))
-                } else {
-                    None
-                },
-            },
+            page_exceptions: read_page_exceptions(&meta, &mut engine)?,
             hosts: engine("hosts")?,
             host_guards: engine("host-guards")?,
-            page_host_guards: optional_engine(has_page_guards, || engine("page-host-guards"))?,
-            app_host_guards: optional_engine(has_app_guards, || engine("app-host-guards"))?,
-            app_page_host_guards: optional_engine(has_app_page_guards, || {
+            page_host_guards: optional_engine(meta.has_page_guards, || engine("page-host-guards"))?,
+            app_host_guards: optional_engine(meta.has_app_guards, || engine("app-host-guards"))?,
+            app_page_host_guards: optional_engine(meta.has_app_page_guards, || {
                 engine("app-page-host-guards")
             })?,
-            guards_incomplete,
+            guards_incomplete: meta.guards_incomplete,
             apps,
             patterns,
             addresses,
             responses,
             html,
-            rules,
-            host_rules,
+            rules: meta.rules,
+            host_rules: meta.host_rules,
         })
     }
 
@@ -264,27 +305,59 @@ impl Filters {
                     files::remove_if_present(&cache.join(name))?;
                 }
             }
-            let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
-                self.rules,
-                self.host_rules,
-                self.guards_incomplete,
-                self.page_host_guards.is_some(),
-                self.app_host_guards.is_some(),
-                self.app_page_host_guards.is_some(),
-                exceptions.all.is_some(),
-                exceptions.element.is_some(),
-                exceptions.specific.is_some(),
-                self.apps.is_some(),
-                exceptions.content.is_some(),
-                self.responses.is_some(),
-                exceptions.urlblock.is_some(),
-                exceptions.script.is_some(),
-                !self.html.is_empty(),
-                self.requests.redirects.is_some(),
-            );
-            files::replace(&cache.join("key"), meta.as_bytes())
+            let meta = CacheKey {
+                generation: key,
+                rules: self.rules,
+                host_rules: self.host_rules,
+                guards_incomplete: self.guards_incomplete,
+                has_page_guards: self.page_host_guards.is_some(),
+                has_app_guards: self.app_host_guards.is_some(),
+                has_app_page_guards: self.app_page_host_guards.is_some(),
+                has_no_cosmetic: exceptions.all.is_some(),
+                has_no_elements: exceptions.element.is_some(),
+                has_specific: exceptions.specific.is_some(),
+                has_apps: self.apps.is_some(),
+                has_no_content: exceptions.content.is_some(),
+                has_responses: self.responses.is_some(),
+                has_urlblock: exceptions.urlblock.is_some(),
+                has_no_scripts: exceptions.script.is_some(),
+                has_html: !self.html.is_empty(),
+                has_redirects: self.requests.redirects.is_some(),
+            };
+            files::replace(&cache.join("key"), meta.write().as_bytes())
         };
         let _ = write();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn cache_key_uses_the_existing_wire_format() {
+        let cache = tempfile::tempdir().unwrap();
+        let text = "||ads.example^\n\
+                    @@||ads.example^$domain=reader.test,image\n\
+                    ||app.example^$app=com.reader\n\
+                    @@||page.example^$elemhide\n\
+                    @@||content.example^$content\n\
+                    ||ads.example^$redirect=nooptext\n\
+                    page.example$$div.ad\n";
+        let key = 123456789;
+        let filters = Filters::build(
+            std::iter::once(Ok((Path::new("rules/user.txt"), text.to_owned()))),
+            Some(key),
+            false,
+            crate::list_files::MAX_LISTS,
+        )
+        .unwrap();
+        filters.write_cache(cache.path(), key);
+        let line = std::fs::read_to_string(cache.path().join("key")).unwrap();
+        assert_eq!(
+            line,
+            "123456789 7 1 false true false false false true false true true false false false false true\n"
+        );
+        assert!(Filters::read_cache(cache.path(), key).is_some());
     }
 }

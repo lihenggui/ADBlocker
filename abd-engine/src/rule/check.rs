@@ -29,23 +29,17 @@ mod mapping;
 
 impl Rule<'_> {
     pub(crate) fn check_matcher(&self, permissions: SourcePermissions) -> Result<(), RuleReason> {
-        if let Kind::NotApplied(reason) = &self.kind
-            && !matches!(reason, Reason::Modifier(_))
-        {
-            if matches!(
-                reason,
-                Reason::AdGuard(adguard::Unsupported::JavaScript(
-                    javascript::Rejection::Untrusted
-                ))
-            ) {
-                // Diagnose malformed JavaScript before reporting a missing
-                // source permission, without using the actual script table.
-                let mut scripts = javascript::Scripts::default();
-                super::read_with_scripts(self.line, Some(&mut scripts))
-                    .check_matcher(permissions)?;
-            }
-            return Err(reason.report(self.line));
+        if let Kind::NotApplied(reason) = &self.kind {
+            return self.check_rejection(reason, permissions);
         }
+        self.check_with_matcher(permissions, None)
+    }
+
+    fn check_with_matcher(
+        &self,
+        permissions: SourcePermissions,
+        fallback: Option<&Reason>,
+    ) -> Result<(), RuleReason> {
         let line = self
             .translated
             .as_ref()
@@ -60,9 +54,9 @@ impl Rule<'_> {
                 Ok(())
             }
             Ok(ParsedLine::Cosmetic(rule)) => self.check_cosmetic(&rule, permissions),
-            Err(error) => Err(match &self.kind {
-                Kind::NotApplied(reason) => reason.report(self.line),
-                _ => match error {
+            Err(error) => Err(match fallback {
+                Some(reason) => reason.report(self.line),
+                None => match error {
                     FilterParseError::Network(error) => network_error(line, error),
                     FilterParseError::Cosmetic(error) => cosmetic_error(error),
                     FilterParseError::Unsupported
@@ -71,6 +65,28 @@ impl Rule<'_> {
                 },
             }),
         }
+    }
+
+    pub(crate) fn check_rejection(
+        &self,
+        reason: &Reason,
+        permissions: SourcePermissions,
+    ) -> Result<(), RuleReason> {
+        if reason.uses_matcher() {
+            return self.check_with_matcher(permissions, Some(reason));
+        }
+        if matches!(
+            reason,
+            Reason::AdGuard(adguard::Unsupported::JavaScript(
+                javascript::Rejection::Untrusted
+            ))
+        ) {
+            // Diagnose malformed JavaScript before reporting a missing
+            // source permission, without using the actual script table.
+            let mut scripts = javascript::Scripts::default();
+            super::read_with_scripts(self.line, Some(&mut scripts)).check_matcher(permissions)?;
+        }
+        Err(reason.report(self.line))
     }
 
     fn check_cosmetic(

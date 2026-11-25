@@ -21,7 +21,7 @@ use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
 use self::modifiers::{APP, Kind as ModifierKind, NETWORK, lookup, may_have_owned_options};
-use self::options::{OptionToken, Options, Quoting};
+use self::options::{OptionToken, Options, Quoting, literal_parts};
 use self::quoting::unescaped;
 
 pub(crate) mod action;
@@ -31,6 +31,7 @@ mod check;
 mod comment;
 pub(crate) mod csp;
 mod denyallow;
+pub(crate) mod driver;
 pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
@@ -69,6 +70,9 @@ pub(crate) struct Rule<'a> {
 pub(crate) enum Kind<'a> {
     Comment,
     Matcher,
+    Rewritten,
+    /// A candidate for the dedicated redirect matcher.
+    Redirect,
     App(AppRule<'a>),
     Address(address::AddressRule<'a>),
     Response(ResponseRule<'a>),
@@ -90,6 +94,33 @@ pub(crate) enum Reason {
     Address(address::Rejection),
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
+}
+
+impl Reason {
+    // A known modifier still gets the upstream matcher's verdict.
+    fn uses_matcher(&self) -> bool {
+        match self {
+            Self::Modifier(_) => true,
+            Self::DenyAllow(_)
+            | Self::RegexSourceDomain
+            | Self::NetworkRegex
+            | Self::Csp(_)
+            | Self::RemoveParam(_)
+            | Self::Cookie(_)
+            | Self::Address(_)
+            | Self::HtmlFiltering(_)
+            | Self::AdGuard(_) => false,
+        }
+    }
+}
+
+enum MatcherInput<'a> {
+    Native(&'a str),
+    Rewritten(&'a str),
+    Hosts(&'a str),
+    Translated(&'a str),
+    RedirectOnly(&'a str),
+    None,
 }
 
 pub(crate) struct AppRule<'a> {
@@ -169,21 +200,7 @@ pub(crate) fn read_with_scripts<'a>(
         };
         return rule;
     }
-    // An action value can contain the characters that mark a cosmetic rule.
-    if custom.as_ref().is_some_and(|options| {
-        !options.pattern.contains('#')
-            && options.tokens().any(|option| {
-                matches!(
-                    option.name(),
-                    modifiers::COOKIE
-                        | modifiers::CSP
-                        | modifiers::HLS
-                        | modifiers::REMOVEPARAM
-                        | modifiers::XMLPRUNE
-                ) || option.name() == modifiers::URLTRANSFORM
-                    || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
-            })
-    }) {
+    if custom.as_ref().is_some_and(has_action_options) {
         rule.read_options(custom);
         return rule;
     }
@@ -246,11 +263,9 @@ impl<'a> Rule<'a> {
             }
         }
         self.denyallow = denyallow.is_some();
-        if app.is_none() && self.has_redirect_option() && !cosmetic(line) {
-            let (redirect, bare) =
-                rewrite_redirect_options(self.rewritten.as_deref().unwrap_or(line));
-            self.rewritten = redirect.or(self.rewritten.take());
-            self.redirect_exception = bare;
+        let redirect = app.is_none() && self.has_redirect_option() && !cosmetic(line);
+        if redirect {
+            self.rewrite_redirect();
         }
         let page = if self.exception() && !self.redirect_exception {
             if let Some(options) = app.as_ref().filter(|options| options.also_literal()) {
@@ -275,9 +290,19 @@ impl<'a> Rule<'a> {
             Kind::Cosmetic
         } else if let Some(name) = self.unsupported_modifier() {
             Kind::NotApplied(Reason::Modifier(name))
+        } else if redirect {
+            Kind::Redirect
+        } else if self.rewritten.is_some() || self.hosts_file.is_some() {
+            Kind::Rewritten
         } else {
             Kind::Matcher
         };
+    }
+
+    fn rewrite_redirect(&mut self) {
+        let (line, bare) = rewrite_redirect_options(self.rewritten.as_deref().unwrap_or(self.line));
+        self.rewritten = line.or(self.rewritten.take());
+        self.redirect_exception = bare;
     }
 
     fn rewrite_network(&mut self, options: &Options<'a>, denyallow: Option<&denyallow::Condition>) {
@@ -312,7 +337,7 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn has_redirect_option(&self) -> bool {
-        let Some((_, suffix)) = self.line.rsplit_once('$') else {
+        let Some((_, suffix)) = literal_parts(self.line) else {
             return false;
         };
         suffix.contains("redirect")
@@ -352,30 +377,42 @@ impl<'a> Rule<'a> {
             .is_some_and(|(_, suffix)| suffix.starts_with("#+js(") || suffix.starts_with("?#+js("))
     }
 
-    pub(crate) fn matcher_input(&self) -> Option<Cow<'_, str>> {
-        if self.redirect_exception {
-            return None;
-        }
-        if let Some(translated) = &self.translated {
-            return Some(Cow::Borrowed(&translated.line));
-        }
-        match self.kind {
+    fn matcher_route(&self) -> MatcherInput<'_> {
+        match &self.kind {
+            Kind::Comment | Kind::Matcher => MatcherInput::Native(self.line),
+            Kind::Rewritten | Kind::Redirect | Kind::Cosmetic | Kind::PageException(_) => {
+                self.projected_matcher_input()
+            }
+            Kind::NotApplied(reason) if reason.uses_matcher() => self.projected_matcher_input(),
             Kind::App(_)
             | Kind::Address(_)
             | Kind::Response(_)
             | Kind::Html(_)
-            | Kind::NotApplied(
-                Reason::AdGuard(_)
-                | Reason::HtmlFiltering(_)
-                | Reason::DenyAllow(_)
-                | Reason::RegexSourceDomain
-                | Reason::NetworkRegex
-                | Reason::Csp(_)
-                | Reason::RemoveParam(_)
-                | Reason::Cookie(_)
-                | Reason::Address(_),
-            ) => None,
-            _ => Some(self.normalized()),
+            | Kind::NotApplied(_) => MatcherInput::None,
+        }
+    }
+
+    fn projected_matcher_input(&self) -> MatcherInput<'_> {
+        if self.redirect_exception {
+            MatcherInput::RedirectOnly(self.rewritten.as_deref().unwrap_or(self.line))
+        } else if let Some(translated) = &self.translated {
+            MatcherInput::Translated(&translated.line)
+        } else if let Some(line) = &self.rewritten {
+            MatcherInput::Rewritten(line)
+        } else if let Some(host) = self.hosts_file {
+            MatcherInput::Hosts(host)
+        } else {
+            MatcherInput::Native(self.line)
+        }
+    }
+
+    pub(crate) fn matcher_input(&self) -> Option<Cow<'_, str>> {
+        match self.matcher_route() {
+            MatcherInput::Native(line)
+            | MatcherInput::Rewritten(line)
+            | MatcherInput::Translated(line) => Some(Cow::Borrowed(line)),
+            MatcherInput::Hosts(host) => Some(host_pattern(host)),
+            MatcherInput::RedirectOnly(_) | MatcherInput::None => None,
         }
     }
 
@@ -386,7 +423,7 @@ impl<'a> Rule<'a> {
             return Cow::Borrowed(line);
         }
         self.hosts_file
-            .map(|host| Cow::Owned(format!("||{host}^")))
+            .map(host_pattern)
             .unwrap_or(Cow::Borrowed(self.line))
     }
 
@@ -437,29 +474,14 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn network(&self) -> Option<NetworkFilter<'_>> {
-        if self.translated.is_some()
-            || matches!(
-                self.kind,
-                Kind::App(_)
-                    | Kind::Address(_)
-                    | Kind::Response(_)
-                    | Kind::Html(_)
-                    | Kind::NotApplied(
-                        Reason::AdGuard(_)
-                            | Reason::HtmlFiltering(_)
-                            | Reason::DenyAllow(_)
-                            | Reason::RegexSourceDomain
-                            | Reason::NetworkRegex
-                            | Reason::Csp(_)
-                            | Reason::RemoveParam(_)
-                            | Reason::Cookie(_)
-                            | Reason::Address(_)
-                    )
-            )
-        {
-            return None;
+        match self.matcher_route() {
+            MatcherInput::Native(line)
+            | MatcherInput::Rewritten(line)
+            | MatcherInput::RedirectOnly(line) => parse_network(line),
+            // The host-only projection parses the synthesized anchor itself.
+            MatcherInput::Hosts(_) => parse_network(self.line),
+            MatcherInput::Translated(_) | MatcherInput::None => None,
         }
-        parse_network(self.rewritten.as_deref().unwrap_or(self.line))
     }
 
     fn unsupported_modifier(&self) -> Option<&'static str> {
@@ -482,7 +504,7 @@ impl<'a> Rule<'a> {
         if self.literal.is_some() {
             self.literal_options().find_map(find)
         } else {
-            let (_, suffix) = self.line.rsplit_once('$')?;
+            let (_, suffix) = literal_parts(self.line)?;
             options::literal_tokens(suffix).find_map(find)
         }
     }
@@ -511,7 +533,7 @@ fn network_qualifiers(options: &Options<'_>) -> Result<Option<denyallow::Conditi
 pub(crate) const REDIRECT_EXCEPTION: &str = "redirect=@abd-all-redirects";
 
 fn rewrite_redirect_options(line: &str) -> (Option<String>, bool) {
-    let Some((pattern, suffix)) = line.rsplit_once('$') else {
+    let Some((pattern, suffix)) = literal_parts(line) else {
         return (None, false);
     };
     let exception = pattern.starts_with("@@");
@@ -600,6 +622,22 @@ impl<'a> AppRule<'a> {
     }
 }
 
+fn has_action_options(options: &Options<'_>) -> bool {
+    // An action value can contain the characters that mark a cosmetic rule.
+    !options.pattern.contains('#')
+        && options.tokens().any(|option| {
+            matches!(
+                option.name(),
+                modifiers::COOKIE
+                    | modifiers::CSP
+                    | modifiers::HLS
+                    | modifiers::REMOVEPARAM
+                    | modifiers::XMLPRUNE
+            ) || option.name() == modifiers::URLTRANSFORM
+                || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
+        })
+}
+
 fn network_condition(line: &str, pattern: &str) -> bool {
     !pattern.contains('#')
         || matches!(
@@ -657,7 +695,7 @@ pub(crate) fn parse_network(line: &str) -> Option<NetworkFilter<'_>> {
 }
 
 pub(crate) fn badfilter_candidate(line: &str) -> bool {
-    line.trim().rsplit_once('$').is_some_and(|(_, suffix)| {
+    literal_parts(line.trim()).is_some_and(|(_, suffix)| {
         options::literal_options(suffix).any(|option| option == "badfilter")
     })
 }
@@ -679,6 +717,10 @@ fn hosts_rule(line: &str) -> Option<&str> {
     }
 }
 
+fn host_pattern(host: &str) -> Cow<'_, str> {
+    Cow::Owned(format!("||{host}^"))
+}
+
 /// A host anchor with no request conditions, or an equivalent hosts-file line.
 fn whole_host<'a>(line: &'a str, hosts_file: Option<&'a str>) -> Option<(Cow<'a, str>, &'a str)> {
     if let Some(rest) = line.strip_prefix("@@").unwrap_or(line).strip_prefix("||") {
@@ -687,7 +729,7 @@ fn whole_host<'a>(line: &'a str, hosts_file: Option<&'a str>) -> Option<(Cow<'a,
         return registrable(host).then_some((Cow::Borrowed(line), host));
     }
     let host = hosts_file?;
-    Some((Cow::Owned(format!("||{host}^")), host))
+    Some((host_pattern(host), host))
 }
 
 pub(crate) fn whole_pattern(line: &str) -> Option<(Cow<'_, str>, &str)> {

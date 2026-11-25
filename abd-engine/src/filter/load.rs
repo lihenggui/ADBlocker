@@ -32,8 +32,11 @@ use super::{
     app_rules, redirects,
 };
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
+use crate::rule::driver::{Sink, drive};
 use crate::rule::javascript::{ScriptTable, Scripts};
-use crate::rule::{self, Kind, SourcePermissions, preprocess};
+use crate::rule::{
+    self, AppRule, Kind, Reason, ResponseRule, Rule, SourcePermissions, address, html, preprocess,
+};
 
 impl ListFiles {
     pub fn filters(&self, cache: Option<&Path>, debug: bool) -> Result<Filters> {
@@ -203,72 +206,114 @@ impl Filters {
     ) -> Result<Self> {
         crate::public_suffix::install();
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
-        let mut rules_count = 0;
-        let texts = || lists.iter().map(|(_, text)| text.as_str());
-        let disabled = badfilters(texts());
-        let mut matcher = MatcherLists::new(debug);
-        // A native block can suppress parameter removal. Keep a parameter-only
-        // matcher for a request that a replacement rule lets through.
-        let mut parameters = FilterSet::new(false);
-        let mut redirects = redirects::RedirectProjections::default();
-        let mut hosts = HostProjections::new();
-        let mut pages = PageProjections::default();
-        let mut apps = AppProjections::default();
-        let mut addresses = AddressProjections::default();
-        let mut responses = ResponseProjections::default();
-        let mut html = HtmlProjections::default();
-        let mut patterns = Patterns::default();
-        let mut scripts = Scripts::default();
-        reserve_exceptions(&lists, &mut patterns, &mut addresses, &mut scripts);
-        for (path, text) in &lists {
-            let permissions = SourcePermissions::for_path(path);
-            let mut normalized = MatcherList::with_capacity(text.len());
-            let mut parameter_list = String::new();
-            for line in preprocess::lines(text) {
-                let source =
-                    rule::read_with_scripts(line, permissions.scripts().then_some(&mut scripts));
-                if matches!(source.kind, Kind::Comment) {
-                    continue;
-                }
-                rules_count += 1;
-                matcher.add(&mut normalized, &source);
-                add_parameters(&mut parameter_list, &source, &disabled);
-                redirects.add_web(&source, &disabled);
-                hosts.add(&source, &disabled);
-                pages.add(&source);
-                match source.kind {
-                    Kind::App(app) => apps.add(&app, &mut patterns),
-                    Kind::Address(address) if !address.exception => {
-                        // The projection tracks or rejects entries at its limits.
-                        let _ = addresses.add(&address);
-                    }
-                    // AdGuard allows any list to cut elements. This grants
-                    // less power than the cosmetic rules any list can use.
-                    Kind::Html(rule) => html.add(source.line, rule),
-                    Kind::Response(response) if permissions.allows_response(&response) => {
-                        responses.add(source.line, response)
-                    }
-                    _ => (),
-                }
-            }
-            hosts.finish_list();
-            matcher.finish_list(normalized, permissions.matcher());
-            if !parameter_list.is_empty() {
-                parameters.add_filter_list(parameter_list, permissions.matcher());
-            }
+        let disabled = badfilters(lists.iter().map(|(_, text)| text.as_str()));
+        let mut compilation = Compilation {
+            matcher: MatcherLists::new(debug),
+            parameters: FilterSet::new(false),
+            redirects: redirects::RedirectProjections::default(),
+            hosts: HostProjections::new(),
+            pages: PageProjections::default(),
+            apps: AppProjections::default(),
+            addresses: AddressProjections::default(),
+            responses: ResponseProjections::default(),
+            html: HtmlProjections::default(),
+            patterns: Patterns::default(),
+            scripts: Scripts::default(),
+        };
+        reserve_exceptions(
+            &lists,
+            &mut compilation.patterns,
+            &mut compilation.addresses,
+            &mut compilation.scripts,
+        );
+        let rules = lists
+            .iter()
+            .map(|(path, text)| {
+                compilation.add_list(text, SourcePermissions::for_path(path), &disabled)
+            })
+            .sum();
+        let texts = lists.iter().map(|(_, text)| text.as_str());
+        Ok(compilation.finish(texts, generation, rules, debug, guard_budget))
+    }
+}
+
+struct Compilation<'a> {
+    matcher: MatcherLists,
+    // Native blocks can suppress parameter removal, even when a replacement lets a request through.
+    parameters: FilterSet,
+    redirects: redirects::RedirectProjections,
+    hosts: HostProjections<'a>,
+    pages: PageProjections,
+    apps: AppProjections<'a>,
+    addresses: AddressProjections,
+    responses: ResponseProjections<'a>,
+    html: HtmlProjections<'a>,
+    patterns: Patterns,
+    scripts: Scripts<'a>,
+}
+
+impl<'a> Compilation<'a> {
+    fn add_list(
+        &mut self,
+        text: &'a str,
+        permissions: SourcePermissions,
+        disabled: &HashSet<u64>,
+    ) -> usize {
+        let mut sink = CompileSink {
+            build: self,
+            permissions,
+            disabled,
+            normalized: MatcherList::with_capacity(text.len()),
+            parameters: String::new(),
+        };
+        let count = drive(text, permissions, None, &mut sink);
+        let CompileSink {
+            normalized,
+            parameters,
+            ..
+        } = sink;
+        self.hosts.finish_list();
+        self.matcher.finish_list(normalized, permissions.matcher());
+        if !parameters.is_empty() {
+            self.parameters
+                .add_filter_list(parameters, permissions.matcher());
         }
+        count
+    }
+
+    fn finish(
+        self,
+        texts: impl Iterator<Item = &'a str>,
+        generation: Option<u64>,
+        rules: usize,
+        debug: bool,
+        guard_budget: usize,
+    ) -> Filters {
+        let Self {
+            matcher,
+            parameters,
+            mut redirects,
+            hosts,
+            pages,
+            apps,
+            addresses,
+            responses,
+            html,
+            mut patterns,
+            scripts,
+        } = self;
         let (apps, app_blocks) = compile_apps(apps, debug, &mut redirects);
         let host_rules = hosts.finish(&app_blocks, guard_budget);
         let mut requests = compile_requests(matcher, redirects);
         let (scripts, responses) = (scripts.finish(), responses.compile(&mut patterns));
         use_resources(&mut requests, &scripts);
         patterns.report_dropped();
-        Ok(Self {
+        Filters {
             generation,
             requests,
             parameters: Engine::new_with_filter_set(parameters),
             scripts,
-            page_exceptions: pages.compile(texts()),
+            page_exceptions: pages.compile(texts),
             hosts: Engine::new_with_filter_set(host_rules.whole),
             host_guards: Engine::new_with_filter_set(host_rules.guards),
             page_host_guards: host_rules.page_guards.map(Engine::new_with_filter_set),
@@ -280,8 +325,88 @@ impl Filters {
             addresses: addresses.finish(),
             responses,
             html: html.finish(),
-            rules: rules_count,
+            rules,
             host_rules: host_rules.count,
-        })
+        }
     }
+}
+
+struct CompileSink<'a, 'build> {
+    build: &'build mut Compilation<'a>,
+    permissions: SourcePermissions,
+    disabled: &'build HashSet<u64>,
+    normalized: MatcherList,
+    parameters: String,
+}
+
+impl CompileSink<'_, '_> {
+    fn project_matcher(&mut self, source: &Rule<'_>) {
+        self.build.matcher.add(&mut self.normalized, source);
+        add_parameters(&mut self.parameters, source, self.disabled);
+        self.build.redirects.add_web(source, self.disabled);
+    }
+}
+
+impl<'a> Sink<'a> for CompileSink<'a, '_> {
+    fn script_table(&mut self) -> Option<&mut Scripts<'a>> {
+        Some(&mut self.build.scripts)
+    }
+
+    fn observe(&mut self, source: &Rule<'a>) {
+        if !matches!(source.kind, Kind::Comment) {
+            self.build.hosts.add(source, self.disabled);
+        }
+    }
+
+    fn comment(&mut self, _: &Rule<'a>) {}
+
+    fn matcher(&mut self, _: usize, source: &Rule<'a>) {
+        self.project_matcher(source);
+    }
+
+    fn app(&mut self, _: usize, source: &Rule<'a>, app: &AppRule<'a>) {
+        self.build.pages.add(source);
+        self.build.apps.add(app, &mut self.build.patterns);
+    }
+
+    fn response(&mut self, _: usize, line: &'a str, rule: ResponseRule<'a>) {
+        if self.permissions.allows_response(&rule) {
+            self.build.responses.add(line, rule);
+        }
+    }
+
+    fn page_exception(&mut self, _: usize, source: &Rule<'a>) {
+        self.project_matcher(source);
+        self.build.pages.add(source);
+    }
+
+    fn cosmetic(&mut self, _: usize, source: &Rule<'a>) {
+        self.project_matcher(source);
+    }
+
+    fn html(&mut self, _: usize, line: &'a str, rule: html::Rule) {
+        // Like hiding elements, cutting them is available to any source.
+        self.build.html.add(line, rule);
+    }
+
+    fn address(&mut self, _: usize, _: &'a str, rule: address::AddressRule<'a>) {
+        if !rule.exception {
+            // Exceptions already had first use of the bounded table.
+            let _ = self.build.addresses.add(&rule);
+        }
+    }
+
+    fn script(&mut self, _: usize, source: &Rule<'a>) {
+        self.project_matcher(source);
+    }
+
+    fn redirect(&mut self, _: usize, source: &Rule<'a>) {
+        self.project_matcher(source);
+    }
+
+    fn not_applied(&mut self, _: usize, source: &Rule<'a>, _: &Reason) {
+        self.project_matcher(source);
+    }
+
+    fn directive(&mut self, _: usize, _: &'a str, _: preprocess::DirectiveIssue) {}
 }
