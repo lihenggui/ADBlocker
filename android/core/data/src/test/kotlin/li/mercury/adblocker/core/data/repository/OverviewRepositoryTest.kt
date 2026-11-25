@@ -55,6 +55,6 @@ class OverviewRepositoryTest {
         assertEquals(BlockedCount(184, 52), snapshot.stats.today)
         assertEquals(BlockedCount(188, 43), snapshot.stats.perApp.getValue("com.example.news").week)
         assertEquals(4242, snapshot.status.pid)
-        assertEquals(3, snapshot.lists.count { it.enabled })
+        assertEquals(4, snapshot.lists.count { it.enabled })
     }
 }

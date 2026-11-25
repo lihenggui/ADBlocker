@@ -233,7 +233,7 @@ mod tests {
         entry["url"].as_str().unwrap().to_owned()
     }
 
-    const CHINESE: &[&str] = &["easylist_china", "adguard_chinese", "awavenue"];
+    const CHINESE: &[&str] = &["easylist_china", "adguard_chinese", "awavenue", "anti_ad"];
 
     #[test]
     fn a_language_locale_region_or_time_zone_can_each_enable_a_regional_default() {

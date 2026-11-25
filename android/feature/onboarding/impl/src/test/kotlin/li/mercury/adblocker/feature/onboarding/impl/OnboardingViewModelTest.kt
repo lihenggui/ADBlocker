@@ -416,6 +416,7 @@ class OnboardingViewModelTest {
         assertEquals(true, chinese[china])
         assertEquals(true, chinese[url("adguard_chinese")])
         assertEquals(true, chinese[url("awavenue")])
+        assertEquals(true, chinese[url("anti_ad")])
         assertEquals(null, chinese[japan])
         assertEquals(false, FilterCatalog.setupLists(listOf("ja-JP"), "Etc/UTC")[china])
         assertEquals(true, FilterCatalog.setupLists(listOf("ja-JP"), "Etc/UTC")[japan])

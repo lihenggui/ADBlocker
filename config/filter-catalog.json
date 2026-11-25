@@ -128,6 +128,16 @@
       "defaultRegions": ["CN", "HK", "MO", "TW"]
     },
     {
+      "id": "anti_ad",
+      "url": "https://anti-ad.net/adguard.txt",
+      "title": "anti-AD",
+      "license": "MIT",
+      "descriptions": {"en": "Advertising and tracking hosts used by Chinese apps and sites", "zh": "中文应用和网站使用的广告及跟踪域名"},
+      "category": "Regional",
+      "defaultLanguages": ["zh"],
+      "defaultRegions": ["CN", "HK", "MO", "TW"]
+    },
+    {
       "id": "easylist_dutch",
       "url": "https://easylist-downloads.adblockplus.org/easylistdutch.txt",
       "title": "EasyList Dutch",

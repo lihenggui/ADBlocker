@@ -38,7 +38,7 @@ class FilterCatalogTest {
     @Test
     fun givenALanguageRegionOrTimeZone_whenSuggestingLists_thenEachCanEnableTheSameDefaults() {
         val general = FilterCatalog.setupLists(listOf("en-US"), "Etc/UTC").filterValues { it }.keys
-        val chinese = setOf("easylist_china", "adguard_chinese", "awavenue")
+        val chinese = setOf("easylist_china", "adguard_chinese", "awavenue", "anti_ad")
         val expected = general + FilterCatalog.entries.filter { it.id in chinese }.map { it.url }
         for ((locales, zone) in listOf(
             listOf("zh") to "Etc/UTC",

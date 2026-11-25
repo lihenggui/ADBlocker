@@ -269,7 +269,7 @@ class AbdProtocolTest {
     @Test
     fun listsSayWhetherTheyAreOnAndHowTheLastUpdateWent() {
         val lists = parseLists(case("lists.json"))
-        assertEquals(8, lists.size)
+        assertEquals(9, lists.size)
         assertEquals(72410, lists[0].rules)
         assertEquals("connection timed out", lists[1].error)
         assertFalse(lists[1].usingPreviousAddress)
@@ -282,6 +282,10 @@ class AbdProtocolTest {
         assertFalse(lists[3].enabled)
         assertEquals("adguard_base", FilterCatalog.byUrl(lists[3].url)?.id)
         assertEquals("ublock", FilterCatalog.byUrl(lists[6].url)?.id)
+        val antiAd = lists.last()
+        assertTrue(antiAd.enabled)
+        assertTrue(antiAd.awaitsFirstDownload)
+        assertEquals("anti_ad", FilterCatalog.byUrl(antiAd.url)?.id)
     }
 
     @Test

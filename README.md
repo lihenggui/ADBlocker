@@ -116,9 +116,9 @@ apps** filters only the apps the system shows, so until it is allowed
 Setup suggests the general lists and regional lists. A regional list is
 on by default when it matches a system language, a region in the system
 locales, or the country of a time zone that belongs to one country.
-EasyList China, AdGuard Chinese and AWAvenue Ads Rule are on by default
-when the system language is Chinese or the region is mainland China,
-Hong Kong, Macau or Taiwan.
+EasyList China, AdGuard Chinese, AWAvenue Ads Rule and anti-AD are on by
+default when the system language is Chinese or the region is mainland
+China, Hong Kong, Macau or Taiwan.
 
 ADBlocker saves the selected subscriptions, downloads the lists, and
 updates them in the background at the configured interval. It follows

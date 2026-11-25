@@ -26,6 +26,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsFocused
 import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasSetTextAction
@@ -43,6 +44,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.android.apps.common.testing.accessibility.framework.AccessibilityCheckResultUtils
 import com.google.android.apps.common.testing.accessibility.framework.checks.TouchTargetSizeCheck
 import kotlinx.coroutines.cancel
+import li.mercury.adblocker.core.data.FilterCatalog
 import li.mercury.adblocker.core.data.repository.RulesRepository
 import li.mercury.adblocker.core.designsystem.theme.ADBlockerTheme
 import li.mercury.adblocker.core.model.ListUpdateState
@@ -132,7 +134,12 @@ class FiltersScreenScreenshotTests {
     @Test
     @Config(qualifiers = "zh-rCN")
     fun givenLists_whenShownInChinese_thenMatchesGolden() {
-        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "Filters", accessibilitySuppressions = coveredByFab) { Filters(state) }
+        val entry = FilterCatalog.entries.single { it.id == "anti_ad" }
+        val antiAd = DemoData.lists.first().copy(url = entry.url, title = entry.title, rules = 102_748)
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "Filters", accessibilitySuppressions = coveredByFab) {
+            Filters(state.copy(lists = listOf(antiAd) + state.lists))
+        }
+        composeTestRule.onNodeWithText(entry.title).assertIsDisplayed()
     }
 
     @Test

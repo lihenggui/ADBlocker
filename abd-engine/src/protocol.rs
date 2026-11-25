@@ -404,6 +404,7 @@ mod tests {
     const CHINA: &str = "https://easylist-downloads.adblockplus.org/easylistchina.txt";
     const OLD_ADGUARD_CHINESE: &str = "https://filters.adtidy.org/extension/ublock/filters/224.txt";
     const ADGUARD_CHINESE: &str = "https://filters.adtidy.org/android/filters/224.txt";
+    const ANTI_AD: &str = "https://anti-ad.net/adguard.txt";
     const OLD_ADGUARD_BASE: &str =
         "https://filters.adtidy.org/extension/ublock/filters/2_without_easylist.txt";
 
@@ -858,7 +859,7 @@ mod tests {
         std::fs::write(
             paths.sources(),
             format!(
-                "# The filter lists\n{EASYLIST}\n{CHINA}\n{OLD_ADGUARD_CHINESE}\n#{OLD_ADGUARD_BASE}\n{}",
+                "# The filter lists\n{EASYLIST}\n{CHINA}\n{OLD_ADGUARD_CHINESE}\n#{OLD_ADGUARD_BASE}\n{}{ANTI_AD}\n",
                 crate::sources::tests::defaults_off(&[EASYLIST, ADGUARD_CHINESE])
             ),
         )
