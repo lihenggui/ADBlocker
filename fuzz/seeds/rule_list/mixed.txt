@@ -8,7 +8,6 @@ $image,third-party,denyallow=assets.example,domain=page.example
 !#endif
 !#if (adguard || ext_ublock)
 ||example.org^$jsonprune=\$..ad
-||example.org^$xmlprune=//ad
 ||example.org^$hls=/sponsor/it
 ||example.org^$cookie=;maxAge=60;sameSite=lax
 ||example.org^$replace=/sponsor/promotion/

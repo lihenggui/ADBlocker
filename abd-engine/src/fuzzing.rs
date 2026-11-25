@@ -22,11 +22,11 @@ use hyper::Uri;
 use hyper::header::{HeaderMap, HeaderValue, SET_COOKIE};
 
 use crate::filter::Filters;
+use crate::htmlfilter;
 use crate::jsonpath;
 use crate::list_files::{MAX_LIST, MAX_LISTS};
 use crate::rule::action::{ActionKind, ResponseAction, cookie, hls};
 use crate::rule::{self, Kind};
-use crate::{htmlfilter, xpath};
 
 // Let each parser reach its own limits without a clock-dependent cutoff.
 // libFuzzer imposes a timeout on each input.
@@ -99,26 +99,6 @@ fn compile_action(kind: ActionKind, value: &str) -> ResponseAction {
     kind.parse(value)
         .and_then(|spec| spec.compile_checked())
         .expect("valid action fixture")
-}
-
-pub fn xml_prune(input: &[u8]) {
-    static PATHS: LazyLock<[xpath::XPath; 3]> = LazyLock::new(|| {
-        [
-            "//ad | //comment()",
-            "//*/@ad",
-            "//item[2]/following-sibling::*",
-        ]
-        .map(|path| xpath::XPath::parse(path).expect("valid XPath fixture"))
-    });
-    let body = Bytes::copy_from_slice(input);
-    for path in PATHS.iter() {
-        let _ = xpath::prune(path, body.clone(), &within_budget);
-    }
-    if let Some((expression, body)) = expression_and_body(input)
-        && let Ok(path) = xpath::XPath::parse(expression)
-    {
-        let _ = xpath::prune(&path, Bytes::copy_from_slice(body), &within_budget);
-    }
 }
 
 pub fn set_cookie(input: &[u8]) {

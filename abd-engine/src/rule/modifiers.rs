@@ -99,7 +99,7 @@ const PRUNE_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
 ];
-const PLAYLIST_OR_XML_OPTIONS: &[Allowed] = &[
+const PLAYLIST_OPTIONS: &[Allowed] = &[
     allow(APP),
     allow("domain"),
     allow_negation("third-party"),
@@ -107,7 +107,7 @@ const PLAYLIST_OR_XML_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
     // The reference permits the strict forms. Their matching semantics
-    // are unavailable to HLS and XML pruning rules, as with jsonprune.
+    // are unavailable to HLS rules, as with jsonprune.
 ];
 const COOKIE_OPTIONS: &[Allowed] = &[
     allow_negation("domain"),
@@ -154,10 +154,7 @@ static MODIFIERS: &[Modifier] = &[
     ),
     modifier(
         &[HLS],
-        Action(
-            ActionKind::Hls,
-            Compatibility::Only(PLAYLIST_OR_XML_OPTIONS),
-        ),
+        Action(ActionKind::Hls, Compatibility::Only(PLAYLIST_OPTIONS)),
         Optional,
     ),
     modifier(
@@ -225,14 +222,7 @@ static MODIFIERS: &[Modifier] = &[
         Optional,
     ),
     modifier(&["header"], Unsupported, Required),
-    modifier(
-        &[XMLPRUNE],
-        Action(
-            ActionKind::XmlPrune,
-            Compatibility::Only(PLAYLIST_OR_XML_OPTIONS),
-        ),
-        Optional,
-    ),
+    modifier(&[XMLPRUNE], Unsupported, Optional),
     modifier(&["referrerpolicy"], Unsupported, Required),
     modifier(&["strict-third-party", "strict3p"], Unsupported, FlagValue),
     modifier(&["strict-first-party", "strict1p"], Unsupported, FlagValue),
@@ -252,6 +242,7 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
         || line.contains(",_")
         || line.contains("$hls")
         || line.contains(",hls")
+        || line.contains(XMLPRUNE)
         || OWNED_NAMES.iter().any(|name| line.contains(name))
         || line
             .split_once('$')

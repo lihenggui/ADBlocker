@@ -161,7 +161,7 @@ and `dns/rules.rs` its lookups.
 - Lists are untrusted input. Any list can block traffic, hide or cut HTML
   elements, remove cookies and query parameters, and add Content Security
   Policies. Approved lists and the user's rules can also rewrite text, prune
-  JSON and XML, edit playlists, remove headers, transform URLs, and supply
+  JSON, edit playlists, remove headers, transform URLs, and supply
   JavaScript bodies.
   `abd-engine/src/update/` never replaces a list with what does not look like one.
 

@@ -291,9 +291,7 @@ fn apply_actions(
     }: BodyEdit,
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Bytes> {
-    // Apply $jsonprune, HTML filtering, $hls, $xmlprune, then $replace.
-    // For DASH and other XML-only responses, the only overlapping edit
-    // is $replace. XHTML can also go through HTML filtering.
+    // Apply $jsonprune, HTML filtering, $hls, then $replace.
     for group in actions.chunk_by(|a, b| a.kind() == b.kind()) {
         let kind = group[0].kind();
         if kind != ActionKind::Prune

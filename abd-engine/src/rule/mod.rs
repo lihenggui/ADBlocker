@@ -97,10 +97,10 @@ pub(crate) enum Reason {
 }
 
 impl Reason {
-    // A known modifier still gets the upstream matcher's verdict.
+    // Modifiers passed to the upstream matcher get its verdict.
     fn uses_matcher(&self) -> bool {
         match self {
-            Self::Modifier(_) => true,
+            Self::Modifier(name) => *name != modifiers::XMLPRUNE,
             Self::DenyAllow(_)
             | Self::RegexSourceDomain
             | Self::NetworkRegex
@@ -212,6 +212,16 @@ pub(crate) fn read_with_scripts<'a>(
     let custom = may_have_owned_options(line)
         .then(|| Options::read(line, Quoting::AdGuard))
         .flatten();
+    if custom.as_ref().is_some_and(|options| {
+        options
+            .tokens()
+            .any(|token| token.name() == modifiers::XMLPRUNE)
+            && (options::regex_option_separator(line).is_some()
+                || network_condition(line, options.pattern))
+    }) {
+        rule.kind = Kind::NotApplied(Reason::Modifier(modifiers::XMLPRUNE));
+        return rule;
+    }
     if let Some(address) = custom
         .as_ref()
         .and_then(|options| address::AddressRule::read(line, options))
@@ -666,11 +676,7 @@ fn has_action_options(options: &Options<'_>) -> bool {
         && options.tokens().any(|option| {
             matches!(
                 option.name(),
-                modifiers::COOKIE
-                    | modifiers::CSP
-                    | modifiers::HLS
-                    | modifiers::REMOVEPARAM
-                    | modifiers::XMLPRUNE
+                modifiers::COOKIE | modifiers::CSP | modifiers::HLS | modifiers::REMOVEPARAM
             ) || option.name() == modifiers::URLTRANSFORM
                 || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
         })

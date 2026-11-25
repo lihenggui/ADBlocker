@@ -52,7 +52,6 @@ codes! {
     ResponseTrust => Untrusted, "response-trust";
     ReplaceValue => Invalid, "replace-value";
     JsonpruneValue => Invalid, "jsonprune-value";
-    XmlpruneValue => Invalid, "xmlprune-value";
     UrltransformValue => Invalid, "urltransform-value";
     CosmeticSyntax => Invalid, "cosmetic-syntax";
     CosmeticScope => Invalid, "cosmetic-scope";

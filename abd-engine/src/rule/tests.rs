@@ -302,6 +302,36 @@ fn a_known_unapplied_modifier_names_the_option_that_cannot_be_applied() {
 }
 
 #[test]
+fn xmlprune_is_set_aside_even_with_other_options_or_quoted_values() {
+    for line in [
+        "||example.org^$xmlprune=//ad",
+        "@@||example.org^$xmlprune",
+        "@@||example.org^$document,xmlprune",
+        "||example.org^$app=com.reader,xmlprune=//ad",
+        "||example.org^$replace=/ad/ok/,xmlprune=//ad",
+        "192.0.2.1$network,xmlprune=//ad",
+        r"||example.org^$xmlprune=//a[@k='cost$']",
+        r"||example.org^$~xmlprune=//a[@k='cost$']",
+        r"||example.org^$xmlprune=//a[@k='$script",
+    ] {
+        let rule = read(line);
+        assert!(
+            matches!(rule.kind, Kind::NotApplied(Reason::Modifier("xmlprune"))),
+            "{line}"
+        );
+        assert!(rule.matcher_input().is_none(), "{line}");
+        let check = crate::rulecheck::check(line, SourcePermissions::USER);
+        assert_eq!(check.issues.len(), 1, "{line}");
+        assert_eq!(
+            check.issues[0].kind,
+            crate::protocol_types::IssueKind::Unsupported,
+            "{line}"
+        );
+        assert_eq!(check.issues[0].reason, "option:xmlprune", "{line}");
+    }
+}
+
+#[test]
 fn each_escape_is_decoded_only_when_the_modifier_asks_for_it() {
     for (escape, decoded, ch) in [
         (r"\,", ",", ','),

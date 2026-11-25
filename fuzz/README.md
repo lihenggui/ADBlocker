@@ -9,7 +9,7 @@ cargo +nightly fuzz run json_prune fuzz/corpus/json_prune fuzz/seeds/json_prune 
   -max_total_time=300 -timeout=5 -max_len=65536
 ```
 
-Use `cargo +nightly fuzz list` to find the other targets. JSON and XML inputs can
+Use `cargo +nightly fuzz list` to find the other targets. JSON inputs can
 be raw bodies or a path expression on the first line followed by a body.
 `rule_list` builds the complete matcher and projection tables for a list.
 

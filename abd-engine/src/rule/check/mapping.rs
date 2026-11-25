@@ -24,7 +24,12 @@ impl Reason {
         match self {
             Self::Modifier(name) => {
                 let modifier = modifiers::lookup(name).expect("known modifier");
-                let valid = Options::read(line, Quoting::Literal).is_some_and(|options| {
+                let quoting = if *name == modifiers::XMLPRUNE {
+                    Quoting::AdGuard
+                } else {
+                    Quoting::Literal
+                };
+                let valid = Options::read(line, quoting).is_some_and(|options| {
                     options
                         .tokens()
                         .any(|token| token.name() == *name && modifier.accepts_value(token.value))

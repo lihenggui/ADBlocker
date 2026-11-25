@@ -360,4 +360,27 @@ mod tests {
         );
         assert!(Filters::read_cache(cache.path(), key).is_some());
     }
+
+    #[test]
+    fn a_cache_with_an_old_generation_is_rebuilt_from_its_lists() {
+        let temp = tempfile::tempdir().unwrap();
+        let lists = temp.path().join("lists");
+        let cache = temp.path().join("cache");
+        std::fs::create_dir(&lists).unwrap();
+        std::fs::write(lists.join("user.txt"), "||ads.example^\n").unwrap();
+        let key = crate::list_files::ListFiles::read(&[&lists])
+            .unwrap()
+            .generation;
+        Filters::load_cached(&[&lists], &cache).unwrap();
+
+        let key_file = cache.join("key");
+        let current = std::fs::read_to_string(&key_file).unwrap();
+        let (_, rest) = current.split_once(' ').unwrap();
+        std::fs::write(&key_file, format!("{} {rest}", key.wrapping_add(1))).unwrap();
+        assert!(Filters::read_cache(&cache, key).is_none());
+
+        let rebuilt = Filters::load_cached(&[&lists], &cache).unwrap();
+        assert!(rebuilt.blocks_host("ads.example"));
+        assert!(Filters::read_cache(&cache, key).is_some());
+    }
 }

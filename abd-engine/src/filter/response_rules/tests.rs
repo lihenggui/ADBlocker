@@ -668,7 +668,6 @@ mod hls;
 mod prune;
 mod removeheader;
 mod urltransform;
-mod xmlprune;
 
 #[test]
 fn response_patterns_and_their_exceptions_survive_the_cache_without_network_app_rules() {

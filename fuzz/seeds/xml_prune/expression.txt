@@ -1,2 +1,0 @@
-//item[position() mod 2 = 1]/@ad | //ad[../@type = 'feed']
-<r type="feed"><item ad="1"/><item ad="2"/><ad>text</ad></r>

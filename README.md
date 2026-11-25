@@ -245,8 +245,7 @@ A matching `$replace` rule can override a request block and rewrite the
 text response when URL filtering is on. A matching `$jsonprune` rule
 removes items from a JSON or JSONP response and leaves request blocking
 in effect. A matching `$hls` rule removes segments and their associated
-tags from an HLS playlist. A matching `$xmlprune` rule removes items
-selected by XPath 1.0 from XML responses, including DASH manifests.
+tags from an HLS playlist.
 `$removeheader=header-name` removes a response
 header, and `$removeheader=request:header-name` removes a request header.
 A `$urltransform` rule can change a request's path and query before it

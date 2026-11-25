@@ -44,7 +44,6 @@ dependencies = [
  "regex",
  "regex-automata",
  "ring",
- "roxmltree",
  "rustc-hash",
  "rustls",
  "serde",

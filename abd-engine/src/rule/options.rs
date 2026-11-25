@@ -250,6 +250,7 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
                 NETWORK,
                 REMOVEPARAM,
                 URLTRANSFORM,
+                XMLPRUNE,
             ]
             .into_iter()
             .any(|name| {
@@ -263,13 +264,12 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
         }
         if let Some(end) = custom_value_end(option) {
             cursor += end;
-        } else if [PRUNE, XMLPRUNE].into_iter().any(|name| {
-            option
-                .strip_prefix(name)
-                .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-        }) {
-            // Keep malformed quoting in the response rule so it cannot
-            // turn into a block by moving the option separator.
+        } else if option
+            .strip_prefix(PRUNE)
+            .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+        {
+            // Keep malformed quoting with the modifier so it cannot turn
+            // into a block by moving the option separator.
             return last;
         }
     }

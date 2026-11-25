@@ -188,7 +188,6 @@ can also report `untrusted` for rules that need an approved source.
 | `invalid` | `style-syntax` | The AdGuard style rule is malformed. |
 | `invalid` | `unsafe-scriptlet` | The scriptlet text cannot be safely placed in the page. |
 | `invalid` | `urltransform-value` | The URL transformation or its expression is invalid. |
-| `invalid` | `xmlprune-value` | The XML path or its expression is invalid. |
 | `unsupported` | `address-limit` | The address rule table is full. |
 | `unsupported` | `adguard-cosmetic-matcher` | The AdGuard page rule cannot be represented by the cosmetic matcher. |
 | `unsupported` | `cookie-too-long` | The cookie rule or expression exceeds its size limit. |

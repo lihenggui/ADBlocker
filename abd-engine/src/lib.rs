@@ -67,7 +67,6 @@ pub mod state;
 pub mod stats;
 pub mod tls;
 pub mod update;
-mod xpath;
 
 #[cfg(test)]
 mod test_support;

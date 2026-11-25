@@ -710,46 +710,14 @@ $~removeparam=track
 ! expect: invalid response-qualifier:script
 ||example.org^$jsonprune=\$.ads,script
 
-! XML pruning
-! Synthetic XML pruning example.
+! Prime Video list rule.
 ! source: trusted
-! expect: applied
-||example.org^$xmlprune=/MPD/Period
-! Synthetic XML pruning example.
+! expect: unsupported option:xmlprune
+.mpd$xmlprune=//*[name()="Period"][.//*[@value="Ad"]] | //*[name()="Period"]/@start[boolean(//*[@value="Ad"])],xmlhttprequest,domain=amazon.com|amazon.co.jp|amazon.de|amazon.co.uk|primevideo.com
+! Hulu list rule.
 ! source: trusted
-! expect: applied
-||example.org^$xmlprune=//Period[@id="ad"]
-! Synthetic XML pruning example.
-! source: trusted
-! expect: applied
-||example.org^$xmlprune=//Period[contains(@id\,'ad-')]
-! Synthetic XML pruning example.
-! source: trusted
-! expect: applied
-||example.org^$xmlprune=//A | //B
-! Synthetic XML pruning example.
-! source: trusted
-! expect: applied
-||example.org^$xmlprune=//Ad,xmlhttprequest
-! Synthetic XML pruning example.
-! source: trusted
-! expect: applied
-@@||example.org/allowed$xmlprune
-! XML pruning from lists/2.txt, line 65493.
-! source: trusted
-! expect: applied
+! expect: unsupported option:xmlprune
 /manifest.mpd$xmlprune=/MPD/Period[contains(@id\,'ad-')],domain=hulu.com
-! Synthetic XML pruning example.
-! expect: untrusted response-trust:xmlprune
-||example.org^$xmlprune=//Ad
-! Synthetic XML pruning example.
-! source: trusted
-! expect: invalid xmlprune-value
-||example.org^$xmlprune=//[
-! Synthetic XML pruning example.
-! source: trusted
-! expect: invalid response-qualifier:strict3p
-||example.org^$xmlprune=//Ad,strict3p
 
 ! HLS playlists
 ! Synthetic HLS playlists example.
