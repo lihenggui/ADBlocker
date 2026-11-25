@@ -157,6 +157,7 @@ class VpnSessionTest {
         val changes = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
         val apps = TestVpnAppRepository(status(paused = false, resumeAt = null))
         var reloads = 0
+        var wallClockOffsetMs = 0L
 
         val session = VpnSession(
             host = host,
@@ -168,7 +169,7 @@ class VpnSessionTest {
             running = running,
             ownPackage = OWN,
             scope = test.backgroundScope,
-            now = { NOW },
+            now = { NOW.plusMillis(test.testScheduler.currentTime + wallClockOffsetMs) },
         )
 
         val state get() = running.status.value.state
@@ -266,6 +267,7 @@ class VpnSessionTest {
         changed(vpn)
         vpn.host.ipv6 = false
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(1, vpn.host.inventories)
 
@@ -457,9 +459,11 @@ class VpnSessionTest {
         vpn.session.start(1)
         vpn.host.ipv6 = true
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         // Unchanged: nothing is built again.
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(listOf(false, true), vpn.host.builtIpv6)
         assertEquals(VpnState.On, vpn.state)
@@ -471,6 +475,7 @@ class VpnSessionTest {
         vpn.session.start(1)
         vpn.host.ipv6 = false
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(emptyList(), vpn.host.built)
     }
@@ -483,12 +488,41 @@ class VpnSessionTest {
         vpn.session.start(1)
         vpn.host.networkHandle = 2L
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(listOf(true, true), vpn.host.builtIpv6)
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(2, vpn.host.built.size)
         vpn.session.stop()
+    }
+
+    @Test
+    fun givenTheDefaultNetworkIsLost_whenAReplacementArrivesWithinTheDebounce_thenOnlyTheReplacementIsRouted() = runTest {
+        val vpn = Vpn(this)
+        vpn.choose(NEWS)
+        vpn.host.installed[NEWS] = 10_001
+        vpn.session.start(1)
+
+        vpn.host.networkHandle = null
+        vpn.host.ipv6 = false
+        vpn.session.networkChanged()
+        advanceTimeBy(200)
+        assertEquals(listOf(true), vpn.host.builtIpv6)
+
+        vpn.host.networkHandle = 2L
+        vpn.host.ipv6 = true
+        vpn.host.dnsServers = listOf("192.0.2.53:53")
+        vpn.session.networkChanged()
+        advanceTimeBy(200)
+        runCurrent()
+        assertEquals(listOf(emptyList()), vpn.engine.startedDns)
+
+        advanceTimeBy(400)
+        runCurrent()
+        assertEquals(listOf(true, true), vpn.host.builtIpv6)
+        assertEquals(listOf(emptyList(), listOf("192.0.2.53:53")), vpn.engine.startedDns)
     }
 
     @Test
@@ -499,9 +533,11 @@ class VpnSessionTest {
         vpn.session.start(1)
         vpn.host.dnsServers = listOf("192.0.2.53:53", "[2001:db8::53]:53")
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         vpn.host.dnsServers = listOf("198.51.100.53:53")
         vpn.session.networkChanged()
+        advanceTimeBy(500)
         runCurrent()
         assertEquals(listOf(false, true, true), vpn.host.builtWithVirtualDns)
         assertEquals(
@@ -647,6 +683,48 @@ class VpnSessionTest {
     }
 
     @Test
+    fun givenAnActiveVpn_whenItsSelectionBecomesUnreadable_thenTheStackAndServiceStop() = runTest {
+        val vpn = Vpn(this)
+        vpn.choose(NEWS)
+        vpn.host.installed[NEWS] = 10_001
+        vpn.session.start(1)
+        assertEquals(100, vpn.engine.running)
+
+        vpn.apps.selectionsFailure = AbdException.CommandFailed("app selections")
+        changed(vpn)
+
+        assertEquals(VpnState.Failed, vpn.state)
+        assertEquals(null, vpn.engine.running)
+        assertEquals(null, vpn.engine.binding)
+        assertEquals(listOf(1), vpn.host.finished)
+    }
+
+    @Test
+    fun givenAnUnrecognizedStart_whenTheVpnIsIdle_thenItStopsTheService() = runTest {
+        val vpn = Vpn(this)
+        var stopped = false
+
+        vpn.session.unrecognizedStart(1) { stopped = true }
+
+        assertTrue(stopped)
+        assertEquals(VpnState.Off, vpn.state)
+    }
+
+    @Test
+    fun givenAnUnrecognizedStart_whenTheVpnIsActive_thenItKeepsRunningAndFinishesWithTheLatestId() = runTest {
+        val vpn = Vpn(this)
+        vpn.choose(NEWS)
+        vpn.host.installed[NEWS] = 10_001
+        vpn.session.start(1)
+
+        vpn.session.unrecognizedStart(2) { error("active service stopped") }
+
+        assertEquals(VpnState.On, vpn.state)
+        vpn.session.stop()
+        assertEquals(listOf(2), vpn.host.finished)
+    }
+
+    @Test
     fun aRunningVpnThatCannotReadTheChosenAppsGoesOnAsItIs() = runTest {
         val vpn = Vpn(this)
         vpn.choose(NEWS)
@@ -730,6 +808,43 @@ class VpnSessionTest {
         runCurrent()
         assertEquals(Shown(apps = 1, status = ReadState.Available(vpn.apps.daemonStatus)), vpn.host.shown.last())
         assertEquals(1, vpn.host.built.size)
+    }
+
+    @Test
+    fun givenASleepPastThePauseDeadline_whenTheScreenTurnsOn_thenTheNotificationReadsTheCurrentStatus() = runTest {
+        val vpn = Vpn(this)
+        vpn.choose(NEWS)
+        vpn.host.installed[NEWS] = 10_001
+        vpn.apps.daemonStatus = status(paused = true, resumeAt = NOW.plusSeconds(60))
+        vpn.session.start(1)
+        runCurrent()
+
+        vpn.wallClockOffsetMs = 61_000
+        vpn.apps.daemonStatus = status(paused = false, resumeAt = null)
+        vpn.session.clockChanged()
+        runCurrent()
+
+        assertEquals(Shown(apps = 1, status = ReadState.Available(vpn.apps.daemonStatus)), vpn.host.shown.last())
+        assertEquals(1, vpn.host.built.size)
+    }
+
+    @Test
+    fun givenTheClockMovesBack_whenTheOldPauseTimerWakes_thenItWaitsForTheNewDeadline() = runTest {
+        val vpn = Vpn(this)
+        vpn.apps.daemonStatus = status(paused = true, resumeAt = NOW.plusSeconds(60))
+        vpn.session.start(1)
+        runCurrent()
+        val shown = vpn.host.shown.toList()
+
+        vpn.wallClockOffsetMs = -30_000
+        advanceTimeBy(61_000)
+        runCurrent()
+        assertEquals(shown, vpn.host.shown)
+
+        vpn.apps.daemonStatus = status(paused = false, resumeAt = null)
+        advanceTimeBy(30_000)
+        runCurrent()
+        assertEquals(Shown(apps = 0, status = ReadState.Available(vpn.apps.daemonStatus)), vpn.host.shown.last())
     }
 
     private companion object {

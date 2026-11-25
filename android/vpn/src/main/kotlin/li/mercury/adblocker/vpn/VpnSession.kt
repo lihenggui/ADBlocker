@@ -17,12 +17,15 @@
 package li.mercury.adblocker.vpn
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
@@ -148,10 +151,13 @@ internal class VpnSession(
     @Volatile
     private var stack = 0
     private var watching: Job? = null
+
+    @Volatile
     private var pauseEnd: Job? = null
 
     // Conflated: however many changes come at once, one refresh follows.
     private val refreshes = Channel<Unit>(Channel.CONFLATED)
+    private val networkChanges = Channel<Unit>(Channel.CONFLATED)
     private val reloadAsked = AtomicBoolean()
 
     /**
@@ -221,7 +227,16 @@ internal class VpnSession(
 
     /** The network beneath changed: the VPN may carry IPv6, or no longer. */
     fun networkChanged() {
-        refreshes.trySend(Unit)
+        networkChanges.trySend(Unit)
+    }
+
+    /** The wall clock can advance while a coroutine delay is suspended in deep sleep. */
+    fun clockChanged() {
+        if (pauseEnd != null) refreshes.trySend(Unit)
+    }
+
+    suspend fun unrecognizedStart(startId: Int, stopIfIdle: () -> Unit) = running.lock.withLock {
+        if (active) this.startId = startId else stopIfIdle()
     }
 
     /** The system took the VPN away, and has deactivated it already. */
@@ -232,10 +247,14 @@ internal class VpnSession(
         end(VpnState.Off, interrupted = !routed.isNullOrEmpty() && host.prepared())
     }
 
+    @OptIn(FlowPreview::class)
     private fun watch() {
         watching?.cancel()
         watching = scope.launch {
             launch { changes.collect { refreshes.trySend(Unit) } }
+            launch {
+                networkChanges.receiveAsFlow().debounce(NETWORK_DEBOUNCE_MS).collect { refresh() }
+            }
             launch {
                 method.first { it != FilterMethod.Vpn }
                 Timber.i("vpn: stopped, the method in use is now the root module")
@@ -249,9 +268,12 @@ internal class VpnSession(
     private suspend fun refreshLocked(starting: Boolean): Boolean {
         if (!active) return false
         noteAppListAccess()
-        val selection = suspendRunCatching { vpnApps.appSelections() }
-        val config = selection.getOrNull()
-        if (config?.scope == FilteringScope.All) {
+        val config = suspendRunCatching { vpnApps.appSelections() }.getOrElse {
+            Timber.w("vpn: app selection: %s", it.javaClass.simpleName)
+            end(VpnState.Failed)
+            return false
+        }
+        if (config.scope == FilteringScope.All) {
             val inventory = personalAppInventory()
             val selected = inventory.filterNot { it.isExcluded(config.excluded) }
             val wanted = selected.flatMap { app -> app.members.map { it to app.uid } }.toMap()
@@ -262,10 +284,7 @@ internal class VpnSession(
         }
 
         reloadIfAsked()
-        val chosen = suspendRunCatching {
-            selection.getOrThrow()
-            vpnApps.apps()
-        }.getOrElse {
+        val chosen = suspendRunCatching { vpnApps.apps() }.getOrElse {
             Timber.w("vpn: chosen apps: %s", it.javaClass.simpleName)
             // One that cannot start ends; one that runs goes on as it is.
             if (starting) {
@@ -389,9 +408,17 @@ internal class VpnSession(
         // The engine ends a pause by itself and tells nobody: the
         // notification is read again then.
         pauseEnd?.cancel()
-        if (resumeAt != null) {
-            pauseEnd = scope.launch {
-                delay(Duration.between(now(), resumeAt).toMillis().coerceAtLeast(0) + PAUSE_END_MARGIN_MS)
+        pauseEnd = resumeAt?.let { deadline ->
+            scope.launch {
+                val readAt = deadline.plusMillis(PAUSE_END_MARGIN_MS)
+                // A stale status can still report a past deadline. Give the engine
+                // time before reading it again, even if the deadline already passed.
+                delay(Duration.between(now(), readAt).toMillis().coerceAtLeast(PAUSE_END_MARGIN_MS))
+                while (true) {
+                    val remaining = Duration.between(now(), readAt)
+                    if (remaining.isNegative || remaining.isZero) break
+                    delay(remaining.toMillis().coerceAtLeast(1))
+                }
                 refreshes.trySend(Unit)
             }
         }
@@ -410,6 +437,7 @@ internal class VpnSession(
         active = false
         host.filteringEnded(interrupted)
         pauseEnd?.cancel()
+        pauseEnd = null
         stopStack()
         routed = null
         personalApps = null
@@ -428,6 +456,8 @@ internal class VpnSession(
     }
 
     private companion object {
+        const val NETWORK_DEBOUNCE_MS = 400L
+
         /** After the end of a pause, so that the engine has ended it when it is read again. */
         const val PAUSE_END_MARGIN_MS = 1_000L
     }
