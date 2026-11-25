@@ -24,6 +24,7 @@ import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.await
 import androidx.work.workDataOf
@@ -59,7 +60,7 @@ class UpdateScheduler @Inject constructor(
                 .distinctUntilChanged()
                 .collect { (onboarded, settings) ->
                     // Nothing to update before the module is set up.
-                    if (onboarded) schedule(settings.first, settings.second) else workManager.cancelUniqueWork(PERIODIC)
+                    schedule(if (onboarded) settings.first else UpdateInterval.Never, settings.second)
                 }
         }
         scope.launch { downloadMissing() }
@@ -76,47 +77,41 @@ class UpdateScheduler @Inject constructor(
     /** Asks for an update if a list that is on was never downloaded, once for each installed version. */
     suspend fun downloadMissing() = missingLists.run()
 
-    private fun schedule(interval: UpdateInterval, wifiOnly: Boolean) {
+    private suspend fun schedule(interval: UpdateInterval, wifiOnly: Boolean) {
+        val manager = workManager
+        val existing = manager.getWorkInfosForUniqueWorkFlow(PERIODIC).first().filterNot { it.state.isFinished }
         if (interval == UpdateInterval.Never) {
-            workManager.cancelUniqueWork(PERIODIC)
+            if (existing.isNotEmpty()) manager.cancelUniqueWork(PERIODIC).await()
             return
         }
         val period = Duration.ofDays(interval.days.toLong())
+        val constraints = constraints(wifiOnly, batteryNotLow = true)
+        if (existing.singleOrNull()?.matchesPeriodicUpdate(period, constraints) == true) return
         // The first run a whole period from now: onboarding has just
         // downloaded the lists, or asked for a download of its own. Enqueued
         // again with UPDATE, the work keeps the time it was first enqueued,
         // so starting the app does not put the update off.
         val request = PeriodicWorkRequestBuilder<UpdateListsWorker>(period)
             .setInitialDelay(period)
-            .setConstraints(constraints(wifiOnly, batteryNotLow = true))
-            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, Duration.ofMinutes(BACKOFF_MINUTES))
+            .setConstraints(constraints)
+            .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, UPDATE_BACKOFF)
             .build()
-        workManager.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request)
+        manager.enqueueUniquePeriodicWork(PERIODIC, ExistingPeriodicWorkPolicy.UPDATE, request).await()
     }
 
     override suspend fun updateSoon() {
         val wifiOnly = userData.userData.first().updateOnWifiOnly
-        val request = OneTimeWorkRequestBuilder<UpdateListsWorker>()
-            .setConstraints(constraints(wifiOnly, batteryNotLow = false))
-            .build()
+        val request = oneTimeUpdate(wifiOnly)
         workManager.enqueueUniqueWork(ONCE, ExistingWorkPolicy.KEEP, request)
     }
 
     override suspend fun updateRootSoon() {
         val wifiOnly = userData.userData.first().updateOnWifiOnly
-        val request = OneTimeWorkRequestBuilder<UpdateListsWorker>()
-            .setConstraints(constraints(wifiOnly, batteryNotLow = false))
-            .setInputData(workDataOf(ROOT_UPDATE to true))
-            .build()
+        val request = oneTimeUpdate(wifiOnly, rootOnly = true)
         // A previous update might already have read the staged sources. Enqueue
         // another so the published or restored sources are read again.
         workManager.enqueueUniqueWork(ROOT_ONCE, ExistingWorkPolicy.APPEND_OR_REPLACE, request).await()
     }
-
-    private fun constraints(wifiOnly: Boolean, batteryNotLow: Boolean) = Constraints.Builder()
-        .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
-        .setRequiresBatteryNotLow(batteryNotLow)
-        .build()
 
     companion object {
         /** How long [downloadMissing] waits for the lists: well under the limit of a broadcast receiver. */
@@ -125,6 +120,23 @@ class UpdateScheduler @Inject constructor(
         private const val PERIODIC = "update-lists"
         private const val ONCE = "update-lists-once"
         private const val ROOT_ONCE = "update-root-lists-once"
-        private const val BACKOFF_MINUTES = 30L
     }
 }
+
+private const val BACKOFF_MINUTES = 30L
+private val UPDATE_BACKOFF = Duration.ofMinutes(BACKOFF_MINUTES)
+
+internal fun WorkInfo.matchesPeriodicUpdate(period: Duration, constraints: Constraints): Boolean = !state.isFinished && workerClassName == UpdateListsWorker::class.java.name &&
+    periodicityInfo == WorkInfo.PeriodicityInfo(period.toMillis(), period.toMillis()) &&
+    initialDelayMillis == period.toMillis() && this.constraints == constraints
+
+internal fun oneTimeUpdate(wifiOnly: Boolean, rootOnly: Boolean = false) = OneTimeWorkRequestBuilder<UpdateListsWorker>()
+    .setConstraints(constraints(wifiOnly, batteryNotLow = false))
+    .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, UPDATE_BACKOFF)
+    .apply { if (rootOnly) setInputData(workDataOf(ROOT_UPDATE to true)) }
+    .build()
+
+private fun constraints(wifiOnly: Boolean, batteryNotLow: Boolean) = Constraints.Builder()
+    .setRequiredNetworkType(if (wifiOnly) NetworkType.UNMETERED else NetworkType.CONNECTED)
+    .setRequiresBatteryNotLow(batteryNotLow)
+    .build()
