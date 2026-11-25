@@ -47,6 +47,18 @@ class ModuleMountsTest {
     }
 
     @Test
+    fun givenDataIsMountedFromASubvolume_whenTheCopiesAreChecked_thenTheirRootsIncludeTheSubvolume() {
+        val subvolume = data.replace(" / /data ", " /subvol /data ")
+        val system = systemCopy.replace(" /adb/", " /subvol/adb/")
+        val added = userCopy.replace(" /adb/", " /subvol/adb/")
+        val table = listOf(subvolume, conscrypt, system, added).joinToString("\n")
+
+        assertTrue(isSystemCopy(table))
+        assertTrue(ModuleMounts.isModuleCopy(table, user, ModuleMounts.USER_COPY))
+        assertFalse(isSystemCopy(listOf(subvolume, conscrypt, systemCopy).joinToString("\n")))
+    }
+
+    @Test
     fun givenAnUnfilteredAppsTable_whenAsked_thenNoStoreIsTheModulesCopy() {
         assertFalse(isSystemCopy(unfiltered))
         assertFalse(ModuleMounts.isModuleCopy(unfiltered, user, ModuleMounts.USER_COPY))

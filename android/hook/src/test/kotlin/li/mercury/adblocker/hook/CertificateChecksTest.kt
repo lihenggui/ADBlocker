@@ -72,7 +72,11 @@ class CertificateChecksTest {
 
     @Test
     fun givenATrustManager_whenMatched_thenEveryServerCheckIsHookedAndNothingElse() {
-        val hooked = Manager::class.java.declaredMethods.filter(::isServerCheck)
+        val hooked = platformServerChecks(Manager::class.java.declaredMethods.toList())
+        assertEquals(
+            listOf("android.security.net.config.RootTrustManager", "com.android.org.conscrypt.TrustManagerImpl"),
+            platformTrustManagers,
+        )
 
         assertEquals(4, hooked.size)
         assertEquals(setOf("checkServerTrusted"), hooked.map { it.name }.toSet())

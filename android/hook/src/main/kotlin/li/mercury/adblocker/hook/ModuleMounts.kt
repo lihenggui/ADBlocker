@@ -49,7 +49,8 @@ internal object ModuleMounts {
         val top = mounts.indexOfLast { it.point == point }
         if (top < 0) return false
         val mount = mounts[top]
-        if (mount.root != copy || mount.device != data.device) return false
+        val copyRoot = data.root.trimEnd('/') + copy
+        if (mount.root != copyRoot || mount.device != data.device) return false
         return mounts.drop(top + 1).none { point == it.point || point.startsWith(it.point.trimEnd('/') + "/") }
     }
 
