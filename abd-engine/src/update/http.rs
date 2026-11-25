@@ -26,14 +26,40 @@ use tokio::net::TcpStream;
 use tokio_rustls::TlsConnector;
 
 use super::MAX_SIZE;
-use crate::list_url::{split, trusted_download};
+use crate::list_url::{same_origin, split, trusted_download, valid};
 use crate::sources::Validator;
 
 const MAX_REDIRECTS: usize = 3;
 
 pub(super) enum Download {
-    Body(Bytes, Option<Validator>),
+    Body(Body),
     Unchanged,
+}
+
+pub(super) struct Body {
+    pub(super) bytes: Bytes,
+    pub(super) validator: Option<Validator>,
+    redirected_to: Option<String>,
+}
+
+impl Body {
+    pub(super) fn new(bytes: Bytes, validator: Option<Validator>) -> Self {
+        Self {
+            bytes,
+            validator,
+            redirected_to: None,
+        }
+    }
+
+    pub(super) fn resource<'a>(&'a self, requested: &'a str) -> &'a str {
+        self.redirected_to.as_deref().unwrap_or(requested)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub(super) enum Redirects {
+    List,
+    Include { trusted: bool },
 }
 
 pub(super) fn conditional(
@@ -119,21 +145,38 @@ async fn get_once(
         .collect()
         .await
         .map_err(|e| anyhow!("reading the list: {e}"))?;
-    Ok(Ok(Download::Body(body.to_bytes(), saved)))
+    Ok(Ok(Download::Body(Body::new(body.to_bytes(), saved))))
 }
 
 pub(super) async fn get(
     url: &str,
     tls: &TlsConnector,
     saved: Option<&Validator>,
+    redirects: Redirects,
 ) -> Result<Download> {
-    let trusted = trusted_download(url);
-    let mut url = url.to_owned();
+    let mut resource = url.to_owned();
     for _ in 0..=MAX_REDIRECTS {
-        match get_once(&url, tls, saved).await? {
-            Ok(body) => return Ok(body),
-            Err(_) if trusted => bail!("a trusted list URL cannot redirect"),
-            Err(to) => url = to,
+        match get_once(&resource, tls, saved).await? {
+            Ok(Download::Body(mut body)) => {
+                body.redirected_to = (resource != url).then_some(resource);
+                return Ok(Download::Body(body));
+            }
+            Ok(Download::Unchanged) => return Ok(Download::Unchanged),
+            Err(_) if matches!(redirects, Redirects::List) && trusted_download(url) => {
+                bail!("a trusted list URL cannot redirect");
+            }
+            Err(_) if matches!(redirects, Redirects::Include { trusted: true }) => {
+                bail!("an include of a trusted list cannot redirect");
+            }
+            Err(to) => {
+                if matches!(redirects, Redirects::Include { .. }) {
+                    ensure!(
+                        valid(&to) && same_origin(url, &to),
+                        "an include cannot redirect outside its HTTPS origin"
+                    );
+                }
+                resource = to;
+            }
         }
     }
     bail!("too many redirects")

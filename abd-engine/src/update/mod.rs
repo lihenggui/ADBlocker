@@ -15,17 +15,18 @@
 //! Downloads the filter lists.
 
 mod http;
+mod includes;
 mod kind;
 
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Result, bail, ensure};
 use bytes::Bytes;
 use tokio_rustls::TlsConnector;
 
-use http::{Download, get};
+use http::{Download, Redirects, get};
 pub(crate) use kind::ListKind;
 
 use crate::files;
@@ -34,7 +35,7 @@ pub use crate::list_url::{file_name, split};
 use crate::paths::Paths;
 use crate::protocol_types::{ListState, Update};
 pub use crate::sources::prune_unsubscribed;
-use crate::sources::{self, Info, Validator, subscribed};
+use crate::sources::{self, Included, Info, Validator, subscribed};
 
 /// A server sending more than a list may hold is not sending a list.
 const MAX_SIZE: usize = crate::list_files::MAX_LIST;
@@ -57,9 +58,9 @@ pub(crate) async fn refresh(
     .with_root_certificates(roots)
     .with_no_client_auth();
     let tls = TlsConnector::from(Arc::new(config));
-    let fetch = |url: String, saved: Option<Validator>| {
+    let fetch = |url: String, saved: Option<Validator>, redirects| {
         let tls = tls.clone();
-        async move { get(&url, &tls, saved.as_ref()).await }
+        async move { get(&url, &tls, saved.as_ref(), redirects).await }
     };
     let filters = fetch_validated(
         Subscription {
@@ -151,9 +152,9 @@ where
             info,
             only: None,
         },
-        &|url, _| {
+        &|url, _, _| {
             let future = get(url);
-            async move { Ok(Download::Body(future.await?, None)) }
+            async move { Ok(Download::Body(http::Body::new(future.await?, None))) }
         },
         report,
     )
@@ -176,6 +177,38 @@ struct Outcome {
     error: Option<String>,
 }
 
+enum ListDownload {
+    Body(Bytes, Option<Validator>, Option<Vec<Included>>),
+    Unchanged,
+}
+
+async fn request<G, F>(
+    get: &G,
+    url: &str,
+    saved: Option<&Validator>,
+    redirects: Redirects,
+    kind: ListKind,
+    bundled: bool,
+) -> Result<Download>
+where
+    G: Fn(String, Option<Validator>, Redirects) -> F,
+    F: Future<Output = Result<Download>>,
+{
+    let reply =
+        match tokio::time::timeout(TIMEOUT, get(url.to_owned(), saved.cloned(), redirects)).await {
+            Ok(result) => result?,
+            Err(_) => bail!("timed out"),
+        };
+    match &reply {
+        Download::Body(body) => ensure!(
+            kind.accepts(&body.bytes, bundled),
+            "the answer is not a list"
+        ),
+        Download::Unchanged => ensure!(saved.is_some(), "the answer is not a list"),
+    }
+    Ok(reply)
+}
+
 enum Commit {
     Finished(Outcome),
     RetryWithoutValidator,
@@ -187,7 +220,7 @@ async fn fetch_validated<G, F>(
     report: &mut dyn FnMut(Update),
 ) -> Result<Tally>
 where
-    G: Fn(String, Option<Validator>) -> F,
+    G: Fn(String, Option<Validator>, Redirects) -> F,
     F: Future<Output = Result<Download>>,
 {
     let urls: Vec<String> = {
@@ -245,33 +278,33 @@ impl Subscription<'_> {
 
     async fn fetch_one<G, F>(self, url: &str, get: &G) -> Result<Outcome>
     where
-        G: Fn(String, Option<Validator>) -> F,
+        G: Fn(String, Option<Validator>, Redirects) -> F,
         F: Future<Output = Result<Download>>,
     {
         let file = self.dir.join(file_name(url));
         let saved = self
             .info
             .and_then(|dir| sources::info(dir, url))
-            .and_then(|i| i.validator)
-            .filter(|v| Some(v.file) == file_stamp(&file));
+            .filter(|i| {
+                i.validator
+                    .as_ref()
+                    .is_none_or(|v| Some(v.file) == file_stamp(&file))
+            })
+            .filter(|i| match self.kind {
+                // A copy from before include expansion needs a fresh body
+                // even when its publisher could answer with a 304.
+                ListKind::Filter => i
+                    .includes
+                    .as_ref()
+                    .is_some_and(|i| i.len() <= crate::limits::MAX_INCLUDES),
+                ListKind::HttpsExclusion => true,
+            });
         let mut condition = saved.as_ref();
-        let bundled = matches!(self.kind, ListKind::HttpsExclusion)
-            && subscribed(self.default).any(|source| source == url);
         loop {
-            let fetched = match tokio::time::timeout(
-                TIMEOUT,
-                get(url.to_owned(), condition.cloned()),
-            )
-            .await
-            {
-                Ok(Ok(Download::Body(body, validator))) if self.kind.accepts(&body, bundled) => {
-                    Ok(Download::Body(body, validator))
-                }
-                Ok(Ok(Download::Unchanged)) if condition.is_some() => Ok(Download::Unchanged),
-                Ok(Ok(_)) => Err("the answer is not a list".to_owned()),
-                Ok(Err(e)) => Err(reason(&e)),
-                Err(_) => Err("timed out".to_owned()),
-            };
+            let fetched = self
+                .download(url, condition, get)
+                .await
+                .map_err(|e| reason(&e));
             match self.commit(url, &file, condition, fetched)? {
                 Commit::Finished(outcome) => return Ok(outcome),
                 Commit::RetryWithoutValidator => condition = None,
@@ -279,12 +312,30 @@ impl Subscription<'_> {
         }
     }
 
+    async fn download<G, F>(self, url: &str, saved: Option<&Info>, get: &G) -> Result<ListDownload>
+    where
+        G: Fn(String, Option<Validator>, Redirects) -> F,
+        F: Future<Output = Result<Download>>,
+    {
+        if matches!(self.kind, ListKind::Filter) {
+            return includes::download(url, saved, get).await;
+        }
+        let bundled = subscribed(self.default).any(|source| source == url);
+        let validator = saved.and_then(|info| info.validator.as_ref());
+        Ok(
+            match request(get, url, validator, Redirects::List, self.kind, bundled).await? {
+                Download::Body(body) => ListDownload::Body(body.bytes, body.validator, None),
+                Download::Unchanged => ListDownload::Unchanged,
+            },
+        )
+    }
+
     fn commit(
         self,
         url: &str,
         file: &Path,
-        condition: Option<&Validator>,
-        fetched: Result<Download, String>,
+        condition: Option<&Info>,
+        fetched: Result<ListDownload, String>,
     ) -> Result<Commit> {
         let _lock = files::lock(self.sources)?;
         let configured = self.kind.sources(self.sources, self.default)?;
@@ -321,15 +372,19 @@ impl Subscription<'_> {
                 })
         };
         let (state, known) = match fetched {
-            Ok(Download::Body(body, validator)) => {
-                commit_body(self.kind, url, file, body, validator)?
+            Ok(ListDownload::Body(body, validator, includes)) => {
+                commit_body(self.kind, url, file, body, validator, includes)?
             }
-            Ok(Download::Unchanged) => {
+            Ok(ListDownload::Unchanged) => {
                 let mut known = previous();
                 // A concurrent edit or replacement invalidates the response.
                 // Retry once without a validator, outside the lock.
-                if known.validator.as_ref() != condition
-                    || condition.is_none_or(|v| Some(v.file) != file_stamp(file))
+                if known.includes.as_ref() != condition.and_then(|i| i.includes.as_ref())
+                    || known.validator.as_ref() != condition.and_then(|i| i.validator.as_ref())
+                    || known
+                        .validator
+                        .as_ref()
+                        .is_none_or(|v| Some(v.file) != file_stamp(file))
                 {
                     return Ok(Commit::RetryWithoutValidator);
                 }
@@ -372,9 +427,9 @@ impl Subscription<'_> {
         url: &str,
         file: &Path,
         parked_previous: Option<&Path>,
-        download: Download,
-    ) -> Result<Download> {
-        let Download::Body(body, validator) = download else {
+        download: ListDownload,
+    ) -> Result<ListDownload> {
+        let ListDownload::Body(body, validator, includes) = download else {
             return Ok(download);
         };
         let body = if let Some(previous) = parked_previous {
@@ -383,7 +438,7 @@ impl Subscription<'_> {
         } else {
             self.prepare_body(url, file, body)?
         };
-        Ok(Download::Body(body, validator))
+        Ok(ListDownload::Body(body, validator, includes))
     }
 
     fn prepare_body(self, url: &str, file: &Path, body: Bytes) -> Result<Bytes> {
@@ -413,6 +468,7 @@ fn commit_body(
     file: &Path,
     body: Bytes,
     validator: Option<Validator>,
+    includes: Option<Vec<Included>>,
 ) -> Result<(ListState, Info)> {
     let same = files::read_bytes(file, body.len()).is_ok_and(|old| old == body);
     let state = if same {
@@ -429,6 +485,7 @@ fn commit_body(
         rules_format: sources::RULE_COUNT_FORMAT,
         updated: Some(crate::clock::now()),
         error: None,
+        includes,
         validator: validator.and_then(|mut v| {
             v.file = file_stamp(file)?;
             Some(v)

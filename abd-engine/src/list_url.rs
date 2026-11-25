@@ -139,6 +139,106 @@ pub fn split(url: &str) -> Result<(&str, u16, &str)> {
     Ok((host, port, path))
 }
 
+pub(crate) fn same_origin(first: &str, second: &str) -> bool {
+    matches!((split(first), split(second)), (Ok((a, p, _)), Ok((b, q, _)))
+        if p == q && a.eq_ignore_ascii_case(b))
+}
+
+/// An include addresses a file within the containing file's directory.
+pub(crate) fn include_address(including: &str, argument: &str) -> Option<String> {
+    if argument.len() > MAX_URL || !argument.bytes().all(|b| b.is_ascii_graphic()) {
+        return None;
+    }
+    let (host, port, containing_path) = split(including).ok()?;
+    let containing_path = normalized_path(path_and_query(containing_path).0)?;
+    let (directory, _) = containing_path.rsplit_once('/')?;
+    let directory = format!("{directory}/");
+    let is_absolute = argument
+        .get(..8)
+        .is_some_and(|scheme| scheme.eq_ignore_ascii_case("https://"));
+    let absolute;
+    let candidate = if is_absolute {
+        absolute = format!("https://{}", &argument[8..]);
+        if !same_origin(including, &absolute) {
+            return None;
+        }
+        split(&absolute).ok()?.2
+    } else {
+        // The reference treats a single leading slash as directory-relative.
+        if argument.starts_with("//") || argument.split(['/', '?', '#']).next()?.contains(':') {
+            return None;
+        }
+        argument.strip_prefix('/').unwrap_or(argument)
+    };
+    let (path, query) = path_and_query(candidate);
+    if path.is_empty() {
+        return None;
+    }
+    let relative;
+    let path = if is_absolute {
+        path
+    } else {
+        relative = format!("{directory}{path}");
+        &relative
+    };
+    let path = normalized_path(path)?;
+    if !path.starts_with(&directory) {
+        return None;
+    }
+    let address = https_address(host, port, &path, query);
+    valid(&address).then_some(address)
+}
+
+/// Identify equivalent spellings of the root when checking for cycles.
+pub(crate) fn include_identity(url: &str) -> Option<String> {
+    let (host, port, request) = split(url).ok()?;
+    let (path, query) = path_and_query(request);
+    Some(https_address(host, port, &normalized_path(path)?, query))
+}
+
+fn path_and_query(request: &str) -> (&str, &str) {
+    let request = request.split('#').next().unwrap_or_default();
+    request.split_at(request.find('?').unwrap_or(request.len()))
+}
+
+fn https_address(host: &str, port: u16, path: &str, query: &str) -> String {
+    let host = host.to_ascii_lowercase();
+    if port == 443 {
+        format!("https://{host}{path}{query}")
+    } else {
+        format!("https://{host}:{port}{path}{query}")
+    }
+}
+
+fn normalized_path(path: &str) -> Option<String> {
+    let mut segments = Vec::new();
+    let mut input = path.strip_prefix('/')?.split('/').peekable();
+    while let Some(segment) = input.next() {
+        let lower = segment.to_ascii_lowercase();
+        if segment.contains('\\')
+            || ["%2f", "%5c", "%25"]
+                .iter()
+                .any(|encoded| lower.contains(encoded))
+        {
+            return None;
+        }
+        match lower.as_str() {
+            "." | "%2e" => (),
+            ".." | ".%2e" | "%2e." | "%2e%2e" => {
+                segments.pop()?;
+            }
+            _ => {
+                segments.push(segment);
+                continue;
+            }
+        }
+        if input.peek().is_none() {
+            segments.push("");
+        }
+    }
+    Some(format!("/{}", segments.join("/")))
+}
+
 pub(crate) fn trusted_download(url: &str) -> bool {
     [Trust::Scriptlets, Trust::Scripts, Trust::ResponseRules]
         .into_iter()

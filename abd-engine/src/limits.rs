@@ -33,6 +33,13 @@ const EACH: usize = 6;
 /// listeners, the lists being read, the log, the tools of the rules.
 const SPARE: usize = 128;
 
+/// The most levels below a downloaded list. A deeper include fails its update.
+pub(crate) const MAX_INCLUDE_DEPTH: usize = 3;
+/// The most included resources one update may resolve. More fail the update.
+pub(crate) const MAX_INCLUDES: usize = 32;
+/// The most bytes in a list after inserting includes. More fail the update.
+pub(crate) const MAX_EXPANDED_LIST: usize = crate::list_files::MAX_LIST;
+
 /// The most app identities remembered for having shown a page.
 pub(crate) const MAX_APPS_WITH_PAGES: usize = 4096;
 

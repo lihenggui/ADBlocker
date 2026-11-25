@@ -118,7 +118,10 @@ languages of the device, such as EasyList China, AdGuard Chinese and
 AWAvenue Ads Rule for Chinese.
 
 ADBlocker saves the selected subscriptions, downloads the lists, and
-updates them in the background at the configured interval. AdGuard Base,
+updates them in the background at the configured interval. It follows
+active `!#include` directives within the list's HTTPS origin and directory.
+An update replaces the entire list together with its included files. If a
+required download fails, the previous copy stays in use. AdGuard Base,
 AdGuard Chinese and AdGuard Mobile Ads use their Android builds. AdGuard
 Base includes EasyList. AdGuard Tracking Protection uses its uBlock Origin
 build. To download lists from a root shell, run `abd update`.
@@ -237,8 +240,8 @@ custom rules support nested `!#if`, `!#else`, and `!#endif` directives with
 `!`, `&&`, `||`, and parentheses. The true constants are `adguard`,
 `adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
 `cap_html_filtering`. `cap_user_stylesheet`, `false`, and all other names
-evaluate to false. ADBlocker skips `!#include` directives and reports
-active includes and malformed conditionals in `abd rules check`. The
+evaluate to false. `abd rules check` reports unresolved active includes
+and malformed conditionals. Includes in custom rules remain unresolved. The
 `--json` form includes the same class and reason on each issue.
 
 A matching `$replace` rule can override a request block and rewrite the

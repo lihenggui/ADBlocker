@@ -26,23 +26,31 @@ pub(crate) enum DirectiveIssue {
 
 type Line<'a> = (usize, &'a str);
 
-struct Block<'a> {
+struct Block<L> {
     // An invalid condition is already reported at the opening line.
-    opening: Option<Line<'a>>,
+    opening: Option<L>,
     parent_active: bool,
     condition: bool,
     in_else: bool,
 }
 
-#[derive(Default)]
-struct Preprocessor<'a> {
-    blocks: Vec<Block<'a>>,
+pub(crate) struct Preprocessor<L> {
+    blocks: Vec<Block<L>>,
     // An over-deep subtree is inactive until its matching endif. Count its
     // levels without adding frames, so it cannot consume the parent's endif.
     overflow: usize,
 }
 
-impl<'a> Preprocessor<'a> {
+impl<L> Default for Preprocessor<L> {
+    fn default() -> Self {
+        Self {
+            blocks: Vec::new(),
+            overflow: 0,
+        }
+    }
+}
+
+impl<L> Preprocessor<L> {
     fn active(&self) -> bool {
         self.overflow == 0
             && self
@@ -51,14 +59,14 @@ impl<'a> Preprocessor<'a> {
                 .is_none_or(|block| block.parent_active && block.condition != block.in_else)
     }
 
-    fn open(&mut self, line: Line<'a>, condition: &str) -> Option<DirectiveIssue> {
+    fn open(&mut self, location: L, condition: &str) -> Option<DirectiveIssue> {
         if self.blocks.len() == MAX_NESTING {
             self.overflow += 1;
             return Some(DirectiveIssue::Malformed);
         }
         let value = condition::evaluate(condition);
         self.blocks.push(Block {
-            opening: value.map(|_| line),
+            opening: value.map(|_| location),
             parent_active: self.active(),
             condition: value.unwrap_or(false),
             in_else: false,
@@ -96,8 +104,8 @@ impl<'a> Preprocessor<'a> {
             .then_some(DirectiveIssue::Malformed)
     }
 
-    fn read(&mut self, line: Line<'a>) -> Option<Result<(), DirectiveIssue>> {
-        let Some(directive) = line.1.trim_start().strip_prefix("!#") else {
+    pub(crate) fn read(&mut self, location: L, line: &str) -> Option<Result<(), DirectiveIssue>> {
+        let Some(directive) = line.trim_start().strip_prefix("!#") else {
             return self.active().then_some(Ok(()));
         };
         let end = directive
@@ -106,7 +114,7 @@ impl<'a> Preprocessor<'a> {
         let (keyword, tail) = directive.split_at(end);
         let tail = tail.trim();
         let issue = match keyword {
-            "if" => self.open(line, tail),
+            "if" => self.open(location, tail),
             "else" => self.otherwise(tail),
             "endif" => self.close(tail),
             "include" => self.active().then_some(DirectiveIssue::Include),
@@ -123,7 +131,7 @@ pub(crate) fn scan(text: &str) -> impl Iterator<Item = (Line<'_>, Result<(), Dir
     let mut state = Preprocessor::default();
     std::iter::from_fn(move || {
         for line in lines.by_ref() {
-            if let Some(event) = state.read(line) {
+            if let Some(event) = state.read(line, line.1) {
                 return Some((line, event));
             }
         }

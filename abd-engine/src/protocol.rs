@@ -444,6 +444,7 @@ mod tests {
             updated: Some(updated),
             error: error.map(str::to_owned),
             validator: None,
+            includes: None,
         };
         sources::write_info(&paths.list_info(), &info).unwrap();
         std::fs::create_dir_all(paths.lists()).unwrap();

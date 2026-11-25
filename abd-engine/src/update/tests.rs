@@ -13,13 +13,14 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use anyhow::anyhow;
-use hyper::Request;
 use hyper::header::{ETAG, IF_MODIFIED_SINCE, IF_NONE_MATCH, LAST_MODIFIED};
-use hyper_util::rt::TokioIo;
 
 use super::http::{conditional, validator};
 use super::kind::looks_like_a_list;
 use super::*;
+
+mod includes;
+mod server;
 
 const FIRST: &str = "https://first.example/list.txt";
 const SECOND: &str = "https://second.example/list.txt";
@@ -77,15 +78,15 @@ async fn replace_moved_list(previous: &str, current: &str, only: Option<&str>) {
         (Err(anyhow!("connection refused")), "connection refused"),
         (Ok(Download::Unchanged), "the answer is not a list"),
         (
-            Ok(Download::Body(
+            Ok(Download::Body(http::Body::new(
                 Bytes::from_static(b"<html>Error</html>"),
                 None,
-            )),
+            ))),
             "the answer is not a list",
         ),
     ] {
         let result = std::cell::RefCell::new(Some(result));
-        let fetch = |url, validator: Option<Validator>| {
+        let fetch = |url, validator: Option<Validator>, _| {
             assert_eq!(url, current);
             assert!(validator.is_none());
             std::future::ready(result.borrow_mut().take().unwrap())
@@ -108,13 +109,13 @@ async fn replace_moved_list(previous: &str, current: &str, only: Option<&str>) {
         assert!(list.using_previous_address);
     }
 
-    let fetch = |url, validator: Option<Validator>| {
+    let fetch = |url, validator: Option<Validator>, _| {
         assert_eq!(url, current);
         assert!(validator.is_none());
-        std::future::ready(Ok(Download::Body(
+        std::future::ready(Ok(Download::Body(http::Body::new(
             Bytes::from_static(b"||new.example^\n"),
             None,
-        )))
+        ))))
     };
     let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
     assert_eq!((tally.failed, tally.changed()), (0, 1));
@@ -148,13 +149,13 @@ async fn a_successful_update_replaces_the_parked_previous_copy_of_a_disabled_lis
         info: Some(&paths.list_info()),
         only: Some(current),
     };
-    let fetch = |url, validator: Option<Validator>| {
+    let fetch = |url, validator: Option<Validator>, _| {
         assert_eq!(url, current);
         assert!(validator.is_none());
-        std::future::ready(Ok(Download::Body(
+        std::future::ready(Ok(Download::Body(http::Body::new(
             Bytes::from_static(b"||new.example^\n"),
             None,
-        )))
+        ))))
     };
     let tally = fetch_validated(sub, &fetch, &mut |_| {}).await.unwrap();
 
@@ -251,11 +252,11 @@ async fn updating_adds_a_new_bundled_exclusion_source_to_an_existing_selection()
     std::fs::create_dir(&directory).unwrap();
     let first_file = directory.join(file_name(FIRST));
     std::fs::write(&first_file, "previous.example\n").unwrap();
-    let reply = |_, _| {
-        std::future::ready(Ok(Download::Body(
+    let reply = |_, _, _| {
+        std::future::ready(Ok(Download::Body(http::Body::new(
             Bytes::from_static(b"updated.example\n"),
             None,
-        )))
+        ))))
     };
     for _ in 0..2 {
         let tally = fetch_validated(
@@ -295,16 +296,16 @@ async fn a_single_word_response_cannot_replace_a_bundled_exclusion_feed() {
     std::fs::create_dir(&directory).unwrap();
     let file = directory.join(file_name(url));
     std::fs::write(&file, "old.example\n").unwrap();
-    let reply = |url: String, _| {
+    let reply = |url: String, _, _| {
         let body = if url == FIRST {
             "intranet\n"
         } else {
             "Unavailable\n"
         };
-        std::future::ready(Ok(Download::Body(
+        std::future::ready(Ok(Download::Body(http::Body::new(
             Bytes::from_static(body.as_bytes()),
             None,
-        )))
+        ))))
     };
     let tally = fetch_validated(
         Subscription {
@@ -336,11 +337,11 @@ async fn exclusion_updates_keep_prior_protections_and_reject_non_exclusion_data(
         ("new.example\n", 0),
         ("[Adblock Plus 2.0]\n||example.org^\n", 1),
     ] {
-        let reply = |_, _| {
-            std::future::ready(Ok(Download::Body(
+        let reply = |_, _, _| {
+            std::future::ready(Ok(Download::Body(http::Body::new(
                 Bytes::from_static(body.as_bytes()),
                 None,
-            )))
+            ))))
         };
         let tally = fetch_validated(
             Subscription {
@@ -412,7 +413,7 @@ async fn a_conditional_download_reuses_only_the_copy_that_was_validated() {
     let (_dir, paths) = data();
     let file = paths.lists().join(file_name(FIRST));
     let calls = Cell::new(0);
-    let download = |_, saved: Option<Validator>| {
+    let download = |_, saved: Option<Validator>, _| {
         let n = calls.get();
         calls.set(n + 1);
         let reply = match n {
@@ -420,10 +421,10 @@ async fn a_conditional_download_reuses_only_the_copy_that_was_validated() {
                 assert!(saved.is_none());
                 let mut headers = hyper::HeaderMap::new();
                 headers.insert(ETAG, "\"one\"".parse().unwrap());
-                Download::Body(
+                Download::Body(http::Body::new(
                     Bytes::from_static(b"! Title: List\n||ads.example^"),
                     validator(FIRST, &headers),
-                )
+                ))
             }
             1 | 2 | 4 => {
                 assert!(saved.is_some());
@@ -473,66 +474,43 @@ async fn a_conditional_download_reuses_only_the_copy_that_was_validated() {
 async fn https_revalidation_reads_no_body_and_rejects_an_unsolicited_not_modified() {
     use http_body_util::Full;
     use hyper::{Response, StatusCode};
-    use tokio::net::TcpListener;
-    let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
-    let addr = listener.local_addr().unwrap();
-    let cert = rcgen::generate_simple_self_signed(vec!["127.0.0.1".to_owned()]).unwrap();
-    let provider = Arc::new(rustls::crypto::ring::default_provider());
-    let mut roots = rustls::RootCertStore::empty();
-    roots.add(cert.cert.der().clone()).unwrap();
-    let client = rustls::ClientConfig::builder_with_provider(provider.clone())
-        .with_safe_default_protocol_versions()
-        .unwrap()
-        .with_root_certificates(roots)
-        .with_no_client_auth();
-    let key = rustls::pki_types::PrivatePkcs8KeyDer::from(cert.signing_key.serialize_der());
-    let server = rustls::ServerConfig::builder_with_provider(provider)
-        .with_safe_default_protocol_versions()
-        .unwrap()
-        .with_no_client_auth()
-        .with_single_cert(vec![cert.cert.der().clone()], key.into())
-        .unwrap();
-    let tls = tokio_rustls::TlsAcceptor::from(Arc::new(server));
-    let task = tokio::spawn(async move {
-        for n in 0..3 {
-            let (tcp, _) = listener.accept().await.unwrap();
-            let stream = tls.accept(tcp).await.unwrap();
-            let service =
-                hyper::service::service_fn(move |req: Request<hyper::body::Incoming>| async move {
-                    assert_eq!(
-                        req.headers().get(IF_NONE_MATCH).map(|v| v.as_bytes()),
-                        (n == 1).then_some(b"\"one\"".as_slice())
-                    );
-                    let reply = if n == 0 {
-                        Response::builder()
-                            .header(ETAG, "\"one\"")
-                            .body(Full::new(Bytes::from_static(b"||ads.example^")))
-                    } else {
-                        Response::builder()
-                            .status(StatusCode::NOT_MODIFIED)
-                            .body(Full::new(Bytes::new()))
-                    };
-                    Ok::<_, std::convert::Infallible>(reply.unwrap())
-                });
-            hyper::server::conn::http1::Builder::new()
-                .keep_alive(false)
-                .serve_connection(TokioIo::new(stream), service)
-                .await
-                .unwrap();
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    let calls = AtomicUsize::new(0);
+    let server = server::serve(move |req| {
+        let n = calls.fetch_add(1, Ordering::Relaxed);
+        assert_eq!(
+            req.headers().get(IF_NONE_MATCH).map(|v| v.as_bytes()),
+            (n == 1).then_some(b"\"one\"".as_slice())
+        );
+        if n == 0 {
+            Response::builder()
+                .header(ETAG, "\"one\"")
+                .body(Full::new(Bytes::from_static(b"||ads.example^")))
+        } else {
+            Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .body(Full::new(Bytes::new()))
         }
-    });
-    let url = format!("https://{addr}/list.txt");
-    let connector = TlsConnector::from(Arc::new(client));
-    let Download::Body(body, saved) = get(&url, &connector, None).await.unwrap() else {
+        .unwrap()
+    })
+    .await;
+    let url = format!("{}/list.txt", server.origin);
+    let connector = &server.connector;
+    let Download::Body(body) = get(&url, connector, None, Redirects::List).await.unwrap() else {
         panic!()
     };
-    assert_eq!(body.as_ref(), b"||ads.example^");
+    assert_eq!(body.bytes.as_ref(), b"||ads.example^");
     assert!(matches!(
-        get(&url, &connector, saved.as_ref()).await.unwrap(),
+        get(&url, connector, body.validator.as_ref(), Redirects::List)
+            .await
+            .unwrap(),
         Download::Unchanged
     ));
-    assert!(get(&url, &connector, None).await.is_err());
-    task.await.unwrap();
+    let result = get(&url, connector, None, Redirects::List).await;
+    assert!(
+        matches!(result, Err(e) if e.to_string() == "unexpected 304 without a conditional request")
+    );
 }
 
 #[tokio::test]
@@ -578,13 +556,13 @@ async fn a_targeted_update_only_fetches_the_requested_enabled_subscription() {
     let first = paths.lists().join(file_name(FIRST));
     std::fs::write(&first, "||first.example^\n").unwrap();
     let calls = std::cell::Cell::new(0);
-    let download = |url, _| {
+    let download = |url, _, _| {
         assert_eq!(url, SECOND);
         calls.set(calls.get() + 1);
-        std::future::ready(Ok(Download::Body(
+        std::future::ready(Ok(Download::Body(http::Body::new(
             Bytes::from_static(b"||second.example^\n"),
             None,
-        )))
+        ))))
     };
     let target = Subscription {
         sources: &paths.sources(),

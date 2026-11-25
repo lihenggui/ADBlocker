@@ -165,7 +165,7 @@ mod properties {
             let mut original = source.lines().enumerate();
             let mut kept = Vec::new();
             for (index, line) in source.lines().enumerate() {
-                if state.read((index + 1, line)) == Some(Ok(())) {
+                if state.read((index + 1, line), line) == Some(Ok(())) {
                     kept.push((index + 1, line));
                 }
                 prop_assert!(state.blocks.len() <= MAX_NESTING);

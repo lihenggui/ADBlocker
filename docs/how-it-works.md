@@ -299,8 +299,9 @@ Conditions use `!`, `&&`, `||`, and parentheses. `adguard`,
 `adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
 `cap_html_filtering` are true. `cap_user_stylesheet`, `false`, and all other
 names are false. A malformed condition selects its else branch if present.
-The engine skips `!#include`. `abd rules check` reports active includes
-and malformed conditionals with their original line numbers.
+`abd rules check` reports unresolved active includes and malformed
+conditionals with their line numbers in the checked text. Includes in
+custom rules remain unresolved.
 
 When judging an encrypted connection by name, the engine uses a
 subset of the rules that can block a whole host, such as `||ads.example^`.
@@ -638,6 +639,11 @@ with its removal, while the VPN is in use.
 
 - The daemon waits for connections and configuration changes. The app
   schedules subscription updates through WorkManager.
+- A subscription download follows active `!#include` directives on the
+  same HTTPS origin and within the including file's directory. It stores
+  their rules in place in the list. Updates check validators for the list
+  and its included files. If any required file fails to download or pass
+  validation, the previous complete copy stays in use.
 - When a catalog list moves, its saved selection follows the new address.
   An enabled list keeps filtering with the rules and trust of its previous
   copy until an update validates and publishes the replacement. A failed

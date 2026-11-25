@@ -356,6 +356,10 @@ connection falls back to TCP.
   while **Hide page elements** is enabled, what is hidden or removed and
   which scriptlets and trusted JavaScript rules run in decrypted pages, as described in
   [hiding page elements](#hiding-page-elements).
+- Trust marks require a direct download from the exact catalog URL. Every
+  included file in a trusted list must be fetched directly from its
+  resolved address on that origin. An include redirect fails the update
+  and the previous copy stays in use.
 - When the daemon stops, its lookup routes go with its process, and
   cleanup removes the lookup routing rules and disables TCP marking and
   UDP rejection before waiting for the packet filter lock, so new

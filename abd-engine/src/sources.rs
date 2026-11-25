@@ -501,6 +501,9 @@ pub struct Info {
     pub error: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub validator: Option<Validator>,
+    /// Absent on copies published before includes were resolved.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub includes: Option<Vec<Included>>,
 }
 
 pub(crate) const RULE_COUNT_FORMAT: u8 = 1;
@@ -528,6 +531,13 @@ pub struct Validator {
     pub file: [u64; 5],
 }
 
+#[derive(Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Included {
+    pub(crate) path: String,
+    pub(crate) url: String,
+    pub(crate) validator: Option<Validator>,
+}
+
 /// Where what is known of the list of `url` is kept: next to the list, in
 /// a directory of its own, and not as a `*.txt` file, which would be
 /// loaded as one.
@@ -538,7 +548,9 @@ pub fn info_file(dir: &Path, url: &str) -> PathBuf {
 }
 
 pub fn info(dir: &Path, url: &str) -> Option<Info> {
-    let text = files::read_text(&info_file(dir, url), 64 << 10).ok()?;
+    // Room for the original metadata and up to 32 includes with their
+    // written paths, resolved addresses and HTTP validators.
+    let text = files::read_text(&info_file(dir, url), 320 << 10).ok()?;
     let info: Info = serde_json::from_str(&text).ok()?;
     // Two addresses can share a file name; this is the other's.
     (info.url == url).then_some(info)
@@ -596,10 +608,14 @@ pub fn title(list: &str) -> Option<String> {
         .take(200)
         .take_while(|l| crate::rule::is_comment(l))
         .find_map(|l| {
-            let rest = l.trim().strip_prefix('!')?.trim_start();
-            let title = rest.strip_prefix("Title:")?.trim();
+            let title = title_comment(l)?;
             (!title.is_empty()).then(|| title.chars().take(200).collect())
         })
+}
+
+pub(crate) fn title_comment(line: &str) -> Option<&str> {
+    let rest = line.trim().strip_prefix('!')?.trim_start();
+    Some(rest.strip_prefix("Title:")?.trim())
 }
 
 /// Reconciles active copies and drops copies of removed subscriptions.
