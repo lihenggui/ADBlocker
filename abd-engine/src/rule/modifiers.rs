@@ -16,7 +16,11 @@ use std::collections::HashMap;
 use std::sync::LazyLock;
 
 use super::action::ActionKind;
-use super::options::{APP, OptionToken, PRUNE, REPLACE};
+
+pub(super) const APP: &str = "app";
+pub(super) const DENYALLOW: &str = "denyallow";
+pub(super) const PRUNE: &str = "jsonprune";
+pub(super) const REPLACE: &str = "replace";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum PageModifier {
@@ -35,6 +39,8 @@ pub(super) enum Kind {
     Type(u16),
     Source,
     Destination,
+    DenyAllow,
+    Noop,
     Flag,
     Redirect,
     LegacyRedirect(&'static str),
@@ -100,7 +106,8 @@ const fn modifier(names: &'static [&'static str], kind: Kind, value: Value) -> M
 }
 
 use Kind::{
-    Action, App, Destination, Flag, LegacyRedirect, Page, Redirect, Source, Type, Unsupported,
+    Action, App, DenyAllow, Destination, Flag, LegacyRedirect, Noop, Page, Redirect, Source, Type,
+    Unsupported,
 };
 use PageModifier::{Content, Document, Element, Generic, Script, Specific, Urlblock};
 use Value::{None as FlagValue, Optional, Required};
@@ -121,6 +128,8 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["third-party", "3p"], Source, FlagValue),
     modifier(&["first-party", "1p"], Source, FlagValue),
     modifier(&["to"], Destination, Required),
+    modifier(&[DENYALLOW], DenyAllow, Required),
+    modifier(&["_"], Noop, FlagValue),
     modifier(&["tag"], Flag, Required),
     modifier(&["badfilter"], Flag, FlagValue),
     modifier(&["all"], Flag, FlagValue),
@@ -154,7 +163,6 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["stealth"], Unsupported, Optional),
     modifier(&["extension"], Unsupported, Optional),
     modifier(&["network"], Unsupported, FlagValue),
-    modifier(&["denyallow"], Unsupported, Required),
     modifier(&["cookie"], Unsupported, Optional),
     modifier(&["header"], Unsupported, Required),
     modifier(&["hls"], Unsupported, Required),
@@ -170,11 +178,11 @@ pub(super) fn may_have_owned_options(line: &str) -> bool {
     static OWNED_NAMES: LazyLock<Vec<&str>> = LazyLock::new(|| {
         MODIFIERS
             .iter()
-            .filter(|modifier| matches!(modifier.kind, App | Action(..)))
+            .filter(|modifier| matches!(modifier.kind, App | Action(..) | DenyAllow))
             .flat_map(|modifier| modifier.names.iter().copied())
             .collect()
     });
-    OWNED_NAMES.iter().any(|name| line.contains(name))
+    line.contains("$_") || line.contains(",_") || OWNED_NAMES.iter().any(|name| line.contains(name))
 }
 
 pub(super) fn lookup(name: &str) -> Option<&'static Modifier> {
@@ -184,7 +192,15 @@ pub(super) fn lookup(name: &str) -> Option<&'static Modifier> {
             .flat_map(|modifier| modifier.names.iter().map(move |&name| (name, modifier)))
             .collect()
     });
-    BY_NAME.get(name).copied()
+    if name.starts_with('_') && name.bytes().all(|byte| byte == b'_') {
+        BY_NAME.get("_").copied()
+    } else {
+        BY_NAME.get(name).copied()
+    }
+}
+
+pub(super) fn is_noop(text: &str) -> bool {
+    text.starts_with('_') && lookup(text).is_some_and(|modifier| modifier.kind == Noop)
 }
 
 pub(crate) fn kind_bit(name: &str) -> Option<u16> {
@@ -206,16 +222,15 @@ impl Modifier {
 }
 
 impl Compatibility {
-    pub(super) fn accepts(self, token: OptionToken<'_>) -> bool {
+    pub(super) fn accepts(self, raw_name: &str, value: Option<&str>) -> bool {
         match self {
             Self::Matcher => true,
             Self::Only(allowed) => {
-                let (name, negated) = token
-                    .raw_name
+                let (name, negated) = raw_name
                     .strip_prefix('~')
-                    .map_or((token.raw_name, false), |name| (name, true));
+                    .map_or((raw_name, false), |name| (name, true));
                 lookup(name).is_some_and(|modifier| {
-                    modifier.accepts_value(token.value)
+                    modifier.accepts_value(value)
                         && allowed.iter().any(|entry| {
                             entry.name == modifier.names[0] && (!negated || entry.negatable)
                         })

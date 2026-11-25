@@ -12,7 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-use super::options::unescape;
+use super::quoting::unescape;
 use super::*;
 use crate::rule::action::ActionKind;
 
@@ -28,6 +28,151 @@ fn ordinary_network_rules_go_to_the_matcher() {
     let rule = read("  ||example.org^$script,domain=example.net  ");
     assert!(matches!(rule.kind, Kind::Matcher));
     assert_eq!(rule.matcher_input().as_deref(), Some(rule.line));
+}
+
+#[test]
+fn only_complete_underscore_options_are_ignored() {
+    for (original, expected) in [
+        ("||ads.com^$_", "||ads.com^"),
+        ("||ads.com^$_,__,_____", "||ads.com^"),
+        (
+            "/ad__asset$__,script,__,domain=site.org,_",
+            "/ad__asset$script,domain=site.org",
+        ),
+        ("0.0.0.0 ads.com$__", "||ads.com^"),
+        ("||ads.com^$_=value", "||ads.com^$_=value"),
+        ("||ads.com^$~_", "||ads.com^$~_"),
+        ("||ads.com^$tag=___", "||ads.com^$tag=___"),
+        ("site.test##[href$=___]", "site.test##[href$=___]"),
+    ] {
+        let rule = read(original);
+        assert_eq!(rule.line, original);
+        assert_eq!(rule.matcher_input().as_deref(), Some(expected));
+    }
+    for line in ["$_", "$_,__"] {
+        let check = crate::rulecheck::check(line);
+        assert_eq!(check.issues[0].text, line);
+    }
+}
+
+#[test]
+fn removing_noops_keeps_unsupported_url_and_source_regexes_rejected() {
+    for (line, reason) in [
+        (
+            r"/^(?!.*(x\.com)).*$/$__,script,domain=a.com",
+            Reason::NetworkRegex,
+        ),
+        (r"*$___,script,domain=/^a\.com$/", Reason::RegexSourceDomain),
+    ] {
+        let rule = read(line);
+        assert!(matches!(&rule.kind, Kind::NotApplied(rejected) if *rejected == reason));
+        assert!(rule.matcher_input().is_none());
+        assert_eq!(crate::rulecheck::check(line).issues[0].text, line);
+    }
+}
+
+#[test]
+fn every_network_rule_kind_sees_options_after_noops_are_removed() {
+    for (suffix, retained) in [("_", 1), ("_,__", 1), ("__,script,___", 2)] {
+        let input = format!("||ads.com^$app=com.reader,{suffix}");
+        let rule = read(&input);
+        let Kind::App(app) = &rule.kind else {
+            panic!("{input}")
+        };
+        let condition = app.condition().unwrap();
+        assert_eq!(condition.apps, "com.reader");
+        assert_eq!(condition.options.len(), retained - 1);
+
+        let input = format!("@@||ads.com^$elemhide,{suffix}");
+        let rule = read(&input);
+        let page = rule.page_exception().unwrap();
+        assert!(
+            !page.project(rule.literal_options()).contains('_'),
+            "{input}"
+        );
+
+        let input = format!("/ad.js$denyallow=x.com,{suffix},domain=ads.com");
+        let rule = read(&input);
+        let normalized = rule.matcher_input().unwrap();
+        assert!(normalized.contains("to=~x.com"), "{input}");
+        assert!(!normalized.contains('_'), "{input}");
+    }
+}
+
+#[test]
+fn denyallow_replaces_only_the_destination_option() {
+    for (original, rewritten) in [
+        (
+            "*$script,domain=a.com|b.com,denyallow=x.com|y.com",
+            "*$script,domain=a.com|b.com,to=~x.com|~y.com",
+        ),
+        (
+            "$image,third-party,denyallow=googleapis.com,domain=vipbox1.org",
+            "$image,third-party,to=~googleapis.com,domain=vipbox1.org",
+        ),
+        (
+            r"/some-path$/$denyallow=X.COM|bücher.de,script,important",
+            r"/some-path$/$to=~x.com|~xn--bcher-kva.de,script,important",
+        ),
+        (
+            "/asset.js$script,denyallow=x.com,mp4,domain=a.com",
+            "/asset.js$script,to=~x.com,redirect=noopmp4-1s,domain=a.com",
+        ),
+        (
+            "|https://*:443/asset.js$script,denyallow=x.com,domain=a.com",
+            "|https://*:443/asset.js$script,to=~x.com,domain=a.com",
+        ),
+    ] {
+        let rule = read(original);
+        assert_eq!(rule.line, original);
+        assert_eq!(rule.matcher_input().as_deref(), Some(rewritten));
+        assert!(rule.network().unwrap().opt_not_to_domains.is_some());
+    }
+}
+
+#[test]
+fn invalid_denyallow_rules_report_the_restriction_and_leave_no_matcher_rule() {
+    use denyallow::Rejection::*;
+    for (line, expected) in [
+        ("||example.org^$denyallow=x.com", PatternNamesHost),
+        ("@@||example.org^$denyallow=x.com", PatternNamesHost),
+        (
+            "|https://example.org/path$denyallow=x.com",
+            PatternNamesHost,
+        ),
+        ("|https://[::1]/path$denyallow=x.com", PatternNamesHost),
+        ("example.org/path$denyallow=x.com", PatternNamesHost),
+        ("*$script,~denyallow=x.com", NegatedModifier),
+        ("*$script,denyallow=x.com|~y.com", NegatedDomain),
+        ("*$script,denyallow=x.*", WildcardTld),
+        (r"*$script,denyallow=x.com|/\.(com\|org)$/", RegexDomain),
+        ("*$script,denyallow", EmptyDomain),
+        ("*$script,denyallow=", EmptyDomain),
+        ("*$script,denyallow=x.com|", EmptyDomain),
+        ("*$script,denyallow=https://x.com", InvalidDomain),
+        ("*$script,to=~y.com,denyallow=x.com", WithTo),
+        ("*$app=com.reader,denyallow=x.com,to=y.com", WithTo),
+        ("*$denyallow=x.com,denyallow=y.com", Duplicate),
+        ("*$script,replace=/x/y/,denyallow=x.com", WithResponseAction),
+        (r"*$denyallow=x.com,jsonprune=\$.x", WithResponseAction),
+        (
+            "*$app=com.reader,denyallow=x.com,replace=/x/y/",
+            WithResponseAction,
+        ),
+    ] {
+        let rule = read(line);
+        assert!(
+            matches!(&rule.kind, Kind::NotApplied(Reason::DenyAllow(reason)) if *reason == expected),
+            "{line}"
+        );
+        assert!(rule.matcher_input().is_none(), "{line}");
+        let checked = crate::rulecheck::check(line);
+        assert_eq!(checked.issues[0].text, line);
+        assert_eq!(
+            checked.issues[0].kind,
+            crate::protocol_types::IssueKind::Invalid
+        );
+    }
 }
 
 #[test]

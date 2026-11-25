@@ -71,6 +71,7 @@ fn read_requests(
     let mut requests = RequestRules {
         full: read("full")?,
         redirects: optional_engine(has_redirects, || read("redirects"))?,
+        originals: Default::default(),
     };
     use_resources(&mut requests, scripts);
     Some(requests)

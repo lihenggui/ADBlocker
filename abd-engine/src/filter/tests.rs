@@ -26,6 +26,174 @@ mod guards;
 mod javascript;
 mod redirects;
 
+#[test]
+fn matcher_negated_to_excludes_destinations_and_their_subdomains() {
+    crate::public_suffix::install();
+    for (rule, cases) in [
+        (
+            "*$script,domain=a.com,to=~x.com,important\n@@*$script,domain=a.com",
+            &[
+                ("y.com", "a.com", "script", true),
+                ("sub.y.com", "a.com", "script", true),
+                ("x.com", "a.com", "script", false),
+                ("sub.x.com", "a.com", "script", false),
+                ("a.com", "a.com", "script", true),
+                ("y.com", "b.com", "script", false),
+                ("y.com", "a.com", "image", false),
+            ][..],
+        ),
+        (
+            "*$script,domain=a.com,to=~x.com,first-party",
+            &[
+                ("sub.a.com", "a.com", "script", true),
+                ("y.com", "a.com", "script", false),
+            ],
+        ),
+        (
+            "*$script,domain=a.com,to=~x.com,third-party",
+            &[
+                ("sub.a.com", "a.com", "script", false),
+                ("y.com", "a.com", "script", true),
+            ],
+        ),
+    ] {
+        let engine = Engine::new_with_list_text(rule);
+        for &(target, source, kind, blocked) in cases {
+            let request = Request::new(
+                &format!("https://{target}/asset"),
+                &format!("https://{source}/"),
+                kind,
+                "GET",
+            )
+            .unwrap();
+            assert_eq!(
+                engine.check_network_request(&request).should_block(),
+                blocked,
+                "{rule}: {source} -> {target} ({kind})"
+            );
+        }
+    }
+}
+
+#[test]
+fn denyallow_rules_filter_requests_without_refusing_hosts() {
+    let script = "*$script,domain=a.com|b.com,denyallow=x.com|y.com";
+    let image = "$image,third-party,denyallow=googleapis.com,domain=vipbox1.org";
+    let scoped = "/assets/ad.js$script,app=com.reader,denyallow=x.com";
+    let rules = format!("{script}\n{image}\n{scoped}\n");
+    let f = filters(&rules);
+    assert!(crate::rulecheck::check(&rules).issues.is_empty());
+    assert_eq!(f.host_rules, 0);
+    for host in [
+        "a.com",
+        "x.com",
+        "cdn.x.com",
+        "y.com",
+        "googleapis.com",
+        "z.com",
+    ] {
+        assert!(!f.blocks_host(host));
+        assert!(!f.for_app("com.reader").blocks_host(host));
+        assert!(!f.for_app("com.reader").blocks_unread(host));
+    }
+    for (target, page, kind, matched) in [
+        ("z.com", "a.com", "script", Some(script)),
+        ("z.com", "b.com", "script", Some(script)),
+        ("z.com", "elsewhere.com", "script", None),
+        ("x.com", "a.com", "script", None),
+        ("sub.y.com", "b.com", "script", None),
+        ("z.com", "vipbox1.org", "image", Some(image)),
+        ("cdn.googleapis.com", "vipbox1.org", "image", None),
+        ("cdn.vipbox1.org", "vipbox1.org", "image", None),
+        ("z.com", "vipbox1.org", "script", None),
+    ] {
+        let check = f.check(
+            &format!("https://{target}/asset"),
+            &format!("https://{page}/"),
+            kind,
+            "GET",
+        );
+        assert_eq!(check.blocked, matched.is_some(), "{target} from {page}");
+        assert_eq!(check.rule.as_deref(), matched);
+    }
+    for (app, target, matched) in [
+        ("com.reader", "z.com", Some(scoped)),
+        ("com.reader", "x.com", None),
+        ("com.reader", "cdn.x.com", None),
+        ("com.other", "z.com", None),
+    ] {
+        let check = f.for_app(app).check_with_page(
+            &format!("https://{target}/assets/ad.js"),
+            Page::NONE,
+            "script",
+            "GET",
+        );
+        assert_eq!(check.blocked, matched.is_some(), "{app} to {target}");
+        assert_eq!(check.rule.as_deref(), matched);
+    }
+}
+
+#[test]
+fn noop_rules_keep_host_app_page_and_badfilter_behavior() {
+    let f = filters(
+        "||ads.com^$_,_____\n\
+         ||appads.com^$__,app=com.reader,_\n\
+         ||disabled.com^$_\n\
+         ||disabled.com^$__,badfilter,_\n\
+         ##.ad\n\
+         @@||ads.com^$___,elemhide,_",
+    );
+    assert!(f.blocks_host("ads.com"));
+    assert!(!f.blocks_host("disabled.com"));
+    assert!(f.for_app("com.reader").blocks_host("appads.com"));
+    assert!(!f.for_app("com.other").blocks_host("appads.com"));
+    assert!(!f.hiding("https://ads.com/").by_name());
+    assert!(f.hiding("https://elsewhere.com/").by_name());
+}
+
+#[test]
+fn real_noop_rules_only_apply_when_their_other_options_are_supported() {
+    let shinden = r"$script,third-party,denyallow=ckeditor.com|fastly.net|statically.io|sharecast.ws|bunnycdn.ru|bootstrapcdn.com|cdn.ampproject.org|cloudflare.com|cdn.staticfile.org|disqus.com|disquscdn.com|dmca.com|ebacdn.com|facebook.net|fbcdn.net|fluidplayer.com|fontawesome.com|github.io|google.com|googleapis.com|googletagmanager.com|gstatic.com|jquery.com|jsdelivr.net|jwpcdn.com|jwplatform.com|recaptcha.net|shrink.pe|twitter.com|ulogin.ru|unpkg.com|userapi.com|vidazoo.com|vk.com|yastatic.net|ytimg.com|zencdn.net|youtube.com|cackle.me|googleoptimize.com|vuukle.com|chatango.com|twimg.com|google-analytics.com|hcaptcha.com|media-imdb.com|blogger.com|hwcdn.net|instagram.com|wp.com|fastcomments.com|plyr.io,_____,domain=shinden.pl";
+    let vivicomi = r"*$script,third-party,denyallow=tvableon.me|mega.co.nz|mega.nz|libs.baidu.com|ilfcdn.li|bytecdntp.com|doodcdn.io|intensedebate.com|vixcloud.co|rsc.cdn77.org|linkvertise.com|fastly.net|statically.io|sharecast.ws|b-cdn.net|bunnycdn.ru|bootstrapcdn.com|cdn.ampproject.org|cloudflare.com|cdn.staticfile.org|disqus.com|disquscdn.com|dmca.com|ebacdn.com|facebook.net|fastlylb.net|fbcdn.net|fluidplayer.com|fontawesome.com|github.io|google.com|googleapis.com|googletagmanager.com|gstatic.com|jquery.com|jsdelivr.net|jwpcdn.com|jwplatform.com|jwplayer.com|recaptcha.net|shrink.pe|twitter.com|ulogin.ru|unpkg.com|userapi.com|vidazoo.com|vk.com|yastatic.net|ytimg.com|zencdn.net|youtube.com|cackle.me|googleoptimize.com|vuukle.com|chatango.com|twimg.com|google-analytics.com|hcaptcha.com|media-imdb.com|blogger.com|hwcdn.net|instagram.com|wp.com|fastcomments.com|plyr.io|imgsmail.ru|cloudflare.net|rabbitstream.net|x.com|ko-fi.com|wsimg.com|sharethis.com|utteranc.es|cloudflareinsights.com|tailwindcss.com|capo6play.com|jpg5.su|jpg6.su|tolstoycomments.com|code.iconify.design|alicdn.com|addtoany.com|waust.at|tenor.com|pinterest.com,_____,domain=/^vivicomi\d+\.info$/";
+    let rule = crate::rule::read(vivicomi);
+    assert!(matches!(
+        rule.kind,
+        crate::rule::Kind::NotApplied(crate::rule::Reason::RegexSourceDomain)
+    ));
+    let text = format!("{shinden}\n{vivicomi}");
+    let checked = crate::rulecheck::check(&text);
+    assert_eq!(checked.issues.len(), 1);
+    assert_eq!(checked.issues[0].text, vivicomi);
+
+    let f = filters(&text);
+    let blocked = f.check(
+        "https://outside.example/ad.js",
+        "https://shinden.pl/",
+        "script",
+        "GET",
+    );
+    assert!(blocked.blocked);
+    assert_eq!(blocked.rule.as_deref(), Some(shinden));
+    assert!(
+        !f.check(
+            "https://cdn.googleapis.com/ad.js",
+            "https://shinden.pl/",
+            "script",
+            "GET"
+        )
+        .blocked
+    );
+    assert!(
+        !f.check(
+            "https://outside.example/ad.js",
+            "https://vivicomi12.info/",
+            "script",
+            "GET"
+        )
+        .blocked
+    );
+}
+
 mod lists {
     use super::*;
 

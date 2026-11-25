@@ -17,7 +17,7 @@ use regex_automata::util::{iter::Searcher, syntax};
 use regex_automata::{Input, MatchKind};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
-use crate::rule::options::{delimiter, unescape, unescaped};
+use crate::rule::quoting::{delimiter, unescape, unescaped};
 use crate::rule::regex::translate_pattern;
 
 pub(crate) struct Compiled {

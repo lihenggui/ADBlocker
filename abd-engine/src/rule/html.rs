@@ -23,7 +23,7 @@ use std::net::IpAddr;
 use regex::{Error, Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 
-use super::options::delimiter;
+use super::quoting::delimiter;
 use super::regex::translate_pattern;
 use crate::htmlfilter::{Attribute, AttributeValue, Compiled, Content, Selector};
 use crate::limits::{

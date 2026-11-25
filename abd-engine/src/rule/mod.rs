@@ -20,20 +20,24 @@ use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
-use self::modifiers::{Kind as ModifierKind, PageModifier, lookup, may_have_owned_options};
-use self::options::{OptionToken, Options, Quoting, unescaped};
+use self::modifiers::{APP, Kind as ModifierKind, PageModifier, lookup, may_have_owned_options};
+use self::options::{OptionToken, Options, Quoting};
+use self::quoting::unescaped;
 
 pub(crate) mod action;
 mod adguard;
 mod comment;
+mod denyallow;
 pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
+pub(crate) mod quoting;
 mod regex;
 mod response;
 
 pub use comment::{count, is_comment};
+pub(crate) use denyallow::matcher_applies as denyallow_matcher_applies;
 pub(crate) use modifiers::kind_bit;
 pub(crate) use response::{Action, ResponseRule};
 
@@ -44,6 +48,9 @@ pub(crate) struct Rule<'a> {
     hosts_file: Option<&'a str>,
     translated: Option<adguard::Translation>,
     rewritten: Option<String>,
+    noop: bool,
+    noop_host: Option<&'a str>,
+    pub(crate) denyallow: bool,
     pub(crate) redirect_exception: bool,
 }
 
@@ -61,6 +68,9 @@ pub(crate) enum Kind<'a> {
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
     Modifier(&'static str),
+    DenyAllow(denyallow::Rejection),
+    RegexSourceDomain,
+    NetworkRegex,
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
 }
@@ -68,13 +78,15 @@ pub(crate) enum Reason {
 pub(crate) struct AppRule<'a> {
     options: Options<'a>,
     page: Option<PageException<'a>>,
+    denyallow: Option<denyallow::Condition>,
+    pub(crate) original: Option<&'a str>,
 }
 
 /// The app value and the remaining matcher options after validation.
-pub(crate) struct AppCondition<'a> {
+pub(crate) struct AppCondition<'a, 'options> {
     pub(crate) pattern: &'a str,
     pub(crate) apps: &'a str,
-    pub(crate) options: Vec<&'a str>,
+    pub(crate) options: Vec<&'options str>,
 }
 
 #[derive(Clone, Copy)]
@@ -108,6 +120,9 @@ pub(crate) fn read_with_scripts<'a>(
         hosts_file: hosts_rule(line),
         translated: None,
         rewritten: None,
+        noop: false,
+        noop_host: None,
+        denyallow: false,
         redirect_exception: false,
     };
     if is_comment(line) {
@@ -137,50 +152,97 @@ pub(crate) fn read_with_scripts<'a>(
         }
         return rule;
     }
-    // Only engine-owned modifiers need their values scanned past escaped
-    // separators. Ordinary matcher options retain the matcher's spelling.
-    let custom = may_have_owned_options(line)
-        .then(|| Options::read(line, Quoting::AdGuard))
-        .flatten()
-        .filter(|options| network_condition(line, options.pattern));
-    let custom = match custom.map(ResponseRule::read) {
-        Some(Ok(response)) => {
-            rule.kind = Kind::Response(response);
-            return rule;
-        }
-        Some(Err(options)) if options.tokens().any(|token| token.name() == options::APP) => {
-            Some(options)
-        }
-        _ => None,
-    };
-    if custom.is_none() && rule.has_redirect_option() && !cosmetic(line) {
-        (rule.rewritten, rule.redirect_exception) = rewrite_redirect_options(line);
-    }
-    let page = if rule.exception() && !rule.redirect_exception {
-        if let Some(options) = custom.as_ref().filter(|options| options.also_literal()) {
-            PageException::read(options)
-        } else {
-            rule.literal = Options::read(line, Quoting::Literal);
-            rule.literal.as_ref().and_then(PageException::read)
-        }
-    } else {
-        None
-    };
-    rule.kind = if let Some(options) = custom {
-        Kind::App(AppRule { options, page })
-    } else if let Some(page) = page {
-        Kind::PageException(page)
-    } else if cosmetic(line) {
-        Kind::Cosmetic
-    } else if let Some(name) = rule.unsupported_modifier() {
-        Kind::NotApplied(Reason::Modifier(name))
-    } else {
-        Kind::Matcher
-    };
+    rule.read_options();
     rule
 }
 
 impl<'a> Rule<'a> {
+    fn read_options(&mut self) {
+        let line = self.line;
+        // Only engine-owned modifiers need their values scanned past escaped
+        // separators. Ordinary matcher options retain the matcher's spelling.
+        let custom = may_have_owned_options(line)
+            .then(|| Options::read(line, Quoting::AdGuard))
+            .flatten()
+            .filter(|options| network_condition(line, options.pattern));
+        let mut denyallow = None;
+        let mut app = None;
+        if let Some(options) = custom {
+            self.noop = options.noop;
+            match network_qualifiers(&options) {
+                Ok(condition) => denyallow = condition,
+                Err(reason) => {
+                    self.kind = Kind::NotApplied(reason);
+                    return;
+                }
+            }
+            match ResponseRule::read(options) {
+                Ok(response) => {
+                    self.kind = Kind::Response(response);
+                    return;
+                }
+                Err(options) if options.tokens().any(|token| token.name() == APP) => {
+                    app = Some(options);
+                }
+                Err(options) => {
+                    self.rewrite_network(&options, denyallow.as_ref());
+                }
+            }
+        }
+        self.denyallow = denyallow.is_some();
+        if app.is_none() && self.has_redirect_option() && !cosmetic(line) {
+            let (redirect, bare) =
+                rewrite_redirect_options(self.rewritten.as_deref().unwrap_or(line));
+            self.rewritten = redirect.or(self.rewritten.take());
+            self.redirect_exception = bare;
+        }
+        let page = if self.exception() && !self.redirect_exception {
+            if let Some(options) = app.as_ref().filter(|options| options.also_literal()) {
+                PageException::read(options)
+            } else {
+                self.literal = Options::read(line, Quoting::Literal);
+                self.literal.as_ref().and_then(PageException::read)
+            }
+        } else {
+            None
+        };
+        self.kind = if let Some(options) = app {
+            Kind::App(AppRule {
+                options,
+                page,
+                denyallow,
+                original: self.original(),
+            })
+        } else if let Some(page) = page {
+            Kind::PageException(page)
+        } else if cosmetic(line) {
+            Kind::Cosmetic
+        } else if let Some(name) = self.unsupported_modifier() {
+            Kind::NotApplied(Reason::Modifier(name))
+        } else {
+            Kind::Matcher
+        };
+    }
+
+    fn rewrite_network(&mut self, options: &Options<'a>, denyallow: Option<&denyallow::Condition>) {
+        self.rewritten = if let Some(condition) = denyallow {
+            Some(condition.rewrite(options))
+        } else if options.noop
+            && options.tokens().next().is_none()
+            && let Some((line, host)) = whole_pattern(options.pattern)
+        {
+            self.noop_host = Some(host);
+            Some(line.into_owned())
+        } else {
+            options.without_noops()
+        };
+    }
+
+    /// Text for diagnostics when matcher syntax differs from the list.
+    pub(crate) fn original(&self) -> Option<&'a str> {
+        (self.noop || self.denyallow).then_some(self.line)
+    }
+
     pub(crate) fn has_redirect_option(&self) -> bool {
         let Some((_, suffix)) = self.line.rsplit_once('$') else {
             return false;
@@ -233,7 +295,13 @@ impl<'a> Rule<'a> {
             Kind::App(_)
             | Kind::Response(_)
             | Kind::Html(_)
-            | Kind::NotApplied(Reason::AdGuard(_) | Reason::HtmlFiltering(_)) => None,
+            | Kind::NotApplied(
+                Reason::AdGuard(_)
+                | Reason::HtmlFiltering(_)
+                | Reason::DenyAllow(_)
+                | Reason::RegexSourceDomain
+                | Reason::NetworkRegex,
+            ) => None,
             _ => Some(self.normalized()),
         }
     }
@@ -249,7 +317,10 @@ impl<'a> Rule<'a> {
             .unwrap_or(Cow::Borrowed(self.line))
     }
 
-    pub(crate) fn whole_host(&self) -> Option<(Cow<'a, str>, &'a str)> {
+    pub(crate) fn whole_host(&self) -> Option<(Cow<'_, str>, &'a str)> {
+        if let Some(host) = self.noop_host {
+            return Some((Cow::Borrowed(self.rewritten.as_deref()?), host));
+        }
         whole_host(self.line, self.hosts_file)
     }
 
@@ -293,7 +364,13 @@ impl<'a> Rule<'a> {
                 Kind::App(_)
                     | Kind::Response(_)
                     | Kind::Html(_)
-                    | Kind::NotApplied(Reason::AdGuard(_) | Reason::HtmlFiltering(_))
+                    | Kind::NotApplied(
+                        Reason::AdGuard(_)
+                            | Reason::HtmlFiltering(_)
+                            | Reason::DenyAllow(_)
+                            | Reason::RegexSourceDomain
+                            | Reason::NetworkRegex
+                    )
             )
         {
             return None;
@@ -304,6 +381,14 @@ impl<'a> Rule<'a> {
     /// Even a page modifier or a known unsupported modifier can occur
     /// on a line the matcher accepts. The CLI keeps its existing verdict.
     pub(crate) fn matcher_check(&self) -> MatcherCheck {
+        if matches!(
+            self.kind,
+            Kind::NotApplied(
+                Reason::DenyAllow(_) | Reason::RegexSourceDomain | Reason::NetworkRegex
+            )
+        ) {
+            return MatcherCheck::Invalid;
+        }
         if let Some(translated) = &self.translated {
             return if translated.requires_trusted_scriptlets {
                 MatcherCheck::Cosmetic
@@ -319,7 +404,13 @@ impl<'a> Rule<'a> {
         }
         let line = self.rewritten.as_deref().unwrap_or(self.line);
         match parse_filter(line, false, ParseOptions::default()) {
-            Ok(ParsedLine::Network(_)) => MatcherCheck::Network,
+            Ok(ParsedLine::Network(rule)) => {
+                if self.denyallow && !denyallow::matcher_applies(line, rule) {
+                    MatcherCheck::Invalid
+                } else {
+                    MatcherCheck::Network
+                }
+            }
             Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
                 MatcherCheck::Cosmetic
             }
@@ -351,6 +442,26 @@ impl<'a> Rule<'a> {
             options::literal_tokens(suffix).find_map(find)
         }
     }
+}
+
+fn network_qualifiers(options: &Options<'_>) -> Result<Option<denyallow::Condition>, Reason> {
+    let denyallow = denyallow::Condition::read(options).map_err(Reason::DenyAllow)?;
+    if options.noop
+        && options
+            .tokens()
+            .any(|token| options::source_regex_end(token.raw).is_some())
+    {
+        return Err(Reason::RegexSourceDomain);
+    }
+    if options.noop
+        && !regex::network_pattern_supported(
+            options.pattern,
+            options.tokens().any(|token| token.raw_name == "match-case"),
+        )
+    {
+        return Err(Reason::NetworkRegex);
+    }
+    Ok(denyallow)
 }
 
 pub(crate) const REDIRECT_EXCEPTION: &str = "redirect=@abd-all-redirects";
@@ -414,7 +525,11 @@ pub(crate) enum MatcherCheck {
 }
 
 impl<'a> AppRule<'a> {
-    pub(crate) fn condition(&self) -> Option<AppCondition<'a>> {
+    pub(crate) fn has_denyallow(&self) -> bool {
+        self.denyallow.is_some()
+    }
+
+    pub(crate) fn condition(&self) -> Option<AppCondition<'a, '_>> {
         let all = &self.options;
         if unescaped(all.suffix, b'$').next().is_some() {
             return None;
@@ -422,7 +537,7 @@ impl<'a> AppRule<'a> {
         let mut apps = None;
         let mut options = Vec::new();
         for token in all.tokens() {
-            if token.raw_name == options::APP
+            if token.raw_name == APP
                 && let Some(names) = token.value
             {
                 // Two app conditions would have to hold together. A
@@ -433,7 +548,11 @@ impl<'a> AppRule<'a> {
             } else if lookup(token.name()).is_some_and(|m| m.kind == ModifierKind::Source) {
                 return None;
             } else {
-                options.push(token.raw);
+                options.push(
+                    self.denyallow
+                        .as_ref()
+                        .map_or(token.raw, |condition| condition.option(token)),
+                );
             }
         }
         Some(AppCondition {

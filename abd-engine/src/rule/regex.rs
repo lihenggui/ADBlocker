@@ -15,6 +15,31 @@
 
 //! Translate the list regex dialect before compiling a response expression.
 
+use regex::bytes::RegexBuilder;
+
+/// Full URL regexes are compiled lazily by adblock-rust. Check them before
+/// enabling a rule that was previously rejected for its noop option.
+pub(super) fn network_pattern_supported(pattern: &str, match_case: bool) -> bool {
+    let pattern = pattern.strip_prefix("@@").unwrap_or(pattern);
+    let pattern = pattern
+        .strip_prefix("||")
+        .or_else(|| pattern.strip_prefix('|'))
+        .unwrap_or(pattern);
+    let pattern = pattern.strip_suffix('|').unwrap_or(pattern);
+    let Some(body) = pattern
+        .strip_prefix('/')
+        .and_then(|pattern| pattern.strip_suffix('/'))
+    else {
+        return true;
+    };
+    // Match the matcher’s full-regex syntax and its default size limit.
+    let mut body = body.replace(r"\/", "/").replace(r"\:", ":");
+    if !match_case {
+        body.make_ascii_lowercase();
+    }
+    RegexBuilder::new(&body).unicode(false).build().is_ok()
+}
+
 /// Quote braces that are literal in list patterns. Braced escapes,
 /// character classes and counted repetitions keep their own syntax.
 pub(crate) fn translate_pattern(pattern: &str) -> Option<String> {

@@ -33,7 +33,7 @@ use self::app_patterns::Scope;
 pub(crate) use self::app_rules::{
     AppProjections, AppRules, name as app_rule, valid as valid_app_rule,
 };
-pub(crate) use self::load::MatcherLists;
+pub(crate) use self::matcher::{MatcherList, MatcherLists, OriginalLines};
 use self::page_exceptions::PageExceptions;
 use self::response_rules::ResponseRules;
 use crate::apps::Identity;
@@ -46,6 +46,7 @@ mod cache;
 mod host_rules;
 mod html_rules;
 mod load;
+mod matcher;
 mod page_exceptions;
 mod redirects;
 mod response_rules;
@@ -142,6 +143,7 @@ impl Page<'_> {
 pub(crate) struct RequestRules {
     pub(crate) full: Engine,
     pub(crate) redirects: Option<Engine>,
+    pub(crate) originals: OriginalLines,
 }
 
 impl RequestRules {
@@ -200,12 +202,14 @@ impl RequestRules {
 
     fn check_request(&self, req: &mut Request, apps: Option<(&AppRules, &Scope<'_>)>) -> Check {
         let mut check = match apps {
-            Some((rules, scope)) => rules.check(&self.full, &rules.blocks, req, scope),
+            Some((rules, scope)) => {
+                rules.check(&self.full, &rules.blocks, req, scope, Some(&self.originals))
+            }
             None => {
                 let found = self.full.check_network_request(req);
                 Check {
                     blocked: found.should_block(),
-                    rule: found.filter.and_then(|rule| rule.raw_line),
+                    rule: found.filter.and_then(|rule| self.originals.shown(rule)),
                     redirect: None,
                 }
             }
@@ -419,7 +423,11 @@ impl AppFilters<'_> {
     fn blocks_whole(&self, request: &mut Request) -> bool {
         let hosts = &self.filters.hosts;
         match self.app_rules() {
-            Some((rules, scope)) => rules.check(hosts, &rules.hosts, request, scope).blocked,
+            Some((rules, scope)) => {
+                rules
+                    .check(hosts, &rules.hosts, request, scope, None)
+                    .blocked
+            }
             None => hosts.check_network_request(request).should_block(),
         }
     }

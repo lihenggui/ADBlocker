@@ -33,6 +33,7 @@ use adblock::request::Request;
 use super::Check;
 use super::app_patterns::{Patterns, Scope};
 use super::host_rules::{GuardCoverage, can_guard, write_guards};
+use super::matcher::{MatcherList, MatcherLists, OriginalLines};
 use super::redirects::RedirectProjections;
 use crate::rule::{self, AppRule, whole_pattern};
 
@@ -45,6 +46,7 @@ pub(super) const SOURCE: &str = "domain=";
 
 pub(crate) struct AppRules {
     pub(super) blocks: Engine,
+    pub(crate) block_originals: OriginalLines,
     exceptions: Engine,
     /// The blocks of a whole host, for a connection that stays encrypted.
     pub(super) hosts: Engine,
@@ -68,7 +70,7 @@ impl Scope<'_> {
 
 struct Scoped<'a> {
     pattern: &'a str,
-    options: Vec<&'a str>,
+    unscoped: String,
     /// As in the rule, in lower case: adblock-rust hashes what it is given.
     apps: String,
 }
@@ -80,17 +82,26 @@ struct Projected<'a> {
     is_redirect: bool,
     redirect_exception: bool,
     line: String,
+    original: Option<&'a str>,
 }
 
 fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'a>> {
+    let original = rule.original;
     let condition = rule.condition()?;
     let prepared = patterns.prepare(condition.apps)?;
+    let mut unscoped = condition.pattern.to_owned();
+    let mut separator = '$';
+    for option in condition.options {
+        unscoped.push(separator);
+        unscoped.push_str(option);
+        separator = ',';
+    }
     let rule = Scoped {
         pattern: condition.pattern,
-        options: condition.options,
+        unscoped,
         apps: prepared.encoded.clone(),
     };
-    let line = rule.for_apps(&rule.unscoped(), !rule.options.is_empty());
+    let line = rule.for_apps(&rule.unscoped, rule.pattern != rule.unscoped);
     let source = rule::read(&line);
     let parsed = source.network()?;
     patterns.keep(prepared);
@@ -101,6 +112,7 @@ fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'
         is_redirect: parsed.is_redirect(),
         redirect_exception: source.redirect_exception,
         line: source.normalized().into_owned(),
+        original,
     })
 }
 
@@ -109,26 +121,13 @@ impl Scoped<'_> {
         self.pattern.starts_with("@@")
     }
 
-    /// The rule for every app.
-    fn unscoped(&self) -> String {
-        let mut line = self.pattern.to_owned();
-        let mut separator = '$';
-        for option in &self.options {
-            line.push(separator);
-            line.push_str(option);
-            separator = ',';
-        }
-        line
-    }
-
     fn for_apps(&self, rule: &str, has_options: bool) -> String {
         let separator = if has_options { ',' } else { '$' };
         format!("{rule}{separator}{SOURCE}{}", self.apps)
     }
 
     fn whole_host(&self) -> Option<(String, &str)> {
-        self.options
-            .is_empty()
+        (self.pattern == self.unscoped)
             .then(|| whole_pattern(self.pattern))
             .flatten()
             .map(|(rule, host)| (self.for_apps(&rule, false), host))
@@ -137,8 +136,7 @@ impl Scoped<'_> {
     fn guards(&self, out: &mut String) {
         let mut found = String::new();
         // A rule taken back with `$badfilter` is left out before this.
-        let line = self.unscoped();
-        let source = rule::read(&line);
+        let source = rule::read(&self.unscoped);
         let any_host = source
             .network()
             .filter(|rule| can_guard(&source, rule))
@@ -171,7 +169,11 @@ pub(crate) fn name(rule: &AppRule<'_>) -> Option<String> {
 }
 
 pub(crate) fn valid(rule: &AppRule<'_>, patterns: &mut Patterns) -> bool {
-    scoped(rule, patterns).is_some()
+    scoped(rule, patterns).is_some_and(|projected| {
+        !rule.has_denyallow()
+            || rule::parse_network(&projected.line)
+                .is_some_and(|rule| rule::denyallow_matcher_applies(&projected.line, rule))
+    })
 }
 
 fn engine(rules: String, debug: bool) -> Engine {
@@ -209,7 +211,8 @@ impl<'a> AppProjections<'a> {
             .iter()
             .filter_map(|entry| entry.bad.then_some(entry.id))
             .collect();
-        let [mut blocks, mut exceptions, mut hosts, mut guards] = [const { String::new() }; 4];
+        let mut blocks = MatcherList::with_capacity(0);
+        let [mut exceptions, mut hosts, mut guards] = [const { String::new() }; 3];
         for Projected {
             rule,
             id,
@@ -217,6 +220,7 @@ impl<'a> AppProjections<'a> {
             is_redirect,
             redirect_exception,
             line,
+            original,
         } in rules
         {
             if bad || disabled.contains(&id) {
@@ -228,22 +232,31 @@ impl<'a> AppProjections<'a> {
             if redirect_exception {
                 continue;
             }
-            let kept = if rule.exception() {
+            if rule.exception() {
                 rule.guards(&mut guards);
-                &mut exceptions
+                exceptions.push_str(&line);
+                exceptions.push('\n');
             } else {
                 if let Some((line, host)) = rule.whole_host() {
                     visit_host(host, &rule.apps);
                     hosts.push_str(&line);
                     hosts.push('\n');
                 }
-                &mut blocks
-            };
-            kept.push_str(&line);
-            kept.push('\n');
+                blocks.push(&line, original.filter(|_| debug));
+            }
         }
+        let mut matcher = MatcherLists::new(debug);
+        matcher.finish_list(
+            blocks,
+            ParseOptions {
+                rule_types: RuleTypes::NetworkOnly,
+                ..ParseOptions::default()
+            },
+        );
+        let (blocks, block_originals) = matcher.compile();
         Some(AppRules {
-            blocks: engine(blocks, debug),
+            blocks,
+            block_originals,
             exceptions: engine(exceptions, debug),
             hosts: engine(hosts, false),
             guards: engine(guards, false),
@@ -274,6 +287,7 @@ impl AppRules {
         };
         Some(Self {
             blocks: engine(blocks)?,
+            block_originals: OriginalLines::default(),
             exceptions: engine(exceptions)?,
             hosts: engine(hosts)?,
             guards: engine(guards)?,
@@ -290,12 +304,19 @@ impl AppRules {
         blocks: &Engine,
         req: &mut Request,
         scope: &Scope<'_>,
+        web_originals: Option<&OriginalLines>,
     ) -> Check {
         let found = web.check_network_request(req);
         let web_rule = found.filter.is_some();
         let mut check = Check {
             blocked: found.should_block(),
-            rule: found.filter.and_then(|rule| rule.raw_line),
+            rule: found.filter.and_then(|rule| {
+                if let Some(originals) = web_originals {
+                    originals.shown(rule)
+                } else {
+                    rule.raw_line
+                }
+            }),
             redirect: None,
         };
         if found.important {
@@ -327,10 +348,12 @@ impl AppRules {
         // The rule that decided: the app's where no web rule matched, and
         // where its `$important` block stands against a web exception.
         if !web_rule || own.important {
-            check.rule = own
-                .filter
-                .and_then(|rule| rule.raw_line)
-                .map(|rule| shown(rule, scope.patterns));
+            check.rule = own.filter.and_then(|rule| {
+                self.block_originals
+                    .get(&rule)
+                    .map(str::to_owned)
+                    .or_else(|| rule.raw_line.map(|rule| shown(rule, scope.patterns)))
+            });
         }
         check
     }

@@ -19,19 +19,20 @@ use std::path::Path;
 
 use adblock::Engine;
 use adblock::filters::network::NetworkFilter;
-use adblock::lists::{FilterSet, ParseOptions};
+use adblock::lists::ParseOptions;
 use adblock::resources::{PermissionMask, Resource};
 use anyhow::Result;
 
 use super::host_rules::{AppHostBlocks, HostProjections};
 use super::html_rules::HtmlProjections;
+use super::matcher::{MatcherList, MatcherLists};
 use super::page_exceptions::PageProjections;
 use super::response_rules::ResponseProjections;
 use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules, redirects};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
 use crate::rule::javascript::{self, ScriptTable, Scripts};
-use crate::rule::{self, Kind, Rule};
+use crate::rule::{self, Kind};
 
 impl ListFiles {
     pub fn filters(&self, cache: Option<&Path>, debug: bool) -> Result<Filters> {
@@ -67,38 +68,6 @@ fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
         .collect()
 }
 
-pub(crate) struct MatcherLists(FilterSet);
-
-impl MatcherLists {
-    pub(crate) fn new(debug: bool) -> Self {
-        Self(FilterSet::new(debug))
-    }
-
-    pub(crate) fn add(list: &mut String, source: &Rule<'_>) {
-        let Some(line) = source.matcher_input() else {
-            return;
-        };
-        // Reject unsafe calls before their helpers can consume the page's
-        // budget. The raw text still includes controls adblock may discard.
-        if source.is_scriptlet() && !crate::cosmetic::safe_raw_text(&line) {
-            return;
-        }
-        list.push_str(&line);
-        list.push('\n');
-    }
-
-    pub(crate) fn finish_list(&mut self, list: String, options: ParseOptions) {
-        self.0.add_filter_list(list, options);
-    }
-
-    pub(crate) fn compile(self) -> RequestRules {
-        RequestRules {
-            full: Engine::new_with_filter_set(self.0),
-            redirects: None,
-        }
-    }
-}
-
 pub(super) fn use_resources(requests: &mut RequestRules, scripts: &ScriptTable) {
     static RESOURCES: std::sync::LazyLock<Vec<Resource>> = std::sync::LazyLock::new(|| {
         serde_json::from_str(include_str!("../../resources/scriptlets.json"))
@@ -116,14 +85,20 @@ fn user_rules(path: &Path) -> bool {
     path.parent().and_then(Path::file_name) == Some("rules".as_ref())
 }
 
-fn source_permissions(path: &Path) -> (bool, PermissionMask) {
+fn source_options(path: &Path) -> (bool, ParseOptions) {
     let scripts = user_rules(path) || trusted_list_file(path, Trust::Scripts);
     let mut permissions =
         PermissionMask::from_bits(u8::from(trusted_list_file(path, Trust::Scriptlets)));
     if scripts {
         permissions |= javascript::PERMISSION;
     }
-    (scripts, permissions)
+    (
+        scripts,
+        ParseOptions {
+            permissions,
+            ..ParseOptions::default()
+        },
+    )
 }
 
 impl Filters {
@@ -191,11 +166,11 @@ impl Filters {
         let mut scripts = Scripts::default();
         for (path, text) in &lists {
             let trust_responses = user_rules(path) || trusted_list_file(path, Trust::ResponseRules);
-            let (trust_scripts, permissions) = source_permissions(path);
-            let mut normalized = String::with_capacity(text.len());
+            let (trust_scripts, options) = source_options(path);
+            let mut normalized = MatcherList::with_capacity(text.len());
             for line in text.lines() {
                 let source = rule::read_with_scripts(line, trust_scripts.then_some(&mut scripts));
-                MatcherLists::add(&mut normalized, &source);
+                matcher.add(&mut normalized, &source);
                 redirects.add_web(&source, &disabled);
                 hosts.add(&source, &disabled);
                 pages.add(&source);
@@ -211,13 +186,7 @@ impl Filters {
                 }
             }
             hosts.finish_list();
-            matcher.finish_list(
-                normalized,
-                ParseOptions {
-                    permissions,
-                    ..ParseOptions::default()
-                },
-            );
+            matcher.finish_list(normalized, options);
         }
         let mut app_blocks = AppHostBlocks::new();
         let apps = apps.compile(
@@ -231,8 +200,12 @@ impl Filters {
             Some(&mut redirects),
         );
         let host_rules = hosts.finish(&app_blocks, guard_budget);
-        let mut requests = matcher.compile();
-        requests.redirects = redirects.compile();
+        let (full, originals) = matcher.compile();
+        let mut requests = RequestRules {
+            full,
+            originals,
+            redirects: redirects.compile(),
+        };
         let scripts = scripts.finish();
         use_resources(&mut requests, &scripts);
         let responses = responses.compile(&mut patterns);

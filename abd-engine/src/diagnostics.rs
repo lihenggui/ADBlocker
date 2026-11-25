@@ -14,6 +14,7 @@
 
 //! On-demand request diagnostics. Only this engine needs original rule text.
 
+use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
 use adblock::{
@@ -25,7 +26,10 @@ use ring::digest::{SHA256, digest};
 
 use crate::{
     files,
-    filter::{AppProjections, AppRules, MatcherLists, Patterns, RequestRules, app_rule},
+    filter::{
+        AppProjections, AppRules, MatcherList, MatcherLists, OriginalLines, Patterns, RequestRules,
+        app_rule,
+    },
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     paths::Paths,
     protocol_types::Check,
@@ -58,8 +62,14 @@ fn app_name(rule: &Rule<'_>) -> Option<String> {
     }
 }
 
+fn indexed_line<'a>(source: &'a Rule<'_>) -> Cow<'a, str> {
+    source
+        .original()
+        .map_or_else(|| source.normalized(), Cow::Borrowed)
+}
+
 fn index_rule(source: &Rule<'_>, number: usize, index: &mut Vec<Entry>) -> bool {
-    let normalized = source.normalized();
+    let normalized = indexed_line(source);
     if normalized.is_empty() {
         return true;
     }
@@ -98,11 +108,11 @@ impl Diagnostics {
         let mut apps = AppProjections::default();
         let mut patterns = Patterns::default();
         for (file, text) in &lists {
-            let mut normalized = String::with_capacity(text.len());
+            let mut normalized = MatcherList::with_capacity(text.len());
             let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
             for line in text.lines() {
                 let source = rule::read(line);
-                MatcherLists::add(&mut normalized, &source);
+                matcher.add(&mut normalized, &source);
                 if let Kind::App(app) = &source.kind {
                     apps.add(app, &mut patterns);
                 }
@@ -116,10 +126,15 @@ impl Diagnostics {
         index.dedup_by(|next, first| next[..16] == first[..16]);
         let apps = apps.compile(true, |_, _| {}, None);
         patterns.report_dropped();
+        let (full, originals) = matcher.compile();
         Ok(Self {
             apps,
             patterns,
-            rules: matcher.compile(),
+            rules: RequestRules {
+                full,
+                originals,
+                redirects: None,
+            },
             index,
         })
     }
@@ -130,7 +145,7 @@ impl Diagnostics {
             for (file, text) in read_lists(files).flatten() {
                 if text.lines().any(|line| {
                     let source = rule::read(line);
-                    source.normalized() == rule || app_name(&source).as_deref() == Some(rule)
+                    indexed_line(&source) == rule || app_name(&source).as_deref() == Some(rule)
                 }) {
                     return Some(file);
                 }
@@ -172,13 +187,19 @@ impl Diagnostics {
         for kept in &mut apps {
             (*kept, rest) = Self::read_part(rest)?;
         }
-        let apps = if apps[0].is_empty() {
+        let mut apps = if apps[0].is_empty() {
             None
         } else {
             Some(AppRules::compiled(apps)?)
         };
-        let (patterns, entries) = Self::read_part(rest)?;
+        let (patterns, rest) = Self::read_part(rest)?;
         let patterns = Patterns::cached(patterns)?;
+        let (origins, entries) = Self::read_part(rest)?;
+        let (originals, app_originals): (OriginalLines, Option<OriginalLines>) =
+            serde_json::from_slice(origins).ok()?;
+        if let Some(apps) = &mut apps {
+            apps.block_originals = app_originals?;
+        }
         let (entries, tail) = entries.as_chunks::<20>();
         if !tail.is_empty() || entries.len() > MAX_INDEX {
             return None;
@@ -187,6 +208,7 @@ impl Diagnostics {
             rules: RequestRules {
                 full: full?,
                 redirects: None,
+                originals,
             },
             apps,
             patterns,
@@ -202,10 +224,14 @@ impl Diagnostics {
             .as_ref()
             .map(AppRules::serialized)
             .unwrap_or_default();
+        let originals = serde_json::to_vec(&(
+            &self.rules.originals,
+            self.apps.as_ref().map(|apps| &apps.block_originals),
+        ))?;
         let compiled = [full]
             .into_iter()
             .chain(apps)
-            .chain([self.patterns.serialized()]);
+            .chain([self.patterns.serialized(), originals]);
         let size = 40
             + compiled.clone().map(|part| 4 + part.len()).sum::<usize>()
             + self.index.len() * size_of::<Entry>();
@@ -344,6 +370,60 @@ mod tests {
             assert!(!shop(None).blocked);
             assert!(!ads(Some("com.reader")).blocked);
             assert!(ads(Some("com.other")).blocked && ads(None).blocked);
+        }
+    }
+
+    #[test]
+    fn diagnostics_keep_the_original_denyallow_lines_after_cache_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.rules()).unwrap();
+        let web = "*$script,domain=a.com,denyallow=X.com";
+        let app = "/ad.png$app=COM.Reader,denyallow=x.com,image";
+        std::fs::write(paths.user_rules(), format!("{web}\n{app}\n")).unwrap();
+        let cache = paths.cache().join("diagnostic-v1");
+        for _ in 0..2 {
+            for (scope, url, source, kind, expected) in [
+                (None, "https://y.com/ad.js", "https://a.com/", "script", web),
+                (Some("com.reader"), "https://y.com/ad.png", "", "image", app),
+            ] {
+                let found = check(&paths, scope, url, source, kind).unwrap();
+                assert!(found.blocked);
+                assert_eq!(found.rule.as_deref(), Some(expected));
+                assert_eq!(found.source.as_deref(), Some("rules"));
+            }
+            let files = ListFiles::read(&[&paths.lists(), &paths.rules()]).unwrap();
+            assert!(Diagnostics::read(&cache, files.generation).is_some());
+        }
+    }
+
+    #[test]
+    fn diagnostics_keep_original_noop_lines_after_cache_load() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.rules()).unwrap();
+        let regex = r"/ad[s]web/$_,script,___";
+        let app = "/clientad.png$__,app=COM.Reader,image,_";
+        std::fs::write(
+            paths.user_rules(),
+            format!("{regex}\n/other[s]web/$script\n{app}\n"),
+        )
+        .unwrap();
+        for _ in 0..2 {
+            for (scope, url, kind, expected) in [
+                (None, "https://y.com/adsweb", "script", regex),
+                (
+                    Some("com.reader"),
+                    "https://y.com/clientad.png",
+                    "image",
+                    app,
+                ),
+            ] {
+                let found = check(&paths, scope, url, "", kind).unwrap();
+                assert!(found.blocked);
+                assert_eq!(found.rule.as_deref(), Some(expected));
+                assert_eq!(found.source.as_deref(), Some("rules"));
+            }
         }
     }
 

@@ -52,10 +52,18 @@ pub(super) struct PageProjections {
 
 fn projection(source: &Rule<'_>, page: &PageException<'_>) -> Option<String> {
     let projected = page.project(source.literal_options());
-    rule::read(&projected)
+    let source = rule::read(&projected);
+    if !source
         .network()
         .is_some_and(|rule| rule.is_badfilter() || is_network_exception(&rule))
-        .then_some(projected)
+    {
+        return None;
+    }
+    if source.denyallow {
+        Some(source.normalized().into_owned())
+    } else {
+        Some(projected)
+    }
 }
 
 pub(crate) fn valid_script_exception(source: &Rule<'_>) -> bool {

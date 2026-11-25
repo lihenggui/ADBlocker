@@ -314,6 +314,12 @@ upstream and the response's `Content-Type` identifies a resource type, the
 engine checks the request again with that type. An HTML response leaves the
 request type unchanged.
 
+A rule with `$denyallow=` applies only when the request goes to a host
+outside the list of domains in the option. The list covers each domain
+and its subdomains. `$domain=` still names the pages the rule is for.
+An option made up entirely of underscores is ignored. It can appear
+anywhere in a rule's option list.
+
 A blocked request with a matching `$redirect` or `$redirect-rule` that
 names a bundled resource gets a local `200` response with that resource.
 The engine counts it as blocked. A request blocked without a substitute

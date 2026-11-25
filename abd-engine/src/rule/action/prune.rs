@@ -13,7 +13,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use crate::jsonpath::{self, Path};
-use crate::rule::options::{unescape, unescaped};
+use crate::rule::quoting::{unescape, unescaped};
 
 pub(super) fn parse(value: &str) -> Option<String> {
     if unescaped(value, b'$').next().is_some() {

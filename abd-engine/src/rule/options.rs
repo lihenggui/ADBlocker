@@ -14,16 +14,8 @@
 
 //! Option boundaries and quoting shared by the rule reader and action values.
 
-pub(super) const APP: &str = "app";
-pub(super) const PRUNE: &str = "jsonprune";
-pub(super) const REPLACE: &str = "replace";
-
-/// AdGuard quotes option separators with an immediately preceding backslash.
-pub(crate) fn unescaped(text: &str, byte: u8) -> impl DoubleEndedIterator<Item = usize> {
-    text.bytes().enumerate().filter_map(move |(i, b)| {
-        (b == byte && (i == 0 || text.as_bytes()[i - 1] != b'\\')).then_some(i)
-    })
-}
+use super::modifiers::{APP, DENYALLOW, PRUNE, REPLACE, is_noop};
+use super::quoting::{delimiter, unescaped};
 
 /// Split options after skipping the two slash-delimited replacement fields.
 fn options(text: &str, quoting: Quoting) -> impl Iterator<Item = &str> {
@@ -33,9 +25,7 @@ fn options(text: &str, quoting: Quoting) -> impl Iterator<Item = &str> {
         let (start, comma) = match quoting {
             Quoting::Literal => (0, text.find(',')),
             Quoting::AdGuard => {
-                let start = replacement_fields(text).map_or(0, |value| {
-                    text.len() - value.len() + option_value_end(value)
-                });
+                let start = custom_value_end(text).unwrap_or(0);
                 (start, unescaped(&text[start..], b',').next())
             }
         };
@@ -71,7 +61,8 @@ impl<'a> OptionToken<'a> {
 pub(super) struct Options<'a> {
     pub(super) pattern: &'a str,
     pub(super) suffix: &'a str,
-    spans: Vec<Span>,
+    spans: Vec<(usize, Span)>,
+    pub(super) noop: bool,
 }
 
 /// Store positions within the suffix so even a long list of options
@@ -119,10 +110,21 @@ impl<'a> Options<'a> {
     }
 
     pub(super) fn split(pattern: &'a str, suffix: &'a str, quoting: Quoting) -> Self {
+        let mut noop = false;
+        let spans = spans(suffix, quoting)
+            .filter(|(start, span)| {
+                // AdGuard says a noop "can appear in a rule as often as needed."
+                // Discard it in any position, even if only the pattern remains.
+                let skip = is_noop(&suffix[*start..span.end]);
+                noop |= skip;
+                !skip
+            })
+            .collect();
         Self {
             pattern,
             suffix,
-            spans: spans(suffix, quoting).map(|(_, span)| span).collect(),
+            spans,
+            noop,
         }
     }
 
@@ -131,17 +133,54 @@ impl<'a> Options<'a> {
     }
 
     pub(super) fn token(&self, index: usize) -> OptionToken<'a> {
-        let start = if index == 0 {
-            0
-        } else {
-            self.spans[index - 1].end + 1
-        };
-        self.spans[index].token(self.suffix, start)
+        let (start, span) = self.spans[index];
+        span.token(self.suffix, start)
+    }
+
+    pub(super) fn write<'b>(&'b self, option: impl Fn(OptionToken<'b>) -> &'b str) -> String {
+        let mut line = self.pattern.to_owned();
+        let mut separator = '$';
+        for token in self.tokens() {
+            line.push(separator);
+            line.push_str(option(token));
+            separator = ',';
+        }
+        line
+    }
+
+    pub(super) fn without_noops(&self) -> Option<String> {
+        self.noop.then(|| self.write(|token| token.raw))
+    }
+
+    pub(super) fn written_len(&self) -> usize {
+        self.pattern.len()
+            + if self.noop {
+                self.tokens()
+                    .map(|token| token.raw.len() + 1)
+                    .sum::<usize>()
+            } else {
+                self.suffix.len() + 1
+            }
     }
 }
 
 fn replacement_fields(text: &str) -> Option<&str> {
     text.strip_prefix(REPLACE)?.strip_prefix("=/")
+}
+
+pub(super) fn source_regex_end(option: &str) -> Option<usize> {
+    let value = option
+        .strip_prefix("domain=")
+        .or_else(|| option.strip_prefix("from="))?;
+    let body = value.strip_prefix('~').unwrap_or(value).strip_prefix('/')?;
+    let end = option.len() - body.len() + delimiter(body)? + 1;
+    (end == option.len() || option.as_bytes().get(end) == Some(&b',')).then_some(end)
+}
+
+fn custom_value_end(option: &str) -> Option<usize> {
+    replacement_fields(option)
+        .map(|value| option.len() - value.len() + option_value_end(value))
+        .or_else(|| source_regex_end(option))
 }
 
 /// A regular expression that forms the condition can contain dollar signs.
@@ -153,7 +192,7 @@ pub(crate) fn regex_option_separator(line: &str) -> Option<usize> {
 }
 
 /// Find the last unquoted dollar outside a regular expression condition or
-/// a replacement or app value. Both value parsers check dollar quoting
+/// a replacement, app or denyallow value. The value parsers check quoting
 /// separately, so malformed quoting stays with the rule that contains it.
 pub(crate) fn option_separator(line: &str) -> Option<usize> {
     let mut cursor = regex_option_separator(line).unwrap_or(0);
@@ -166,7 +205,7 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
         }
     }
     let mut last = None;
-    let mut app_options = false;
+    let mut owned_options = false;
     let bytes = line.as_bytes();
     while cursor < bytes.len() {
         let byte = bytes[cursor];
@@ -175,22 +214,23 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
             continue;
         }
         if byte == b'$' {
-            if !app_options {
+            if !owned_options {
                 last = Some(cursor - 1);
             }
         } else if byte != b',' || last.is_none() {
             continue;
         }
         let option = &line[cursor..];
-        if option
-            .trim_start_matches('~')
-            .strip_prefix(APP)
-            .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-        {
-            app_options = true;
+        if [APP, DENYALLOW].into_iter().any(|name| {
+            option
+                .trim_start_matches('~')
+                .strip_prefix(name)
+                .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+        }) {
+            owned_options = true;
         }
-        if let Some(value) = replacement_fields(option) {
-            cursor = line.len() - value.len() + option_value_end(value);
+        if let Some(end) = custom_value_end(option) {
+            cursor += end;
         } else if line[cursor..]
             .strip_prefix(PRUNE)
             .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
@@ -234,37 +274,7 @@ fn starts_option(tail: &str) -> bool {
     let after =
         name.trim_start_matches(|c: char| c.is_ascii_lowercase() || matches!(c, '1' | '3' | '-'));
     (after.len() < name.len() && (after.is_empty() || after.starts_with(['=', ','])))
-        || (tail.starts_with('_') && {
-            let end = tail.trim_start_matches('_');
-            end.is_empty() || end.starts_with(',')
-        })
-}
-
-/// A slash is quoted when an odd number of backslashes precedes it.
-pub(crate) fn delimiter(part: &str) -> Option<usize> {
-    let mut escaped = false;
-    for (index, byte) in part.bytes().enumerate() {
-        match byte {
-            b'/' if !escaped => return Some(index),
-            b'\\' => escaped = !escaped,
-            _ => escaped = false,
-        }
-    }
-    None
-}
-
-/// Remove only the quoting of this layer and leave regex escapes intact.
-pub(crate) fn unescape(part: &str, chars: &[char]) -> String {
-    let mut iter = part.chars().peekable();
-    let mut output = String::with_capacity(part.len());
-    while let Some(ch) = iter.next() {
-        if ch == '\\' && iter.peek().is_some_and(|next| chars.contains(next)) {
-            output.push(iter.next().expect("peeked character"));
-        } else {
-            output.push(ch);
-        }
-    }
-    output
+        || (tail.starts_with('_') && is_noop(tail.split(',').next().unwrap_or_default()))
 }
 
 #[cfg(test)]

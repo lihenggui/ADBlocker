@@ -113,6 +113,30 @@ mod tests {
     }
 
     #[test]
+    fn denyallow_rules_are_reported_when_the_matcher_cannot_apply_them() {
+        let text = "/ad[s]?/$denyallow=x.com\n\
+                    *$denyallow=x.com\n\
+                    *$script,domain=a.*,denyallow=x.com\n\
+                    *$script,domain=a.*|b.com,denyallow=x.com\n\
+                    /assets/ad.js$denyallow=x.com\n\
+                    *$app=~com.reader,denyallow=x.com";
+        let checked = check(text);
+        assert_eq!(checked.rules, 6);
+        assert_eq!(
+            kinds(text),
+            [
+                (1, IssueKind::Invalid),
+                (2, IssueKind::Invalid),
+                (3, IssueKind::Invalid),
+                (6, IssueKind::Invalid)
+            ]
+        );
+        for issue in checked.issues {
+            assert_eq!(Some(issue.text.as_str()), text.lines().nth(issue.line - 1));
+        }
+    }
+
+    #[test]
     fn javascript_and_page_script_exceptions_are_checked_with_user_permissions() {
         let text = "site.test#%#window.fixture = 1;\n\
                     except.site.test#@%#window.fixture = 1;\n\

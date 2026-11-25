@@ -22,8 +22,10 @@ use crate::list_url::{file_name, untrusted_file_name};
 use crate::protocol_types::IssueKind;
 use crate::rule::action::value_end;
 use crate::rule::options::{
-    delimiter, option_separator, option_texts as options, option_value_end, regex_option_separator,
+    option_separator, option_texts as options, option_value_end, regex_option_separator,
 };
+
+use crate::rule::quoting::delimiter;
 
 impl ResponseRules {
     fn build_with_budget<'a>(
@@ -250,6 +252,35 @@ fn changed(f: &Filters, url: &str, page: Page<'_>, kind: &str, app: &str) -> Str
         bytes = action.apply(&bytes, &|| Instant::now() < deadline).unwrap();
     }
     String::from_utf8(bytes).unwrap()
+}
+
+#[test]
+fn response_rules_ignore_noops_at_every_option_position() {
+    let url = "https://example.org/body";
+    for (replace, prune) in [
+        ("_,replace=/X/Y/", r"jsonprune=\$.ad,_"),
+        ("replace=/X/Y/,__,___", r"__,jsonprune=\$.ad,___"),
+        (
+            "_,replace=/X/Y/,__,xmlhttprequest,___",
+            r"_,xmlhttprequest,___,jsonprune=\$.ad,_",
+        ),
+    ] {
+        let rules = format!("||example.org/body${replace}\n||example.org/body${prune}");
+        let f = filters(&rules);
+        assert!(crate::rulecheck::check(&rules).issues.is_empty());
+        assert_eq!(
+            changed(&f, url, Page::NONE, "xmlhttprequest", "com.reader"),
+            "Y Z"
+        );
+        let mut data = br#"{"ad":1,"text":"X"}"#.to_vec();
+        for action in
+            f.for_app("com.reader")
+                .response_actions(url, Page::NONE, "xmlhttprequest", "GET")
+        {
+            data = action.apply(&data, &|| true).unwrap();
+        }
+        assert_eq!(data, br#"{"text":"Y"}"#);
+    }
 }
 
 #[test]

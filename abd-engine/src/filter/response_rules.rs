@@ -17,6 +17,7 @@
 //! from adblock-rust. Exceptions are resolved here after checking types
 //! and apps, which the CSP query does not know.
 
+use std::borrow::Cow;
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
@@ -173,18 +174,19 @@ pub(super) struct ResponseRules {
 /// Keep the alphabetically first rules, before checking their actions.
 #[derive(Default)]
 pub(super) struct ResponseProjections<'a> {
-    lines: BTreeMap<&'a str, Option<Parsed<'a>>>,
+    lines: BTreeMap<Cow<'a, str>, Option<Parsed<'a>>>,
 }
 
 impl<'a> ResponseProjections<'a> {
     pub(super) fn add(&mut self, line: &'a str, response: ResponseRule<'a>) {
+        let line = response.normalized(line);
         if line.len() <= MAX_RESPONSE_RULE
             && (self.lines.len() < MAX_RESPONSE_RULES
                 || self
                     .lines
                     .last_key_value()
-                    .is_some_and(|(&last, _)| line < last))
-            && !self.lines.contains_key(line)
+                    .is_some_and(|(last, _)| &line < last))
+            && !self.lines.contains_key(line.as_ref())
         {
             self.lines.insert(line, Parsed::from_rule(&response));
             if self.lines.len() > MAX_RESPONSE_RULES {

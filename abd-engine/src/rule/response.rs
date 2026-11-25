@@ -12,9 +12,11 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use std::borrow::Cow;
+
 use super::action::{ActionKind, ActionSpec};
-use super::modifiers::{Compatibility, Kind, kind_bit, lookup};
-use super::options::{APP, OptionToken, Options};
+use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
+use super::options::{OptionToken, Options};
 use crate::limits::MAX_RESPONSE_RULE;
 
 pub(crate) struct ResponseRule<'a> {
@@ -59,9 +61,15 @@ impl<'a> ResponseRule<'a> {
         }
     }
 
+    pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
+        self.options
+            .without_noops()
+            .map_or(Cow::Borrowed(line), Cow::Owned)
+    }
+
     pub(crate) fn action(&self) -> Option<Action<'a>> {
         let options = &self.options;
-        if options.pattern.len() + options.suffix.len() >= MAX_RESPONSE_RULE {
+        if options.written_len() > MAX_RESPONSE_RULE {
             return None;
         }
         let pattern = options.pattern.strip_prefix("@@");
@@ -81,7 +89,9 @@ impl<'a> ResponseRule<'a> {
             if index == self.action_index {
                 continue;
             }
-            if action_kind(token).is_some() || !self.compatibility.accepts(token) {
+            if action_kind(token).is_some()
+                || !self.compatibility.accepts(token.raw_name, token.value)
+            {
                 return None;
             }
             if token.raw_name == APP
