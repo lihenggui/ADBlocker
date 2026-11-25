@@ -40,6 +40,11 @@ impl<'budget> Budget<'budget> {
         self.check()
     }
 
+    #[cfg(test)]
+    pub(super) fn visits_used(&self) -> usize {
+        MAX_XPATH_VISITS - self.visits
+    }
+
     pub(super) fn text(&mut self, bytes: usize) -> Result<()> {
         self.bytes = self.bytes.checked_sub(bytes).ok_or(())?;
         self.check()

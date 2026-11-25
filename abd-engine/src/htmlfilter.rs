@@ -103,11 +103,28 @@ pub(crate) fn apply(
     let mut output = Vec::with_capacity(body.len() - removed);
     let mut cursor = 0;
     for range in scan.removed {
-        output.extend_from_slice(&body[cursor..range.start]);
+        if !append(&mut output, &body[cursor..range.start]) {
+            return Some(body);
+        }
         cursor = range.end;
     }
-    output.extend_from_slice(&body[cursor..]);
+    if !append(&mut output, &body[cursor..]) {
+        return Some(body);
+    }
     Some(Bytes::from(output))
+}
+
+fn append(output: &mut Vec<u8>, kept: &[u8]) -> bool {
+    // A literal '<' beside a cut must not turn the following text into markup.
+    if output.ends_with(b"<")
+        && kept
+            .first()
+            .is_some_and(|byte| byte.is_ascii_alphabetic() || matches!(byte, b'/' | b'!' | b'?'))
+    {
+        return false;
+    }
+    output.extend_from_slice(kept);
+    true
 }
 
 struct Element<'a> {

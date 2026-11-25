@@ -28,6 +28,7 @@ use adblock::Engine;
 use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
 use adblock::request::Request;
 use adblock::url_parser::{RequestUrl, parse_url};
+use adblock::utils::fast_hash;
 
 pub(crate) use self::app_patterns::Patterns;
 use self::app_patterns::Scope;
@@ -113,9 +114,7 @@ fn app_package(app: &str) -> Option<&str> {
 }
 
 fn domain_named(domains: &[u64], name: &str) -> bool {
-    domains
-        .binary_search(&adblock::utils::fast_hash(name))
-        .is_ok()
+    domains.binary_search(&fast_hash(name)).is_ok()
 }
 
 fn is_network_exception(rule: &NetworkFilter<'_>) -> bool {
@@ -188,22 +187,26 @@ impl RequestRules {
             Page::Unnamed { .. } => None,
         };
         let third_party = match (source, page) {
-            (Some(source), _) => source.domain() != url.domain(),
+            (Some(source), _) => !source.domain().eq_ignore_ascii_case(url.domain()),
             // A browser says which side its page is on without naming it.
             // With no page at all there is no other party to be the third.
             (None, Page::Unnamed { cross_site }) => cross_site,
             (None, _) => false,
         };
-        Some(Request::preparsed(
+        // No named page means there are no source hashes to add.
+        let source_hostname = source.map_or("", RequestUrl::hostname);
+        let hostname = url.hostname();
+        let mut request = Request::preparsed(
             &url.url,
-            url.hostname(),
-            // No page named: no rule for named pages applies, and a rule
-            // for every page but some does.
-            source.map_or("", RequestUrl::hostname),
+            hostname,
+            source_hostname,
             kind,
             third_party,
             method,
-        ))
+        );
+        add_lowercase_hashes(hostname, &mut request.hostname_hashes);
+        add_lowercase_hashes(source_hostname, &mut request.source_hostname_hashes);
+        Some(request)
     }
 
     fn check_request(&self, req: &mut Request, apps: Option<(&AppRules, &Scope<'_>)>) -> Check {
@@ -230,6 +233,17 @@ impl RequestRules {
             check.redirect = redirects::find(engine, req, apps.map(|(_, scope)| scope));
         }
         check
+    }
+}
+
+fn add_lowercase_hashes(host: &str, hashes: &mut Option<Vec<u64>>) {
+    // adblock hashes ASCII names as supplied. Add the canonical spelling
+    // for DNS rules such as denyallow while keeping literal list entries
+    // and the original URL spelling usable.
+    if host.bytes().any(|byte| byte.is_ascii_uppercase()) {
+        hashes
+            .get_or_insert_default()
+            .extend(crate::host::suffixes(&host.to_ascii_lowercase()).map(fast_hash));
     }
 }
 
@@ -555,5 +569,7 @@ pub struct Check {
     pub rule: Option<String>,
 }
 
+#[cfg(test)]
+mod matcher_contract;
 #[cfg(test)]
 mod tests;

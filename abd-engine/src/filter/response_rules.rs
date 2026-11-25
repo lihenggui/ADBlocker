@@ -457,9 +457,10 @@ impl super::AppFilters<'_> {
         let request = RequestRules::request_with_page(url, page, "document", method)?;
         let tokens = rules.engine.get_csp_directives(&request)?;
         let strict_third_party = match page {
-            Page::Named(source) => {
-                source.hostname().trim_end_matches('.') != request.hostname.trim_end_matches('.')
-            }
+            Page::Named(source) => !source
+                .hostname()
+                .trim_end_matches('.')
+                .eq_ignore_ascii_case(request.hostname.trim_end_matches('.')),
             Page::Itself => false,
             Page::Unnamed { cross_site } => cross_site,
         };

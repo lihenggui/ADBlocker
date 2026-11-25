@@ -456,3 +456,110 @@ fn invalid_xpath_names_the_reason_it_is_rejected() {
         assert_eq!(XPath::parse(input).err(), Some(reason), "{input}");
     }
 }
+
+mod properties {
+    use bytes::Bytes;
+    use proptest::prelude::*;
+    use roxmltree::Document;
+
+    use super::*;
+    use crate::limits::{MAX_XPATH_DEPTH, MAX_XPATH_VISITS};
+    use crate::test_support::{arbitrary_bytes, arbitrary_text, assert_removal, mutate};
+    use crate::xpath::{evaluate::Evaluation, nodes::Context};
+
+    fn expression() -> impl Strategy<Value = String> {
+        let step = prop::sample::select(vec![
+            "/r",
+            "//ad",
+            "/@enabled",
+            "/text()",
+            "/comment()",
+            "/*",
+            "/..",
+            "/child::ad[1]",
+            "[preceding-sibling::*]",
+            "[contains(., 'promo')]",
+            "/",
+            "//",
+            "/@",
+        ]);
+        prop_oneof![
+            arbitrary_text(),
+            prop::collection::vec(step, 1..8).prop_map(|steps| steps.concat()),
+            (0..=MAX_XPATH_DEPTH + 2)
+                .prop_map(|depth| { format!("{}//ad{}", "(".repeat(depth), ")".repeat(depth)) }),
+            (1..=MAX_XPATH_DEPTH + 2).prop_map(|depth| format!("//ad[0{}]", " + 1".repeat(depth))),
+        ]
+    }
+
+    fn document() -> impl Strategy<Value = Bytes> {
+        let node = prop_oneof![
+            "[a-z&<>]{0,24}".prop_map(|text| format!("<ad><![CDATA[{text}]]></ad>")),
+            prop::sample::select(vec![
+                "<ad enabled='yes'>promo &amp; skip</ad>",
+                "<other a='&quot;'>\u{e9}</other>",
+                "<!--keep-->",
+                "<?pi data?>",
+                "<ad/>",
+            ])
+            .prop_map(str::to_owned),
+        ];
+        let structured = (
+            prop::collection::vec(node, 0..32),
+            prop::option::of((any::<prop::sample::Index>(), prop::option::of(any::<u8>()))),
+        )
+            .prop_map(|(nodes, mutation)| {
+                mutate(
+                    format!("<r>\r\n{}</r>", nodes.concat()).into_bytes(),
+                    mutation,
+                )
+            });
+        prop_oneof![arbitrary_bytes(), structured].prop_map(Bytes::from)
+    }
+
+    proptest! {
+        #[test]
+        fn parsing_and_evaluation_return_within_the_depth_and_visit_limits(
+            expression in expression(), input in document(),
+        ) {
+            if let Ok(path) = XPath::parse(&expression) {
+                prop_assert!(path.0.depth <= MAX_XPATH_DEPTH);
+                if let Some(output) = prune(&path, input.clone(), &|| true) {
+                    assert_removal(&input, &output)?;
+                }
+                if let Ok(text) = std::str::from_utf8(&input)
+                    && let Ok(doc) = Document::parse(text)
+                {
+                    let mut evaluation = Evaluation::new(&|| true);
+                    let result = evaluation.evaluate(&path.0, Context::root(&doc));
+                    prop_assert!(evaluation.budget.visits_used() <= MAX_XPATH_VISITS);
+                    if let Ok(nodes) = result.and_then(|value| value.nodes()) {
+                        // An empty selection must preserve the bytes for any accepted expression.
+                        if nodes.is_empty() {
+                            prop_assert_eq!(prune(&path, input.clone(), &|| true), Some(input));
+                        }
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn selecting_the_protected_document_or_no_nodes_preserves_every_byte(input in document()) {
+            for expression in ["/", "//__never_generated__"] {
+                let path = XPath::parse(expression).unwrap();
+                let result = prune(&path, input.clone(), &|| true);
+                prop_assert_eq!(result.as_ref(), Some(&input));
+            }
+        }
+    }
+
+    #[test]
+    fn a_large_sibling_query_stops_after_debiting_exactly_the_visit_limit() {
+        let input = format!("<r>{}</r>", "<ad/>".repeat(700));
+        let doc = Document::parse(&input).unwrap();
+        let path = XPath::parse("//ad[preceding-sibling::* and following-sibling::*]").unwrap();
+        let mut evaluation = Evaluation::new(&|| true);
+        assert!(evaluation.evaluate(&path.0, Context::root(&doc)).is_err());
+        assert_eq!(evaluation.budget.visits_used(), MAX_XPATH_VISITS);
+    }
+}

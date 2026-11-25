@@ -331,4 +331,91 @@ mod tests {
             ["NAME=session; Max-Age=0"]
         );
     }
+
+    mod properties {
+        use proptest::prelude::*;
+
+        use super::*;
+        use crate::test_support::{arbitrary_bytes, arbitrary_text, mutate};
+
+        fn field() -> impl Strategy<Value = Vec<u8>> {
+            let structured = (
+                "[A-Za-z0-9_-]{1,16}",
+                "[A-Za-z0-9_+=!/:.-]{0,22}",
+                any::<bool>(),
+                prop::sample::select(vec![
+                    "",
+                    "; Path=/; Secure",
+                    "; Max-Age=999; HttpOnly",
+                    "; SameSite=Strict",
+                    "; Expires=Wed, 09 Jun 2021 10:18:14 GMT",
+                    "; Max-Age=-9999999999999999999999",
+                    "; Max-Age=invalid",
+                    "; Partitioned; Priority=High",
+                ]),
+                prop::option::of((any::<prop::sample::Index>(), prop::option::of(any::<u8>()))),
+            )
+                .prop_map(|(name, value, quoted, attributes, mutation)| {
+                    let pair = if quoted {
+                        format!("{name}=\"{value}\"")
+                    } else {
+                        format!("{name}={value}")
+                    };
+                    mutate(format!("{pair}{attributes}").into_bytes(), mutation)
+                });
+            prop_oneof![arbitrary_bytes(), structured]
+        }
+
+        // RFC 6265 cookie-pair, expressed independently of the editor.
+        fn pair(field: &HeaderValue) -> Option<(&str, &str)> {
+            let pair = field
+                .to_str()
+                .ok()?
+                .split(';')
+                .next()?
+                .trim_matches([' ', '\t']);
+            let (name, value) = pair.split_once('=')?;
+            let octets = value
+                .strip_prefix('"')
+                .and_then(|v| v.strip_suffix('"'))
+                .unwrap_or(value);
+            let name_ok = !name.is_empty()
+                && name
+                    .bytes()
+                    .all(|b| b.is_ascii_alphanumeric() || b"!#$%&'*+-.^`|~_".contains(&b));
+            let value_ok = octets
+                .bytes()
+                .all(|b| matches!(b, 0x21 | 0x23..=0x2b | 0x2d..=0x3a | 0x3c..=0x5b | 0x5d..=0x7e));
+            (name_ok && value_ok).then_some((name, value))
+        }
+
+        proptest! {
+            #[test]
+            fn cookie_rules_and_fields_return_and_rewritten_fields_keep_the_cookie_pair(
+                bytes in field(),
+                input in prop_oneof![
+                    arbitrary_text(),
+                    (1..600, any::<bool>()).prop_map(|(age, exact)| {
+                        let selector = if exact { "session" } else { "/^[A-Za-z0-9_-]+$/" };
+                        format!("{selector};maxAge={age};sameSite=lax")
+                    }),
+                ],
+                now in any::<u64>(),
+            ) {
+                let rule = parse(&input, false).and_then(|spec| spec.compile()).ok();
+                let Ok(original) = HeaderValue::from_bytes(&bytes) else { return Ok(()); };
+                let mut headers = HeaderMap::new();
+                headers.insert(SET_COOKIE, original.clone());
+
+                // This rule exercises rewriting even when the arbitrary rule rejects its input.
+                let cap = parse(";maxAge=60;sameSite=lax", false).unwrap().compile().unwrap();
+                response_with_clock(&mut headers, rule.iter().chain([&cap]), || now);
+                if let Some(changed) = headers.get(SET_COOKIE).filter(|value| *value != original) {
+                    let parsed = pair(changed);
+                    prop_assert!(parsed.is_some());
+                    prop_assert_eq!(parsed, pair(&original));
+                }
+            }
+        }
+    }
 }

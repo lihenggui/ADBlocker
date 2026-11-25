@@ -314,3 +314,155 @@ fn each_escape_is_decoded_only_when_the_modifier_asks_for_it() {
     }
     assert_eq!(unescape(r"a\,\d\$\/\|", &[',', '$', '/', '|']), r"a,\d$/|");
 }
+
+mod properties {
+    use std::mem::discriminant;
+
+    use proptest::prelude::*;
+
+    use super::*;
+    use crate::test_support::arbitrary_text;
+
+    fn line() -> impl Strategy<Value = String> {
+        let network = (
+            prop::sample::select(vec![
+                "||ads.example^",
+                "banner",
+                "@@/ad[s]/",
+                "||a.test/path",
+            ]),
+            prop::collection::vec(
+                prop::sample::select(vec![
+                    "_",
+                    "___",
+                    "image",
+                    "document",
+                    "important",
+                    "match-case",
+                    "denyallow=a.test",
+                    "denyallow=~bad.test",
+                    "domain=reader.test|news.test",
+                    "app=com.reader",
+                    "cookie=id;maxAge=1",
+                    "replace=/ad/,x/",
+                    "unknown",
+                    "removeparam=tracking",
+                ]),
+                0..6,
+            ),
+            prop::option::of(arbitrary_text()),
+        )
+            .prop_map(|(pattern, mut options, extra)| {
+                if let Some(extra) = extra.as_deref() {
+                    options.push(extra);
+                }
+                format!("{pattern}${}", options.join(","))
+            });
+        let cosmetic = (
+            "[a-z]{1,12}",
+            prop::sample::select(vec![
+                "#$#div.ad { display: none !important; }",
+                "#@$#div.ad { display: none !important; }",
+                "#%#//scriptlet('set-constant', 'app.adEnabled', 'false')",
+                "#%#window.adEnabled = false",
+                "##.ad",
+                "#?#div:has-text(sponsor)",
+            ]),
+            prop::option::of(arbitrary_text()),
+        )
+            .prop_map(|(host, body, tail)| {
+                format!("{host}.test{body}{}", tail.unwrap_or_default())
+            });
+        prop_oneof![arbitrary_text(), network, cosmetic]
+    }
+
+    proptest! {
+        #[test]
+        fn the_reader_returns_the_same_classification_for_each_input(line in line()) {
+            crate::public_suffix::install();
+            let first = read(&line);
+            let second = read(&line);
+            prop_assert_eq!(discriminant(&first.kind), discriminant(&second.kind));
+            if let (Kind::NotApplied(first), Kind::NotApplied(second)) = (&first.kind, &second.kind) {
+                prop_assert_eq!(first, second);
+            }
+            prop_assert_eq!(first.matcher_input(), second.matcher_input());
+        }
+
+        #[test]
+        fn a_comment_stays_a_comment_with_trailing_whitespace(
+            prefix in prop::sample::select(vec!["!", "!#", "# ", "[Adblock "]),
+            body in arbitrary_text(),
+            space in prop::collection::vec(prop::sample::select(vec![' ', '\r', '\t', '\u{2003}']), 1..8),
+        ) {
+            // Keep a character after "# " so trim does not strip its comment marker.
+            let comment = format!("{prefix}x{body}");
+            prop_assert!(matches!(read(&comment).kind, Kind::Comment));
+            let extended = comment + &space.into_iter().collect::<String>();
+            prop_assert!(matches!(read(&extended).kind, Kind::Comment));
+        }
+
+        #[test]
+        fn applied_rewrites_hand_the_matcher_accepted_text(
+            line in line(),
+            label in "[a-z]{1,12}",
+        ) {
+            crate::public_suffix::install();
+            let valid = [
+                format!("banner$domain=reader.test,denyallow={label}.test"),
+                format!("||{label}.test^$__"),
+                format!("{label}.test#$#div.ad {{ display: none !important; }}"),
+                format!("{label}.test#%#//scriptlet('set-constant', 'app.adEnabled', 'false')"),
+                format!("{label}.test#%#window.adEnabled = false"),
+            ];
+            let permissions = SourcePermissions::USER;
+            for (index, line) in valid.iter().chain(std::iter::once(&line)).enumerate() {
+                let mut scripts = javascript::Scripts::default();
+                let rule = read_with_scripts(line, Some(&mut scripts));
+                let rewritten = rule.denyallow || rule.noop || rule.translated.is_some();
+                let applied = rule.check_matcher(permissions).is_ok();
+                if index < valid.len() {
+                    prop_assert!(rewritten && applied && rule.matcher_input().is_some(),
+                        "expected an applied rewrite of {line:?}");
+                }
+                if rewritten && applied && let Some(input) = rule.matcher_input() {
+                    prop_assert!(parse_filter(&input, false, permissions.matcher()).is_ok(),
+                        "matcher rejected {input:?} from {line:?}");
+                }
+            }
+        }
+        #[test]
+        fn splitting_and_joining_preserves_even_arbitrary_option_text(suffix in arbitrary_text()) {
+            let fields: Vec<_> = options::option_texts(&suffix).collect();
+            prop_assert_eq!(fields.join(","), suffix);
+        }
+
+        #[test]
+        fn escaped_fields_round_trip_through_the_splitter_and_unescaper(
+            values in prop::collection::vec(
+                prop_oneof![arbitrary_text(), r"[a-z,\$\\]{0,24}"],
+                1..8,
+            ),
+        ) {
+            let fields: Vec<_> = values.iter().enumerate().map(|(index, value)| {
+                let mut field = format!("opt{index}=");
+                for character in value.chars() {
+                    if matches!(character, ',' | '$') {
+                        field.push('\\');
+                    }
+                    field.push(character);
+                }
+                // A separator immediately after a backslash would be inside the field.
+                field.push('x');
+                field
+            }).collect();
+            let suffix = fields.join(",");
+            let split = Options::split("pattern", &suffix, Quoting::AdGuard);
+            prop_assert_eq!(split.write(|token| token.raw), format!("pattern${suffix}"));
+            for (index, (token, value)) in split.tokens().zip(&values).enumerate() {
+                prop_assert_eq!(token.raw_name, format!("opt{index}"));
+                prop_assert_eq!(quoting::unescape(token.value.unwrap(), &[',', '$']), format!("{value}x"));
+            }
+        }
+    }
+}

@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::translate_pattern;
+use crate::rule::regex::normalize_pattern;
 
 mod date;
 mod headers;
@@ -118,7 +118,7 @@ fn fields(value: &str) -> Result<(Selector, Option<&str>), Rejection> {
         } else {
             Some(tail.strip_prefix(';').ok_or(Rejection::InvalidExpression)?)
         };
-        let pattern = translate_pattern(&unescape(pattern, &['/', ',', '$']))
+        let pattern = normalize_pattern(&unescape(pattern, &['/', ',', '$']))
             .ok_or(Rejection::InvalidExpression)?;
         return Ok((Selector::Pattern(pattern), attributes));
     }

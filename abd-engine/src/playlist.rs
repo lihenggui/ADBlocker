@@ -319,4 +319,67 @@ mod tests {
             .is_none()
         );
     }
+
+    mod properties {
+        use proptest::prelude::*;
+
+        use super::*;
+        use crate::test_support::{arbitrary_bytes, assert_removal, mutate};
+
+        fn playlist() -> impl Strategy<Value = Vec<u8>> {
+            let segment = (
+                prop::sample::select(vec![
+                    "#EXTINF:4,",
+                    "#EXT-X-KEY:METHOD=AES-128,URI=\"key\"",
+                    "#EXT-X-MAP:URI=\"init.mp4\"",
+                    "#EXT-X-BYTERANGE:12@0",
+                    "#EXT-X-PART:DURATION=0.2,URI=\"ad.ts\"",
+                    "#comment",
+                ]),
+                "[a-z]{1,10}",
+                any::<bool>(),
+            );
+            let structured = (
+                prop::collection::vec(segment, 0..18),
+                any::<bool>(),
+                any::<bool>(),
+                prop::option::of((any::<prop::sample::Index>(), prop::option::of(any::<u8>()))),
+            )
+                .prop_map(|(segments, bom, final_newline, mutation)| {
+                    let mut text = if bom {
+                        String::from("\u{feff}")
+                    } else {
+                        String::new()
+                    };
+                    text.push_str("#EXTM3U");
+                    for (tag, name, crlf) in segments {
+                        let newline = if crlf { "\r\n" } else { "\n" };
+                        text.push_str(&format!("{newline}{tag}{newline}{name}.ts"));
+                    }
+                    if final_newline {
+                        text.push('\n');
+                    }
+                    mutate(text.into_bytes(), mutation)
+                });
+            prop_oneof![arbitrary_bytes(), structured]
+        }
+
+        proptest! {
+            #[test]
+            fn editing_returns_a_subsequence_of_the_original_bytes(
+                input in playlist(), needle in prop::sample::select(vec!["ad", ".ts", "KEY", "PART", "MAP"]),
+            ) {
+                let matches = |text: &str| Some(text.contains(needle));
+                if let Some(output) = edit(&input, matches, matches, &|| true) {
+                    assert_removal(&input, &output)?;
+                }
+            }
+
+            #[test]
+            fn a_playlist_without_any_matches_is_preserved_byte_for_byte(input in playlist()) {
+                let output = edit(&input, |_| Some(false), |_| Some(false), &|| true);
+                prop_assert_eq!(output.as_deref(), Some(input.as_slice()));
+            }
+        }
+    }
 }

@@ -42,9 +42,19 @@ pub(super) fn network_pattern_supported(pattern: &str, match_case: bool) -> bool
     RegexBuilder::new(&body).unicode(false).build().is_ok()
 }
 
+/// Translate and validate with the consuming regex engine and its limits.
+pub(super) fn compile_pattern<T, E>(
+    pattern: &str,
+    rejection: E,
+    compile: impl FnOnce(&str) -> Result<T, E>,
+) -> Result<T, E> {
+    let translated = normalize_pattern(pattern).ok_or(rejection)?;
+    compile(&translated)
+}
+
 /// Quote braces that are literal in list patterns. Braced escapes,
 /// character classes and counted repetitions keep their own syntax.
-pub(crate) fn translate_pattern(pattern: &str) -> Option<String> {
+pub(super) fn normalize_pattern(pattern: &str) -> Option<String> {
     let mut translated = String::with_capacity(pattern.len());
     let mut chars = pattern.char_indices().peekable();
     let mut class_depth = 0;
@@ -164,3 +174,6 @@ fn write_pattern(regex: &mut String, pattern: &str, wildcard: &str) {
         }
     }
 }
+
+#[cfg(test)]
+mod tests;

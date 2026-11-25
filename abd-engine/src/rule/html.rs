@@ -24,7 +24,7 @@ use regex::{Error, Regex, RegexBuilder};
 use serde::{Deserialize, Serialize};
 
 use super::quoting::delimiter;
-use super::regex::translate_pattern;
+use super::regex::compile_pattern;
 use crate::htmlfilter::{Attribute, AttributeValue, Compiled, Content, Selector};
 use crate::limits::{
     MAX_HTML_CHAIN, MAX_HTML_CONDITIONS, MAX_HTML_RULE, MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE,
@@ -497,10 +497,9 @@ impl Content {
                 pattern,
                 insensitive,
                 single_line,
-            } => {
-                let pattern = translate_pattern(pattern).ok_or(Rejection::Regex)?;
-                Self::Matches(compile_regex(&pattern, *insensitive, *single_line)?)
-            }
+            } => Self::Matches(compile_pattern(pattern, Rejection::Regex, |translated| {
+                compile_regex(translated, *insensitive, *single_line)
+            })?),
             Condition::Glob(glob) => {
                 let mut pattern = String::from(r"\A");
                 for (index, part) in glob.split('*').enumerate() {

@@ -200,3 +200,6 @@ fn same_origin(first: &Uri, second: &Uri) -> bool {
             .is_some_and(|(a, b)| a.eq_ignore_ascii_case(b))
         && port(first) == port(second)
 }
+
+#[cfg(test)]
+mod tests;

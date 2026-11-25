@@ -524,4 +524,92 @@ mod tests {
             );
         }
     }
+
+    mod properties {
+        use std::net::{Ipv4Addr, Ipv6Addr};
+
+        use proptest::prelude::*;
+
+        use super::*;
+        use crate::test_support::arbitrary_text;
+
+        fn address() -> impl Strategy<Value = IpAddr> {
+            prop_oneof![
+                any::<[u8; 4]>().prop_map(|bytes| Ipv4Addr::from(bytes).into()),
+                any::<[u16; 8]>().prop_map(|parts| Ipv6Addr::from(parts).into()),
+                any::<[u8; 4]>().prop_map(|bytes| Ipv4Addr::from(bytes).to_ipv6_mapped().into()),
+                (any::<u16>(), any::<u16>())
+                    .prop_map(|(a, b)| Ipv6Addr::new(a, 0, 0, 0, 0, 0, 0, b).into()),
+            ]
+        }
+
+        fn spellings(address: IpAddr, style: [u8; 8]) -> Vec<String> {
+            match address {
+                IpAddr::V4(ip) => vec![ip.to_string()],
+                IpAddr::V6(ip) => {
+                    let expanded = ip.segments().map(|part| format!("{part:04x}")).join(":");
+                    let short = ip.to_string();
+                    let mixed = ip
+                        .segments()
+                        .into_iter()
+                        .zip(style)
+                        .map(|(part, style)| {
+                            let width = usize::from(style % 4 + 1);
+                            if style & 4 == 0 {
+                                format!("{part:0width$x}")
+                            } else {
+                                format!("{part:0width$X}")
+                            }
+                        })
+                        .collect::<Vec<_>>()
+                        .join(":");
+                    vec![
+                        format!("[{short}]"),
+                        format!("[{expanded}]"),
+                        format!("[{}]", expanded.to_ascii_uppercase()),
+                        format!("[{mixed}]"),
+                    ]
+                }
+            }
+        }
+
+        proptest! {
+            #[test]
+            fn address_rules_return_for_arbitrary_and_nearly_valid_patterns(
+                text in prop_oneof![arbitrary_text(), "[0-9a-fA-F.:/%^|]{0,50}"],
+                suffix in prop::sample::select(vec!["network", "important,network", "network,app=com.test", "network,~image"]),
+            ) {
+                let _ = read(&format!("{text}${suffix}"));
+            }
+
+            #[test]
+            fn exact_rules_match_the_endpoint_across_equivalent_spellings(
+                ip in address(), port in any::<u16>(), with_port in any::<bool>(),
+                style in any::<[u8; 8]>(),
+                prefix in prop::sample::select(vec!["", "|", "||"]),
+                separator in prop::sample::select(vec!["", "^"]),
+            ) {
+                let texts = spellings(ip, style);
+                for address in &texts {
+                    let pattern = if with_port { format!("{address}:{port}") } else { address.clone() };
+                    let input = format!("{prefix}{pattern}{separator}$network");
+                    let Kind::Address(rule) = read(&input).kind else {
+                        return Err(TestCaseError::fail(format!("valid address rule was rejected: {input}")));
+                    };
+                    prop_assert!(matches!(rule.pattern, Pattern::Exact(parsed, p)
+                        if parsed == ip && p == with_port.then_some(port)));
+                    let mut rules = AddressProjections::default();
+                    prop_assert!(rules.add(&rule).is_ok());
+                    let rules = rules.finish();
+                    for spelling in &texts {
+                        let endpoint = format!("{spelling}:{port}").parse().unwrap();
+                        prop_assert_eq!(rules.decide(endpoint, None), AddressDecision::Block);
+                    }
+                    let other = SocketAddr::new(ip, port.wrapping_add(1));
+                    let expected = if with_port { AddressDecision::NoMatch } else { AddressDecision::Block };
+                    prop_assert_eq!(rules.decide(other, None), expected);
+                }
+            }
+        }
+    }
 }

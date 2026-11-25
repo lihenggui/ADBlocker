@@ -231,7 +231,15 @@ fn exhausting_visits_abandons_the_whole_removal_plan() {
         r#"{{"drop":1,"items":[{}0]}}"#,
         "0,".repeat(MAX_JSON_VISITS)
     );
-    assert!(prune(&path, input.as_bytes(), &|| true).is_none());
+    let visits = std::cell::Cell::new(0);
+    assert!(
+        prune(&path, input.as_bytes(), &|| {
+            visits.set(visits.get() + 1);
+            true
+        })
+        .is_none()
+    );
+    assert_eq!(visits.get(), MAX_JSON_VISITS);
 }
 
 #[test]
@@ -332,4 +340,132 @@ fn integer_literals_outside_serde_jsons_integer_range_do_not_match() {
         ),
         "[-9223372036854775808,-9223372036854775809]"
     );
+}
+
+mod properties {
+    use std::cell::Cell;
+
+    use proptest::prelude::*;
+    use serde_json::Value;
+
+    use super::*;
+    use crate::jsonpath::{Filter, Key, Selector};
+    use crate::limits::{MAX_JSON_PATH, MAX_JSON_PATH_NESTING, MAX_JSON_VISITS};
+    use crate::test_support::{arbitrary_bytes, arbitrary_text, assert_removal, mutate};
+
+    fn path() -> impl Strategy<Value = String> {
+        let step = prop::sample::select(vec![
+            ".ad",
+            "..ad",
+            ".*",
+            "['a','ad',0,-1]",
+            "[0:-1:2]",
+            "[::-1]",
+            "[?(has ad)]",
+            "[?(key-eq $.ad true)]",
+            "[?(key-substr ad 'promo')]",
+            "[",
+            "..",
+            "[?(has",
+        ]);
+        prop_oneof![
+            arbitrary_text(),
+            prop::collection::vec(step, 0..9).prop_map(|steps| format!("${}", steps.concat())),
+            (0..=MAX_JSON_PATH_NESTING + 2).prop_map(|depth| {
+                format!("${}{}", "[?(has $".repeat(depth), ")]".repeat(depth))
+            }),
+            (MAX_JSON_PATH / 2 - 2..MAX_JSON_PATH / 2 + 2)
+                .prop_map(|steps| format!("${}", ".a".repeat(steps))),
+        ]
+    }
+
+    fn document() -> impl Strategy<Value = Vec<u8>> {
+        let atom = prop_oneof![
+            any::<i64>().prop_map(Value::from),
+            any::<bool>().prop_map(Value::from),
+            arbitrary_text().prop_map(Value::from),
+            Just(Value::Null),
+        ];
+        let value = atom.prop_recursive(4, 30, 4, |inner| {
+            prop_oneof![
+                prop::collection::vec(inner.clone(), 0..4).prop_map(Value::from),
+                prop::collection::btree_map(
+                    prop_oneof![Just("ad".to_owned()), "[a-z]{1,4}", arbitrary_text()],
+                    inner,
+                    0..4,
+                )
+                .prop_map(|map| Value::Object(map.into_iter().collect())),
+            ]
+        });
+        let structured = (
+            value,
+            prop::sample::select(vec!["[ { \"ad\":", "{ \"ad\":", "cb({ \"ad\":"]),
+            prop::option::of((any::<prop::sample::Index>(), prop::option::of(any::<u8>()))),
+        )
+            .prop_map(|(value, prefix, mutation)| {
+                let suffix = match prefix.as_bytes()[0] {
+                    b'[' => " } , { \"x\" : [] } ]",
+                    b'c' => r#" , "x" : "a\u0062" });"#,
+                    _ => r#" , "x" : "a\u0062" }"#,
+                };
+                mutate(
+                    format!(" \r\n{prefix}{value}{suffix}\t").into_bytes(),
+                    mutation,
+                )
+            });
+        prop_oneof![arbitrary_bytes(), structured]
+    }
+
+    fn nesting(path: &Path) -> usize {
+        path.0
+            .iter()
+            .filter_map(|step| {
+                if let Selector::Filter(Filter {
+                    key: Key::Path(inner),
+                    ..
+                }) = &step.selector
+                {
+                    Some(1 + nesting(inner))
+                } else {
+                    None
+                }
+            })
+            .max()
+            .unwrap_or(0)
+    }
+
+    proptest! {
+        #[test]
+        fn parsing_and_evaluation_return_within_the_depth_and_visit_limits(
+            expression in path(), input in document(),
+        ) {
+            if let Some(path) = Path::parse(&expression) {
+                prop_assert!(nesting(&path) <= MAX_JSON_PATH_NESTING);
+                // A flat step needs at least two bytes. Only filter subpaths nest recursively.
+                prop_assert!(path.0.len() <= MAX_JSON_PATH / 2);
+                let visits = Cell::new(0);
+                let result = prune(&path, &input, &|| {
+                    // The evaluator calls this only after debiting a visit.
+                    visits.set(visits.get() + 1);
+                    true
+                });
+                prop_assert!(visits.get() <= MAX_JSON_VISITS);
+                if let Some(output) = result {
+                    assert_removal(&input, &output)?;
+                    if output != input && serde_json::from_slice::<Value>(&input).is_ok() {
+                        prop_assert!(serde_json::from_slice::<Value>(&output).is_ok(), "{output:?}");
+                    }
+                }
+            }
+        }
+
+        #[test]
+        fn a_root_only_path_or_an_empty_selection_leaves_every_byte_intact(input in document()) {
+            for expression in ["$", "$..['__never_generated__']"] {
+                let path = Path::parse(expression).unwrap();
+                let result = prune(&path, &input, &|| true);
+                prop_assert_eq!(result.as_deref(), Some(input.as_slice()));
+            }
+        }
+    }
 }

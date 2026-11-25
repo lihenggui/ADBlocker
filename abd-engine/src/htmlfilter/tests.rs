@@ -470,3 +470,136 @@ fn unchanged_results_return_the_original_allocation() {
         assert_eq!(passed, original);
     }
 }
+
+mod properties {
+    use proptest::prelude::*;
+
+    use super::*;
+    use crate::test_support::{arbitrary_bytes, assert_removal, mutate};
+
+    fn document() -> impl Strategy<Value = Bytes> {
+        let item = prop_oneof![
+            ("[a-z]{0,16}", any::<bool>()).prop_map(|(text, marked)| {
+                let class = if marked { "ad" } else { "keep" };
+                format!("<div class='{class}'><span>{text}</span></div>")
+            }),
+            prop::sample::select(vec![
+                "<aside class=ad><img class=ad src='x'><p>promo</p></aside>",
+                "<script>const text = '<div class=ad>';</script>",
+                "<style>x { color: red; }</style>",
+                "<!-- <div class=ad> -->",
+                "<BR CLASS=ad>",
+                "<div class=ad><span>missing close</div>",
+                "plain text &lt;&gt;",
+                "<<div class=ad></div>img class=ad>",
+            ])
+            .prop_map(str::to_owned),
+        ];
+        let html = (
+            prop::collection::vec(item, 0..16),
+            prop::option::of((any::<prop::sample::Index>(), prop::option::of(any::<u8>()))),
+        )
+            .prop_map(|(items, mutation)| {
+                mutate(
+                    format!(
+                        "<!doctype html><html><body>{}</body></html>",
+                        items.concat()
+                    )
+                    .into_bytes(),
+                    mutation,
+                )
+            });
+        prop_oneof![arbitrary_bytes(), html].prop_map(Bytes::from)
+    }
+
+    fn selector(tag: Option<&str>, marked: bool) -> Selector {
+        Selector {
+            tag: tag.map(str::to_owned),
+            attributes: if marked {
+                vec![Attribute {
+                    name: "class".to_owned(),
+                    value: Some(AttributeValue::Contains("ad".to_owned())),
+                }]
+            } else {
+                Vec::new()
+            },
+        }
+    }
+
+    fn rule() -> impl Strategy<Value = (Option<&'static str>, bool, bool, Option<&'static str>)> {
+        (
+            prop::sample::select(vec![None, Some("div"), Some("p"), Some("img")]),
+            any::<bool>(),
+            any::<bool>(),
+            prop::option::of(prop::sample::select(vec!["promo", "span", "ad"])),
+        )
+    }
+
+    #[test]
+    fn a_cut_cannot_turn_literal_text_into_a_new_tag() {
+        let input = Bytes::from_static(
+            b"<!doctype html><html><body><<div class=ad></div>img class=ad></body></html>",
+        );
+        let rules = [Arc::new(Compiled {
+            steps: vec![selector(None, true)],
+            content: Vec::new(),
+        })];
+        assert_eq!(
+            apply(input.clone(), &rules, Some("utf-8"), &|| true),
+            Some(input)
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn filtering_returns_original_bytes_with_only_removals(
+            input in document(), rules in prop::collection::vec(rule(), 1..4),
+        ) {
+            let rules: Vec<_> = rules.into_iter().map(|(tag, marked, nested, text)| {
+                let mut steps = Vec::new();
+                if nested {
+                    steps.push(selector(Some("aside"), false));
+                }
+                steps.push(selector(tag, marked));
+                Arc::new(Compiled {
+                    steps,
+                    content: text.into_iter().map(|s| Content::Contains(s.to_owned())).collect(),
+                })
+            }).collect();
+            if let Some(output) = apply(input.clone(), &rules, Some("utf-8"), &|| true) {
+                assert_removal(&input, &output)?;
+            }
+        }
+
+        #[test]
+        fn no_rules_or_no_matching_elements_leaves_every_byte_intact(input in document()) {
+            let absent = Arc::new(Compiled {
+                steps: vec![selector(Some("absent-property-test-element"), false)],
+                content: Vec::new(),
+            });
+            for rules in [&[][..], &[absent][..]] {
+                prop_assert_eq!(apply(input.clone(), rules, Some("utf-8"), &|| true), Some(input.clone()));
+            }
+        }
+
+        #[test]
+        fn single_step_structural_rules_remove_nothing_more_on_a_second_pass(
+            input in document(),
+            tags in prop::collection::vec(
+                (prop::sample::select(vec![None, Some("div"), Some("p"), Some("img"), Some("span")]),
+                 any::<bool>()),
+                1..4,
+            ),
+        ) {
+            // Content predicates can become true after a descendant is cut
+            // (for example when a surviving parent's text gets shorter).
+            let rules: Vec<_> = tags.into_iter().map(|(tag, marked)| Arc::new(Compiled {
+                steps: vec![selector(tag, marked)],
+                content: Vec::new(),
+            })).collect();
+            if let Some(output) = apply(input, &rules, Some("utf-8"), &|| true) {
+                prop_assert_eq!(apply(output.clone(), &rules, Some("utf-8"), &|| true), Some(output));
+            }
+        }
+    }
+}

@@ -116,3 +116,66 @@ fn whitespace_between_the_prefix_and_keyword_leaves_a_comment() {
     assert_eq!(active(text), ["kept", "also-kept"]);
     assert!(issues(text).is_empty());
 }
+
+mod properties {
+    use proptest::prelude::*;
+
+    use super::*;
+    use crate::test_support::arbitrary_text;
+
+    fn list() -> impl Strategy<Value = String> {
+        let line = prop_oneof![
+            arbitrary_text(),
+            prop::sample::select(vec![
+                "!#if (adguard && !false)",
+                "  !#if env_mobile",
+                "!#if (false",
+                "!#else",
+                "!#else unexpected",
+                "!#endif",
+                "!#include other.txt",
+                "!#unknown",
+                "||ads.example^",
+                "! normal comment",
+            ])
+            .prop_map(str::to_owned),
+            arbitrary_text().prop_map(|tail| format!("!#if {tail}")),
+        ];
+        prop_oneof![
+            arbitrary_text(),
+            prop::collection::vec(line, 0..64).prop_map(|lines| lines.join("\n")),
+            (0..=MAX_NESTING + 8, any::<bool>()).prop_map(|(depth, close)| {
+                let openings = "!#if env_mobile\n||a.test^\n".repeat(depth);
+                let closings = if close {
+                    "!#endif\n||b.test^\n".repeat(depth)
+                } else {
+                    String::new()
+                };
+                openings + &closings
+            }),
+        ]
+    }
+
+    proptest! {
+        #[test]
+        fn scanning_returns_only_original_nondirective_lines_and_keeps_the_stack_bounded(
+            source in list(),
+        ) {
+            let mut state = Preprocessor::default();
+            let mut original = source.lines().enumerate();
+            let mut kept = Vec::new();
+            for (index, line) in source.lines().enumerate() {
+                if state.read((index + 1, line)) == Some(Ok(())) {
+                    kept.push((index + 1, line));
+                }
+                prop_assert!(state.blocks.len() <= MAX_NESTING);
+            }
+            let scanned: Vec<_> = scan(&source).filter_map(|(line, result)| result.ok().map(|()| line)).collect();
+            prop_assert_eq!(&scanned, &kept);
+            for (index, line) in scanned {
+                prop_assert!(!line.trim_start().starts_with("!#"));
+                prop_assert!(original.any(|(n, input)| n + 1 == index && input == line));
+            }
+        }
+    }
+}

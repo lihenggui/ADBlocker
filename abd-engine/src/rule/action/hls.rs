@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
 use crate::playlist;
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::translate_pattern;
+use crate::rule::regex::compile_pattern;
 
 mod pattern;
 
@@ -105,10 +105,20 @@ impl Spec {
 }
 
 fn compile(value: &str) -> Result<Compiled, Rejection> {
-    let (pattern, insensitive, target) = match fields(value)? {
+    let compile = |pattern: &str, insensitive| {
+        RegexBuilder::new(pattern)
+            .case_insensitive(insensitive)
+            .size_limit(MAX_RESPONSE_REGEX)
+            .dfa_size_limit(0)
+            .build()
+            .map_err(|_| Rejection::UnsupportedPattern)
+    };
+    let (regex, target) = match fields(value)? {
         Value::Basic(value) => (
-            pattern::translate(&unescape(value, &['/', ',', '$']))?,
-            true,
+            compile(
+                &pattern::translate(&unescape(value, &['/', ',', '$']))?,
+                true,
+            )?,
             if value.starts_with("||") {
                 Target::HostAnchoredUrl
             } else {
@@ -120,18 +130,14 @@ fn compile(value: &str) -> Result<Compiled, Rejection> {
             insensitive,
             tags,
         } => (
-            translate_pattern(&unescape(pattern, &[',', '$']))
-                .ok_or(Rejection::UnsupportedPattern)?,
-            insensitive,
+            compile_pattern(
+                &unescape(pattern, &[',', '$']),
+                Rejection::UnsupportedPattern,
+                |translated| compile(translated, insensitive),
+            )?,
             if tags { Target::Tag } else { Target::Url },
         ),
     };
-    let regex = RegexBuilder::new(&pattern)
-        .case_insensitive(insensitive)
-        .size_limit(MAX_RESPONSE_REGEX)
-        .dfa_size_limit(0)
-        .build()
-        .map_err(|_| Rejection::UnsupportedPattern)?;
     Ok(Compiled { regex, target })
 }
 

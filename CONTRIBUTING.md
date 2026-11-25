@@ -93,6 +93,10 @@ holds the dependencies to is in `deny.toml`.
 The tests run without root and without a device. Those of the connection
 path (`abd-engine/src/mitm/tests.rs`) start a TLS server and a daemon in the test process
 and are clients of both.
+The parsers have property tests, and
+[matcher_contract.rs](abd-engine/src/filter/matcher_contract.rs) pins the
+engine's dependence on `adblock` behavior and should be read first when
+updating that crate.
 
 ### HTTP/3 fixture
 

@@ -186,6 +186,43 @@ fn denyallow_rules_filter_requests_without_refusing_hosts() {
 }
 
 #[test]
+fn mixed_case_hostnames_keep_the_same_denyallow_and_source_scope() {
+    let f = filters("banner.js$domain=reader.example,denyallow=exempt.example");
+    assert!(
+        !f.check(
+            "https://EXEMPT.example/banner.js",
+            "https://reader.example/",
+            "script",
+            "GET",
+        )
+        .blocked
+    );
+    assert!(
+        f.check(
+            "https://unrelated.example/banner.js",
+            "https://READER.example/",
+            "script",
+            "GET",
+        )
+        .blocked
+    );
+}
+
+#[test]
+fn matching_preserves_existing_literal_mixed_case_domain_entries() {
+    let f = filters("banner.js$domain=READER.example,to=ADS.example");
+    assert!(
+        f.check(
+            "https://ADS.example/banner.js",
+            "https://READER.example/",
+            "script",
+            "GET",
+        )
+        .blocked
+    );
+}
+
+#[test]
 fn noop_rules_keep_host_app_page_and_badfilter_behavior() {
     let f = filters(
         "||ads.com^$_,_____\n\

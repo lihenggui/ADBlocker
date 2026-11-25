@@ -19,7 +19,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE, MAX_REWRITE_RESULT};
 use crate::rule::quoting::{delimiter, unescape, unescaped};
-use crate::rule::regex::translate_pattern;
+use crate::rule::regex::compile_pattern;
 
 pub(crate) struct Compiled {
     regex: Regex,
@@ -97,22 +97,25 @@ pub(super) fn compile(
     if pattern.len().saturating_add(replacement.len()) > MAX_RESPONSE_RULE {
         return None;
     }
-    let regex = Regex::builder()
-        .configure(
-            Regex::config()
-                .nfa_size_limit(Some(MAX_RESPONSE_REGEX))
-                .match_kind(MatchKind::LeftmostFirst)
-                .utf8_empty(false)
-                .hybrid_cache_capacity(2 << 20),
-        )
-        .syntax(
-            syntax::Config::new()
-                .utf8(false)
-                .case_insensitive(insensitive)
-                .dot_matches_new_line(single_line),
-        )
-        .build(&translate_pattern(pattern)?)
-        .ok()?;
+    let regex = compile_pattern(pattern, (), |translated| {
+        Regex::builder()
+            .configure(
+                Regex::config()
+                    .nfa_size_limit(Some(MAX_RESPONSE_REGEX))
+                    .match_kind(MatchKind::LeftmostFirst)
+                    .utf8_empty(false)
+                    .hybrid_cache_capacity(2 << 20),
+            )
+            .syntax(
+                syntax::Config::new()
+                    .utf8(false)
+                    .case_insensitive(insensitive)
+                    .dot_matches_new_line(single_line),
+            )
+            .build(translated)
+            .map_err(|_| ())
+    })
+    .ok()?;
     Some(Compiled {
         regex,
         parts: replacement_parts(replacement),
@@ -235,34 +238,5 @@ mod tests {
         assert!(disables(Some("")));
         assert!(!disables(Some("/a/b/")));
         assert!(overrides_block());
-    }
-
-    #[test]
-    fn literal_braces_are_quoted_and_repeat_counts_keep_their_meaning() {
-        for (pattern, expected) in [
-            ("a{b", r"a\{b"),
-            (r"\(\){return", r"\(\)\{return"),
-            ("({adv:).(,q:!0)", r"(\{adv:).(,q:!0)"),
-            (".{280,400}.*", ".{280,400}.*"),
-            (
-                r#"(^.{1,150}\(\{).*?"bunch".*(}\);)"#,
-                r#"(^.{1,150}\(\{).*?"bunch".*(\}\);)"#,
-            ),
-            (r"[{}][\{\}][{]", r"[{}][\{\}][{]"),
-            (r"\{2\}\\{2}", r"\{2\}\\{2}"),
-            (r"(a){2}[b]{3,}[c]{4,5}", r"(a){2}[b]{3,}[c]{4,5}"),
-            (r"\p{Greek}{2}\x{7D}\u{7B}", r"\p{Greek}{2}\x{7D}\u{7B}"),
-            ("{a{2}}", r"\{a{2}\}"),
-            ("{x{y}z", r"\{x\{y\}z"),
-            ("a{2,3", r"a\{2,3"),
-            ("a{2,x}", r"a\{2,x\}"),
-            ("x}y{", r"x\}y\{"),
-        ] {
-            assert_eq!(
-                translate_pattern(pattern).as_deref(),
-                Some(expected),
-                "{pattern}"
-            );
-        }
     }
 }
