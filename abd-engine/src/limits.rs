@@ -82,6 +82,17 @@ pub(crate) const MAX_JSON_DEPTH: usize = 64;
 /// The most items one expression may visit in one document. Past it the
 /// response is passed on unchanged.
 pub(crate) const MAX_JSON_VISITS: usize = 250_000;
+/// Limits for the XML document and the XPath evaluation of one response.
+pub(crate) const MAX_XML_NODES: u32 = 32_768;
+/// Raw '<' and '=' bytes that the XML parser counts for its initial allocation.
+pub(crate) const MAX_XML_PARSE_MARKERS: usize = 2 * MAX_XML_NODES as usize;
+pub(crate) const MAX_XML_DEPTH: usize = 128;
+pub(crate) const MAX_XML_ATTRIBUTES: usize = 128;
+pub(crate) const MAX_XML_NAMESPACE_DECLARATIONS: usize = 256;
+pub(crate) const MAX_XPATH_EXPRESSION: usize = 4 << 10;
+pub(crate) const MAX_XPATH_DEPTH: usize = 64;
+pub(crate) const MAX_XPATH_VISITS: usize = 250_000;
+pub(crate) const MAX_XPATH_TEXT_WORK: usize = 16 << 20;
 /// The most heap used by one response NFA. Counted Unicode repetitions
 /// expand into UTF-8 transitions for each repetition.
 pub(crate) const MAX_RESPONSE_REGEX: usize = 512 << 10;

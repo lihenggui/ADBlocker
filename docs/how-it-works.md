@@ -343,12 +343,28 @@ request-level blocks. A matching `$jsonprune` rule removes items from a
 JSON or JSONP response and leaves request blocking in effect. A matching
 `$hls` rule removes segments from a UTF-8 HLS playlist by URL or tag. It
 removes a segment's tags when none of the segments they apply to remain.
-The engine applies `$jsonprune`, HTML filtering, `$hls`, and `$replace`
-in that order, then inserts cosmetic styles and scripts. The inferred
-resource type also applies to response rules. The engine can rewrite an
-eligible uncompressed text response up to 2 MiB. It takes these rules from the
-user's custom rules and catalog lists marked as trusted for response
-rules.
+The engine applies `$jsonprune`, HTML filtering, `$hls`,
+`$xmlprune`, and `$replace` in that order, then inserts cosmetic styles
+and scripts. The inferred resource type also applies to response rules.
+The engine can rewrite an eligible uncompressed text response up to 2 MiB.
+It takes these rules from the user's custom rules and catalog lists marked
+as trusted for response rules.
+
+A `$xmlprune` rule removes nodes selected by an XPath 1.0 expression from
+an `application/xml`, `text/xml`, or `+xml` response. This includes
+`application/dash+xml` manifests. Matching rules run in lexicographical
+order, each on the result of the preceding rule. A backslash quotes dollar
+signs and commas in the expression. The engine cuts the selected byte
+ranges and preserves the rest of the source. The document node and root
+element are kept. XPath expressions have no namespace bindings or
+variables, and the namespace axis is unavailable. An unprefixed name
+test matches names in no namespace. For elements in a default namespace,
+a rule can use a wildcard with `name()` or `local-name()` in a predicate.
+
+An unvalued `$xmlprune` exception disables all XML pruning for matching
+URLs. An exception with a value disables only rules with that XPath
+expression. The `$document`, `$content`, and `$urlblock` page exceptions
+also disable XML pruning.
 
 A `$removeheader=header-name` rule removes all values of a named response
 header. Use `$removeheader=request:header-name` to remove it from the

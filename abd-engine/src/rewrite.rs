@@ -286,9 +286,9 @@ fn apply_actions(
     }: BodyEdit,
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Bytes> {
-    // Prune JSON, filter HTML, edit the playlist, then replace text. The
-    // AdGuard reference directs filters to use $replace on whole-playlist
-    // tags, so replacement must see the tags preserved by $hls.
+    // Apply $jsonprune, HTML filtering, $hls, $xmlprune, then $replace.
+    // For DASH and other XML-only responses, the only overlapping edit
+    // is $replace. XHTML can also go through HTML filtering.
     for group in actions.chunk_by(|a, b| a.kind() == b.kind()) {
         let kind = group[0].kind();
         if kind != ActionKind::Prune
@@ -307,7 +307,7 @@ fn apply_actions(
             body = hls::apply(body, playlist_url.as_ref()?, &rules, within_budget)?;
         } else {
             for action in group {
-                body = Bytes::from(action.apply(&body, within_budget)?);
+                body = action.apply(body, within_budget)?;
             }
         }
     }

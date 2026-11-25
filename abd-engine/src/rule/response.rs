@@ -100,6 +100,7 @@ impl<'a> ResponseRule<'a> {
         matches!(
             self.kind,
             ActionKind::Hls
+                | ActionKind::XmlPrune
                 | ActionKind::RemoveHeader
                 | ActionKind::UrlTransform
                 | ActionKind::Cookie

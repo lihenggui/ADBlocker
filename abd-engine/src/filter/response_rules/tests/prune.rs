@@ -17,14 +17,14 @@
 use super::*;
 
 fn pruned(f: &Filters, url: &str, page: Page<'_>, input: &str) -> String {
-    let mut bytes = input.as_bytes().to_vec();
+    let mut bytes = Bytes::copy_from_slice(input.as_bytes());
     for action in f
         .for_app("com.reader")
         .response_actions(url, page, "xhr", "GET")
     {
-        bytes = action.apply(&bytes, &|| true).unwrap();
+        bytes = action.apply(bytes, &|| true).unwrap();
     }
-    String::from_utf8(bytes).unwrap()
+    String::from_utf8(bytes.into()).unwrap()
 }
 
 #[test]
@@ -296,15 +296,16 @@ fn all_adds_no_content_type_restriction_to_response_rules() {
     let url = "https://stream.example.org/GetPlaybackResources?id=1";
     let input = br#"{"vodPlaybackUrls":{"result":{"playbackUrls":{"cuepoints":[1]}}},"cuepointPlaylist":[],"title":"original"}"#;
     for kind in ["xhr", "media", "document", "other"] {
-        let mut body = input.to_vec();
+        let mut body = Bytes::from_static(input);
         for action in f
             .for_app("com.reader")
             .response_actions(url, Page::Named(&page), kind, "GET")
         {
-            body = action.apply(&body, &|| true).unwrap();
+            body = action.apply(body, &|| true).unwrap();
         }
         assert_eq!(
-            body, br#"{"vodPlaybackUrls":{"result":{"playbackUrls":{}}},"title":"changed"}"#,
+            body.as_ref(),
+            br#"{"vodPlaybackUrls":{"result":{"playbackUrls":{}}},"title":"changed"}"#,
             "{kind}"
         );
     }

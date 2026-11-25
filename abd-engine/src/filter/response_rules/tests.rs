@@ -16,6 +16,8 @@
 
 use std::path::Path;
 
+use bytes::Bytes;
+
 use super::*;
 use crate::filter::{Filters, parse_http_page};
 use crate::list_url::{file_name, untrusted_file_name};
@@ -247,11 +249,11 @@ fn filters(text: &str) -> Filters {
 fn changed(f: &Filters, url: &str, page: Page<'_>, kind: &str, app: &str) -> String {
     use std::time::{Duration, Instant};
     let deadline = Instant::now() + Duration::from_secs(1);
-    let mut bytes = b"X Z".to_vec();
+    let mut bytes = Bytes::from_static(b"X Z");
     for action in f.for_app(app).response_actions(url, page, kind, "GET") {
-        bytes = action.apply(&bytes, &|| Instant::now() < deadline).unwrap();
+        bytes = action.apply(bytes, &|| Instant::now() < deadline).unwrap();
     }
-    String::from_utf8(bytes).unwrap()
+    String::from_utf8(bytes.into()).unwrap()
 }
 
 #[test]
@@ -272,14 +274,14 @@ fn response_rules_ignore_noops_at_every_option_position() {
             changed(&f, url, Page::NONE, "xmlhttprequest", "com.reader"),
             "Y Z"
         );
-        let mut data = br#"{"ad":1,"text":"X"}"#.to_vec();
+        let mut data = Bytes::from_static(br#"{"ad":1,"text":"X"}"#);
         for action in
             f.for_app("com.reader")
                 .response_actions(url, Page::NONE, "xmlhttprequest", "GET")
         {
-            data = action.apply(&data, &|| true).unwrap();
+            data = action.apply(data, &|| true).unwrap();
         }
-        assert_eq!(data, br#"{"text":"Y"}"#);
+        assert_eq!(data.as_ref(), br#"{"text":"Y"}"#);
     }
 }
 
@@ -646,7 +648,9 @@ fn subscription_rules_compile_and_rewrite_the_intended_bytes() {
             .unwrap_or_else(|| panic!("{rule}"));
         if let Some((input, expected)) = sample {
             assert_eq!(
-                action.apply(input.as_bytes(), &|| true).unwrap(),
+                action
+                    .apply(Bytes::copy_from_slice(input.as_bytes()), &|| true)
+                    .unwrap(),
                 expected.as_bytes(),
                 "{rule}"
             );
@@ -659,6 +663,7 @@ mod hls;
 mod prune;
 mod removeheader;
 mod urltransform;
+mod xmlprune;
 
 #[test]
 fn response_patterns_and_their_exceptions_survive_the_cache_without_network_app_rules() {

@@ -14,6 +14,7 @@
 
 //! The cached specifications and compiled implementations of response actions.
 
+use bytes::Bytes;
 use hyper::header::HeaderName;
 use serde::{Deserialize, Serialize};
 
@@ -24,6 +25,7 @@ mod prune;
 mod removeheader;
 mod replace;
 mod urltransform;
+mod xmlprune;
 
 #[cfg(test)]
 pub(crate) use replace::value_end;
@@ -32,6 +34,7 @@ pub(crate) use replace::value_end;
 #[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub(crate) enum ActionSpec {
     Prune(String),
+    XmlPrune(String),
     Hls(hls::Spec),
     Replace {
         pattern: String,
@@ -48,6 +51,7 @@ pub(crate) enum ActionSpec {
 /// A compiled action that can safely be shared among concurrent jobs.
 pub(crate) enum ResponseAction {
     Prune(prune::Compiled),
+    XmlPrune(xmlprune::Compiled),
     Hls(hls::Compiled),
     Replace(replace::Compiled),
     RemoveHeader(removeheader::Compiled),
@@ -76,6 +80,7 @@ pub(crate) enum ActionKind {
     // Sort body actions in the order in which rewrite applies them.
     Prune,
     Hls,
+    XmlPrune,
     Replace,
     RemoveHeader,
     UrlTransform,
@@ -87,6 +92,7 @@ impl ActionKind {
     pub(crate) fn parse(self, value: &str) -> Option<ActionSpec> {
         match self {
             Self::Prune => prune::parse(value).map(ActionSpec::Prune),
+            Self::XmlPrune => xmlprune::parse(value).map(ActionSpec::XmlPrune),
             Self::Cookie => cookie::parse(value, false).ok().map(ActionSpec::Cookie),
             Self::Hls => hls::parse(value).ok().map(ActionSpec::Hls),
             Self::RemoveHeader => removeheader::parse(value)
@@ -116,7 +122,7 @@ impl ActionKind {
     pub(crate) fn disables(self, value: Option<&str>) -> bool {
         match self {
             Self::Prune => prune::disables(value),
-            Self::Hls => value.is_none(),
+            Self::Hls | Self::XmlPrune => value.is_none(),
             Self::Replace | Self::UrlTransform => replace::disables(value),
             Self::RemoveHeader => value.is_none(),
             Self::RemoveParamException => false,
@@ -129,6 +135,7 @@ impl ActionKind {
             Self::Prune => prune::overrides_block(),
             Self::Replace => replace::overrides_block(),
             Self::Hls
+            | Self::XmlPrune
             | Self::RemoveHeader
             | Self::UrlTransform
             | Self::RemoveParamException
@@ -138,7 +145,11 @@ impl ActionKind {
 
     pub(crate) fn deduplicates(self) -> bool {
         match self {
-            Self::Prune | Self::RemoveHeader | Self::UrlTransform | Self::Cookie => false,
+            Self::Prune
+            | Self::XmlPrune
+            | Self::RemoveHeader
+            | Self::UrlTransform
+            | Self::Cookie => false,
             Self::Hls | Self::Replace | Self::RemoveParamException => true,
         }
     }
@@ -146,7 +157,7 @@ impl ActionKind {
     pub(crate) fn disabled_by(self, page: PageExceptions) -> bool {
         page.document
             || match self {
-                Self::Prune | Self::Hls => page.content || page.urlblock,
+                Self::Prune | Self::Hls | Self::XmlPrune => page.content || page.urlblock,
                 Self::Replace => page.content,
                 Self::RemoveHeader
                 | Self::UrlTransform
@@ -158,6 +169,7 @@ impl ActionKind {
     pub(crate) fn takes(self, mime: &str) -> bool {
         match self {
             Self::Hls => hls::takes(mime),
+            Self::XmlPrune => xmlprune::takes(mime),
             Self::Prune | Self::Replace => crate::media_type::text(mime),
             Self::RemoveHeader | Self::UrlTransform | Self::RemoveParamException | Self::Cookie => {
                 false
@@ -172,6 +184,9 @@ impl ActionSpec {
         match self {
             Self::Cookie(spec) => spec.compile().ok().map(ResponseAction::Cookie),
             Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
+            Self::XmlPrune(expression) => {
+                xmlprune::compile(expression).map(ResponseAction::XmlPrune)
+            }
             Self::Hls(spec) => spec.compile().map(ResponseAction::Hls),
             Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
             Self::UrlTransform(spec) => spec.compile().map(ResponseAction::UrlTransform),
@@ -194,6 +209,7 @@ impl ResponseAction {
         match self {
             Self::Cookie(_) => ActionKind::Cookie,
             Self::Prune(_) => ActionKind::Prune,
+            Self::XmlPrune(_) => ActionKind::XmlPrune,
             Self::Hls(_) => ActionKind::Hls,
             Self::Replace(_) => ActionKind::Replace,
             Self::RemoveHeader(_) => ActionKind::RemoveHeader,
@@ -205,7 +221,9 @@ impl ResponseAction {
     pub(crate) fn place(&self) -> Place<'_> {
         match self {
             Self::Cookie(_) => Place::RequestAndResponseHead,
-            Self::Prune(_) | Self::Hls(_) | Self::Replace(_) => Place::ResponseBody,
+            Self::Prune(_) | Self::Hls(_) | Self::XmlPrune(_) | Self::Replace(_) => {
+                Place::ResponseBody
+            }
             Self::UrlTransform(_) | Self::RemoveParamException(_) => Place::RequestUrl,
             Self::RemoveHeader(removeheader::Removal::Request(name)) => Place::Request(name),
             Self::RemoveHeader(removeheader::Removal::Response(name)) => Place::ResponseHead(name),
@@ -220,7 +238,10 @@ impl ResponseAction {
     /// the blocking job, so an idle action keeps none of it.
     pub(crate) fn regex_bytes(&self) -> usize {
         match self {
-            Self::Prune(_) | Self::RemoveHeader(_) | Self::RemoveParamException(_) => 0,
+            Self::Prune(_)
+            | Self::XmlPrune(_)
+            | Self::RemoveHeader(_)
+            | Self::RemoveParamException(_) => 0,
             Self::Cookie(action) => action.regex_bytes(),
             Self::Hls(_) => hls::REGEX_CHARGE,
             Self::Replace(action) => action.regex_bytes(),
@@ -229,13 +250,14 @@ impl ResponseAction {
     }
 
     /// `None` abandons the whole rewrite on overflow, timeout or cancellation.
-    pub(crate) fn apply(&self, input: &[u8], within_budget: &dyn Fn() -> bool) -> Option<Vec<u8>> {
+    pub(crate) fn apply(&self, input: Bytes, within_budget: &dyn Fn() -> bool) -> Option<Bytes> {
         if !within_budget() {
             return None;
         }
         match self {
-            Self::Prune(action) => action.apply(input, within_budget),
-            Self::Replace(action) => action.apply(input, within_budget),
+            Self::Prune(action) => action.apply(&input, within_budget).map(Bytes::from),
+            Self::Replace(action) => action.apply(&input, within_budget).map(Bytes::from),
+            Self::XmlPrune(action) => action.apply(input, within_budget),
             // HLS actions operate on the same playlist in one pass.
             Self::Hls(_)
             | Self::RemoveHeader(_)

@@ -21,6 +21,7 @@ pub(super) const APP: &str = "app";
 pub(super) const NETWORK: &str = "network";
 pub(super) const DENYALLOW: &str = "denyallow";
 pub(super) const PRUNE: &str = "jsonprune";
+pub(super) const XMLPRUNE: &str = "xmlprune";
 pub(super) const HLS: &str = "hls";
 pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
@@ -97,7 +98,7 @@ const PRUNE_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
 ];
-const HLS_OPTIONS: &[Allowed] = &[
+const PLAYLIST_OR_XML_OPTIONS: &[Allowed] = &[
     allow(APP),
     allow("domain"),
     allow_negation("third-party"),
@@ -105,7 +106,7 @@ const HLS_OPTIONS: &[Allowed] = &[
     allow("match-case"),
     allow("xmlhttprequest"),
     // The reference permits the strict forms. Their matching semantics
-    // are unavailable to HLS rules, as with jsonprune.
+    // are unavailable to HLS and XML pruning rules, as with jsonprune.
 ];
 const COOKIE_OPTIONS: &[Allowed] = &[
     allow_negation("domain"),
@@ -152,7 +153,10 @@ static MODIFIERS: &[Modifier] = &[
     ),
     modifier(
         &[HLS],
-        Action(ActionKind::Hls, Compatibility::Only(HLS_OPTIONS)),
+        Action(
+            ActionKind::Hls,
+            Compatibility::Only(PLAYLIST_OR_XML_OPTIONS),
+        ),
         Optional,
     ),
     modifier(
@@ -220,7 +224,14 @@ static MODIFIERS: &[Modifier] = &[
         Optional,
     ),
     modifier(&["header"], Unsupported, Required),
-    modifier(&["xmlprune"], Unsupported, Required),
+    modifier(
+        &[XMLPRUNE],
+        Action(
+            ActionKind::XmlPrune,
+            Compatibility::Only(PLAYLIST_OR_XML_OPTIONS),
+        ),
+        Optional,
+    ),
     modifier(&["referrerpolicy"], Unsupported, Required),
     modifier(&["strict-third-party", "strict3p"], Unsupported, FlagValue),
     modifier(&["strict-first-party", "strict1p"], Unsupported, FlagValue),

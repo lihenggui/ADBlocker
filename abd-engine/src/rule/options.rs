@@ -15,8 +15,8 @@
 //! Option boundaries and quoting shared by the rule reader and action values.
 
 use super::modifiers::{
-    APP, COOKIE, CSP, DENYALLOW, HLS, NETWORK, PRUNE, REMOVEPARAM, REPLACE, URLTRANSFORM, is_noop,
-    is_removeheader_option,
+    APP, COOKIE, CSP, DENYALLOW, HLS, NETWORK, PRUNE, REMOVEPARAM, REPLACE, URLTRANSFORM, XMLPRUNE,
+    is_noop, is_removeheader_option,
 };
 use super::quoting::{delimiter, unescaped};
 
@@ -254,10 +254,11 @@ pub(crate) fn option_separator(line: &str) -> Option<usize> {
         }
         if let Some(end) = custom_value_end(option) {
             cursor += end;
-        } else if line[cursor..]
-            .strip_prefix(PRUNE)
-            .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
-        {
+        } else if [PRUNE, XMLPRUNE].into_iter().any(|name| {
+            option
+                .strip_prefix(name)
+                .is_some_and(|tail| tail.is_empty() || tail.starts_with(['=', ',']))
+        }) {
             // Keep malformed quoting in the response rule so it cannot
             // turn into a block by moving the option separator.
             return last;

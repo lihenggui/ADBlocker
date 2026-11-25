@@ -290,10 +290,10 @@ fn cosmetic_rules_keep_their_own_text_even_if_it_spells_app() {
 
 #[test]
 fn a_known_unapplied_modifier_names_the_option_that_cannot_be_applied() {
-    let rule = read("||example.org^$script,xmlprune=/test");
+    let rule = read("||example.org^$script,header=test");
     assert!(matches!(
         rule.kind,
-        Kind::NotApplied(Reason::Modifier("xmlprune"))
+        Kind::NotApplied(Reason::Modifier("header"))
     ));
     assert!(matches!(read("example.org$$script").kind, Kind::Html(_)));
 }

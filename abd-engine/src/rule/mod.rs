@@ -154,7 +154,11 @@ pub(crate) fn read_with_scripts<'a>(
             && options.tokens().any(|option| {
                 matches!(
                     option.name(),
-                    modifiers::COOKIE | modifiers::CSP | modifiers::HLS | modifiers::REMOVEPARAM
+                    modifiers::COOKIE
+                        | modifiers::CSP
+                        | modifiers::HLS
+                        | modifiers::REMOVEPARAM
+                        | modifiers::XMLPRUNE
                 ) || option.name() == modifiers::URLTRANSFORM
                     || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
             })

@@ -49,6 +49,7 @@ mod hls;
 mod removeheader;
 mod removeparam;
 mod urltransform;
+mod xmlprune;
 
 const HOST: &str = "site.test";
 const PACKAGE: &str = "com.app";
@@ -200,6 +201,7 @@ async fn rig(setup: Setup) -> Rig {
                         .or_else(|| removeheader::fixture(&req))
                         .or_else(|| hls::fixture(&req))
                         .or_else(|| urltransform::fixture(&req))
+                        .or_else(|| xmlprune::fixture(&req))
                     {
                         return std::future::ready(Ok(response));
                     }
