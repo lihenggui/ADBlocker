@@ -218,6 +218,12 @@ class AdblockerVpnService : VpnService() {
         }
     }
 
+    private val clock = object : BroadcastReceiver() {
+        override fun onReceive(context: Context, intent: Intent) {
+            session.clockChanged()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         notifications.createChannels()
@@ -240,6 +246,11 @@ class AdblockerVpnService : VpnService() {
         }
         // The system's broadcasts reach a receiver that is not exported.
         ContextCompat.registerReceiver(this, packages, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        val clockEvents = IntentFilter().apply {
+            addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_TIME_CHANGED)
+        }
+        ContextCompat.registerReceiver(this, clock, clockEvents, ContextCompat.RECEIVER_NOT_EXPORTED)
         val connectivity = getSystemService(ConnectivityManager::class.java)
         val active = connectivity.activeNetwork?.takeIf {
             connectivity.getNetworkCapabilities(it)?.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_VPN) == true
@@ -259,6 +270,10 @@ class AdblockerVpnService : VpnService() {
                 running.status.update { it.copy(state = VpnState.Failed) }
                 stopSelfResult(startId)
             }
+
+            else -> scope.launch(start = CoroutineStart.UNDISPATCHED) {
+                session.unrecognizedStart(startId) { stopSelfResult(startId) }
+            }
         }
         return START_NOT_STICKY
     }
@@ -271,6 +286,7 @@ class AdblockerVpnService : VpnService() {
 
     override fun onDestroy() {
         unregisterReceiver(packages)
+        unregisterReceiver(clock)
         getSystemService(ConnectivityManager::class.java).unregisterNetworkCallback(network)
         scope.launch(start = CoroutineStart.UNDISPATCHED) { session.destroyed() }
         if (running.session === session) running.session = null
