@@ -255,6 +255,11 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             RequestDecision {
                 blocked,
                 redirect: check.redirect,
+                rewritten_url: if include_transforms && self.permits_actions {
+                    check.rewritten_url
+                } else {
+                    None
+                },
                 kind,
                 page: self.told,
             },
@@ -267,6 +272,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
 pub struct RequestDecision<'a> {
     pub blocked: bool,
     pub redirect: Option<Redirect>,
+    pub rewritten_url: Option<String>,
     pub kind: RequestKind,
     pub page: Option<&'a str>,
 }

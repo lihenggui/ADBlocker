@@ -51,6 +51,7 @@ mod load;
 mod matcher;
 mod page_exceptions;
 mod redirects;
+pub(crate) mod removeparam;
 mod response_rules;
 
 pub use address_rules::AddressDecision;
@@ -216,9 +217,13 @@ impl RequestRules {
                     blocked: found.should_block(),
                     rule: found.filter.and_then(|rule| self.originals.shown(rule)),
                     redirect: None,
+                    rewritten_url: found.rewritten_url,
                 }
             }
         };
+        if check.blocked {
+            check.rewritten_url = None;
+        }
         if check.blocked
             && let Some(engine) = &self.redirects
         {
@@ -495,7 +500,17 @@ impl AppFilters<'_> {
         let Some(mut req) = RequestRules::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
-        requests.check_request(&mut req, self.app_rules())
+        let mut check = requests.check_request(&mut req, self.app_rules());
+        if check.rewritten_url.is_some()
+            && (!removeparam::supported_method(method)
+                || self
+                    .filters
+                    .page_exceptions
+                    .url_rules_disabled(url, page, method))
+        {
+            check.rewritten_url = None;
+        }
+        check
     }
 }
 
@@ -529,6 +544,7 @@ impl Hiding {
 pub struct Check {
     pub blocked: bool,
     pub redirect: Option<Redirect>,
+    pub rewritten_url: Option<String>,
     /// The rule that matched, when the engine was built with debug info.
     pub rule: Option<String>,
 }

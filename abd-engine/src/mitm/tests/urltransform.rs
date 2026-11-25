@@ -17,11 +17,14 @@ use super::*;
 pub(super) fn fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>> {
     let uri = req.uri();
     uri.path().starts_with("/transformed/").then(|| {
+        let body = if req.method() == Method::HEAD {
+            Bytes::new()
+        } else {
+            Bytes::copy_from_slice(uri.path_and_query().unwrap().as_str().as_bytes())
+        };
         Response::builder()
             .header("content-type", "text/plain")
-            .body(Full::new(Bytes::copy_from_slice(
-                uri.path_and_query().unwrap().as_str().as_bytes(),
-            )))
+            .body(Full::new(body))
             .unwrap()
     })
 }

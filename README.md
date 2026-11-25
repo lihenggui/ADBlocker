@@ -246,7 +246,8 @@ removes items from a JSON or JSONP response and leaves request blocking
 in effect. A matching `$hls` rule removes segments and their associated
 tags from an HLS playlist. `$removeheader=header-name` removes a response
 header, and `$removeheader=request:header-name` removes a request header.
-A `$csp` rule adds a Content Security Policy to an allowed page.
+A `$removeparam=name` rule strips a named query parameter before sending
+an allowed request. A `$csp` rule adds a Content Security Policy to an allowed page.
 [URL and response rules](docs/how-it-works.md#filtering)
 A `$urltransform` rule can change a request's path and query before it
 is sent, or redirect a GET or HEAD request to another address.

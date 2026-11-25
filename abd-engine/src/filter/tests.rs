@@ -26,6 +26,7 @@ mod csp;
 mod guards;
 mod javascript;
 mod redirects;
+mod removeparam;
 
 #[test]
 fn conditional_rules_and_badfilters_survive_a_cache_round_trip() {

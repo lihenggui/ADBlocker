@@ -51,7 +51,10 @@ impl Condition {
         for other in options.tokens() {
             match lookup(other.name()).map(|modifier| modifier.kind) {
                 Some(Kind::Destination) => return Err(Rejection::WithTo),
-                Some(Kind::Action(ActionKind::UrlTransform, _)) => (),
+                Some(Kind::Action(
+                    ActionKind::UrlTransform | ActionKind::RemoveParamException,
+                    _,
+                )) => (),
                 Some(Kind::Action(..)) => return Err(Rejection::WithResponseAction),
                 _ => (),
             }

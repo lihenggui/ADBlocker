@@ -373,6 +373,16 @@ the scheme, host, or port of a GET or HEAD request sends the app an empty
 connection itself. The engine counts and reports the redirect as a block
 and uses the original URL in the recording.
 
+A `$removeparam=name` rule strips populated values of a case-sensitive
+query parameter on GET, HEAD, OPTIONS and POST requests. Any list can
+supply one. Without a resource type qualifier the rule applies to
+documents. Names can use ASCII letters, digits, hyphens and underscores.
+`@@...$removeparam=name` preserves that parameter. The `$document` and
+`$urlblock` exceptions preserve the query. The engine applies parameter
+removal before any matching URL transformations, keeps same-origin
+changes on the existing connection and judges the changed URL once.
+The original URL appears in a live recording.
+
 With URL filtering on, any list can use `$csp=policy` to add a Content
 Security Policy to an allowed document or frame. If the request type is
 unknown, the policy is added when the response identifies itself as HTML.

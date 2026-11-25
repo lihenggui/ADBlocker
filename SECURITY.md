@@ -136,6 +136,8 @@ A matching `$urltransform` rule can change an allowed request's path
 and query before it is sent. It can redirect a GET or HEAD request to
 another address. The app decides whether to follow the redirect and
 opens any new connection itself.
+With URL filtering on, any list can remove a named query parameter with
+`$removeparam`. The request still goes to the app's original server.
 With URL filtering on, any list can add a Content Security Policy to
 an allowed document with a `$csp` rule. Server policies still apply.
 The engine rejects reporting directives. Cosmetic injection handles list

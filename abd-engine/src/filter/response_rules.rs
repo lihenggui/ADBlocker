@@ -370,7 +370,12 @@ impl ResponseRules {
                     RuleAction::One(id) => self.compiled[id].kind(),
                     RuleAction::All(kind) => kind,
                 };
-                if !include_transforms && action_kind == ActionKind::UrlTransform {
+                if !include_transforms
+                    && matches!(
+                        action_kind,
+                        ActionKind::UrlTransform | ActionKind::RemoveParamException
+                    )
+                {
                     return None;
                 }
                 rule.qualifiers.matches(kind, context).then_some((id, rule))

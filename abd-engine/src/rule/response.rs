@@ -50,7 +50,9 @@ impl<'a> ResponseRule<'a> {
     /// Retain the first action even if later validation rejects the rule.
     pub(super) fn read(options: Options<'a>) -> Result<Self, Options<'a>> {
         let action = options.tokens().enumerate().find_map(|(index, token)| {
-            action_kind(token).map(|(kind, compatibility)| (index, kind, compatibility))
+            let (kind, compatibility) = action_kind(token)?;
+            (kind != ActionKind::RemoveParamException || options.pattern.starts_with("@@"))
+                .then_some((index, kind, compatibility))
         });
         match action {
             Some((action_index, kind, compatibility)) => Ok(Self {
@@ -61,6 +63,10 @@ impl<'a> ResponseRule<'a> {
             }),
             None => Err(options),
         }
+    }
+
+    pub(crate) fn requires_trusted_source(&self) -> bool {
+        self.kind != ActionKind::RemoveParamException
     }
 
     pub(crate) fn normalized(&self, line: &'a str) -> Cow<'a, str> {
@@ -126,11 +132,15 @@ impl<'a> ResponseRule<'a> {
             exclude: 0,
             apps: None,
             strict_third_party: None,
-            exception,
+            // A named parameter exception preserves it during URL preparation.
+            exception: exception && self.kind != ActionKind::RemoveParamException,
         };
         let mut has_type = false;
         let mut all_types = false;
-        let denyallow = if self.kind == ActionKind::UrlTransform {
+        let denyallow = if matches!(
+            self.kind,
+            ActionKind::UrlTransform | ActionKind::RemoveParamException
+        ) {
             denyallow::Condition::read(options).ok()?
         } else {
             None
@@ -162,7 +172,10 @@ impl<'a> ResponseRule<'a> {
                 action.take_qualifier(token)?;
             }
         }
-        if self.kind == ActionKind::UrlTransform {
+        if matches!(
+            self.kind,
+            ActionKind::UrlTransform | ActionKind::RemoveParamException
+        ) {
             if all_types {
                 action.include = 0;
             } else if !has_type {

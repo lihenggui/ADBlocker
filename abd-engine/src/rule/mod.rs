@@ -39,6 +39,7 @@ pub(crate) mod options;
 pub(crate) mod preprocess;
 pub(crate) mod quoting;
 mod regex;
+mod removeparam;
 mod response;
 
 pub use comment::{count, is_comment};
@@ -54,7 +55,7 @@ pub(crate) struct Rule<'a> {
     translated: Option<adguard::Translation>,
     rewritten: Option<String>,
     noop: bool,
-    csp_subdocument: bool,
+    projected_type: bool,
     noop_host: Option<&'a str>,
     pub(crate) denyallow: bool,
     pub(crate) redirect_exception: bool,
@@ -79,6 +80,7 @@ pub(crate) enum Reason {
     RegexSourceDomain,
     NetworkRegex,
     Csp(csp::Rejection),
+    RemoveParam(removeparam::Rejection),
     Address(address::Rejection),
     HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
@@ -130,7 +132,7 @@ pub(crate) fn read_with_scripts<'a>(
         translated: None,
         rewritten: None,
         noop: false,
-        csp_subdocument: false,
+        projected_type: false,
         noop_host: None,
         denyallow: false,
         redirect_exception: false,
@@ -164,8 +166,10 @@ pub(crate) fn read_with_scripts<'a>(
     if custom.as_ref().is_some_and(|options| {
         !options.pattern.contains('#')
             && options.tokens().any(|option| {
-                matches!(option.name(), modifiers::CSP | modifiers::HLS)
-                    || option.name() == modifiers::URLTRANSFORM
+                matches!(
+                    option.name(),
+                    modifiers::CSP | modifiers::HLS | modifiers::REMOVEPARAM
+                ) || option.name() == modifiers::URLTRANSFORM
                     || option.name().eq_ignore_ascii_case(modifiers::REMOVEHEADER)
             })
     }) {
@@ -201,6 +205,10 @@ impl<'a> Rule<'a> {
             self.noop = options.noop;
             if let Err(reason) = csp::validate(&options) {
                 self.kind = Kind::NotApplied(Reason::Csp(reason));
+                return;
+            }
+            if let Err(reason) = removeparam::validate(&options) {
+                self.kind = Kind::NotApplied(Reason::RemoveParam(reason));
                 return;
             }
             match network_qualifiers(&options) {
@@ -262,7 +270,7 @@ impl<'a> Rule<'a> {
         self.rewritten = if let Some(condition) = denyallow {
             Some(condition.rewrite(options))
         } else if let Some(projected) = csp::project(options) {
-            self.csp_subdocument = true;
+            self.projected_type = true;
             Some(projected)
         } else if options.noop
             && options.tokens().next().is_none()
@@ -273,11 +281,20 @@ impl<'a> Rule<'a> {
         } else {
             options.without_noops()
         };
+        if removeparam::document_default(options) {
+            let mut line = self
+                .rewritten
+                .take()
+                .unwrap_or_else(|| self.line.to_owned());
+            line.push_str(",document");
+            self.rewritten = Some(line);
+            self.projected_type = true;
+        }
     }
 
     /// Text for diagnostics when matcher syntax differs from the list.
     pub(crate) fn original(&self) -> Option<&'a str> {
-        (self.noop || self.denyallow || self.csp_subdocument).then_some(self.line)
+        (self.noop || self.denyallow || self.projected_type).then_some(self.line)
     }
 
     pub(crate) fn has_redirect_option(&self) -> bool {
@@ -340,6 +357,7 @@ impl<'a> Rule<'a> {
                 | Reason::RegexSourceDomain
                 | Reason::NetworkRegex
                 | Reason::Csp(_)
+                | Reason::RemoveParam(_)
                 | Reason::Address(_),
             ) => None,
             _ => Some(self.normalized()),
@@ -418,6 +436,7 @@ impl<'a> Rule<'a> {
                             | Reason::RegexSourceDomain
                             | Reason::NetworkRegex
                             | Reason::Csp(_)
+                            | Reason::RemoveParam(_)
                             | Reason::Address(_)
                     )
             )
@@ -437,6 +456,7 @@ impl<'a> Rule<'a> {
                     | Reason::RegexSourceDomain
                     | Reason::NetworkRegex
                     | Reason::Csp(_)
+                    | Reason::RemoveParam(_)
                     | Reason::Address(_)
             )
         ) {

@@ -164,6 +164,7 @@ fn prepare_request<'a>(
         &request.url,
         req.uri(),
         req.method(),
+        decision.rewritten_url.take().as_deref(),
         &rewrite.url_transforms,
     ) {
         Some(Transformed::Redirect(location)) => {

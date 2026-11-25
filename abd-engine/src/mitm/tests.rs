@@ -46,6 +46,7 @@ use super::*;
 mod csp;
 mod hls;
 mod removeheader;
+mod removeparam;
 mod urltransform;
 
 const HOST: &str = "site.test";

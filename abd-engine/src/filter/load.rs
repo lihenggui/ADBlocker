@@ -223,7 +223,9 @@ impl Filters {
                     // AdGuard allows any list to cut elements. This grants
                     // less power than the cosmetic rules any list can use.
                     Kind::Html(rule) => html.add(source.line, rule),
-                    Kind::Response(response) if trust_responses => {
+                    Kind::Response(response)
+                        if trust_responses || !response.requires_trusted_source() =>
+                    {
                         responses.add(source.line, response)
                     }
                     _ => (),

@@ -13,6 +13,7 @@
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::net::Ipv6Addr;
 use std::sync::Arc;
 
@@ -20,6 +21,7 @@ use hyper::header::HeaderValue;
 use hyper::http::uri::PathAndQuery;
 use hyper::{Method, Uri};
 
+use crate::filter::removeparam;
 use crate::limits::MAX_TRANSFORM_URL;
 use crate::rule::action::ResponseAction;
 
@@ -28,18 +30,80 @@ pub(super) enum Transformed {
     Redirect(HeaderValue),
 }
 
-/// The matcher selected the rules for the original request in source order.
-/// Each rule sees the URL left by the preceding rule, without another match.
+/// The matcher selects all URL changes from the original request. Apply
+/// native parameter removal first, then the selected transforms in source order.
 pub(super) fn apply(
     original: &str,
     target: &Uri,
     method: &Method,
+    rewritten: Option<&str>,
     transforms: &[Arc<ResponseAction>],
 ) -> Option<Transformed> {
-    if transforms.is_empty() || original.len() > MAX_TRANSFORM_URL {
+    if (rewritten.is_none() && transforms.is_empty()) || original.len() > MAX_TRANSFORM_URL {
         return None;
     }
+    let previous = validated_url(original)?;
+    let parameters = remove_parameters(original, &previous, rewritten, transforms);
     let redirects = matches!(*method, Method::GET | Method::HEAD);
+    let url = transform_url(&parameters, redirects, transforms)
+        .unwrap_or_else(|| Cow::Borrowed(parameters.as_ref()));
+    if url == original {
+        return None;
+    }
+    let parsed = validated_url(&url)?;
+
+    if !same_origin(&previous, &parsed) {
+        return HeaderValue::from_str(&url).ok().map(Transformed::Redirect);
+    }
+    let (origin, rest) = split_url(&url)?;
+    let path = request_path(rest);
+    let mut parts = target.clone().into_parts();
+    let path = path_and_query(&path)?;
+    if parts.path_and_query.as_ref() == Some(&path) {
+        return None;
+    }
+    let url = format!("{origin}{path}");
+    if url.len() > MAX_TRANSFORM_URL {
+        return None;
+    }
+    parts.path_and_query = Some(path);
+    Some(Transformed::Forward {
+        url,
+        uri: Uri::from_parts(parts).ok()?,
+    })
+}
+
+fn remove_parameters<'a>(
+    original: &'a str,
+    previous: &Uri,
+    rewritten: Option<&'a str>,
+    actions: &[Arc<ResponseAction>],
+) -> Cow<'a, str> {
+    let Some(rewritten) =
+        rewritten.filter(|url| validated_url(url).is_some_and(|uri| same_origin(previous, &uri)))
+    else {
+        return Cow::Borrowed(original);
+    };
+    let exempt: HashSet<_> = actions
+        .iter()
+        .filter_map(|action| match action.as_ref() {
+            ResponseAction::RemoveParamException(name) => Some(name.as_str()),
+            _ => None,
+        })
+        .collect();
+    if exempt.is_empty() {
+        Cow::Borrowed(rewritten)
+    } else {
+        removeparam::preserve(original, rewritten, &exempt)
+            .map_or(Cow::Borrowed(original), Cow::Owned)
+    }
+}
+
+fn transform_url<'a>(
+    original: &'a str,
+    redirects: bool,
+    transforms: &[Arc<ResponseAction>],
+) -> Option<Cow<'a, str>> {
     let mut url = Cow::Borrowed(original);
     for action in transforms {
         let ResponseAction::UrlTransform(action) = action.as_ref() else {
@@ -69,30 +133,7 @@ pub(super) fn apply(
             }
         }
     }
-    if url == original {
-        return None;
-    }
-    let parsed = validated_url(&url)?;
-    let previous = validated_url(original)?;
-    if !same_origin(&previous, &parsed) {
-        return HeaderValue::from_str(&url).ok().map(Transformed::Redirect);
-    }
-    let (origin, rest) = split_url(&url)?;
-    let path = request_path(rest);
-    let mut parts = target.clone().into_parts();
-    let path = path_and_query(&path)?;
-    if parts.path_and_query.as_ref() == Some(&path) {
-        return None;
-    }
-    let url = format!("{origin}{path}");
-    if url.len() > MAX_TRANSFORM_URL {
-        return None;
-    }
-    parts.path_and_query = Some(path);
-    Some(Transformed::Forward {
-        url,
-        uri: Uri::from_parts(parts).ok()?,
-    })
+    Some(url)
 }
 
 fn split_url(url: &str) -> Option<(&str, &str)> {

@@ -324,6 +324,7 @@ impl AppRules {
                 }
             }),
             redirect: None,
+            rewritten_url: found.rewritten_url,
         };
         if found.important {
             return check;
@@ -340,6 +341,12 @@ impl AppRules {
             (own, excepted)
         });
         let (own, excepted) = own;
+        if !own.important {
+            check.rewritten_url = match (check.rewritten_url, own.rewritten_url) {
+                (Some(web), Some(app)) => super::removeparam::merge(&req.url, web, app),
+                (web, app) => web.or(app),
+            };
+        }
         if own.important {
             check.blocked = true;
         } else if excepted {

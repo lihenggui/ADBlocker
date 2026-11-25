@@ -26,6 +26,7 @@ pub(super) const REPLACE: &str = "replace";
 pub(super) const REMOVEHEADER: &str = "removeheader";
 pub(super) const URLTRANSFORM: &str = "urltransform";
 pub(super) const CSP: &str = "csp";
+pub(super) const REMOVEPARAM: &str = "removeparam";
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum PageModifier {
@@ -156,6 +157,11 @@ static MODIFIERS: &[Modifier] = &[
     modifier(
         &[URLTRANSFORM],
         Action(ActionKind::UrlTransform, Compatibility::UrlTransform),
+        Optional,
+    ),
+    modifier(
+        &[REMOVEPARAM],
+        Action(ActionKind::RemoveParamException, Compatibility::Matcher),
         Optional,
     ),
     modifier(&["domain", "from"], Source, Required),
