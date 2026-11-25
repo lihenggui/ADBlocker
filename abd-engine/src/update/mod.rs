@@ -346,6 +346,10 @@ impl Subscription<'_> {
                 (ListState::Failed, known)
             }
         };
+        self.persist_outcome(url, state, known)
+    }
+
+    fn persist_outcome(self, url: &str, state: ListState, known: Info) -> Result<Commit> {
         if state != ListState::Failed && matches!(self.kind, ListKind::Filter) {
             sources::prune_previous_copy(self.dir, self.info, url)?;
         }

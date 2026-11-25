@@ -282,6 +282,15 @@ pub(crate) fn edit<'a>(
     if !changed {
         return Some(Cow::Borrowed(body));
     }
+    build_output(body, lines, edits, within_budget).map(Cow::Owned)
+}
+
+fn build_output<'a>(
+    body: &[u8],
+    lines: impl Iterator<Item = &'a str>,
+    edits: Vec<LineEdit>,
+    within_budget: &dyn Fn() -> bool,
+) -> Option<Vec<u8>> {
     let mut edited = Vec::with_capacity(body.len());
     for (line, edit) in lines.zip(edits) {
         if !within_budget() {
@@ -299,7 +308,7 @@ pub(crate) fn edit<'a>(
             }
         }
     }
-    Some(Cow::Owned(edited))
+    Some(edited)
 }
 
 #[cfg(test)]
