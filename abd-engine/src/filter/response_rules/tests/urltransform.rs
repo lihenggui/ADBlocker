@@ -67,7 +67,12 @@ fn both_real_base_rules_and_the_reference_affiliate_rules_transform_their_urls()
             "document",
         ),
     ] {
-        assert!(crate::rulecheck::check(rule).issues.is_empty(), "{rule}");
+        assert!(
+            crate::rulecheck::check(rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .is_empty(),
+            "{rule}"
+        );
         assert_eq!(
             transformed(&filters(rule), url, Page::Itself, kind, "GET"),
             expected
@@ -149,7 +154,13 @@ fn incompatible_modifiers_and_malformed_values_do_not_become_blocks() {
         "_",
     ] {
         let rule = format!("||example.org/X$urltransform=/X/Y/,{suffix}");
-        assert_eq!(crate::rulecheck::check(&rule).issues.len(), 1, "{rule}");
+        assert_eq!(
+            crate::rulecheck::check(&rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{rule}"
+        );
         let url = "https://example.org/X";
         let f = filters(&rule);
         assert_eq!(transformed(&f, url, Page::Itself, "document", "GET"), url);
@@ -157,7 +168,13 @@ fn incompatible_modifiers_and_malformed_values_do_not_become_blocks() {
     }
     for value in ["/x/y$oops", "/x/a,b/", "/x/y/|bad"] {
         let rule = format!("||example.org/X$urltransform={value}");
-        assert_eq!(crate::rulecheck::check(&rule).issues.len(), 1, "{rule}");
+        assert_eq!(
+            crate::rulecheck::check(&rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{rule}"
+        );
         let f = filters(&rule);
         assert!(
             !f.check("https://example.org/X", "", "document", "GET")
@@ -224,7 +241,11 @@ fn badfilter_disables_a_transform_in_either_option_order() {
     let rule = "||example.org^$urltransform=/X/Y/,all\n\
                 ||example.org^$all,badfilter,urltransform=/X/Y/\n\
                 ||example.org^$urltransform=/Z/Y/,all";
-    assert!(crate::rulecheck::check(rule).issues.is_empty());
+    assert!(
+        crate::rulecheck::check(rule, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .is_empty()
+    );
     assert_eq!(
         transformed(
             &filters(rule),

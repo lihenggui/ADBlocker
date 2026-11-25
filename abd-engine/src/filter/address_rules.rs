@@ -23,6 +23,7 @@ use serde::{Deserialize, Serialize};
 use super::app_patterns::{Condition, Patterns, Scope};
 use crate::limits::{MAX_ADDRESS_REGEX, MAX_ADDRESS_REGEX_SET, MAX_ADDRESS_RULES};
 use crate::rule::address::{AddressRule, Pattern, valid_expression};
+use crate::rule::{Code, RuleReason};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AddressDecision {
@@ -68,15 +69,13 @@ pub(crate) struct AddressProjections {
 }
 
 impl AddressProjections {
-    pub(crate) fn add(&mut self, rule: &AddressRule<'_>) -> bool {
+    pub(crate) fn add(&mut self, rule: &AddressRule<'_>) -> Result<(), RuleReason> {
         if self.count >= MAX_ADDRESS_RULES {
             self.dropped += 1;
-            return false;
+            return Err(Code::AddressLimit.into());
         }
         let app = if let Some(names) = rule.apps {
-            let Some(prepared) = self.patterns.prepare(names) else {
-                return false;
-            };
+            let prepared = self.patterns.prepare(names).ok_or(Code::AppPattern)?;
             let app = Condition::new(&prepared.encoded);
             self.patterns.keep(prepared);
             Some(app)
@@ -104,7 +103,7 @@ impl AddressProjections {
             }
         }
         self.count += 1;
-        true
+        Ok(())
     }
 
     pub(super) fn finish(mut self) -> AddressRules {
@@ -482,7 +481,7 @@ mod tests {
             let Kind::Address(rule) = read(&text).kind else {
                 panic!("{text}");
             };
-            assert_eq!(addresses.add(&rule), i < MAX_ADDRESS_RULES);
+            assert_eq!(addresses.add(&rule).is_ok(), i < MAX_ADDRESS_RULES);
         }
         assert_eq!(addresses.dropped, 1);
         let addresses = addresses.finish();

@@ -142,6 +142,7 @@ fn rulecheck_accepts_prune_actions_and_reports_malformed_values() {
 @@||example.org^$jsonprune=
 ||example.org^$jsonprune
 ||example.org^$jsonprune=\$..[a,$script",
+        crate::rulecheck::SourcePermissions::USER,
     );
     assert_eq!(checked.rules, 10);
     assert_eq!(

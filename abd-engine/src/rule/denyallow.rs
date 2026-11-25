@@ -26,7 +26,7 @@ use super::options::{OptionToken, Options, literal_tokens};
 use crate::host::is_host;
 use crate::public_suffix::is_known_top_level;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     PatternNamesHost,
     NegatedModifier,

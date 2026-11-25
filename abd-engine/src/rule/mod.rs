@@ -27,6 +27,7 @@ use self::quoting::unescaped;
 pub(crate) mod action;
 pub(crate) mod address;
 mod adguard;
+mod check;
 mod comment;
 pub(crate) mod csp;
 mod denyallow;
@@ -35,8 +36,10 @@ pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
 mod page_exception;
+mod permissions;
 pub(crate) mod preprocess;
 pub(crate) mod quoting;
+mod reason;
 mod regex;
 mod removeparam;
 mod response;
@@ -45,6 +48,8 @@ pub use comment::{count, is_comment};
 pub(crate) use denyallow::matcher_applies as denyallow_matcher_applies;
 pub(crate) use modifiers::kind_bit;
 pub(crate) use page_exception::{Elements, PageException};
+pub use permissions::SourcePermissions;
+pub(crate) use reason::{Code, RuleReason};
 pub(crate) use response::{Action, ResponseRule};
 
 pub(crate) struct Rule<'a> {
@@ -99,6 +104,15 @@ pub(crate) struct AppCondition<'a, 'options> {
     pub(crate) pattern: &'a str,
     pub(crate) apps: &'a str,
     pub(crate) options: Vec<&'options str>,
+}
+
+pub(crate) fn scriptlet_resources() -> &'static [adblock::resources::Resource] {
+    static RESOURCES: std::sync::LazyLock<Vec<adblock::resources::Resource>> =
+        std::sync::LazyLock::new(|| {
+            serde_json::from_str(include_str!("../../resources/scriptlets.json"))
+                .expect("bundled scriptlet resources are valid")
+        });
+    &RESOURCES
 }
 
 pub(crate) fn read(line: &str) -> Rule<'_> {
@@ -441,68 +455,22 @@ impl<'a> Rule<'a> {
         parse_network(self.rewritten.as_deref().unwrap_or(self.line))
     }
 
-    /// Even a page modifier or a known unsupported modifier can occur
-    /// on a line the matcher accepts. The CLI keeps its existing verdict.
-    pub(crate) fn matcher_check(&self) -> MatcherCheck {
-        if matches!(
-            self.kind,
-            Kind::NotApplied(
-                Reason::DenyAllow(_)
-                    | Reason::RegexSourceDomain
-                    | Reason::NetworkRegex
-                    | Reason::Csp(_)
-                    | Reason::RemoveParam(_)
-                    | Reason::Cookie(_)
-                    | Reason::Address(_)
-            )
-        ) {
-            return MatcherCheck::Invalid;
-        }
-        if let Some(translated) = &self.translated {
-            return if translated.requires_trusted_scriptlets {
-                MatcherCheck::Cosmetic
-            } else {
-                MatcherCheck::AppliedCosmetic
-            };
-        }
-        if matches!(self.kind, Kind::Cosmetic)
-            || (matches!(self.kind, Kind::NotApplied(Reason::HtmlFiltering(_)))
-                && (self.line.contains("$$") || cosmetic(self.line)))
-        {
-            return MatcherCheck::Cosmetic;
-        }
-        let line = self.rewritten.as_deref().unwrap_or(self.line);
-        match parse_filter(line, false, ParseOptions::default()) {
-            Ok(ParsedLine::Network(rule)) => {
-                if self.denyallow && !denyallow::matcher_applies(line, rule) {
-                    MatcherCheck::Invalid
-                } else {
-                    MatcherCheck::Network
-                }
-            }
-            Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
-                MatcherCheck::Cosmetic
-            }
-            Err(FilterParseError::Unsupported) if self.line.contains("$$") => {
-                MatcherCheck::Cosmetic
-            }
-            Err(_) => MatcherCheck::Invalid,
-        }
-    }
-
     fn unsupported_modifier(&self) -> Option<&'static str> {
         // Prefer the existing tokens when the guard projection needed them.
         let find = |token: OptionToken<'_>| {
             let entry = lookup(token.name())?;
-            (entry.kind == ModifierKind::Unsupported)
-                .then(|| {
-                    entry
-                        .names
-                        .iter()
-                        .copied()
-                        .find(|&name| name == token.name())
-                })
-                .flatten()
+            (matches!(
+                entry.kind,
+                ModifierKind::Unsupported | ModifierKind::Inapplicable
+            ))
+            .then(|| {
+                entry
+                    .names
+                    .iter()
+                    .copied()
+                    .find(|&name| name == token.name())
+            })
+            .flatten()
         };
         if self.literal.is_some() {
             self.literal_options().find_map(find)
@@ -584,13 +552,6 @@ fn host_token(pattern: &str) -> &str {
     &pattern[..pattern
         .find(['/', '^', '?', ':', '|', '$'])
         .unwrap_or(pattern.len())]
-}
-
-pub(crate) enum MatcherCheck {
-    Network,
-    AppliedCosmetic,
-    Cosmetic,
-    Invalid,
 }
 
 impl<'a> AppRule<'a> {

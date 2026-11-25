@@ -34,16 +34,10 @@ fn csp_policies_and_response_actions_stay_in_their_own_matchers_after_cache_relo
     std::fs::write(rules.join("user.txt"), "||example.org^$removeheader=x-test").unwrap();
     let built = Filters::load_cached(&[dir.path(), &rules], cache.path()).unwrap();
     let cached = Filters::read_cache(cache.path(), built.generation.unwrap()).unwrap();
-    let issues = crate::rulecheck::check(RULES).issues;
-    assert_eq!(
-        issues
-            .iter()
-            .map(|issue| issue.text.as_str())
-            .collect::<Vec<_>>(),
-        [
-            "@@||example.org/url/*$urlblock",
-            "@@||example.org/body/*$content"
-        ],
+    assert!(
+        crate::rulecheck::check(RULES, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .is_empty()
     );
     for filters in [built, cached] {
         let web = filters.for_app("com.other");
@@ -103,7 +97,9 @@ fn invalid_csp_rules_do_not_become_network_or_response_rules() {
         ||example.org^$csp=frame-src 'none',method=GET
         ||example.org^$csp=frame-src 'none',image";
     assert_eq!(
-        crate::rulecheck::check(rules).issues.len(),
+        crate::rulecheck::check(rules, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .len(),
         rules.lines().count()
     );
     let f = filters(rules);

@@ -114,10 +114,21 @@ fn xmlprune_requires_escaped_delimiters_and_reference_qualifiers() {
         "||example.org^$xmlprune=//a,~xmlhttprequest",
     ];
     for line in accepted {
-        assert!(crate::rulecheck::check(line).issues.is_empty(), "{line}");
+        assert!(
+            crate::rulecheck::check(line, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .is_empty(),
+            "{line}"
+        );
     }
     for line in rejected {
-        assert_eq!(crate::rulecheck::check(line).issues.len(), 1, "{line}");
+        assert_eq!(
+            crate::rulecheck::check(line, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{line}"
+        );
     }
     let rule = r"||example.org^$xmlprune=//a[@k='cost\$\, retail']";
     assert_eq!(

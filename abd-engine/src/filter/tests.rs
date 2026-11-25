@@ -130,7 +130,11 @@ fn denyallow_rules_filter_requests_without_refusing_hosts() {
     let scoped = "/assets/ad.js$script,app=com.reader,denyallow=x.com";
     let rules = format!("{script}\n{image}\n{scoped}\n");
     let f = filters(&rules);
-    assert!(crate::rulecheck::check(&rules).issues.is_empty());
+    assert!(
+        crate::rulecheck::check(&rules, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .is_empty()
+    );
     assert_eq!(f.host_rules, 0);
     for host in [
         "a.com",
@@ -209,7 +213,7 @@ fn real_noop_rules_only_apply_when_their_other_options_are_supported() {
         crate::rule::Kind::NotApplied(crate::rule::Reason::RegexSourceDomain)
     ));
     let text = format!("{shinden}\n{vivicomi}");
-    let checked = crate::rulecheck::check(&text);
+    let checked = crate::rulecheck::check(&text, crate::rulecheck::SourcePermissions::USER);
     assert_eq!(checked.issues.len(), 1);
     assert_eq!(checked.issues[0].text, vivicomi);
 

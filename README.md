@@ -206,7 +206,7 @@ The examples below abbreviate this path to `abd`.
 | `abd update` | Download the filter lists. |
 | `abd rules get` | Print custom rules. Use `abd rules set` to replace them from standard input. |
 | `abd rules append [--unique]` | Append rules from standard input. With `--unique`, add a single rule only if absent. |
-| `abd rules check` | Report which rules from standard input the engine cannot apply. |
+| `abd rules check` | Check user rules from standard input and report the class and reason for each unapplied line. |
 | `abd pinned` | List hosts for which an app has rejected the local certificate. Use `abd pinned forget <package> [<host>]` to retry decryption on a later connection. |
 | `abd reload` | Read the lists, rules and apps again. |
 | `abd stats` | Show filtering statistics. |
@@ -238,7 +238,8 @@ custom rules support nested `!#if`, `!#else`, and `!#endif` directives with
 `adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
 `cap_html_filtering`. `cap_user_stylesheet`, `false`, and all other names
 evaluate to false. ADBlocker skips `!#include` directives and reports
-active includes and malformed conditionals in `abd rules check`.
+active includes and malformed conditionals in `abd rules check`. The
+`--json` form includes the same class and reason on each issue.
 
 A matching `$replace` rule can override a request block and rewrite the
 text response when URL filtering is on. A matching `$jsonprune` rule

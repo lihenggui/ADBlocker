@@ -25,7 +25,7 @@ pub(crate) type Spec = Removal<String>;
 pub(crate) type Compiled = Removal<HeaderName>;
 
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum Rejection {
+pub(crate) enum Rejection {
     InvalidName,
     ProtectedByAdGuard,
     RequiredForRequest,

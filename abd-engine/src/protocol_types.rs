@@ -47,30 +47,27 @@ pub enum ListState {
     Failed,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, Serialize)]
 pub struct RulesCheck {
     pub rules: usize,
     pub issues: Vec<Issue>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, PartialEq, Eq, serde::Deserialize, Serialize)]
 pub struct Issue {
     pub line: usize,
     pub text: String,
     pub kind: IssueKind,
+    pub reason: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum IssueKind {
-    /// An unapplied cosmetic rule.
-    Cosmetic,
-    /// Not a rule.
     Invalid,
-    /// A malformed conditional directive.
-    MalformedDirective,
-    /// A list include, which the engine does not load.
-    UnsupportedInclude,
+    Unsupported,
+    Inapplicable,
+    Untrusted,
 }
 
 #[derive(Debug, Serialize)]

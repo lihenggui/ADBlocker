@@ -1,0 +1,1348 @@
+! Rule forms and their checker verdicts. See testdata/protocol/README.md for the reason codes.
+
+! Network patterns and hosts
+! Synthetic Network patterns and hosts example.
+! expect: applied
+||ads.example^
+! Synthetic Network patterns and hosts example.
+! expect: applied
+@@||ads.example/allowed
+! Synthetic Network patterns and hosts example.
+! expect: applied
+|https://example.org/ads/
+! Synthetic Network patterns and hosts example.
+! expect: applied
+/tracker[0-9]+\.js/
+! Synthetic Network patterns and hosts example.
+! expect: applied
+0.0.0.0 ads.example
+! Synthetic Network patterns and hosts example.
+! expect: applied
+127.0.0.1 tracker.example
+! Network patterns and hosts from lists/easyprivacy.txt, line 3546.
+! expect: applied
+||example.org^
+! Network patterns and hosts from lists/easylist.txt, line 59212.
+! expect: applied
+/(https?:\/\/)104\.154\..{100,}/
+! Synthetic Network patterns and hosts example.
+! expect: invalid network-syntax
+x
+! Synthetic Network patterns and hosts example.
+! expect: invalid option:frobnicate
+||ads.example^$frobnicate
+! Synthetic Network patterns and hosts example.
+! expect: invalid network-domains
+||ads.example^$domain=/example/
+! Synthetic Network patterns and hosts example.
+! expect: unsupported network-regex
+/(?<=track)ing/$_
+! Synthetic Network patterns and hosts example.
+! expect: unsupported network-regex
+/tracker$/
+! Synthetic Network patterns and hosts example.
+! expect: invalid network-syntax
+||ads.example^$~badfilter
+! Synthetic Network patterns and hosts example.
+! expect: invalid network-syntax
+||ads.example^$redirect=
+
+! Request types
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$script
+! Synthetic Request types example.
+! expect: applied
+||cdn.example^$~script
+! Request types from lists/easylist.txt, line 33.
+! expect: applied
+.ads.controller.js$script
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$xmlhttprequest
+! Request types from lists/easylist.txt, line 112.
+! expect: applied
+/_fd?subid1=$xmlhttprequest
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$xhr
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$subdocument
+! Request types from lists/easylist.txt, line 110.
+! expect: applied
+/?fp=*&poru=$subdocument
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$image
+! Synthetic Request types example.
+! expect: applied
+||cdn.example^$~image
+! Request types from lists/easylist.txt, line 23.
+! expect: applied
+-ad-sidebar.$image
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$stylesheet
+! Request types from lists/easylist.txt, line 124.
+! expect: applied
+/ad.css?$stylesheet
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$css
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$font
+! Request types from live/base-android.txt, line 34763.
+! expect: applied
+@@||example.org/static/fonts/$font
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$media
+! Request types from lists/easylist.txt, line 62746.
+! expect: applied
+||example.org/test/$media
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$object
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$other
+! Request types from live/base-android.txt, line 34314.
+! expect: applied
+@@||example.org/*/add/*?_=$other
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$websocket
+! Request types from lists/easyprivacy.txt, line 3217.
+! expect: applied
+/ws_client?zone=gen$websocket
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$ping
+! Request types from lists/easylist.txt, line 139.
+! expect: applied
+/ad_counter.aspx$ping
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$document
+! Request types from lists/easylist.txt, line 833.
+! expect: applied
+.com/smartpop/$document
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$doc
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$script,image
+! Synthetic Request types example.
+! expect: applied
+||ads.example^$all
+! Synthetic Request types example.
+! expect: applied
+@@||site.example^$document
+
+! Sources, destinations and request flags
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$domain=example.org
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$domain=example.org|~private.example.org
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$from=example.org
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$third-party
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$3p
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$~third-party
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$first-party
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$1p
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$~first-party
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$to=example.net
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$method=post
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$method=~get|~head
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$tag=tracking
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$badfilter
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$important
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+/AD[0-9]/$match-case
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$_
+! Synthetic Sources, destinations and request flags example.
+! expect: applied
+||ads.example^$____
+! Sources, destinations and request flags from lists/easyprivacy.txt, line 28.
+! expect: applied
+&http_referer=$script,xmlhttprequest,domain=~biletomat.pl|~facebook.com|~jobscore.com
+! Sources, destinations and request flags from lists/ubo.txt, line 1559.
+! expect: applied
+$image,3p,denyallow=cdn77.org|fpbns.net|globalcdn.co|others-cdn.com|rncdn7.com|sb-cd.com|stream.highwebmedia.com|thumb.live.mmcdn.com|upsiloncdn.net|xvideos-cdn.com|youjizz.com|ypncdn.com,from=pussyspace.com|pussyspace.net
+! Sources, destinations and request flags from lists/easyprivacy.txt, line 82.
+! expect: applied
+.sharecounter.$third-party
+! Sources, destinations and request flags from lists/ubo.txt, line 12.
+! expect: applied
+*_ad_$media,domain=youtube.com,3p
+! Sources, destinations and request flags from lists/ubo.txt, line 5639.
+! expect: applied
+*$script,redirect-rule=noopjs,from=dutchycorp.*,to=~sentry-cdn.com
+! Sources, destinations and request flags from lists/easyprivacy.txt, line 18459.
+! expect: applied
+||example.org/rec$method=POST
+! Sources, destinations and request flags from lists/ubo.txt, line 545.
+! expect: applied
+@@||example.org^$script,domain=spiegel.de,badfilter
+! Sources, destinations and request flags from lists/easyprivacy.txt, line 18402.
+! expect: applied
+||example.org/wp-content/plugins/koko-analytics/$important,redirect=noop.js,script
+! Sources, destinations and request flags from lists/ubo.txt, line 3253.
+! expect: applied
+/\/uploads\/2025/\d{2}\/[0-9a-z]{6,12}\.jpg$/$image,match-case,1p,domain=igg-games.co|igg-games.com|pcgamestorrents.com|pcgamestorrents.org
+! Sources, destinations and request flags from lists/ubo.txt, line 1347.
+! expect: applied
+||topblockchainsolutions.*^$all
+! Synthetic Sources, destinations and request flags example.
+! expect: unsupported regex-source-domain
+||ads.example^$domain=/example/,_,script
+
+! Set-aside modifiers
+! Synthetic Set-aside modifiers example.
+! expect: inapplicable option:popup
+||ads.example^$popup
+! Set-aside modifiers from lists/easylist.txt, line 915.
+! expect: inapplicable option:popup
+/earn.php?z=$popup,subdocument
+! Synthetic Set-aside modifiers example.
+! expect: inapplicable option:popunder
+||ads.example^$popunder
+! Set-aside modifiers from lists/ubo.txt, line 1421.
+! expect: inapplicable option:popunder
+*$popunder,domain=realgfporn.com
+! Synthetic Set-aside modifiers example.
+! expect: inapplicable option:stealth
+||ads.example^$stealth
+! Set-aside modifiers from live/base-android.txt, line 72270.
+! expect: inapplicable option:stealth
+@@||example.org^$stealth=location|useragent|push|webrtc|1p-cookie|donottrack
+! Synthetic Set-aside modifiers example.
+! expect: inapplicable option:extension
+||ads.example^$extension
+! Set-aside modifiers from live/base-android.txt, line 26721.
+! expect: inapplicable option:extension
+@@||example.org^$extension
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:header
+||ads.example^$header=x-tracking
+! Set-aside modifiers from live/base-android.txt, line 43154.
+! expect: unsupported option:header
+||example.org^$header=x-target-domain:pagead2.googlesyndication.com
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:referrerpolicy
+||ads.example^$referrerpolicy=no-referrer
+! Set-aside modifiers from live/base-android.txt, line 19614.
+! expect: unsupported option:referrerpolicy
+||example.org^$referrerpolicy=origin
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:strict-third-party
+||ads.example^$strict-third-party
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:strict3p
+||ads.example^$strict3p
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:strict-first-party
+||ads.example^$strict-first-party
+! Synthetic Set-aside modifiers example.
+! expect: unsupported option:strict1p
+||ads.example^$strict1p
+! Synthetic Set-aside modifiers example.
+! expect: inapplicable option:extension
+@@||example.org^$extension=example
+! Synthetic Set-aside modifiers example.
+! expect: invalid option:popup
+||ads.example^$popup=yes
+
+! Page exceptions
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$document
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$doc
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$content
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$urlblock
+! Page exceptions from live/base-android.txt, line 71204.
+! expect: applied
+@@||example.org/members$urlblock
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$elemhide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$ehide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$specifichide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$shide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$generichide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$ghide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$jsinject
+! Page exceptions from live/base-android.txt, line 68925.
+! expect: applied
+@@||example.org/oauth/*?redirectUrl$jsinject
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$jsinject,extension
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$jsinject,elemhide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$specifichide,generichide
+! Synthetic Page exceptions example.
+! expect: applied
+@@||example.org^$document,app=com.reader
+! Synthetic Page exceptions example.
+! expect: invalid network-syntax
+||ads.example^$generichide
+
+! Redirects
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$redirect=noop.js
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$redirect-rule=noop.js
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$rewrite=noop.js
+! Synthetic Redirects example.
+! expect: applied
+@@||ads.example^$redirect
+! Synthetic Redirects example.
+! expect: applied
+@@||ads.example^$redirect-rule=noop.js
+! Synthetic Redirects example.
+! expect: applied
+@@||ads.example^$redirect=noop.js
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$empty
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$mp4
+! Synthetic Redirects example.
+! expect: applied
+||ads.example^$app=com.reader,redirect=noopjs
+! Redirects from lists/ubo.txt, line 63.
+! expect: applied
+*/fuckadblock-$script,redirect=fuckadblock.js-3.2.0:5
+! Redirects from lists/ubo.txt, line 225.
+! expect: applied
+*$script,domain=aranzulla.it,redirect-rule=noopjs
+
+! App conditions
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=com.reader
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=com.reader|org.example
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=~com.reader|~org.example
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=com.reader.*
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=/^com\.reader/
+! Synthetic App conditions example.
+! expect: applied
+||ads.example^$app=/^com\.reader\$\|^org\.example\./,script
+! Synthetic App conditions example.
+! expect: applied
+@@||ads.example/keep$app=com.reader
+! App conditions from lists/app-only.txt, line 1.
+! expect: applied
+@@||example.org^$app=mobi.zona
+! Synthetic App conditions example.
+! expect: invalid app-condition
+||ads.example^$app=com.reader,domain=example.org
+! Synthetic App conditions example.
+! expect: invalid app-condition
+||ads.example^$app
+! Synthetic App conditions example.
+! expect: invalid app-condition
+||ads.example^$app=com.reader,app=org.example
+! Synthetic App conditions example.
+! expect: invalid app-pattern
+||ads.example^$app=not/a/package
+! Synthetic App conditions example.
+! expect: invalid app-pattern
+||ads.example^$app=com.*.reader
+! Synthetic App conditions example.
+! expect: invalid app-pattern
+||ads.example^$app=/[x/
+! Synthetic App conditions example.
+! expect: invalid app-pattern
+||ads.example^$app=com.reader|~org.example
+! Synthetic App conditions example.
+! expect: unsupported option:header
+||ads.example^$app=com.reader,header=x-foo
+
+! Denyallow
+! Synthetic Denyallow example.
+! expect: invalid denyallow-matcher
+*$script,denyallow=example.com
+! Synthetic Denyallow example.
+! expect: applied
+*$image,domain=example.org,denyallow=example.com|example.net
+! Synthetic Denyallow example.
+! expect: applied
+/assets/ad.js$denyallow=example.org
+! Synthetic Denyallow example.
+! expect: invalid denyallow-matcher
+@@/assets/$script,denyallow=example.org
+! Synthetic Denyallow example.
+! expect: applied
+*$app=com.reader,denyallow=example.org
+! Synthetic Denyallow example.
+! expect: applied
+*$document,denyallow=example.org,badfilter
+! Denyallow from lists/ubo.txt, line 503.
+! expect: applied
+*$script,3p,denyallow=googleapis.com,domain=skidrowcodexgames.com
+! Synthetic Denyallow example.
+! expect: invalid denyallow-pattern-names-host
+||example.org^$denyallow=example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-negated-modifier
+*$script,~denyallow=example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-negated-domain
+*$script,denyallow=~example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-wildcard-tld
+*$script,denyallow=example.*
+! Synthetic Denyallow example.
+! expect: invalid denyallow-regex-domain
+*$script,denyallow=/example\.net/
+! Synthetic Denyallow example.
+! expect: invalid denyallow-empty-domain
+*$script,denyallow=example.net|
+! Synthetic Denyallow example.
+! expect: invalid denyallow-invalid-domain
+*$script,denyallow=https://example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-duplicate
+*$denyallow=example.net,denyallow=example.org
+! Synthetic Denyallow example.
+! expect: invalid denyallow-with-to
+*$to=example.org,denyallow=example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-with-response-action
+*$replace=/x/y/,denyallow=example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-matcher
+*$denyallow=example.net
+! Synthetic Denyallow example.
+! expect: invalid denyallow-matcher
+/ad[s]?/$denyallow=example.org
+! Synthetic Denyallow example.
+! expect: invalid denyallow-matcher
+*$script,domain=example.*,denyallow=example.net
+
+! IP addresses
+! Synthetic IP addresses example.
+! expect: applied
+192.0.2.1$network
+! Synthetic IP addresses example.
+! expect: applied
+192.0.2.1:443$network
+! Synthetic IP addresses example.
+! expect: applied
+[2001:db8::1]$network
+! Synthetic IP addresses example.
+! expect: applied
+[2001:db8::1]:8443$network
+! Synthetic IP addresses example.
+! expect: applied
+/^192\.0\.2\./$network
+! Synthetic IP addresses example.
+! expect: applied
+@@192.0.2.1$network
+! Synthetic IP addresses example.
+! expect: applied
+192.0.2.1$network,app=com.reader
+! IP addresses from live/mobile-android.txt, line 1981.
+! expect: applied
+@@77.88.21.73$network,app=ru.yandex.rasp
+! Synthetic IP addresses example.
+! expect: invalid address-modifiers
+192.0.2.1$network,script
+! Synthetic IP addresses example.
+! expect: invalid address-endpoint
+example.org$network
+! Synthetic IP addresses example.
+! expect: invalid address-expression
+/[ab/$network
+! Synthetic IP addresses example.
+! expect: unsupported address-limit
+192.0.2.9$network
+! Synthetic IP addresses example.
+! expect: invalid app-pattern
+192.0.2.1$network,app=not/a/package
+
+! CSP
+! Synthetic CSP example.
+! expect: applied
+||example.org^$csp=script-src 'none'
+! Synthetic CSP example.
+! expect: applied
+||example.org^$csp=frame-src 'none',domain=example.net
+! Synthetic CSP example.
+! expect: applied
+@@||example.org/allowed$csp
+! Synthetic CSP example.
+! expect: applied
+@@||example.org/allowed$csp=script-src 'none'
+! Synthetic CSP example.
+! expect: invalid network-syntax
+||example.org^$csp=frame-src 'none',document
+! Synthetic CSP example.
+! expect: applied
+||example.org^$csp=frame-src 'none',subdocument
+! Synthetic CSP example.
+! expect: applied
+||example.org^$app=com.reader,csp=frame-src 'none'
+! CSP from lists/ubo.txt, line 631.
+! expect: applied
+||example.org^$csp=sandbox allow-forms allow-same-origin allow-scripts allow-modals allow-orientation-lock allow-pointer-lock allow-presentation allow-top-navigation
+! Synthetic CSP example.
+! expect: invalid csp-empty
+||example.org^$csp
+! Synthetic CSP example.
+! expect: invalid csp-invalid-value
+||example.org^$csp=script-src none
+! Synthetic CSP example.
+! expect: unsupported csp-reporting
+||example.org^$csp=default-src 'self'; report-uri /report
+! Synthetic CSP example.
+! expect: invalid csp-negated
+||example.org^$~csp=script-src 'none'
+! Synthetic CSP example.
+! expect: invalid csp-method
+||example.org^$csp=script-src 'none',method=get
+! Synthetic CSP example.
+! expect: unsupported csp-reporting
+||example.org^$csp=script-src 'none'; report-to endpoint
+
+! Removeparam
+! Synthetic Removeparam example.
+! expect: applied
+$removeparam=utm_source
+! Synthetic Removeparam example.
+! expect: applied
+||example.org^$removeparam=fbclid
+! Synthetic Removeparam example.
+! expect: applied
+||example.org^$removeparam=utm_campaign,xmlhttprequest
+! Synthetic Removeparam example.
+! expect: applied
+@@||example.org^$removeparam=utm_source
+! Synthetic Removeparam example.
+! expect: applied
+@@||example.org^$removeparam=utm_source,all
+! Synthetic Removeparam example.
+! expect: applied
+*$script,removeparam=track,denyallow=example.org
+! Removeparam from live/base-android.txt, line 48163.
+! expect: applied
+||example.org^$removeparam=c
+! Synthetic Removeparam example.
+! expect: unsupported removeparam-remove-all
+$removeparam
+! Synthetic Removeparam example.
+! expect: unsupported removeparam-expression
+$removeparam=/^utm_/
+! Synthetic Removeparam example.
+! expect: unsupported removeparam-inverted
+$removeparam=~keep
+! Synthetic Removeparam example.
+! expect: unsupported removeparam-unsupported-name
+$removeparam=%24param
+! Synthetic Removeparam example.
+! expect: invalid removeparam-negated-modifier
+$~removeparam=track
+! Synthetic Removeparam example.
+! expect: unsupported removeparam-remove-all
+@@||example.org^$removeparam
+
+! Replace
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+||example.org^$replace=/ad/content/
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+||example.org^$replace=/ads?/good/is
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+||example.org^$replace=/([a-z]+)/[\$1]/
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+||example.org^$replace=/foo\/bar/baz/
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+||example.org^$replace=/ads/good/,app=com.reader
+! Synthetic Replace example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$replace=/ad/content/
+! Replace from live/base-android.txt, line 14619.
+! source: trusted
+! expect: applied
+||example.org/wp-content/cache/autoptimize/js/autoptimize_*.js$replace=/adsSrc='[\s\S]*?';/adsSrc='';/
+! Synthetic Replace example.
+! source: trusted
+! expect: invalid replace-value
+||example.org^$replace=/foo/bar/q
+! Synthetic Replace example.
+! source: trusted
+! expect: invalid response-condition
+||example.org^$replace=/x/y/,~important
+! Synthetic Replace example.
+! source: trusted
+! expect: unsupported response-limit
+||example.org/xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx$replace=/x/y/
+! Synthetic Replace example.
+! source: trusted
+! expect: invalid response-qualifier:replace
+||example.org^$replace=/x/y/,replace=/a/b/
+! Synthetic Replace example.
+! source: trusted
+! expect: invalid app-pattern
+||example.org^$replace=/x/y/,app=not/a/package
+! Synthetic Replace example.
+! expect: untrusted response-trust:replace
+||example.org^$replace=/ad/content/
+
+! JSON pruning
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+||example.org^$jsonprune=\$.ads
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+||example.org^$jsonprune=\$.items[*].ad
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+||example.org^$jsonprune=\$..tracking
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+||example.org^$jsonprune=\$['ads']
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+||example.org^$jsonprune=\$.ads,app=com.reader
+! JSON pruning from live/base-android.txt, line 38468.
+! source: trusted
+! expect: applied
+/GetVodPlaybackResources?$jsonprune=\$.cuepointPlaylist,xmlhttprequest,domain=example.org
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$jsonprune
+! Synthetic JSON pruning example.
+! expect: untrusted response-trust:jsonprune
+||example.org^$jsonprune=\$.ads
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: invalid jsonprune-value
+||example.org^$jsonprune=\$[
+! Synthetic JSON pruning example.
+! source: trusted
+! expect: invalid response-qualifier:script
+||example.org^$jsonprune=\$.ads,script
+
+! XML pruning
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+||example.org^$xmlprune=/MPD/Period
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+||example.org^$xmlprune=//Period[@id="ad"]
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+||example.org^$xmlprune=//Period[contains(@id\,'ad-')]
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+||example.org^$xmlprune=//A | //B
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+||example.org^$xmlprune=//Ad,xmlhttprequest
+! Synthetic XML pruning example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$xmlprune
+! XML pruning from lists/2.txt, line 65493.
+! source: trusted
+! expect: applied
+/manifest.mpd$xmlprune=/MPD/Period[contains(@id\,'ad-')],domain=hulu.com
+! Synthetic XML pruning example.
+! expect: untrusted response-trust:xmlprune
+||example.org^$xmlprune=//Ad
+! Synthetic XML pruning example.
+! source: trusted
+! expect: invalid xmlprune-value
+||example.org^$xmlprune=//[
+! Synthetic XML pruning example.
+! source: trusted
+! expect: invalid response-qualifier:strict3p
+||example.org^$xmlprune=//Ad,strict3p
+
+! HLS playlists
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+||example.org^$hls=ad-segment*
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+||example.org^$hls=||cdn.example\/ads\/
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+||example.org^$hls=/\/ads\//i
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+||example.org^$hls=/EXT-X-DATERANGE/t
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+||example.org^$hls=/splice/it,domain=example.net
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$hls
+! HLS playlists from lists/2.txt, line 26743.
+! source: trusted
+! expect: applied
+||example.org/hls/media/*.m3u8?$hls=/https:\/\/prism-ads-cdn\.a2d\.tv\//,domain=mtv.fi
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: invalid hls-empty-pattern
+||example.org^$hls=//
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: invalid hls-unescaped-separator
+||example.org^$hls=a/b
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: unsupported hls-inner-modifiers
+||example.org^$hls=/ad$script/
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: invalid hls-missing-delimiter
+||example.org^$hls=/ad
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: invalid hls-invalid-flags
+||example.org^$hls=/ad/q
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: unsupported hls-unsupported-pattern
+||example.org^$hls=/(?<=ad)x/
+! Synthetic HLS playlists example.
+! expect: untrusted response-trust:hls
+||example.org^$hls=ads
+! Synthetic HLS playlists example.
+! source: trusted
+! expect: invalid response-qualifier:_
+||example.org^$hls=ads,_
+
+! Header removal
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=Refresh
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$RemoveHeader=REQUEST:X-Client-Data,xmlhttprequest
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=x-trace,strict3p
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=x-trace,strict-third-party
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=x-trace,strict1p
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=x-trace,strict-first-party
+! Synthetic Header removal example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$removeheader
+! Header removal from lists/2.txt, line 53137.
+! source: trusted
+! expect: applied
+||example.org^$removeheader=location
+! Synthetic Header removal example.
+! source: trusted
+! expect: invalid removeheader-invalid-name
+||example.org^$removeheader=bad name
+! Synthetic Header removal example.
+! source: trusted
+! expect: invalid removeheader-protected-header
+||example.org^$removeheader=content-security-policy
+! Synthetic Header removal example.
+! source: trusted
+! expect: unsupported removeheader-required-for-request
+||example.org^$removeheader=request:te
+! Synthetic Header removal example.
+! source: trusted
+! expect: unsupported removeheader-required-for-response
+||example.org^$removeheader=content-encoding
+! Synthetic Header removal example.
+! source: trusted
+! expect: invalid response-qualifier:strict1p
+||example.org^$removeheader=Refresh,strict3p,strict1p
+! Synthetic Header removal example.
+! expect: untrusted response-trust:removeheader
+||example.org^$removeheader=Refresh
+
+! URL transformations
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+||example.org^$urltransform=/\?from=ads//
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+||example.org^$urltransform=/\/ads\//\/news\//,xmlhttprequest
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+||example.org^$urltransform=/old/new/,to=~private.example.org
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+||example.org^$urltransform=/old/new/,method=get
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+||example.org^$urltransform=/old/new/,badfilter
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+/assets/$urltransform=/old/new/,denyallow=exception.example.org
+! Synthetic URL transformations example.
+! source: trusted
+! expect: applied
+@@||example.org/allowed$urltransform
+! URL transformations from lists/2.txt, line 65456.
+! source: trusted
+! expect: applied
+||example.org/game/$urltransform=/^https:\/\/af\.gog\.com\/game\//https:\/\/www.gog\.com\/game\//
+! Synthetic URL transformations example.
+! expect: untrusted response-trust:urltransform
+||example.org^$urltransform=/old/new/
+! Synthetic URL transformations example.
+! source: trusted
+! expect: invalid urltransform-value
+||example.org^$urltransform=/old/new/q
+! Synthetic URL transformations example.
+! source: trusted
+! expect: invalid response-qualifier:app
+||example.org^$urltransform=/old/new/,app=com.reader
+
+! Cookies
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=/track[a-z]*/
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK;maxAge=0
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK;maxAge=604800;sameSite=lax
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK,domain=site.example
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK,~domain=site.example|other.example
+! Synthetic Cookies example.
+! expect: applied
+||example.org^$cookie=TRACK,third-party,important
+! Synthetic Cookies example.
+! expect: applied
+@@||example.org/allowed$cookie
+! Synthetic Cookies example.
+! expect: applied
+@@||example.org/allowed$cookie=TRACK
+! Cookies from lists/2.txt, line 17012.
+! expect: applied
+@@||example.org^$cookie=__gpi
+! Synthetic Cookies example.
+! expect: unsupported cookie-too-long
+||example.org^$cookie=xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+! Synthetic Cookies example.
+! expect: invalid cookie-invalid-name
+||example.org^$cookie=bad name
+! Synthetic Cookies example.
+! expect: invalid cookie-invalid-expression
+||example.org^$cookie=/[x/
+! Synthetic Cookies example.
+! expect: invalid cookie-unescaped-separator
+||example.org^$cookie=/a,b/
+! Synthetic Cookies example.
+! expect: invalid cookie-invalid-attribute
+||example.org^$cookie=TRACK;Secure=true
+! Synthetic Cookies example.
+! expect: invalid cookie-duplicate-attribute
+||example.org^$cookie=TRACK;maxAge=1;maxAge=2
+! Synthetic Cookies example.
+! expect: invalid cookie-invalid-max-age
+||example.org^$cookie=TRACK;maxAge=0.5
+! Synthetic Cookies example.
+! expect: invalid cookie-invalid-same-site
+||example.org^$cookie=TRACK;sameSite=invalid
+! Synthetic Cookies example.
+! expect: invalid cookie-attributes-on-exception
+@@||example.org^$cookie=TRACK;maxAge=5
+! Synthetic Cookies example.
+! expect: invalid response-qualifier:domain
+||example.org^$cookie=TRACK,~domain=~site.example
+
+! Cosmetic selectors and exceptions
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+##.advert
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+###advert
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+##[data-ad]
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org#@#.ad
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.*##.ad
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org#?#div:-abp-has(span)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org#@?#div:-abp-has(span)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:has-text(sponsor)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:matches-attr(data-ad)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:matches-css(display: block)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:matches-css-before(content: ad)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:matches-css-after(content: ad)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:matches-path(/page)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:min-text-length(15)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:xpath(//div)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:style(display: none !important)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:remove()
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: applied
+example.org##.ad:remove-attr(onclick)
+! Cosmetic selectors and exceptions from lists/easylist.txt, line 5521.
+! expect: applied
+##.-advertsSidebar
+! Cosmetic selectors and exceptions from lists/easylist.txt, line 1392.
+! expect: applied
+###AC_ad
+! Cosmetic selectors and exceptions from lists/easylist.txt, line 15133.
+! expect: applied
+example.org#@#.Adsense
+! Cosmetic selectors and exceptions from lists/easylist.txt, line 75686.
+! expect: applied
+example.org#?##hotel-list-wrapper li:has-text(Ad)
+! Cosmetic selectors and exceptions from lists/ubo.txt, line 953.
+! expect: applied
+example.org##.title ~ a[href] .button:upward(.container > div)
+! Cosmetic selectors and exceptions from lists/ubo.txt, line 127.
+! expect: applied
+pornhub.*##div.container:style(margin-top: 0px !important)
+! Cosmetic selectors and exceptions from lists/ubo.txt, line 77.
+! expect: applied
+example.org##table.info-table tr:has(td[colspan] .promo-box-any-banner):remove()
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-syntax
+example.org##
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-scope
+#@#.ad
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-syntax
+example.org#?#.ad:-abp-properties(color: red)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-unsafe
+example.org##.aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: unsupported cosmetic-unsupported
+example.org##.ad:has-text(x), .promo:has-text(y)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-scope
+##+js(nobab)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-scope
+##.ad:style(color: red)
+! Synthetic Cosmetic selectors and exceptions example.
+! expect: invalid cosmetic-scope
+example.org,~sub.example.org#@#.ad
+
+! AdGuard CSS and scriptlets
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#$#.ad { display: none; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#@$#.ad { display: none; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#$?#div:-abp-has(span) { display: none; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#@$?#div:-abp-has(span) { display: none; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#$#.ad { remove: true; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#$#.ad { color: red !important; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#%#//scriptlet('set-constant', 'fixture', 'false')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#%#//scriptlet('nowebrtc')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#@%#//scriptlet()
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#@%#//scriptlet('nowebrtc')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported scriptlet-no-counterpart:nobab
+example.org##+js(nobab)
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: applied
+example.org#@#+js()
+! Synthetic AdGuard CSS and scriptlets example.
+! source: trusted
+! expect: applied
+example.org#%#//scriptlet('trusted-set-constant', 'fixture', '42')
+! Synthetic AdGuard CSS and scriptlets example.
+! source: trusted
+! expect: applied
+example.org##+js(trusted-set, fixture, json:42)
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: untrusted scriptlet-trust:trusted-set-constant
+example.org#%#//scriptlet('trusted-set-constant', 'fixture', '42')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: untrusted scriptlet-trust:trusted-set
+example.org##+js(trusted-set, fixture, json:42)
+! AdGuard CSS and scriptlets from lists/2.txt, line 14513.
+! expect: unsupported adguard-cosmetic-matcher
+#$#.pub_728x90.text-ad.textAd.text_ad.text_ads.text-ads.text-ad-links { display: block !important; }
+! AdGuard CSS and scriptlets from lists/2.txt, line 15178.
+! expect: applied
+example.org#@$#.pub_728x90.text-ad.textAd.text_ad.text_ads.text-ads.text-ad-links { display: block !important; }
+! AdGuard CSS and scriptlets from lists/2.txt, line 14623.
+! expect: applied
+example.org#$?#style[id="mdpDeblocker-css"] { remove: true; }
+! AdGuard CSS and scriptlets from lists/2.txt, line 14555.
+! expect: applied
+example.org#%#//scriptlet('set-constant', 'showModal', 'noopFunc')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: invalid scriptlet-syntax
+example.org#%#//scriptlet(unquoted)
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported scriptlet-no-counterpart:unknown-scriptlet
+example.org#%#//scriptlet('unknown-scriptlet')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported scriptlet-no-counterpart:prevent-element-src-loading
+example.org#%#//scriptlet('prevent-element-src-loading', 'img', 'ad')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported scriptlet-arguments:nowebrtc
+example.org#%#//scriptlet('nowebrtc', '{foo: 1}')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: invalid unsafe-scriptlet
+example.org#%#//scriptlet('set-constant', 'foo', '</script>')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: invalid style-syntax
+example.org#$#.ad { remove: false; }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported style-declarations
+example.org#$#.ad { background: url(https://example.net/a); }
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported adguard-cosmetic-matcher
+~example.org#%#//scriptlet('nowebrtc')
+! Synthetic AdGuard CSS and scriptlets example.
+! expect: unsupported scriptlet-arguments:nowebrtc
+example.org##+js(nowebrtc, {foo: 1})
+! AdGuard CSS and scriptlets from lists/2.txt, line 14616.
+! expect: unsupported scriptlet-no-counterpart:prevent-element-src-loading
+sharedwebs.com,fitnessplanss.com#%#//scriptlet('prevent-element-src-loading', 'script', '/pagead2\.googlesyndication.com|static\.doubleclick\.net/')
+
+! Raw JavaScript
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: applied
+example.org#%#window.fixture = 1;
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: applied
+sub.example.org#@%#window.fixture = 1;
+! Synthetic Raw JavaScript example.
+! expect: invalid javascript-no-domains
+#%#window.fixture = 1;
+! Synthetic Raw JavaScript example.
+! expect: untrusted javascript-untrusted
+example.org#%#window.fixture = 1;
+! Synthetic Raw JavaScript example.
+! expect: invalid javascript-reserved-name
+example.org##+js(abd-js-rule-1)
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: invalid javascript-empty
+example.org#%#
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: unsupported javascript-length
+example.org#%#/*xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx*/
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: unsupported javascript-template
+example.org#%#window.fixture = "{{1}}";
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: invalid javascript-unsafe
+example.org#%#window.fixture = "</script>";
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: unsupported javascript-count
+example.org#%#window.fixture = 4096;
+! Synthetic Raw JavaScript example.
+! source: trusted
+! expect: unsupported javascript-table-size
+example.org#%#window.fixture = 257;
+! Raw JavaScript from lists/2.txt, line 15607.
+! source: trusted
+! expect: applied
+example.org#%#Object.defineProperty(window,"BlockCheck",{get:()=>({check:()=>Promise.resolve("")}),set:e=>{}});
+
+! HTML filtering
+! Synthetic HTML filtering example.
+! expect: applied
+$$script
+! Synthetic HTML filtering example.
+! expect: applied
+example.org$$script[data-ad]
+! Synthetic HTML filtering example.
+! expect: applied
+example.org$@$script[data-ad]
+! Synthetic HTML filtering example.
+! expect: applied
+example.org##^script[data-ad]
+! Synthetic HTML filtering example.
+! expect: applied
+example.org#@#^script[data-ad]
+! Synthetic HTML filtering example.
+! expect: applied
+$$div[data-ad] > script
+! Synthetic HTML filtering example.
+! expect: applied
+$$script:contains(/ad [0-9]+/is)
+! Synthetic HTML filtering example.
+! expect: applied
+$$script[min-length=5][max-length=100]
+! Synthetic HTML filtering example.
+! expect: applied
+$$script:contains(/^(?=.{8,}$)(?=.*sponsor).*/s)
+! HTML filtering from lists/2.txt, line 14706.
+! expect: applied
+example.org$$script:contains(/^(?=.{5000,20000}$)(?=.*document\.getElementById\('babasbmsgx'\)).*/s)
+! HTML filtering from lists/ubo.txt, line 358.
+! expect: applied
+wetteronline.*##^script:has-text(runCount)
+! HTML filtering from lists/ubo.txt, line 5803.
+! expect: applied
+example.org#@#^script:has-text((window);)
+! Synthetic HTML filtering example.
+! expect: unsupported html-size
+$$div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div > div
+! Synthetic HTML filtering example.
+! expect: invalid html-domain
+example.*.org$$script
+! Synthetic HTML filtering example.
+! expect: invalid html-selector
+$$div.ad
+! Synthetic HTML filtering example.
+! expect: invalid html-attribute
+$$div[=hi]
+! Synthetic HTML filtering example.
+! expect: unsupported html-attribute-operator
+$$div[class~=ad]
+! Synthetic HTML filtering example.
+! expect: unsupported html-content-attribute
+$$div[tag-content]
+! Synthetic HTML filtering example.
+! expect: unsupported html-child-content
+$$div:contains(ad) > script
+! Synthetic HTML filtering example.
+! expect: unsupported html-pseudo-class
+$$div:first-child
+! Synthetic HTML filtering example.
+! expect: unsupported html-response-header
+##^responseheader(CSP)
+! Synthetic HTML filtering example.
+! expect: unsupported html-regex-flags
+$$script:contains(/x/m)
+! Synthetic HTML filtering example.
+! expect: invalid html-regex
+$$script:contains(/(/)
+! Synthetic HTML filtering example.
+! expect: unsupported html-lookaround
+$$script:contains(/(?<=x)y/)
+! Synthetic HTML filtering example.
+! expect: invalid html-length
+$$div[max-length=nan]
+
+! List preprocessor
+! A negated capability condition from lists/ubo.txt, line 19.
+! expect: applied
+!#if !cap_html_filtering
+! An include in the inactive branch produces no report.
+! expect: applied
+!#include inactive.txt
+! Alternate branch from lists/ubo.txt, line 24.
+! expect: applied
+!#else
+! This rule is active in the adguard branch.
+! expect: applied
+||active.example^
+! Conditional terminator from lists/ubo.txt, line 31.
+! expect: applied
+!#endif
+! A false condition skips its body.
+! expect: applied
+!#if false
+! expect: applied
+!#else
+! This rule is active in the alternate branch.
+! expect: applied
+||alternate.example^
+! The alternate branch has a matching terminator.
+! expect: applied
+!#endif
+! Active list include from lists/ubo.txt, line 10776.
+! expect: unsupported include-not-followed
+!#include filters-general.txt
+! Synthetic List preprocessor example.
+! expect: invalid malformed-directive
+!#if adguard &&
+! The malformed opening still has a matching terminator.
+! expect: applied
+!#endif
+! A terminator without an opening is malformed.
+! expect: invalid malformed-directive
+!#endif
+! Synthetic List preprocessor example.
+! expect: invalid malformed-directive
+!#else invalid
+! An unmatched opening is reported at end of input.
+! expect: invalid malformed-directive
+!#if adguard || false

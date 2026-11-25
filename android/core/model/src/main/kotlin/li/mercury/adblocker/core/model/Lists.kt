@@ -62,18 +62,9 @@ enum class ListUpdateState { Fetching, Updated, Unchanged, Failed }
 /** The user's own rules, checked: those that will not be applied. */
 data class RulesCheck(val rules: Int, val issues: List<RuleIssue>)
 
-data class RuleIssue(val line: Int, val text: String, val kind: RuleIssueKind)
+data class RuleIssue(val line: Int, val text: String, val kind: RuleIssueKind, val reason: String? = null)
 
-enum class RuleIssueKind {
-    /** Element hiding or a scriptlet: the daemon blocks requests only. */
-    Cosmetic,
-
-    /** Not a rule the engine can read. */
-    Invalid,
-
-    MalformedDirective,
-    UnsupportedInclude,
-}
+enum class RuleIssueKind { Invalid, Unsupported, Inapplicable, Untrusted }
 
 /** What the lists say about one request (`abd check`). */
 data class RuleCheckResult(

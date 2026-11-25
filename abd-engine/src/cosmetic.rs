@@ -60,7 +60,7 @@ const HIDE: &str = "{display:none!important}\n";
 /// Whether a selector can be put into a page as it is: nothing in it ends
 /// the style element or the rule it is the selector of, or begins one of
 /// another kind.
-fn safe(selector: &str) -> bool {
+pub(crate) fn safe_selector(selector: &str) -> bool {
     !selector.is_empty()
         && selector.len() <= MAX_SELECTOR
         && !selector.starts_with('@')
@@ -95,7 +95,7 @@ fn ascii_selector(selector: String) -> String {
 /// nothing to hide. A rule each: one the browser does not understand is
 /// then left out by it alone.
 pub fn style(selectors: impl IntoIterator<Item = String>) -> Option<String> {
-    let mut selectors: Vec<String> = selectors.into_iter().filter(|s| safe(s)).collect();
+    let mut selectors: Vec<String> = selectors.into_iter().filter(|s| safe_selector(s)).collect();
     // The same style for the same page each time, whatever order the
     // lists gave them in.
     selectors.sort_unstable();

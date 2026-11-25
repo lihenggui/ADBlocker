@@ -55,18 +55,18 @@ fn split(line: &str) -> Option<(&str, &str)> {
 
 fn check(line: &str, patterns: &mut Patterns) -> Option<bool> {
     match rule::read(line).kind {
-        rule::Kind::Response(response) => Some(valid(&response, patterns)),
+        rule::Kind::Response(response) => Some(validate(&response, patterns).is_ok()),
         _ => None,
     }
 }
 
 fn action(value: &str) -> Option<ActionSpec> {
-    ActionKind::Replace.parse(value)
+    ActionKind::Replace.parse(value).ok()
 }
 
 impl<'a> Parsed<'a> {
     fn parse(pattern: &'a str, suffix: &'a str) -> Option<Self> {
-        Self::from_rule(&ResponseRule::from_parts(pattern, suffix)?)
+        Self::from_rule(&ResponseRule::from_parts(pattern, suffix)?).ok()
     }
 }
 
@@ -225,9 +225,10 @@ fn invalid_response_rules_are_reported_by_line() {
         r"||example.org^$replace",
     ]
     .join("\n");
-    let checked = crate::rulecheck::check(&format!(
-        "{rules}\n@@||example.org^$replace\n||example.org^$replace=/x/y/"
-    ));
+    let checked = crate::rulecheck::check(
+        &format!("{rules}\n@@||example.org^$replace\n||example.org^$replace=/x/y/"),
+        crate::rulecheck::SourcePermissions::USER,
+    );
     assert_eq!(checked.issues.len(), 8);
     assert!(
         checked
@@ -269,7 +270,11 @@ fn response_rules_ignore_noops_at_every_option_position() {
     ] {
         let rules = format!("||example.org/body${replace}\n||example.org/body${prune}");
         let f = filters(&rules);
-        assert!(crate::rulecheck::check(&rules).issues.is_empty());
+        assert!(
+            crate::rulecheck::check(&rules, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .is_empty()
+        );
         assert_eq!(
             changed(&f, url, Page::NONE, "xmlhttprequest", "com.reader"),
             "Y Z"

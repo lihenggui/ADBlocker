@@ -22,7 +22,7 @@ pub(crate) mod cookie;
 pub(crate) mod hls;
 pub(crate) mod html;
 mod prune;
-mod removeheader;
+pub(super) mod removeheader;
 mod replace;
 mod urltransform;
 mod xmlprune;
@@ -89,27 +89,50 @@ pub(crate) enum ActionKind {
 }
 
 impl ActionKind {
-    pub(crate) fn parse(self, value: &str) -> Option<ActionSpec> {
+    pub(crate) fn invalid_value(self) -> super::Code {
+        use super::Code;
         match self {
-            Self::Prune => prune::parse(value).map(ActionSpec::Prune),
-            Self::XmlPrune => xmlprune::parse(value).map(ActionSpec::XmlPrune),
-            Self::Cookie => cookie::parse(value, false).ok().map(ActionSpec::Cookie),
-            Self::Hls => hls::parse(value).ok().map(ActionSpec::Hls),
+            Self::Prune => Code::JsonpruneValue,
+            Self::Hls => Code::HlsEmptyPattern,
+            Self::XmlPrune => Code::XmlpruneValue,
+            Self::Replace => Code::ReplaceValue,
+            Self::RemoveHeader => Code::RemoveheaderInvalidName,
+            Self::UrlTransform => Code::UrltransformValue,
+            Self::RemoveParamException => Code::RemoveparamUnsupportedName,
+            Self::Cookie => Code::CookieInvalidName,
+        }
+    }
+
+    pub(crate) fn parse(self, value: &str) -> Result<ActionSpec, super::RuleReason> {
+        let invalid = || self.invalid_value().into();
+        match self {
+            Self::Prune => prune::parse(value)
+                .map(ActionSpec::Prune)
+                .ok_or_else(invalid),
+            Self::XmlPrune => xmlprune::parse(value)
+                .map(ActionSpec::XmlPrune)
+                .ok_or_else(invalid),
+            Self::Cookie => cookie::parse(value, false)
+                .map(ActionSpec::Cookie)
+                .map_err(Into::into),
+            Self::Hls => hls::parse(value).map(ActionSpec::Hls).map_err(Into::into),
             Self::RemoveHeader => removeheader::parse(value)
-                .ok()
-                .map(ActionSpec::RemoveHeader),
-            Self::UrlTransform => urltransform::parse(value).map(ActionSpec::UrlTransform),
-            Self::RemoveParamException => {
-                parameter_name(value).then(|| ActionSpec::RemoveParamException(value.to_owned()))
-            }
+                .map(ActionSpec::RemoveHeader)
+                .map_err(Into::into),
+            Self::UrlTransform => urltransform::parse(value)
+                .map(ActionSpec::UrlTransform)
+                .ok_or_else(invalid),
+            Self::RemoveParamException => parameter_name(value)
+                .then(|| ActionSpec::RemoveParamException(value.to_owned()))
+                .ok_or_else(invalid),
             Self::Replace => {
                 let replace::Parsed {
                     pattern,
                     replacement,
                     insensitive,
                     single_line,
-                } = replace::parse(value)?;
-                Some(ActionSpec::Replace {
+                } = replace::parse(value).ok_or_else(invalid)?;
+                Ok(ActionSpec::Replace {
                     pattern,
                     replacement,
                     insensitive,
@@ -181,25 +204,42 @@ impl ActionKind {
 impl ActionSpec {
     /// Reject a pattern that cannot be searched within the per-expression limit.
     pub(crate) fn compile(&self) -> Option<ResponseAction> {
+        self.compile_checked().ok()
+    }
+
+    pub(crate) fn compile_checked(&self) -> Result<ResponseAction, super::RuleReason> {
+        use super::Code;
         match self {
-            Self::Cookie(spec) => spec.compile().ok().map(ResponseAction::Cookie),
-            Self::Prune(expression) => prune::compile(expression).map(ResponseAction::Prune),
-            Self::XmlPrune(expression) => {
-                xmlprune::compile(expression).map(ResponseAction::XmlPrune)
-            }
-            Self::Hls(spec) => spec.compile().map(ResponseAction::Hls),
-            Self::RemoveHeader(spec) => spec.compile().ok().map(ResponseAction::RemoveHeader),
-            Self::UrlTransform(spec) => spec.compile().map(ResponseAction::UrlTransform),
-            Self::RemoveParamException(name) => {
-                parameter_name(name).then(|| ResponseAction::RemoveParamException(name.clone()))
-            }
+            Self::Cookie(spec) => spec
+                .compile()
+                .map(ResponseAction::Cookie)
+                .map_err(Into::into),
+            Self::Prune(expression) => prune::compile(expression)
+                .map(ResponseAction::Prune)
+                .ok_or_else(|| Code::JsonpruneValue.into()),
+            Self::XmlPrune(expression) => xmlprune::compile(expression)
+                .map(ResponseAction::XmlPrune)
+                .ok_or_else(|| Code::XmlpruneValue.into()),
+            Self::Hls(spec) => spec.compile().map(ResponseAction::Hls).map_err(Into::into),
+            Self::RemoveHeader(spec) => spec
+                .compile()
+                .map(ResponseAction::RemoveHeader)
+                .map_err(Into::into),
+            Self::UrlTransform(spec) => spec
+                .compile()
+                .map(ResponseAction::UrlTransform)
+                .ok_or_else(|| Code::UrltransformValue.into()),
+            Self::RemoveParamException(name) => parameter_name(name)
+                .then(|| ResponseAction::RemoveParamException(name.clone()))
+                .ok_or_else(|| Code::RemoveparamUnsupportedName.into()),
             Self::Replace {
                 pattern,
                 replacement,
                 insensitive,
                 single_line,
             } => replace::compile(pattern, replacement, *insensitive, *single_line)
-                .map(ResponseAction::Replace),
+                .map(ResponseAction::Replace)
+                .ok_or_else(|| Code::ReplaceValue.into()),
         }
     }
 }

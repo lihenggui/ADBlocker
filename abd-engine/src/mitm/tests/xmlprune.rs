@@ -47,7 +47,7 @@ pub(super) fn fixture(req: &Request<Incoming>) -> Option<Response<Full<Bytes>>> 
 
 #[tokio::test]
 async fn real_dash_rules_use_the_request_type_and_xpath_namespace_rules() {
-    let checked = crate::rulecheck::check(RULES);
+    let checked = crate::rulecheck::check(RULES, crate::rulecheck::SourcePermissions::USER);
     assert_eq!(checked.rules, 2);
     assert!(checked.issues.is_empty());
     let rig = rig(Setup {

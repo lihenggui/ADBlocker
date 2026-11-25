@@ -56,6 +56,7 @@ pub(super) enum Kind {
     Page(PageModifier),
     Action(ActionKind, Compatibility),
     Unsupported,
+    Inapplicable,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -133,8 +134,8 @@ const fn modifier(names: &'static [&'static str], kind: Kind, value: Value) -> M
 }
 
 use Kind::{
-    Action, Address, App, DenyAllow, Destination, Flag, LegacyRedirect, Noop, Page, Redirect,
-    Source, Type, Unsupported,
+    Action, Address, App, DenyAllow, Destination, Flag, Inapplicable, LegacyRedirect, Noop, Page,
+    Redirect, Source, Type, Unsupported,
 };
 use PageModifier::{Content, Document, Element, Generic, Script, Specific, Urlblock};
 use Value::{None as FlagValue, Optional, Required};
@@ -209,10 +210,10 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["other"], Type(1 << 9), FlagValue),
     modifier(&["websocket"], Type(1 << 10), FlagValue),
     modifier(&["ping"], Type(1 << 11), FlagValue),
-    modifier(&["popup"], Unsupported, FlagValue),
-    modifier(&["popunder"], Unsupported, FlagValue),
-    modifier(&["stealth"], Unsupported, Optional),
-    modifier(&["extension"], Unsupported, Optional),
+    modifier(&["popup"], Inapplicable, FlagValue),
+    modifier(&["popunder"], Inapplicable, FlagValue),
+    modifier(&["stealth"], Inapplicable, Optional),
+    modifier(&["extension"], Inapplicable, Optional),
     modifier(
         &[NETWORK],
         Address(Compatibility::Only(NETWORK_OPTIONS)),
@@ -365,6 +366,34 @@ impl Compatibility {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_modifier_name_has_a_corpus_example() {
+        use std::collections::HashSet;
+
+        use crate::rule::options::{Options, Quoting};
+
+        let text = include_str!("../../../testdata/rules/corpus.txt");
+        let seen: HashSet<_> = text
+            .lines()
+            .filter(|line| !line.starts_with('!'))
+            .filter_map(|line| Options::read(line, Quoting::AdGuard))
+            .flat_map(|options| {
+                options
+                    .tokens()
+                    .map(|token| token.name())
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+        for name in MODIFIERS.iter().flat_map(|modifier| modifier.names) {
+            // The reader strips valid noop tokens before exposing options.
+            if *name == "_" {
+                assert!(text.lines().any(|line| line.ends_with("$_")));
+            } else {
+                assert!(seen.contains(name), "missing corpus modifier {name}");
+            }
+        }
+    }
 
     #[test]
     fn every_modifier_name_resolves_to_its_entry() {

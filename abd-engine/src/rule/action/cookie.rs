@@ -69,7 +69,7 @@ enum SameSite {
     None,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     TooLong,
     InvalidName,

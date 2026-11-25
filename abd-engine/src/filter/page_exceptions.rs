@@ -61,10 +61,10 @@ fn projection(source: &Rule<'_>, page: &PageException<'_>) -> Option<String> {
     }
 }
 
-pub(crate) fn valid_script_exception(source: &Rule<'_>) -> bool {
+pub(crate) fn valid_page_exception(source: &Rule<'_>) -> bool {
     source
         .page_exception()
-        .is_some_and(|page| page.script && projection(source, page).is_some())
+        .is_some_and(|page| projection(source, page).is_some())
 }
 
 impl PageProjections {

@@ -16,7 +16,7 @@ use super::action::parameter_name;
 use super::modifiers::{REMOVEPARAM, kind_bit};
 use super::options::Options;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     RemoveAll,
     Expression,

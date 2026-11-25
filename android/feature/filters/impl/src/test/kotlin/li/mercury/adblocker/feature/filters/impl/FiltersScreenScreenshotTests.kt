@@ -86,13 +86,15 @@ class FiltersScreenScreenshotTests {
         composeTestRule.captureForDevice(if (darkMode) "phone_dark" else "phone", DefaultTestDevices.PHONE.spec, name, darkMode = darkMode, body = body)
     }
 
-    private val issues = listOf(RuleIssue(5, "example.com##.promo-banner", RuleIssueKind.Cosmetic))
+    private val issue = RuleIssue(5, "||ads.example^\$popup", RuleIssueKind.Inapplicable, "option:popup")
+    private val issues = listOf(issue)
+    private val userRules = DemoData.userRules.replace("example.com##.promo-banner", issue.text)
 
     private val state
         get() = FiltersUiState(
             loading = false,
             lists = DemoData.lists,
-            userRules = DemoData.userRules,
+            userRules = userRules,
             rulesCheck = RulesCheck(rules = 5, issues = issues),
             trusted = DemoData.trusted,
         )
@@ -154,7 +156,7 @@ class FiltersScreenScreenshotTests {
 
     @Test
     fun givenRulesWithAnIssue_whenEdited_thenMarksTheLine() {
-        val text = TextFieldState(DemoData.userRules).apply {
+        val text = TextFieldState(userRules).apply {
             edit {
                 append("\n||new.example^")
                 selection = TextRange.Zero
@@ -163,7 +165,7 @@ class FiltersScreenScreenshotTests {
         val editor = RuleEditorUiState(
             loading = false,
             text = text,
-            saved = DemoData.userRules,
+            saved = userRules,
             diagnostics = RuleEditorDiagnostics(text.text.toString(), issues.associateBy { it.line }),
         )
         capturePhone("RuleEditor") {

@@ -46,12 +46,20 @@ pub(super) fn run(
             Ok(())
         }
         ["rules", "check"] => {
-            for issue in rulecheck::check(&stdin(input)?).issues {
-                writeln!(out, "{}: {:?}: {}", issue.line, issue.kind, issue.text)?;
+            for issue in rulecheck::check(&stdin(input)?, rulecheck::SourcePermissions::USER).issues
+            {
+                writeln!(
+                    out,
+                    "{}: {:?} ({}): {}",
+                    issue.line, issue.kind, issue.reason, issue.text
+                )?;
             }
             Ok(())
         }
-        ["rules", "check", "--json"] => print_json(out, &rulecheck::check(&stdin(input)?)),
+        ["rules", "check", "--json"] => print_json(
+            out,
+            &rulecheck::check(&stdin(input)?, rulecheck::SourcePermissions::USER),
+        ),
         _ => unknown(args),
     }
 }

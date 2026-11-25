@@ -19,8 +19,6 @@ use std::path::Path;
 
 use adblock::Engine;
 use adblock::filters::network::NetworkFilter;
-use adblock::lists::ParseOptions;
-use adblock::resources::{PermissionMask, Resource};
 use anyhow::Result;
 
 use super::host_rules::{AppHostBlocks, HostProjections};
@@ -33,9 +31,8 @@ use super::{
     app_rules, redirects,
 };
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
-use crate::list_url::{Trust, trusted_list_file};
-use crate::rule::javascript::{self, ScriptTable, Scripts};
-use crate::rule::{self, Kind, preprocess};
+use crate::rule::javascript::{ScriptTable, Scripts};
+use crate::rule::{self, Kind, SourcePermissions, preprocess};
 
 impl ListFiles {
     pub fn filters(&self, cache: Option<&Path>, debug: bool) -> Result<Filters> {
@@ -72,36 +69,15 @@ fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
 }
 
 pub(super) fn use_resources(requests: &mut RequestRules, scripts: &ScriptTable) {
-    static RESOURCES: std::sync::LazyLock<Vec<Resource>> = std::sync::LazyLock::new(|| {
-        serde_json::from_str(include_str!("../../resources/scriptlets.json"))
-            .expect("bundled scriptlet resources are valid")
-    });
-    requests
-        .full
-        .use_resources(RESOURCES.iter().cloned().chain(scripts.resources()));
+    requests.full.use_resources(
+        rule::scriptlet_resources()
+            .iter()
+            .cloned()
+            .chain(scripts.resources()),
+    );
     if let Some(engine) = &mut requests.redirects {
         redirects::use_resources(engine);
     }
-}
-
-fn user_rules(path: &Path) -> bool {
-    path.parent().and_then(Path::file_name) == Some("rules".as_ref())
-}
-
-fn source_options(path: &Path) -> (bool, ParseOptions) {
-    let scripts = user_rules(path) || trusted_list_file(path, Trust::Scripts);
-    let mut permissions =
-        PermissionMask::from_bits(u8::from(trusted_list_file(path, Trust::Scriptlets)));
-    if scripts {
-        permissions |= javascript::PERMISSION;
-    }
-    (
-        scripts,
-        ParseOptions {
-            permissions,
-            ..ParseOptions::default()
-        },
-    )
 }
 
 fn compile_apps(
@@ -200,14 +176,11 @@ impl Filters {
         let mut patterns = Patterns::default();
         let mut scripts = Scripts::default();
         for (path, text) in &lists {
-            // Cookie rules can suppress cookies or edit expiration and SameSite for
-            // matching names. They are available to any list, as are exceptions
-            // that preserve query parameters. Other actions require a trusted source.
-            let trust_responses = user_rules(path) || trusted_list_file(path, Trust::ResponseRules);
-            let (trust_scripts, options) = source_options(path);
+            let permissions = SourcePermissions::for_path(path);
             let mut normalized = MatcherList::with_capacity(text.len());
             for line in preprocess::lines(text) {
-                let source = rule::read_with_scripts(line, trust_scripts.then_some(&mut scripts));
+                let source =
+                    rule::read_with_scripts(line, permissions.scripts().then_some(&mut scripts));
                 if matches!(source.kind, Kind::Comment) {
                     continue;
                 }
@@ -219,21 +192,20 @@ impl Filters {
                 match source.kind {
                     Kind::App(app) => apps.add(&app, &mut patterns),
                     Kind::Address(address) => {
-                        addresses.add(&address);
+                        // The projection tracks or rejects entries at its limits.
+                        let _ = addresses.add(&address);
                     }
                     // AdGuard allows any list to cut elements. This grants
                     // less power than the cosmetic rules any list can use.
                     Kind::Html(rule) => html.add(source.line, rule),
-                    Kind::Response(response)
-                        if trust_responses || !response.requires_trusted_source() =>
-                    {
+                    Kind::Response(response) if permissions.allows_response(&response) => {
                         responses.add(source.line, response)
                     }
                     _ => (),
                 }
             }
             hosts.finish_list();
-            matcher.finish_list(normalized, options);
+            matcher.finish_list(normalized, permissions.matcher());
         }
         let (apps, app_blocks) = compile_apps(apps, debug, &mut redirects);
         let host_rules = hosts.finish(&app_blocks, guard_budget);

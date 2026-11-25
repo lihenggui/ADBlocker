@@ -22,7 +22,7 @@ use super::modifiers::{APP, Compatibility, Kind, NETWORK, lookup};
 use super::options::Options;
 use crate::limits::{MAX_ADDRESS_EXPRESSION, MAX_ADDRESS_REGEX};
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     Modifiers,
     Endpoint,

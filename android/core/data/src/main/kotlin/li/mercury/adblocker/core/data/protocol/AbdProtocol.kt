@@ -335,7 +335,7 @@ fun parsePinned(text: String): List<PinnedHost> = reading("pinned") {
 fun parseAllowList(text: String): List<String> = reading("allow") { json.decodeFromString<List<String>>(text) }
 
 @Serializable
-private class IssueDto(val line: Int, val text: String, val kind: String)
+private class IssueDto(val line: Int, val text: String, val kind: String, val reason: String? = null)
 
 @Serializable
 private class RulesCheckDto(val rules: Int, val issues: List<IssueDto>)
@@ -346,12 +346,12 @@ fun parseRulesCheck(text: String): RulesCheck = reading("rules check") {
         rules = dto.rules,
         issues = dto.issues.map {
             val kind = when (it.kind) {
-                "cosmetic" -> RuleIssueKind.Cosmetic
-                "malformed_directive" -> RuleIssueKind.MalformedDirective
-                "unsupported_include" -> RuleIssueKind.UnsupportedInclude
+                "unsupported", "cosmetic", "unsupported_include" -> RuleIssueKind.Unsupported
+                "inapplicable" -> RuleIssueKind.Inapplicable
+                "untrusted" -> RuleIssueKind.Untrusted
                 else -> RuleIssueKind.Invalid
             }
-            RuleIssue(it.line, it.text, kind)
+            RuleIssue(it.line, it.text, kind, it.reason)
         },
     )
 }

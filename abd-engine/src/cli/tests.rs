@@ -30,12 +30,15 @@ fn rules_check_reports_include_and_malformed_directives_on_their_original_lines(
                 ||active.example^\n!#endif\n!#endif\n";
     assert_eq!(
         ask(&paths, &["rules", "check"], text).unwrap(),
-        "1: UnsupportedInclude: !#include child.txt\n\
-         2: MalformedDirective: !#if adguard &&\n\
-         7: MalformedDirective: !#endif\n"
+        "1: Unsupported (include-not-followed): !#include child.txt\n\
+         2: Invalid (malformed-directive): !#if adguard &&\n\
+         7: Invalid (malformed-directive): !#endif\n"
     );
     assert_eq!(crate::rulecheck::count(text), 1);
-    assert_eq!(crate::rulecheck::check(text).rules, 1);
+    assert_eq!(
+        crate::rulecheck::check(text, crate::rulecheck::SourcePermissions::USER).rules,
+        1
+    );
 }
 
 #[test]

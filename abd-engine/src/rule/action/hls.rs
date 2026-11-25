@@ -41,7 +41,7 @@ enum Target {
     Tag,
 }
 #[derive(Debug, PartialEq, Eq)]
-pub(super) enum Rejection {
+pub(crate) enum Rejection {
     EmptyPattern,
     UnescapedSeparator,
     InnerModifiers,
@@ -96,10 +96,11 @@ fn fields(value: &str) -> Result<Value<'_>, Rejection> {
 }
 
 impl Spec {
-    pub(super) fn compile(&self) -> Option<Compiled> {
-        (self.0.len() <= MAX_RESPONSE_RULE)
-            .then(|| compile(&self.0).ok())
-            .flatten()
+    pub(super) fn compile(&self) -> Result<Compiled, Rejection> {
+        if self.0.len() > MAX_RESPONSE_RULE {
+            return Err(Rejection::UnsupportedPattern);
+        }
+        compile(&self.0)
     }
 }
 
@@ -243,6 +244,6 @@ mod tests {
         ] {
             assert_eq!(compile(value).err(), Some(expected), "{value}");
         }
-        assert!(Spec("x".repeat(MAX_RESPONSE_RULE + 1)).compile().is_none());
+        assert!(Spec("x".repeat(MAX_RESPONSE_RULE + 1)).compile().is_err());
     }
 }

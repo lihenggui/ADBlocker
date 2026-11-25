@@ -39,7 +39,12 @@ fn cookie_forms_and_qualifiers_match_the_reference() {
         "@@||example.org^$cookie=concept",
         "@@||example.org^$cookie=/^_ga_/",
     ] {
-        assert!(crate::rulecheck::check(rule).issues.is_empty(), "{rule}");
+        assert!(
+            crate::rulecheck::check(rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .is_empty(),
+            "{rule}"
+        );
     }
     for qualifier in [
         "strict-first-party",
@@ -57,7 +62,13 @@ fn cookie_forms_and_qualifiers_match_the_reference() {
         "replace=/X/Y/",
     ] {
         let rule = format!("||example.org^$cookie=NAME,{qualifier}");
-        assert_eq!(crate::rulecheck::check(&rule).issues.len(), 1, "{rule}");
+        assert_eq!(
+            crate::rulecheck::check(&rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{rule}"
+        );
     }
 }
 
@@ -92,7 +103,13 @@ fn invalid_cookie_values_report_why_they_were_rejected() {
             matches!(rule::read(&text).kind, Kind::NotApplied(Reason::Cookie(reason)) if reason == expected),
             "{text}"
         );
-        assert_eq!(crate::rulecheck::check(&text).issues.len(), 1, "{text}");
+        assert_eq!(
+            crate::rulecheck::check(&text, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{text}"
+        );
     }
     let invalid = "@@||example.org^$cookie=NAME;maxAge=1";
     assert!(matches!(

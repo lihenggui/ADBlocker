@@ -334,7 +334,7 @@ private fun Diagnostics(diagnostics: RuleEditorDiagnostics) {
         ) {
             Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Icon(AdbIcons.Warning, contentDescription = null, Modifier.size(20.dp))
-                // "Line 5: element hiding applies only…", the line in bold.
+                // Emphasize the line number so the user can find it in the editor.
                 val lead = stringResource(R.string.feature_filters_issue_line, issue.line)
                 val separator = stringResource(R.string.feature_filters_issue_separator)
                 val additionalIssues = issues.size - 1
@@ -343,7 +343,7 @@ private fun Diagnostics(diagnostics: RuleEditorDiagnostics) {
                 } else {
                     ""
                 }
-                val reason = stringResource(issueText(issue.kind))
+                val reason = ruleIssueText(issue)
                 Text(
                     buildAnnotatedString {
                         withStyle(SpanStyle(fontWeight = FontWeight.Bold)) { append(lead) }

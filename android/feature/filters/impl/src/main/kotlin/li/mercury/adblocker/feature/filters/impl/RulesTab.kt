@@ -44,7 +44,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
-import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.model.RuleIssue
 import li.mercury.adblocker.core.ui.LocalCompactWindow
 import li.mercury.adblocker.core.ui.Reveal
 import li.mercury.adblocker.core.ui.RuleColors
@@ -60,11 +60,11 @@ internal fun RulesTab(state: FiltersUiState, actions: FiltersActions, onBlockDom
     val margin = pageMargin(LocalCompactWindow.current)
     val lines = state.userRules.lines().filter { it.isNotBlank() }
     val count = lines.count { !it.startsWith('!') }
-    val skipped = state.rulesCheck?.issues?.size ?: 0
+    val issues = state.rulesCheck?.issues.orEmpty()
     val motion = MaterialTheme.motionScheme
     LazyColumn(contentPadding = PaddingValues(start = margin, end = margin, top = 12.dp, bottom = 24.dp), modifier = Modifier.fillMaxSize()) {
         item(key = "rules") {
-            RulesPreviewCard(lines, count, skipped, state.rulesCheckUnavailable, actions.openEditor, Modifier.animatedRow(this, motion))
+            RulesPreviewCard(lines, count, issues, state.rulesCheckUnavailable, actions.openEditor, Modifier.animatedRow(this, motion))
         }
         item(key = "tools-header") { SectionHeader(stringResource(R.string.feature_filters_tools), Modifier.animatedRow(this, motion)) }
         item(key = "tools") {
@@ -101,7 +101,7 @@ internal fun RulesTab(state: FiltersUiState, actions: FiltersActions, onBlockDom
 private fun RulesPreviewCard(
     lines: List<String>,
     count: Int,
-    skipped: Int,
+    issues: List<RuleIssue>,
     checkUnavailable: Boolean,
     onOpenEditor: () -> Unit,
     modifier: Modifier = Modifier,
@@ -119,7 +119,7 @@ private fun RulesPreviewCard(
                                 stringResource(R.string.feature_filters_rule_check_unavailable),
                             )
 
-                            skipped > 0 -> pluralStringResource(R.plurals.feature_filters_rules_count_skipped, count, count, skipped)
+                            issues.isNotEmpty() -> pluralStringResource(R.plurals.feature_filters_rules_count_skipped, count, count, issues.size)
 
                             else -> pluralStringResource(R.plurals.feature_filters_rules_count, count, count)
                         },
@@ -132,6 +132,15 @@ private fun RulesPreviewCard(
                     Spacer(Modifier.size(ButtonDefaults.IconSpacing))
                     Text(stringResource(R.string.feature_filters_edit))
                 }
+            }
+            issues.minByOrNull(RuleIssue::line)?.let { issue ->
+                Text(
+                    stringResource(R.string.feature_filters_issue_line, issue.line) +
+                        stringResource(R.string.feature_filters_issue_separator) + ruleIssueText(issue),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
             }
             // A block of code, on the page's surface, once there are rules.
             Reveal(lines.isNotEmpty()) {
@@ -161,10 +170,3 @@ internal fun ruleColors() = RuleColors(
     exception = MaterialTheme.colorScheme.secondary,
     cosmetic = MaterialTheme.colorScheme.onSurfaceVariant,
 )
-
-internal fun issueText(kind: RuleIssueKind) = when (kind) {
-    RuleIssueKind.Cosmetic -> R.string.feature_filters_issue_cosmetic
-    RuleIssueKind.Invalid -> R.string.feature_filters_issue_invalid
-    RuleIssueKind.MalformedDirective -> R.string.feature_filters_issue_malformed_directive
-    RuleIssueKind.UnsupportedInclude -> R.string.feature_filters_issue_unsupported_include
-}

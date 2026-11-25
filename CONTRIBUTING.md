@@ -45,6 +45,9 @@ cd android
 ./gradlew :app:dependencyGuard :app:checkReleaseBadging :app:licenseeAndroidRelease :app:lintRelease
 ```
 
+Run `scripts/rule-support.sh <list file>...` with `jq` and a debug build of
+`abd` to count applied rules and reasons using the permissions of user rules.
+
 The app's screenshot tests compare with the images checked in next to
 them; after a change to the interface, `./gradlew recordRoborazziDebug`
 records them again. More in [android/AGENTS.md](android/AGENTS.md).

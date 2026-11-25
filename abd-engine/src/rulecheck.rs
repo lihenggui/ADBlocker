@@ -12,82 +12,161 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
-//! Rules as the engine reads them: which it applies, and which not.
-//!
-//! The check uses the permissions of the user's own rules.
+//! Rules as the engine reads them, including the reasons it sets lines aside.
 
 use crate::filter::{
-    AddressProjections, Patterns, valid_app_rule, valid_response_rule, valid_script_exception,
+    AddressProjections, Patterns, valid_page_exception, validate_app_rule, validate_response_rule,
 };
+use crate::protocol_types::{Issue, RulesCheck};
 use crate::rule::javascript::Scripts;
-use crate::rule::preprocess::{self, DirectiveIssue};
-use crate::rule::{self, Kind, MatcherCheck};
+use crate::rule::preprocess;
+use crate::rule::{self, Code, Kind, RuleReason};
 
-use crate::protocol_types::{Issue, IssueKind, RulesCheck};
-pub use crate::rule::{count, is_comment};
+pub use crate::rule::{SourcePermissions, count, is_comment};
 
-/// The rules of `text` that will not be applied, by line.
-pub fn check(text: &str) -> RulesCheck {
+/// The unapplied rules and active directive issues, in source order.
+pub fn check(text: &str, permissions: SourcePermissions) -> RulesCheck {
     crate::public_suffix::install();
-    let mut patterns = Patterns::default();
-    let mut addresses = AddressProjections::default();
-    let mut scripts = Scripts::default();
+    let mut checker = Checker::default();
     let mut rules = 0;
     let mut issues = Vec::new();
     for ((number, line), directive) in preprocess::scan(text) {
-        if let Err(issue) = directive {
-            let kind = match issue {
-                DirectiveIssue::Malformed => IssueKind::MalformedDirective,
-                DirectiveIssue::Include => IssueKind::UnsupportedInclude,
-            };
-            issues.push(Issue {
-                line: number,
-                text: line.trim().to_owned(),
-                kind,
-            });
-            continue;
-        }
-        let rule = rule::read_with_scripts(line, Some(&mut scripts));
-        if matches!(rule.kind, Kind::Comment) {
-            continue;
-        }
-        rules += 1;
-        let kind = match &rule.kind {
-            Kind::Comment => unreachable!(),
-            Kind::Html(_) => continue,
-            Kind::Address(address) if addresses.add(address) => continue,
-            Kind::Response(response) if valid_response_rule(response, &mut patterns) => continue,
-            Kind::App(app) if valid_app_rule(app, &mut patterns) => continue,
-            Kind::PageException(_) if valid_script_exception(&rule) => continue,
-            Kind::App(_) | Kind::Address(_) | Kind::Response(_) => IssueKind::Invalid,
-            Kind::Matcher | Kind::Cosmetic | Kind::PageException(_) | Kind::NotApplied(_) => {
-                match rule.matcher_check() {
-                    MatcherCheck::Network | MatcherCheck::AppliedCosmetic => continue,
-                    MatcherCheck::Cosmetic => IssueKind::Cosmetic,
-                    MatcherCheck::Invalid => IssueKind::Invalid,
+        let reason = match directive {
+            Err(issue) => issue.into(),
+            Ok(()) => {
+                let source = rule::read_with_scripts(
+                    line,
+                    permissions.scripts().then_some(&mut checker.scripts),
+                );
+                if matches!(source.kind, Kind::Comment) {
+                    continue;
                 }
+                rules += 1;
+                let Err(reason) = checker.validate(&source, permissions) else {
+                    continue;
+                };
+                reason
             }
         };
         issues.push(Issue {
             line: number,
-            text: rule.line.to_owned(),
-            kind,
+            text: line.trim().to_owned(),
+            kind: reason.kind(),
+            reason: reason.detail(),
         });
     }
     issues.sort_by_key(|issue| issue.line);
     RulesCheck { rules, issues }
 }
 
+#[derive(Default)]
+struct Checker<'a> {
+    patterns: Patterns,
+    addresses: AddressProjections,
+    scripts: Scripts<'a>,
+}
+
+impl Checker<'_> {
+    fn validate(
+        &mut self,
+        source: &rule::Rule<'_>,
+        permissions: SourcePermissions,
+    ) -> Result<(), RuleReason> {
+        match &source.kind {
+            Kind::Comment | Kind::Html(_) => Ok(()),
+            Kind::Address(address) => self.addresses.add(address),
+            Kind::Response(response) => {
+                if permissions.allows_response(response) {
+                    return validate_response_rule(response, &mut self.patterns);
+                }
+                // A malformed action still needs a syntax diagnosis. It must
+                // not take any of the app-pattern budget of the actual list.
+                validate_response_rule(response, &mut Patterns::default())?;
+                Err(RuleReason::named(Code::ResponseTrust, response.option()))
+            }
+            Kind::App(app) => validate_app_rule(app, &mut self.patterns),
+            Kind::PageException(_) if valid_page_exception(source) => Ok(()),
+            _ => source.check_matcher(permissions),
+        }
+    }
+}
+
+#[cfg(test)]
+#[path = "rulecheck/corpus.rs"]
+mod corpus;
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::protocol_types::IssueKind;
 
     fn kinds(text: &str) -> Vec<(usize, IssueKind)> {
-        check(text)
+        check(text, SourcePermissions::USER)
             .issues
             .into_iter()
             .map(|i| (i.line, i.kind))
             .collect()
+    }
+
+    #[test]
+    fn the_same_text_is_checked_with_user_and_list_permissions() {
+        let text = "||ads.example^$frobnicate\n\
+                    ||ads.example^$header=x-test\n\
+                    ||ads.example^$popup\n\
+                    ||ads.example^$replace=/ad/content/\n\
+                    site.example#%#window.fixture = 1;\n\
+                    site.example##+js(trusted-set, fixture, json:42)\n\
+                    site.example##.ad\n";
+        use IssueKind::{Inapplicable, Invalid, Unsupported, Untrusted};
+        let common = [
+            (1, Invalid, "option:frobnicate"),
+            (2, Unsupported, "option:header"),
+            (3, Inapplicable, "option:popup"),
+        ];
+        for (permissions, extra) in [
+            (
+                SourcePermissions::USER,
+                vec![(6, Unsupported, "scriptlet-trust:trusted-set")],
+            ),
+            (
+                SourcePermissions::default(),
+                vec![
+                    (4, Untrusted, "response-trust:replace"),
+                    (5, Untrusted, "javascript-untrusted"),
+                    (6, Untrusted, "scriptlet-trust:trusted-set"),
+                ],
+            ),
+        ] {
+            let result = check(text, permissions);
+            assert_eq!(result.rules, 7);
+            assert_eq!(
+                result
+                    .issues
+                    .iter()
+                    .map(|issue| (issue.line, issue.kind, issue.reason.as_str()))
+                    .collect::<Vec<_>>(),
+                common.into_iter().chain(extra).collect::<Vec<_>>(),
+            );
+        }
+    }
+
+    #[test]
+    fn a_malformed_rule_from_a_list_still_reports_its_syntax() {
+        let result = check(
+            "example.org#%#\n||ads.example^$replace=bad-value",
+            SourcePermissions::default(),
+        );
+        assert_eq!(
+            result
+                .issues
+                .iter()
+                .map(|issue| (issue.kind, issue.reason.as_str()))
+                .collect::<Vec<_>>(),
+            [
+                (IssueKind::Invalid, "javascript-empty"),
+                (IssueKind::Invalid, "replace-value")
+            ],
+        );
     }
 
     #[test]
@@ -107,16 +186,15 @@ mod tests {
         assert_eq!(
             kinds(text),
             [
-                (4, IssueKind::Cosmetic),
-                (5, IssueKind::Cosmetic),
-                (6, IssueKind::Cosmetic),
+                (5, IssueKind::Invalid),
+                (6, IssueKind::Unsupported),
                 (8, IssueKind::Invalid),
                 (9, IssueKind::Invalid),
                 (13, IssueKind::Invalid),
                 (14, IssueKind::Invalid),
             ]
         );
-        assert_eq!(check(text).rules, 11);
+        assert_eq!(check(text, SourcePermissions::USER).rules, 11);
     }
 
     #[test]
@@ -126,8 +204,8 @@ mod tests {
                     example.org#%#//scriptlet('trusted-set-constant', 'x', 'true')\n\
                     example.org#%#window.close()\n\
                     example.org$$script";
-        assert_eq!(check(text).rules, 5);
-        assert_eq!(kinds(text), [(3, IssueKind::Cosmetic)]);
+        assert_eq!(check(text, SourcePermissions::USER).rules, 5);
+        assert_eq!(kinds(text), [(3, IssueKind::Unsupported)]);
     }
 
     #[test]
@@ -138,7 +216,7 @@ mod tests {
                     *$script,domain=a.*|b.com,denyallow=x.com\n\
                     /assets/ad.js$denyallow=x.com\n\
                     *$app=~com.reader,denyallow=x.com";
-        let checked = check(text);
+        let checked = check(text, SourcePermissions::USER);
         assert_eq!(checked.rules, 6);
         assert_eq!(
             kinds(text),
@@ -165,7 +243,7 @@ mod tests {
                     site.test#%#window.fixture = '</script>';\n";
         assert_eq!(
             kinds(text),
-            [(6, IssueKind::Invalid), (7, IssueKind::Cosmetic)]
+            [(6, IssueKind::Inapplicable), (7, IssueKind::Invalid)]
         );
     }
 

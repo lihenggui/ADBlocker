@@ -15,7 +15,7 @@
 use super::modifiers::CSP;
 use super::options::Options;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     Empty,
     InvalidValue,

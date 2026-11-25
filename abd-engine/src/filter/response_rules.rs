@@ -30,7 +30,7 @@ use super::app_patterns::{Condition, Patterns, Prepared, Scope};
 use super::{Page, RequestRules};
 use crate::limits::{MAX_RESPONSE_REGEX_BYTES, MAX_RESPONSE_RULE, MAX_RESPONSE_RULES};
 use crate::rule::action::{ActionKind, ActionSpec, PageExceptions, ResponseAction};
-use crate::rule::{self, Action, ResponseRule, kind_bit};
+use crate::rule::{self, Action, Code, ResponseRule, RuleReason, kind_bit};
 
 /// Conditions that must hold for a match returned by the CSP query.
 #[derive(Default, Serialize, Deserialize)]
@@ -79,7 +79,7 @@ struct Parsed<'a> {
 }
 
 impl<'a> Parsed<'a> {
-    fn from_rule(rule: &ResponseRule<'a>) -> Option<Self> {
+    fn from_rule(rule: &ResponseRule<'a>) -> Result<Self, RuleReason> {
         let Action {
             pattern,
             options,
@@ -108,8 +108,9 @@ impl<'a> Parsed<'a> {
             },
         };
         let projected = parsed.project(0);
-        let network =
-            rule::parse_network(&projected).filter(|rule| rule.is_csp() && !rule.is_badfilter())?;
+        let network = rule::parse_network(&projected)
+            .filter(|rule| rule.is_csp() && !rule.is_badfilter())
+            .ok_or(Code::ResponseCondition)?;
         // The CSP index can drop a condition with only excluded destinations.
         // Defer those predicates to qualifiers, using the matcher's own hashes.
         if kind == ActionKind::UrlTransform
@@ -124,7 +125,7 @@ impl<'a> Parsed<'a> {
                 .join(",");
             parsed.qualifiers.exclude_destinations = excluded;
         }
-        Some(parsed)
+        Ok(parsed)
     }
 
     fn prepare_apps(&self, patterns: &mut Patterns) -> Option<Option<Prepared>> {
@@ -152,21 +153,14 @@ impl<'a> Parsed<'a> {
     }
 }
 
-pub(crate) fn valid(rule: &ResponseRule<'_>, patterns: &mut Patterns) -> bool {
-    Parsed::from_rule(rule).is_some_and(|mut parsed| {
-        if !parsed
-            .action
-            .as_ref()
-            .is_none_or(|action| action.compile().is_some())
-        {
-            return false;
-        }
-        let Some(apps) = parsed.prepare_apps(patterns) else {
-            return false;
-        };
-        parsed.keep_apps(patterns, apps);
-        true
-    })
+pub(crate) fn validate(rule: &ResponseRule<'_>, patterns: &mut Patterns) -> Result<(), RuleReason> {
+    let mut parsed = Parsed::from_rule(rule)?;
+    if let Some(action) = &parsed.action {
+        action.compile_checked()?;
+    }
+    let apps = parsed.prepare_apps(patterns).ok_or(Code::AppPattern)?;
+    parsed.keep_apps(patterns, apps);
+    Ok(())
 }
 
 /// What remains to be checked for a numbered condition returned by the engine.
@@ -217,7 +211,7 @@ impl<'a> ResponseProjections<'a> {
                     .is_some_and(|(last, _)| &line < last))
             && !self.lines.contains_key(line.as_ref())
         {
-            self.lines.insert(line, Parsed::from_rule(&response));
+            self.lines.insert(line, Parsed::from_rule(&response).ok());
             if self.lines.len() > MAX_RESPONSE_RULES {
                 self.lines.pop_last();
             }

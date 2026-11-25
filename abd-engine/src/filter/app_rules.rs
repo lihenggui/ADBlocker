@@ -35,7 +35,7 @@ use super::app_patterns::{Patterns, Scope};
 use super::host_rules::{GuardCoverage, can_guard, write_guards};
 use super::matcher::{MatcherList, MatcherLists, OriginalLines};
 use super::redirects::RedirectProjections;
-use crate::rule::{self, AppRule, whole_pattern};
+use crate::rule::{self, AppRule, Code, RuleReason, SourcePermissions, whole_pattern};
 
 /// An exception for every address, as a guard: the exception it stands
 /// for could not be narrowed to hosts.
@@ -86,10 +86,10 @@ struct Projected<'a> {
     original: Option<&'a str>,
 }
 
-fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'a>> {
+fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Result<Projected<'a>, RuleReason> {
     let original = rule.original;
-    let condition = rule.condition()?;
-    let prepared = patterns.prepare(condition.apps)?;
+    let condition = rule.condition().ok_or(Code::AppCondition)?;
+    let prepared = patterns.prepare(condition.apps).ok_or(Code::AppPattern)?;
     let mut unscoped = condition.pattern.to_owned();
     let mut separator = '$';
     for option in condition.options {
@@ -104,9 +104,14 @@ fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'
     };
     let line = rule.for_apps(&rule.unscoped, rule.pattern != rule.unscoped);
     let source = rule::read(&line);
-    let parsed = source.network()?;
+    let parsed = source.network().ok_or_else(|| {
+        source
+            .check_matcher(SourcePermissions::USER)
+            .err()
+            .unwrap_or_else(|| Code::NetworkSyntax.into())
+    })?;
     patterns.keep(prepared);
-    Some(Projected {
+    Ok(Projected {
         rule,
         id: parsed.get_id(),
         bad: parsed.is_badfilter(),
@@ -166,16 +171,19 @@ fn shown(rule: String, patterns: &Patterns) -> String {
 /// How a rule for apps is named when it matched.
 pub(crate) fn name(rule: &AppRule<'_>) -> Option<String> {
     let mut patterns = Patterns::default();
-    let projected = scoped(rule, &mut patterns)?;
+    let projected = scoped(rule, &mut patterns).ok()?;
     Some(shown(projected.line, &patterns))
 }
 
-pub(crate) fn valid(rule: &AppRule<'_>, patterns: &mut Patterns) -> bool {
-    scoped(rule, patterns).is_some_and(|projected| {
-        !rule.has_denyallow()
-            || rule::parse_network(&projected.line)
-                .is_some_and(|rule| rule::denyallow_matcher_applies(&projected.line, rule))
-    })
+pub(crate) fn validate(rule: &AppRule<'_>, patterns: &mut Patterns) -> Result<(), RuleReason> {
+    let projected = scoped(rule, patterns)?;
+    if rule.has_denyallow()
+        && !rule::parse_network(&projected.line)
+            .is_some_and(|rule| rule::denyallow_matcher_applies(&projected.line, rule))
+    {
+        return Err(Code::DenyallowMatcher.into());
+    }
+    Ok(())
 }
 
 fn engine(rules: String, debug: bool) -> Engine {
@@ -195,7 +203,8 @@ pub(crate) struct AppProjections<'a> {
 
 impl<'a> AppProjections<'a> {
     pub(crate) fn add(&mut self, rule: &AppRule<'a>, patterns: &mut Patterns) {
-        self.rules.extend(scoped(rule, patterns));
+        // Rule diagnostics use the same projection to explain rejected rules.
+        self.rules.extend(scoped(rule, patterns).ok());
     }
 
     /// Tell the host projection each host an app rule blocks whole.

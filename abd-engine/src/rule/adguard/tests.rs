@@ -18,7 +18,7 @@ use adblock::resources::{
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 
 use super::{Unsupported, names, scriptlets};
-use crate::rule::{Kind, MatcherCheck, Reason, read};
+use crate::rule::{Kind, Reason, SourcePermissions, read};
 
 #[test]
 fn the_name_table_points_to_bundled_scriptlets_with_the_same_trust() {
@@ -260,11 +260,18 @@ fn scriptlet_adapters_keep_match_conditions_and_permission_requirements() {
     }
     let trusted = read("example.org#%#//scriptlet('trusted-set-constant', 'fixture', '42')");
     assert!(trusted.is_scriptlet());
-    assert!(matches!(trusted.matcher_check(), MatcherCheck::Cosmetic));
-    assert!(matches!(
-        read("example.org#%#//scriptlet('set-constant', 'fixture', '42')").matcher_check(),
-        MatcherCheck::AppliedCosmetic
-    ));
+    assert_eq!(
+        trusted
+            .check_matcher(SourcePermissions::USER)
+            .unwrap_err()
+            .detail(),
+        "scriptlet-trust:trusted-set-constant"
+    );
+    assert!(
+        read("example.org#%#//scriptlet('set-constant', 'fixture', '42')")
+            .check_matcher(SourcePermissions::USER)
+            .is_ok()
+    );
 }
 
 // Android builds of AdGuard Base 2.5.6.88, Chinese 2.1.70.20

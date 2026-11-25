@@ -32,7 +32,7 @@ use adblock::url_parser::{RequestUrl, parse_url};
 pub(crate) use self::app_patterns::Patterns;
 use self::app_patterns::Scope;
 pub(crate) use self::app_rules::{
-    AppProjections, AppRules, name as app_rule, valid as valid_app_rule,
+    AppProjections, AppRules, name as app_rule, validate as validate_app_rule,
 };
 pub(crate) use self::matcher::{MatcherList, MatcherLists, OriginalLines};
 use self::page_exceptions::PageExceptions;
@@ -56,9 +56,9 @@ mod response_rules;
 
 pub use address_rules::AddressDecision;
 pub(crate) use address_rules::AddressProjections;
-pub(crate) use page_exceptions::valid_script_exception;
+pub(crate) use page_exceptions::valid_page_exception;
 pub use redirects::Redirect;
-pub(crate) use response_rules::valid as valid_response_rule;
+pub(crate) use response_rules::validate as validate_response_rule;
 
 pub struct Filters {
     pub generation: Option<u64>,

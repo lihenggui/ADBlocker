@@ -50,7 +50,7 @@ fn only_complete_underscore_options_are_ignored() {
         assert_eq!(rule.matcher_input().as_deref(), Some(expected));
     }
     for line in ["$_", "$_,__"] {
-        let check = crate::rulecheck::check(line);
+        let check = crate::rulecheck::check(line, crate::rulecheck::SourcePermissions::USER);
         assert_eq!(check.issues[0].text, line);
     }
 }
@@ -67,7 +67,10 @@ fn removing_noops_keeps_unsupported_url_and_source_regexes_rejected() {
         let rule = read(line);
         assert!(matches!(&rule.kind, Kind::NotApplied(rejected) if *rejected == reason));
         assert!(rule.matcher_input().is_none());
-        assert_eq!(crate::rulecheck::check(line).issues[0].text, line);
+        assert_eq!(
+            crate::rulecheck::check(line, crate::rulecheck::SourcePermissions::USER).issues[0].text,
+            line
+        );
     }
 }
 
@@ -166,7 +169,7 @@ fn invalid_denyallow_rules_report_the_restriction_and_leave_no_matcher_rule() {
             "{line}"
         );
         assert!(rule.matcher_input().is_none(), "{line}");
-        let checked = crate::rulecheck::check(line);
+        let checked = crate::rulecheck::check(line, crate::rulecheck::SourcePermissions::USER);
         assert_eq!(checked.issues[0].text, line);
         assert_eq!(
             checked.issues[0].kind,
@@ -201,7 +204,7 @@ fn the_reader_accepts_both_valueless_redirect_exceptions() {
     for option in ["redirect", "redirect-rule"] {
         let line = format!("@@||example.org/path$script,{option},domain=page.test");
         let rule = read(&line);
-        assert!(matches!(rule.matcher_check(), MatcherCheck::Network));
+        assert!(rule.check_matcher(SourcePermissions::USER).is_ok());
         assert!(rule.redirect_exception);
         assert!(rule.matcher_input().is_none());
         assert_eq!(
@@ -210,10 +213,10 @@ fn the_reader_accepts_both_valueless_redirect_exceptions() {
         );
 
         let blocking = read(line.trim_start_matches("@@"));
-        assert!(matches!(blocking.matcher_check(), MatcherCheck::Invalid));
+        assert!(blocking.check_matcher(SourcePermissions::USER).is_err());
     }
     let unsupported = read("@@||example.org/path$script,rewrite");
-    assert!(matches!(unsupported.matcher_check(), MatcherCheck::Invalid));
+    assert!(unsupported.check_matcher(SourcePermissions::USER).is_err());
 }
 
 #[test]

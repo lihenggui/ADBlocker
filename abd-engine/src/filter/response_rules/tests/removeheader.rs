@@ -43,7 +43,11 @@ fn the_reference_examples_remove_both_headers_except_on_the_exempt_path() {
                 @@||example.org/path/$removeheader
                 ||example.org^$RemoveHeader=REQUEST:X-Client-Data,xmlhttprequest
                 ||example.org^$removeheader=X-Trace$Id";
-    assert!(crate::rulecheck::check(text).issues.is_empty());
+    assert!(
+        crate::rulecheck::check(text, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .is_empty()
+    );
     let f = filters(text);
     let headers = |url, kind| removals(&f, url, Page::NONE, kind, "com.reader");
     assert_eq!(
@@ -93,7 +97,12 @@ fn removeheader_accepts_only_the_reference_modifiers() {
         "~script",
     ] {
         let rule = format!("||example.org/Path$removeheader=x-test,{valid}");
-        assert!(crate::rulecheck::check(&rule).issues.is_empty(), "{rule}");
+        assert!(
+            crate::rulecheck::check(&rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .is_empty(),
+            "{rule}"
+        );
     }
     for invalid in [
         "_",
@@ -118,13 +127,24 @@ fn removeheader_accepts_only_the_reference_modifiers() {
         "~removeheader=x-other",
     ] {
         let rule = format!("||example.org^$removeheader=x-test,{invalid}");
-        assert_eq!(crate::rulecheck::check(&rule).issues.len(), 1, "{rule}");
+        assert_eq!(
+            crate::rulecheck::check(&rule, crate::rulecheck::SourcePermissions::USER)
+                .issues
+                .len(),
+            1,
+            "{rule}"
+        );
     }
     let malformed = "||example.org^$removeheader
                      ||example.org^$removeheader=
                      @@||example.org^$removeheader=
                      ||example.org^$removeheader=sec-fetch-dest";
-    assert_eq!(crate::rulecheck::check(malformed).issues.len(), 4);
+    assert_eq!(
+        crate::rulecheck::check(malformed, crate::rulecheck::SourcePermissions::USER)
+            .issues
+            .len(),
+        4
+    );
 }
 
 #[test]

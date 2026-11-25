@@ -8,3 +8,5 @@ news.example##.ad-banner
 !#if adguard &&
 ||inactive.example^$frobnicate
 !#endif
+||ads.example^$popup
+||ads.example^$replace=/ad/content/

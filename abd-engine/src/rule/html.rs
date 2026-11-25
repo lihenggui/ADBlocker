@@ -31,7 +31,7 @@ use crate::limits::{
 };
 use crate::public_suffix::Name;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum Rejection {
     Size,
     Domain,

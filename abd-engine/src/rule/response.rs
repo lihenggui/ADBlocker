@@ -15,9 +15,9 @@
 use std::borrow::Cow;
 
 use super::action::{ActionKind, ActionSpec, cookie};
-use super::denyallow;
 use super::modifiers::{APP, Compatibility, Kind, kind_bit, lookup};
 use super::options::{OptionToken, Options};
+use super::{Code, RuleReason, denyallow};
 use crate::limits::MAX_RESPONSE_RULE;
 
 pub(crate) struct ResponseRule<'a> {
@@ -63,6 +63,10 @@ impl<'a> ResponseRule<'a> {
             }),
             None => Err(options),
         }
+    }
+
+    pub(crate) fn option(&self) -> &'a str {
+        self.options.token(self.action_index).name()
     }
 
     pub(crate) fn requires_trusted_source(&self) -> bool {
@@ -133,10 +137,13 @@ impl<'a> ResponseRule<'a> {
         ))
     }
 
-    pub(crate) fn action(&self) -> Option<Action<'a>> {
+    pub(crate) fn action(&self) -> Result<Action<'a>, RuleReason> {
         let options = &self.options;
-        if options.written_len() > MAX_RESPONSE_RULE || (self.rejects_noop() && options.noop) {
-            return None;
+        if options.written_len() > MAX_RESPONSE_RULE {
+            return Err(Code::ResponseLimit.into());
+        }
+        if self.rejects_noop() && options.noop {
+            return Err(RuleReason::named(Code::ResponseQualifier, "_"));
         }
         let exception = options.pattern.starts_with("@@");
         let pattern = options
@@ -175,13 +182,13 @@ impl<'a> ResponseRule<'a> {
                 action.pattern = super::regex::case_sensitive_pattern(pattern);
             }
             if !super::regex::network_pattern_supported(&action.pattern, match_case) {
-                return None;
+                return Err(Code::NetworkRegex.into());
             }
         }
-        Some(action)
+        Ok(action)
     }
 
-    fn qualifiers(&self, action: &mut Action<'a>) -> Option<(bool, bool)> {
+    fn qualifiers(&self, action: &mut Action<'a>) -> Result<(bool, bool), RuleReason> {
         let options = &self.options;
         let mut has_type = false;
         let mut all_types = false;
@@ -189,7 +196,7 @@ impl<'a> ResponseRule<'a> {
             self.kind,
             ActionKind::UrlTransform | ActionKind::RemoveParamException
         ) {
-            denyallow::Condition::read(options).ok()?
+            denyallow::Condition::read(options)?
         } else {
             None
         };
@@ -197,10 +204,11 @@ impl<'a> ResponseRule<'a> {
             if index == self.action_index {
                 continue;
             }
+            let invalid = || RuleReason::named(Code::ResponseQualifier, token.name());
             if action_kind(token).is_some()
                 || !self.compatibility.accepts(token.raw_name, token.value)
             {
-                return None;
+                return Err(invalid());
             }
             all_types |= token.raw == "all";
             has_type |= kind_bit(token.name()).is_some();
@@ -208,19 +216,19 @@ impl<'a> ResponseRule<'a> {
                 continue;
             }
             if token.name() == super::modifiers::DENYALLOW {
-                let rewritten = denyallow.as_ref()?.option(token);
+                let rewritten = denyallow.as_ref().ok_or_else(invalid)?.option(token);
                 action.options.push(Cow::Owned(rewritten.to_owned()));
             } else if token.raw_name == APP
                 && let Some(names) = token.value
             {
                 if action.apps.replace(names).is_some() {
-                    return None;
+                    return Err(invalid());
                 }
             } else {
-                action.take_qualifier(token)?;
+                action.take_qualifier(token).ok_or_else(invalid)?;
             }
         }
-        Some((has_type, all_types))
+        Ok((has_type, all_types))
     }
 
     #[cfg(test)]
@@ -243,15 +251,21 @@ fn action_spec(
     kind: ActionKind,
     value: Option<&str>,
     exception: bool,
-) -> Option<Option<ActionSpec>> {
+) -> Result<Option<ActionSpec>, RuleReason> {
     if exception && kind.disables(value) {
-        Some(None)
+        Ok(None)
     } else if kind == ActionKind::Cookie {
-        Some(Some(ActionSpec::Cookie(
-            cookie::parse(value.unwrap_or_default(), exception).ok()?,
-        )))
+        Ok(Some(ActionSpec::Cookie(cookie::parse(
+            value.unwrap_or_default(),
+            exception,
+        )?)))
     } else {
-        Some(Some(kind.parse(value.filter(|v| !v.is_empty())?)?))
+        kind.parse(
+            value
+                .filter(|v| !v.is_empty())
+                .ok_or_else(|| RuleReason::from(kind.invalid_value()))?,
+        )
+        .map(Some)
     }
 }
 

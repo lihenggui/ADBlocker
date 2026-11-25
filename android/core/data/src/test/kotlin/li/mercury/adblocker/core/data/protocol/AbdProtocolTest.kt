@@ -346,21 +346,49 @@ class AbdProtocolTest {
     }
 
     @Test
-    fun aRulesCheckNamesTheLinesThatAreNotApplied() {
+    fun givenRulesCheckFixture_whenDecoded_thenIssuesKeepTheLineClassAndReason() {
         val check = parseRulesCheck(case("rules-check.json"))
-        assertEquals(5, check.rules)
+        assertEquals(7, check.rules)
         assertEquals(
             listOf(
-                5 to RuleIssueKind.Cosmetic,
-                6 to RuleIssueKind.Invalid,
-                7 to RuleIssueKind.UnsupportedInclude,
-                8 to RuleIssueKind.MalformedDirective,
+                Triple(6, RuleIssueKind.Invalid, "option:frobnicate"),
+                Triple(7, RuleIssueKind.Unsupported, "include-not-followed"),
+                Triple(8, RuleIssueKind.Invalid, "malformed-directive"),
+                Triple(11, RuleIssueKind.Inapplicable, "option:popup"),
+                Triple(12, RuleIssueKind.Untrusted, "response-trust:replace"),
             ),
-            check.issues.map { it.line to it.kind },
+            check.issues.map { Triple(it.line, it.kind, it.reason) },
         )
-        // The lines the issues name are those of the input the daemon checked.
         val lines = case("rules.txt").lines()
         check.issues.forEach { assertEquals(it.text, lines[it.line - 1]) }
+    }
+
+    @Test
+    fun givenNewerDaemonClass_whenDecoded_thenInvalidKeepsTheReason() {
+        val issue = parseRulesCheck(
+            """{"rules":1,"issues":[{"line":1,"text":"rule","kind":"future","reason":"future-form:example"}]}""",
+        ).issues.single()
+        assertEquals(RuleIssueKind.Invalid, issue.kind)
+        assertEquals("future-form:example", issue.reason)
+    }
+
+    @Test
+    fun givenOlderDaemonIssues_whenDecoded_thenLegacyClassesAndMissingReasonsAreAccepted() {
+        val issues = parseRulesCheck(
+            """
+            {"rules":2,"issues":[
+                {"line":1,"text":"rule","kind":"cosmetic"},
+                {"line":2,"text":"rule","kind":"invalid"},
+                {"line":3,"text":"!#include example.txt","kind":"unsupported_include"},
+                {"line":4,"text":"!#endif","kind":"malformed_directive"}
+            ]}
+            """.trimIndent(),
+        ).issues
+        assertEquals(
+            listOf(RuleIssueKind.Unsupported, RuleIssueKind.Invalid, RuleIssueKind.Unsupported, RuleIssueKind.Invalid),
+            issues.map { it.kind },
+        )
+        assertEquals(List(4) { null }, issues.map { it.reason })
     }
 
     @Test
