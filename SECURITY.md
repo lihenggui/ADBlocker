@@ -26,6 +26,11 @@ certificate for that site, signed by its local certificate authority
 (CA), checks each request against the filter rules, and forwards allowed
 requests over its own encrypted connection to the site.
 
+With URL filtering on, a filter list can select a bundled resource for the
+engine to return in place of a blocked request's response. The list only
+names a resource. Its content is fixed in the build. HTML substitutes
+are sandboxed and cannot load external resources.
+
 For recognized cleartext HTTP on TCP port 80, both filtering methods answer
 blocked requests locally. With root, the module opens a connection to the
 original destination only when it has a request to forward, so a server

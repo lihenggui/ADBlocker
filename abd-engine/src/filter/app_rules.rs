@@ -33,6 +33,7 @@ use adblock::request::Request;
 use super::Check;
 use super::app_patterns::{Patterns, Scope};
 use super::host_rules::{GuardCoverage, can_guard, write_guards};
+use super::redirects::RedirectProjections;
 use crate::rule::{self, AppRule, whole_pattern};
 
 /// An exception for every address, as a guard: the exception it stands
@@ -72,10 +73,16 @@ struct Scoped<'a> {
     apps: String,
 }
 
-fn scoped<'a>(
-    rule: &AppRule<'a>,
-    patterns: &mut Patterns,
-) -> Option<(Scoped<'a>, u64, bool, String)> {
+struct Projected<'a> {
+    rule: Scoped<'a>,
+    id: u64,
+    bad: bool,
+    is_redirect: bool,
+    redirect_exception: bool,
+    line: String,
+}
+
+fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Option<Projected<'a>> {
     let condition = rule.condition()?;
     let prepared = patterns.prepare(condition.apps)?;
     let rule = Scoped {
@@ -84,10 +91,17 @@ fn scoped<'a>(
         apps: prepared.encoded.clone(),
     };
     let line = rule.for_apps(&rule.unscoped(), !rule.options.is_empty());
-    let parsed = rule::read(&line).network()?;
-    let (id, bad) = (parsed.get_id(), parsed.is_badfilter());
+    let source = rule::read(&line);
+    let parsed = source.network()?;
     patterns.keep(prepared);
-    Some((rule, id, bad, line))
+    Some(Projected {
+        rule,
+        id: parsed.get_id(),
+        bad: parsed.is_badfilter(),
+        is_redirect: parsed.is_redirect(),
+        redirect_exception: source.redirect_exception,
+        line: source.normalized().into_owned(),
+    })
 }
 
 impl Scoped<'_> {
@@ -152,8 +166,8 @@ fn shown(rule: String, patterns: &Patterns) -> String {
 /// How a rule for apps is named when it matched.
 pub(crate) fn name(rule: &AppRule<'_>) -> Option<String> {
     let mut patterns = Patterns::default();
-    let (_, _, _, projected) = scoped(rule, &mut patterns)?;
-    Some(shown(projected, &patterns))
+    let projected = scoped(rule, &mut patterns)?;
+    Some(shown(projected.line, &patterns))
 }
 
 pub(crate) fn valid(rule: &AppRule<'_>, patterns: &mut Patterns) -> bool {
@@ -172,7 +186,7 @@ fn engine(rules: String, debug: bool) -> Engine {
 
 #[derive(Default)]
 pub(crate) struct AppProjections<'a> {
-    rules: Vec<(Scoped<'a>, u64, bool, String)>,
+    rules: Vec<Projected<'a>>,
 }
 
 impl<'a> AppProjections<'a> {
@@ -185,6 +199,7 @@ impl<'a> AppProjections<'a> {
         self,
         debug: bool,
         mut visit_host: impl FnMut(&str, &str),
+        mut redirects: Option<&mut RedirectProjections>,
     ) -> Option<AppRules> {
         let rules = self.rules;
         if rules.is_empty() {
@@ -192,11 +207,25 @@ impl<'a> AppProjections<'a> {
         }
         let disabled: HashSet<u64> = rules
             .iter()
-            .filter_map(|(_, id, bad, _)| bad.then_some(*id))
+            .filter_map(|entry| entry.bad.then_some(entry.id))
             .collect();
         let [mut blocks, mut exceptions, mut hosts, mut guards] = [const { String::new() }; 4];
-        for (rule, id, bad, line) in rules {
+        for Projected {
+            rule,
+            id,
+            bad,
+            is_redirect,
+            redirect_exception,
+            line,
+        } in rules
+        {
             if bad || disabled.contains(&id) {
+                continue;
+            }
+            if is_redirect && let Some(redirects) = &mut redirects {
+                redirects.add_app(&line, redirect_exception, &rule.apps);
+            }
+            if redirect_exception {
                 continue;
             }
             let kept = if rule.exception() {
@@ -267,6 +296,7 @@ impl AppRules {
         let mut check = Check {
             blocked: found.should_block(),
             rule: found.filter.and_then(|rule| rule.raw_line),
+            redirect: None,
         };
         if found.important {
             return check;

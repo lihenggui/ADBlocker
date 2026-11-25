@@ -1,3 +1,4 @@
 # SPDX-License-Identifier: GPL-3.0-only
-# Keep the pinned upstream sources byte-for-byte.
-*.js -text -whitespace
+# Preserve upstream bytes and show text diffs.
+*.js -text diff -whitespace
+web_accessible_resources/* -text diff -whitespace

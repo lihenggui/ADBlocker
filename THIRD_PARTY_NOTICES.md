@@ -37,22 +37,28 @@ preserved with the source.
   [Graphics Path 1.1.0][graphics-path] supplies `libandroidx.graphics.path.so`.
   [DataStore Core 1.3.0][datastore-core] supplies
   `libdatastore_shared_counter.so`. Both are Apache-2.0.
-- The bundled scriptlet source is from [uBlock Origin 1.68.0][ubo],
+- The bundled scriptlet and redirect resources are from [uBlock Origin 1.68.0][ubo],
   commit `b9833670211d83e72c3a855984a3d544945de1e3`.
   Copyright (C) Raymond Hill and other contributors named in the
   source. These files are GPL-3.0-or-later and retain their notices
-  under `abd-engine/resources/ublock/js/`. The per-file SHA-256 hashes
-  are in [SHA256SUMS](abd-engine/resources/ublock/SHA256SUMS). The serialized
-  `scriptlets.json` SHA-256 is
+  under `abd-engine/resources/ublock/`. The per-file SHA-256 hashes
+  are in [SHA256SUMS](abd-engine/resources/ublock/SHA256SUMS). The redirect
+  names and aliases come from `js/redirect-resources.js` and the bodies
+  come from `web_accessible_resources/`. Image and media inputs are kept
+  as `.base64` text files, with the original bytes named and hashed in
+  the manifest. The generator verifies the hashes, decoding those files
+  first. The serialized `scriptlets.json` SHA-256 is
   `45cdae83eebced710833bcb0680f77bd010e0ae54fdc82738a3395eacaf584d7`.
-  Regenerate it with `node abd-engine/resources/generate.mjs` after checking
-  the source hashes. Android builds use the generated file directly.
+  The serialized `redirects.json` SHA-256 is
+  `43ee429468bfc9a1535190e9f9ac3ceca5c28cd9e93e25c5e3ad9d0a0d551f93`.
+  Regenerate both with `node abd-engine/resources/generate.mjs`.
+  Android builds use the generated files directly.
   The procedural runtime adapts [`contentscript-extra.js`][ubo-procedural]
   at the same commit, upstream SHA-256
   `df8e3afcc6eed42ace647ad83c9d24abfdc391c59fdc0ad9dc66bba0b3acc1df`.
   It retains Raymond Hill's GPL-3.0-or-later notice.
-- The AdGuard scriptlet name mappings use the compatibility table and
-  scriptlet aliases from [AdGuard Scriptlets][adguard-scriptlets].
+- The AdGuard scriptlet and redirect name mappings use the compatibility
+  table and resource aliases from [AdGuard Scriptlets][adguard-scriptlets].
   Copyright AdGuard. GPL-3.0-only.
 - The filter catalog references lists that their maintainers serve. The
   license applied to the catalog does not change the licenses of those

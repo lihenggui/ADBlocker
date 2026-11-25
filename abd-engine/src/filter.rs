@@ -47,9 +47,11 @@ mod host_rules;
 mod html_rules;
 mod load;
 mod page_exceptions;
+mod redirects;
 mod response_rules;
 
 pub(crate) use page_exceptions::valid_script_exception;
+pub use redirects::Redirect;
 pub(crate) use response_rules::valid as valid_response_rule;
 
 pub struct Filters {
@@ -139,6 +141,7 @@ impl Page<'_> {
 /// The matcher of requests.
 pub(crate) struct RequestRules {
     pub(crate) full: Engine,
+    pub(crate) redirects: Option<Engine>,
 }
 
 impl RequestRules {
@@ -161,10 +164,10 @@ impl RequestRules {
         let Some(mut req) = Self::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
-        match apps {
-            Some((rules, scope)) => rules.check(&self.full, &rules.blocks, &mut req, &scope),
-            None => self.check_request(&req),
-        }
+        self.check_request(
+            &mut req,
+            apps.as_ref().map(|(rules, scope)| (*rules, scope)),
+        )
     }
 
     /// The request for `url`, made by the page `source` if it names one. A
@@ -195,12 +198,24 @@ impl RequestRules {
         ))
     }
 
-    fn check_request(&self, req: &Request) -> Check {
-        let r = self.full.check_network_request(req);
-        Check {
-            blocked: r.should_block(),
-            rule: r.filter.and_then(|f| f.raw_line),
+    fn check_request(&self, req: &mut Request, apps: Option<(&AppRules, &Scope<'_>)>) -> Check {
+        let mut check = match apps {
+            Some((rules, scope)) => rules.check(&self.full, &rules.blocks, req, scope),
+            None => {
+                let found = self.full.check_network_request(req);
+                Check {
+                    blocked: found.should_block(),
+                    rule: found.filter.and_then(|rule| rule.raw_line),
+                    redirect: None,
+                }
+            }
+        };
+        if check.blocked
+            && let Some(engine) = &self.redirects
+        {
+            check.redirect = redirects::find(engine, req, apps.map(|(_, scope)| scope));
         }
+        check
     }
 }
 
@@ -420,10 +435,7 @@ impl AppFilters<'_> {
         let Some(mut req) = RequestRules::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
-        match self.app_rules() {
-            Some((rules, scope)) => rules.check(&requests.full, &rules.blocks, &mut req, scope),
-            None => requests.check_request(&req),
-        }
+        requests.check_request(&mut req, self.app_rules())
     }
 }
 
@@ -456,6 +468,7 @@ impl Hiding {
 #[derive(Default)]
 pub struct Check {
     pub blocked: bool,
+    pub redirect: Option<Redirect>,
     /// The rule that matched, when the engine was built with debug info.
     pub rule: Option<String>,
 }

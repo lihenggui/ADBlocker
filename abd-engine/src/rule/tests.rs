@@ -31,6 +31,47 @@ fn ordinary_network_rules_go_to_the_matcher() {
 }
 
 #[test]
+fn legacy_redirects_preserve_the_pattern_and_other_options() {
+    for (original, projected) in [
+        (
+            r"/preroll[.]mp4$/$third-party,mp4,media,domain=watch.example,important",
+            r"/preroll[.]mp4$/$third-party,redirect=noopmp4-1s,media,domain=watch.example,important",
+        ),
+        (
+            "||example.org/path$empty,xmlhttprequest",
+            "||example.org/path$redirect=nooptext,xmlhttprequest",
+        ),
+    ] {
+        let rule = read(original);
+        assert_eq!(rule.matcher_input().as_deref(), Some(projected));
+        assert!(rule.network().unwrap().is_redirect());
+    }
+    for line in ["||example.org/empty", "||example.org^$unknown=mp4"] {
+        assert_eq!(read(line).matcher_input().as_deref(), Some(line));
+    }
+}
+
+#[test]
+fn the_reader_accepts_both_valueless_redirect_exceptions() {
+    for option in ["redirect", "redirect-rule"] {
+        let line = format!("@@||example.org/path$script,{option},domain=page.test");
+        let rule = read(&line);
+        assert!(matches!(rule.matcher_check(), MatcherCheck::Network));
+        assert!(rule.redirect_exception);
+        assert!(rule.matcher_input().is_none());
+        assert_eq!(
+            rule.normalized(),
+            format!("@@||example.org/path$script,{REDIRECT_EXCEPTION},domain=page.test")
+        );
+
+        let blocking = read(line.trim_start_matches("@@"));
+        assert!(matches!(blocking.matcher_check(), MatcherCheck::Invalid));
+    }
+    let unsupported = read("@@||example.org/path$script,rewrite");
+    assert!(matches!(unsupported.matcher_check(), MatcherCheck::Invalid));
+}
+
+#[test]
 fn an_app_rule_retains_its_app_and_other_options() {
     let rule = read(r"||example.org^$app=/a\,b\/c\$\|d/,script");
     let Kind::App(app) = rule.kind else {

@@ -24,6 +24,7 @@ fn filters(rules: &str) -> Filters {
 
 mod guards;
 mod javascript;
+mod redirects;
 
 mod lists {
     use super::*;

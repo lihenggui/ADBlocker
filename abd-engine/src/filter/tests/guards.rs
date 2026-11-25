@@ -20,7 +20,7 @@ mod tests {
     use crate::rule;
 
     fn network(line: &str) -> Option<NetworkFilter<'_>> {
-        rule::read(line).network()
+        rule::parse_network(line)
     }
 
     mod host_rules {

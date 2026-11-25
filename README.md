@@ -53,6 +53,8 @@ some paths stays reachable: the engine checks each request on the
 connection instead of refusing it. The engine checks the resource type
 from `Sec-Fetch-Dest` or the URL's file extension. If neither identifies
 the type, it checks again when the server's `Content-Type` identifies it.
+When a rule supplies a bundled substitute for a blocked request, ADBlocker
+returns it locally and counts the request as blocked.
 When a site or app requires a certificate ADBlocker cannot use, HTTPS
 stays encrypted and only domain rules apply.
 

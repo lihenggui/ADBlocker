@@ -21,7 +21,8 @@ use bytes::Bytes;
 use http_body_util::{BodyExt, Full, combinators::BoxBody};
 use hyper::body::Incoming;
 use hyper::header::{
-    ACCEPT_ENCODING, CONTENT_LENGTH, HOST, HeaderValue, ORIGIN, RANGE, REFERER, UPGRADE,
+    ACCEPT_ENCODING, ACCESS_CONTROL_ALLOW_ORIGIN, CACHE_CONTROL, CONTENT_LENGTH,
+    CONTENT_SECURITY_POLICY, CONTENT_TYPE, HOST, HeaderValue, ORIGIN, RANGE, REFERER, UPGRADE,
 };
 use hyper::http::uri::{Authority, PathAndQuery};
 use hyper::{HeaderMap, Method, Request, Response, StatusCode};
@@ -29,7 +30,7 @@ use hyper_util::rt::TokioIo;
 
 use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
-use crate::filter::{AppFilters, Filters, Hiding, Page};
+use crate::filter::{AppFilters, Filters, Hiding, Page, Redirect};
 use crate::htmlfilter::Compiled;
 use crate::relay;
 use crate::rule::action::{ResponseAction, html};
@@ -303,10 +304,12 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             .as_ref()
             .map_or_else(Vec::new, |m| m.actions(kind.as_str()));
         // Only replacement rules take precedence after the connection passes host filtering.
-        let blocked = !actions.iter().any(|action| action.overrides_block())
-            && filters
-                .check_with_page(url, self.page, kind.as_str(), self.method)
-                .blocked;
+        let check = if actions.iter().any(|action| action.overrides_block()) {
+            Default::default()
+        } else {
+            filters.check_with_page(url, self.page, kind.as_str(), self.method)
+        };
+        let blocked = check.blocked;
         let ask_for_identity = !actions.is_empty()
             || (!blocked
                 && kind == RequestKind::Assumed
@@ -318,6 +321,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
         (
             RequestDecision {
                 blocked,
+                redirect: check.redirect,
                 kind,
                 page: self.told,
             },
@@ -330,9 +334,10 @@ impl<'a, 't> RequestMetadata<'a, 't> {
     }
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RequestDecision<'a> {
     pub blocked: bool,
+    pub redirect: Option<Redirect>,
     pub kind: RequestKind,
     pub page: Option<&'a str>,
 }
@@ -369,14 +374,15 @@ impl MatchedRequest<'_> {
         plan
     }
 
-    fn record(&self, decision: RequestDecision<'_>) {
+    fn record(&self, decision: &RequestDecision<'_>) {
         let Shared { ctx, package, .. } = self.shared;
         let Self { host, url, .. } = self;
         let RequestDecision {
             blocked,
             kind,
             page,
-        } = decision;
+            ..
+        } = *decision;
         let kind = kind.as_str();
         ctx.services
             .live
@@ -391,8 +397,28 @@ impl MatchedRequest<'_> {
     }
 
     fn blocked(&self, decision: RequestDecision<'_>) -> Response<Body> {
-        self.record(decision);
-        empty(StatusCode::FORBIDDEN)
+        self.record(&decision);
+        let Some(redirect) = decision.redirect else {
+            return empty(StatusCode::FORBIDDEN);
+        };
+        let html = redirect.content_type == "text/html";
+        let mut response = Response::builder()
+            .status(StatusCode::OK)
+            .header(CONTENT_TYPE, redirect.content_type)
+            .header(CONTENT_LENGTH, redirect.body.len())
+            .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+            .header(CACHE_CONTROL, "no-store")
+            .body(Full::new(redirect.body).map_err(|e| match e {}).boxed())
+            .expect("fixed redirect response headers");
+        if html {
+            // Extension HTML can contain relative URLs. At the request's
+            // origin those would load the website's files.
+            response.headers_mut().insert(
+                CONTENT_SECURITY_POLICY,
+                HeaderValue::from_static("default-src 'none'; sandbox"),
+            );
+        }
+        response
     }
 }
 
@@ -416,14 +442,14 @@ impl PendingVerdict<'_> {
             return Some(request.blocked(decision));
         }
         *actions = selected.actions;
-        request.record(decision);
+        request.record(&decision);
         None
     }
 }
 
 impl Drop for PendingVerdict<'_> {
     fn drop(&mut self) {
-        if let Some(decision) = self.decision {
+        if let Some(decision) = &self.decision {
             self.request.record(decision);
         }
     }
@@ -503,7 +529,7 @@ pub(super) async fn serve<'a>(
     let upstream = upstream.await?;
     let pending = judged.and_then(|(request, decision)| match decision.kind {
         RequestKind::Known(_) => {
-            request.record(decision);
+            request.record(&decision);
             None
         }
         RequestKind::Assumed => Some(PendingVerdict {

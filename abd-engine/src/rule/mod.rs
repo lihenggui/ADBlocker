@@ -43,6 +43,8 @@ pub(crate) struct Rule<'a> {
     literal: Option<Options<'a>>,
     hosts_file: Option<&'a str>,
     translated: Option<adguard::Translation>,
+    rewritten: Option<String>,
+    pub(crate) redirect_exception: bool,
 }
 
 pub(crate) enum Kind<'a> {
@@ -105,6 +107,8 @@ pub(crate) fn read_with_scripts<'a>(
         literal: None,
         hosts_file: hosts_rule(line),
         translated: None,
+        rewritten: None,
+        redirect_exception: false,
     };
     if is_comment(line) {
         rule.kind = Kind::Comment;
@@ -149,7 +153,10 @@ pub(crate) fn read_with_scripts<'a>(
         }
         _ => None,
     };
-    let page = if rule.exception() {
+    if custom.is_none() && rule.has_redirect_option() && !cosmetic(line) {
+        (rule.rewritten, rule.redirect_exception) = rewrite_redirect_options(line);
+    }
+    let page = if rule.exception() && !rule.redirect_exception {
         if let Some(options) = custom.as_ref().filter(|options| options.also_literal()) {
             PageException::read(options)
         } else {
@@ -174,6 +181,16 @@ pub(crate) fn read_with_scripts<'a>(
 }
 
 impl<'a> Rule<'a> {
+    pub(crate) fn has_redirect_option(&self) -> bool {
+        let Some((_, suffix)) = self.line.rsplit_once('$') else {
+            return false;
+        };
+        suffix.contains("redirect")
+            || suffix.contains("rewrite")
+            || suffix.contains("empty")
+            || suffix.contains("mp4")
+    }
+
     pub(crate) fn exception(&self) -> bool {
         self.line.starts_with("@@")
     }
@@ -206,6 +223,9 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn matcher_input(&self) -> Option<Cow<'_, str>> {
+        if self.redirect_exception {
+            return None;
+        }
         if let Some(translated) = &self.translated {
             return Some(Cow::Borrowed(&translated.line));
         }
@@ -220,7 +240,10 @@ impl<'a> Rule<'a> {
 
     /// The original diagnostic index contains every nonempty normalized
     /// line, including lines that cannot match by themselves.
-    pub(crate) fn normalized(&self) -> Cow<'a, str> {
+    pub(crate) fn normalized(&self) -> Cow<'_, str> {
+        if let Some(line) = &self.rewritten {
+            return Cow::Borrowed(line);
+        }
         self.hosts_file
             .map(|host| Cow::Owned(format!("||{host}^")))
             .unwrap_or(Cow::Borrowed(self.line))
@@ -263,7 +286,7 @@ impl<'a> Rule<'a> {
         })
     }
 
-    pub(crate) fn network(&self) -> Option<NetworkFilter<'a>> {
+    pub(crate) fn network(&self) -> Option<NetworkFilter<'_>> {
         if self.translated.is_some()
             || matches!(
                 self.kind,
@@ -275,7 +298,7 @@ impl<'a> Rule<'a> {
         {
             return None;
         }
-        parse_network(self.line)
+        parse_network(self.rewritten.as_deref().unwrap_or(self.line))
     }
 
     /// Even a page modifier or a known unsupported modifier can occur
@@ -294,7 +317,8 @@ impl<'a> Rule<'a> {
         {
             return MatcherCheck::Cosmetic;
         }
-        match parse_filter(self.line, false, ParseOptions::default()) {
+        let line = self.rewritten.as_deref().unwrap_or(self.line);
+        match parse_filter(line, false, ParseOptions::default()) {
             Ok(ParsedLine::Network(_)) => MatcherCheck::Network,
             Ok(ParsedLine::Cosmetic(_)) | Err(FilterParseError::Cosmetic(_)) => {
                 MatcherCheck::Cosmetic
@@ -327,6 +351,43 @@ impl<'a> Rule<'a> {
             options::literal_tokens(suffix).find_map(find)
         }
     }
+}
+
+pub(crate) const REDIRECT_EXCEPTION: &str = "redirect=@abd-all-redirects";
+
+fn rewrite_redirect_options(line: &str) -> (Option<String>, bool) {
+    let Some((pattern, suffix)) = line.rsplit_once('$') else {
+        return (None, false);
+    };
+    let exception = pattern.starts_with("@@");
+    let rewrite = |token: OptionToken<'_>| {
+        let modifier = lookup(token.raw_name)?;
+        if !modifier.accepts_value(token.value) {
+            return None;
+        }
+        match modifier.kind {
+            ModifierKind::LegacyRedirect(option) => Some(option),
+            ModifierKind::Redirect if exception && token.value.is_none() => {
+                Some(REDIRECT_EXCEPTION)
+            }
+            _ => None,
+        }
+    };
+    if !options::literal_tokens(suffix).any(|token| rewrite(token).is_some()) {
+        return (None, false);
+    }
+    let mut rewritten = format!("{pattern}$");
+    let mut bare = false;
+    for (index, token) in options::literal_tokens(suffix).enumerate() {
+        if index != 0 {
+            rewritten.push(',');
+        }
+        let replacement = rewrite(token);
+        let option = replacement.unwrap_or(token.raw);
+        bare |= replacement == Some(REDIRECT_EXCEPTION);
+        rewritten.push_str(option);
+    }
+    (Some(rewritten), bare)
 }
 
 pub(crate) enum ExceptionHost<'a> {

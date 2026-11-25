@@ -468,6 +468,20 @@ impl Rig {
         referer: Option<&str>,
         customize: impl FnOnce(hyper::http::request::Builder) -> hyper::http::request::Builder,
     ) -> Result<(hyper::HeaderMap, StatusCode, String, bool)> {
+        let (headers, status, bytes, real) = self
+            .request_response_bytes(trust, alpn, path, referer, customize)
+            .await?;
+        Ok((headers, status, String::from_utf8(bytes.to_vec())?, real))
+    }
+
+    async fn request_response_bytes(
+        &self,
+        trust: Trust,
+        alpn: &[&str],
+        path: &str,
+        referer: Option<&str>,
+        customize: impl FnOnce(hyper::http::request::Builder) -> hyper::http::request::Builder,
+    ) -> Result<(hyper::HeaderMap, StatusCode, Bytes, bool)> {
         let tls = self.handshake(trust, alpn).await?;
         let (_, session) = tls.get_ref();
         let real = session.peer_certificates().unwrap()[0] == self.server_leaf;
@@ -501,12 +515,7 @@ impl Rig {
         };
         let (parts, body) = resp.into_parts();
         let body = body.collect().await?.to_bytes();
-        Ok((
-            parts.headers,
-            parts.status,
-            String::from_utf8(body.to_vec())?,
-            real,
-        ))
+        Ok((parts.headers, parts.status, body, real))
     }
 
     fn count(&self, counter: Counter) -> u64 {
@@ -2758,6 +2767,152 @@ async fn only_watch_event(watcher: &mut crate::live::Joined) -> serde_json::Valu
         .await;
     }
     serde_json::from_slice(&out).unwrap()
+}
+
+fn substitute_gif() -> Vec<u8> {
+    use base64::{Engine as _, prelude::BASE64_STANDARD};
+
+    BASE64_STANDARD
+        .decode(
+            include_str!("../../resources/ublock/web_accessible_resources/1x1.gif.base64")
+                .replace('\n', ""),
+        )
+        .unwrap()
+}
+
+#[tokio::test]
+async fn substitutions_send_the_resource_and_report_a_single_block() {
+    let script = include_bytes!("../../resources/ublock/web_accessible_resources/noop.js");
+    let html = include_bytes!("../../resources/ublock/web_accessible_resources/noop.html");
+    let gif = substitute_gif();
+    for (path, dest, kind, mime, expected, hits, alpn) in [
+        (
+            "/ad.js",
+            Some("script"),
+            "script",
+            "application/javascript",
+            script.as_slice(),
+            0,
+            H1,
+        ),
+        (
+            "/ad.gif",
+            Some("image"),
+            "image",
+            "image/gif",
+            gif.as_slice(),
+            0,
+            BOTH,
+        ),
+        (
+            "/replace/image",
+            None,
+            "image",
+            "image/gif",
+            gif.as_slice(),
+            1,
+            BOTH,
+        ),
+        (
+            "/ad-frame",
+            Some("iframe"),
+            "subdocument",
+            "text/html",
+            html.as_slice(),
+            0,
+            H1,
+        ),
+    ] {
+        let rig = rig(Setup {
+            rules: "||site.test/ad.js$script,redirect=noopjs\n\
+                    ||site.test/ad.gif$image,redirect=1x1-transparent.gif\n\
+                    ||site.test/replace/image$image,redirect=1x1-transparent.gif\n\
+                    ||site.test/ad-frame$subdocument,redirect=noopframe\n",
+            settings: Some("cosmetic off\n"),
+            alpn,
+            ..Setup::default()
+        })
+        .await;
+        let mut watcher = rig.ctx.services.live.join(None).unwrap();
+        let (headers, status, body, real) = rig
+            .request_response_bytes(Trust::System, alpn, path, None, |req| {
+                let req = req.header("origin", "https://page.test");
+                match dest {
+                    Some(dest) => req.header("sec-fetch-dest", dest),
+                    None => req,
+                }
+            })
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK, "{path}");
+        assert!(!real);
+        assert_substitute_headers(&headers, mime, expected.len());
+        assert_eq!(body.as_ref(), expected);
+        assert_eq!(rig.hits(), hits);
+        assert_eq!(rig.count(Counter::RequestsBlocked), 1);
+        assert_eq!(rig.count(Counter::RequestsAllowed), 0);
+        let event = only_watch_event(&mut watcher).await;
+        assert_eq!(event["verdict"], "blocked");
+        assert_eq!(event["kind"], kind);
+        assert_eq!(event["url"], format!("https://{HOST}{path}"));
+        assert_eq!(event["app"], PACKAGE);
+    }
+}
+
+#[tokio::test]
+async fn click_to_load_frames_receive_an_empty_block_response() {
+    let rig = rig(Setup {
+        rules: "||site.test/ad-frame$subdocument,redirect=click2load.html",
+        ..Setup::default()
+    })
+    .await;
+    let (headers, status, body, _) = rig
+        .request_response(Trust::System, H1, "/ad-frame", None, |req| {
+            req.header("sec-fetch-dest", "iframe")
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert!(body.is_empty());
+    assert!(!headers.contains_key("location"));
+    assert_eq!(rig.hits(), 0);
+    assert_eq!(rig.count(Counter::RequestsBlocked), 1);
+}
+
+fn assert_substitute_headers(headers: &hyper::HeaderMap, mime: &str, len: usize) {
+    assert_eq!(headers["content-type"], mime);
+    assert_eq!(headers["content-length"], len.to_string());
+    assert_eq!(headers["access-control-allow-origin"], "*");
+    assert_eq!(headers["cache-control"], "no-store");
+    assert!(!headers.contains_key("set-cookie"));
+    assert!(!headers.contains_key("etag"));
+    if mime == "text/html" {
+        assert_eq!(
+            headers["content-security-policy"],
+            "default-src 'none'; sandbox"
+        );
+    }
+}
+
+#[tokio::test]
+async fn a_redirect_rule_without_a_block_leaves_the_upstream_response_intact() {
+    let rig = rig(Setup {
+        rules: "||site.test/replace/image$image,redirect-rule=1x1-transparent.gif",
+        ..Setup::default()
+    })
+    .await;
+    let mut watcher = rig.ctx.services.live.join(None).unwrap();
+    let (headers, status, body, _) = rig
+        .get_response(Trust::System, H1, "/replace/image", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(headers["etag"], "\"fixture\"");
+    assert_eq!(body.as_bytes(), b"image\0payload\r\n");
+    assert_eq!(rig.hits(), 1);
+    assert_eq!(rig.count(Counter::RequestsBlocked), 0);
+    assert_eq!(rig.count(Counter::RequestsAllowed), 1);
+    assert_eq!(only_watch_event(&mut watcher).await["verdict"], "allowed");
 }
 
 #[tokio::test]

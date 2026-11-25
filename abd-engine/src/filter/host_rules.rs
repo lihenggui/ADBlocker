@@ -302,6 +302,7 @@ fn block_suffixes(host: &str) -> impl Iterator<Item = &str> {
 /// so one a host may have to be left alone for.
 pub(super) fn can_guard(source: &Rule<'_>, rule: &NetworkFilter<'_>) -> bool {
     is_network_exception(rule)
+        && !source.redirect_exception
         && rule.mask.contains(Mask::FROM_HTTPS)
         && !(rule.mask.contains(Mask::IS_LEFT_ANCHOR) && source.http_only_anchor())
         && !source.has_tag()

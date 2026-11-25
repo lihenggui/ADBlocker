@@ -36,6 +36,8 @@ pub(super) enum Kind {
     Source,
     Destination,
     Flag,
+    Redirect,
+    LegacyRedirect(&'static str),
     Page(PageModifier),
     Action(ActionKind, Compatibility),
     Unsupported,
@@ -97,7 +99,9 @@ const fn modifier(names: &'static [&'static str], kind: Kind, value: Value) -> M
     Modifier { names, kind, value }
 }
 
-use Kind::{Action, App, Destination, Flag, Page, Source, Type, Unsupported};
+use Kind::{
+    Action, App, Destination, Flag, LegacyRedirect, Page, Redirect, Source, Type, Unsupported,
+};
 use PageModifier::{Content, Document, Element, Generic, Script, Specific, Urlblock};
 use Value::{None as FlagValue, Optional, Required};
 
@@ -122,6 +126,10 @@ static MODIFIERS: &[Modifier] = &[
     modifier(&["all"], Flag, FlagValue),
     modifier(&["important"], Flag, FlagValue),
     modifier(&["match-case"], Flag, FlagValue),
+    modifier(&["redirect", "redirect-rule"], Redirect, Optional),
+    modifier(&["rewrite"], Redirect, Required),
+    modifier(&["empty"], LegacyRedirect("redirect=nooptext"), FlagValue),
+    modifier(&["mp4"], LegacyRedirect("redirect=noopmp4-1s"), FlagValue),
     modifier(&["document", "doc"], Page(Document), FlagValue),
     modifier(&["content"], Page(Content), FlagValue),
     modifier(&["urlblock"], Page(Urlblock), FlagValue),

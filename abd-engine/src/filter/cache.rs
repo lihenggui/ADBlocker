@@ -63,13 +63,26 @@ fn read_html(cache: &Path, present: bool, remaining: &mut usize) -> Option<HtmlR
     HtmlRules::cached(&specs)
 }
 
+fn read_requests(
+    mut read: impl FnMut(&str) -> Option<Engine>,
+    has_redirects: bool,
+    scripts: &ScriptTable,
+) -> Option<RequestRules> {
+    let mut requests = RequestRules {
+        full: read("full")?,
+        redirects: optional_engine(has_redirects, || read("redirects"))?,
+    };
+    use_resources(&mut requests, scripts);
+    Some(requests)
+}
+
 impl Filters {
     /// The engines kept for the lists that `key` stands for, if they are.
     pub(super) fn read_cache(cache: &Path, key: u64) -> Option<Self> {
         crate::public_suffix::install();
         let key_file = cache.join("key");
         let _lock = files::lock(&key_file).ok()?;
-        let meta = files::read_text(&key_file, 128).ok()?;
+        let meta = files::read_text(&key_file, 160).ok()?;
         let mut f = meta.split_ascii_whitespace();
         if f.next()?.parse::<u64>().ok()? != key {
             return None;
@@ -108,16 +121,16 @@ impl Filters {
         remaining -= script_data.len();
         let scripts = ScriptTable::cached(&script_data)?;
         let html = read_html(cache, f.next()?.parse().ok()?, &mut remaining)?;
-        let mut engine = |name| read_engine(cache, name, &mut remaining);
+        let has_redirects = f.next()?.parse().ok()?;
+        let mut engine = |name: &str| read_engine(cache, name, &mut remaining);
         let responses = match actions {
             Some(actions) => Some(ResponseRules::cached(engine("response-rules")?, &actions)?),
             None => None,
         };
-        let mut full = engine("full")?;
-        use_resources(&mut full, &scripts);
+        let requests = read_requests(&mut engine, has_redirects, &scripts)?;
         Some(Self {
             generation: Some(key),
-            requests: RequestRules { full },
+            requests,
             scripts,
             page_exceptions: PageExceptions {
                 all: optional_engine(has_no_cosmetic, || engine("no-cosmetic"))?,
@@ -156,6 +169,10 @@ impl Filters {
             ("app-patterns", Some(self.patterns.serialized())),
             ("html-rules", self.html.serialized()),
             ("full", Some(self.requests.full.serialize())),
+            (
+                "redirects",
+                self.requests.redirects.as_ref().map(Engine::serialize),
+            ),
             ("scripts", Some(self.scripts.serialized())),
             (
                 "no-scripts",
@@ -238,7 +255,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.guards_incomplete,
@@ -254,6 +271,7 @@ impl Filters {
                 exceptions.urlblock.is_some(),
                 exceptions.script.is_some(),
                 !self.html.is_empty(),
+                self.requests.redirects.is_some(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };

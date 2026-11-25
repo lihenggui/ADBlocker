@@ -114,7 +114,7 @@ impl Diagnostics {
         }
         index.sort_unstable();
         index.dedup_by(|next, first| next[..16] == first[..16]);
-        let apps = apps.compile(true, |_, _| {});
+        let apps = apps.compile(true, |_, _| {}, None);
         patterns.report_dropped();
         Ok(Self {
             apps,
@@ -184,7 +184,10 @@ impl Diagnostics {
             return None;
         }
         Some(Self {
-            rules: RequestRules { full: full? },
+            rules: RequestRules {
+                full: full?,
+                redirects: None,
+            },
             apps,
             patterns,
             index: entries.to_vec(),

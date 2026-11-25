@@ -311,9 +311,14 @@ For plaintext HTTP and decrypted HTTPS, the engine takes the resource type
 from `Sec-Fetch-Dest` or a recognized file extension, in that order. A
 request whose type is unknown is first checked as `other`. If it goes
 upstream and the response's `Content-Type` identifies a resource type, the
-engine checks the request again with that type. A block at either check
-returns an empty `403` response. An HTML response leaves the request type
-unchanged.
+engine checks the request again with that type. An HTML response leaves the
+request type unchanged.
+
+A blocked request with a matching `$redirect` or `$redirect-rule` that
+names a bundled resource gets a local `200` response with that resource.
+The engine counts it as blocked. A request blocked without a substitute
+gets an empty `403` response. A whole-host block refuses the connection
+before the engine reads a request.
 
 A `$replace` rule searches the text of a response with a regular
 expression and substitutes the replacement for each match. With URL
@@ -344,8 +349,8 @@ to them.
 
 On TCP port 80 the engine recognizes a bounded HTTP/1 request header.
 With URL filtering off it judges the Host header. With it on, each ordinary
-request on the connection is checked against the web rules. A blocked
-request gets a local 403. With root, the module connects to the original
+request on the connection is checked against the web rules. Blocked
+requests are answered locally. With root, the module connects to the original
 destination, with the original app's identity, only when it has a request
 to forward, then reuses that connection. The VPN has already connected
 before it answered the app (see below). Unsupported initial

@@ -27,7 +27,7 @@ use super::host_rules::{AppHostBlocks, HostProjections};
 use super::html_rules::HtmlProjections;
 use super::page_exceptions::PageProjections;
 use super::response_rules::ResponseProjections;
-use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules};
+use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules, redirects};
 use crate::list_files::{MAX_LISTS, exceeds_budget, read_lists, readable_paths};
 use crate::list_url::{Trust, trusted_list_file};
 use crate::rule::javascript::{self, ScriptTable, Scripts};
@@ -57,9 +57,13 @@ fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
     lists
         .flat_map(str::lines)
         .filter(|line| rule::badfilter_candidate(line))
-        .filter_map(|line| rule::read(line).network())
-        .filter(NetworkFilter::is_badfilter)
-        .map(|rule| rule.get_id())
+        .filter_map(|line| {
+            let source = rule::read(line);
+            source
+                .network()
+                .filter(NetworkFilter::is_badfilter)
+                .map(|rule| rule.get_id())
+        })
         .collect()
 }
 
@@ -90,16 +94,22 @@ impl MatcherLists {
     pub(crate) fn compile(self) -> RequestRules {
         RequestRules {
             full: Engine::new_with_filter_set(self.0),
+            redirects: None,
         }
     }
 }
 
-pub(super) fn use_resources(engine: &mut Engine, scripts: &ScriptTable) {
+pub(super) fn use_resources(requests: &mut RequestRules, scripts: &ScriptTable) {
     static RESOURCES: std::sync::LazyLock<Vec<Resource>> = std::sync::LazyLock::new(|| {
         serde_json::from_str(include_str!("../../resources/scriptlets.json"))
             .expect("bundled scriptlet resources are valid")
     });
-    engine.use_resources(RESOURCES.iter().cloned().chain(scripts.resources()));
+    requests
+        .full
+        .use_resources(RESOURCES.iter().cloned().chain(scripts.resources()));
+    if let Some(engine) = &mut requests.redirects {
+        redirects::use_resources(engine);
+    }
 }
 
 fn user_rules(path: &Path) -> bool {
@@ -171,6 +181,7 @@ impl Filters {
         let texts = || lists.iter().map(|(_, text)| text.as_str());
         let disabled = badfilters(texts());
         let mut matcher = MatcherLists::new(debug);
+        let mut redirects = redirects::RedirectProjections::default();
         let mut hosts = HostProjections::new();
         let mut pages = PageProjections::default();
         let mut apps = AppProjections::default();
@@ -185,6 +196,7 @@ impl Filters {
             for line in text.lines() {
                 let source = rule::read_with_scripts(line, trust_scripts.then_some(&mut scripts));
                 MatcherLists::add(&mut normalized, &source);
+                redirects.add_web(&source, &disabled);
                 hosts.add(&source, &disabled);
                 pages.add(&source);
                 match source.kind {
@@ -208,16 +220,21 @@ impl Filters {
             );
         }
         let mut app_blocks = AppHostBlocks::new();
-        let apps = apps.compile(debug, |host, apps| {
-            app_blocks
-                .entry(host.to_ascii_lowercase())
-                .or_default()
-                .push(format!("^${}{}", app_rules::SOURCE, apps));
-        });
+        let apps = apps.compile(
+            debug,
+            |host, apps| {
+                app_blocks
+                    .entry(host.to_ascii_lowercase())
+                    .or_default()
+                    .push(format!("^${}{}", app_rules::SOURCE, apps));
+            },
+            Some(&mut redirects),
+        );
         let host_rules = hosts.finish(&app_blocks, guard_budget);
         let mut requests = matcher.compile();
+        requests.redirects = redirects.compile();
         let scripts = scripts.finish();
-        use_resources(&mut requests.full, &scripts);
+        use_resources(&mut requests, &scripts);
         let responses = responses.compile(&mut patterns);
         patterns.report_dropped();
         Ok(Self {
