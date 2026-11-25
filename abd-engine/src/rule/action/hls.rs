@@ -20,7 +20,7 @@ use regex_automata::meta::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::limits::{MAX_RESPONSE_REGEX, MAX_RESPONSE_RULE};
-use crate::list_regex::{self, RegexInput};
+use crate::list_regex::{self, MatchCache, RegexInput, SearchBudget};
 use crate::playlist;
 use crate::rule::quoting::{delimiter, unescape, unescaped};
 
@@ -145,12 +145,16 @@ impl Compiled {
         self.regex.memory_usage()
     }
 
-    fn matches(&self, text: &str) -> bool {
-        match self.target {
-            Target::HostAnchoredUrl => pattern::from_host(text)
-                .is_some_and(|url| list_regex::matches(&self.regex, url.as_bytes())),
-            Target::Url | Target::Tag => list_regex::matches(&self.regex, text.as_bytes()),
-        }
+    fn matches(&self, text: &str, cache: &mut MatchCache, budget: &mut SearchBudget) -> bool {
+        let text = if self.target == Target::HostAnchoredUrl {
+            let Some(url) = pattern::from_host(text) else {
+                return false;
+            };
+            url
+        } else {
+            text
+        };
+        budget.matches(&self.regex, cache, text.as_bytes())
     }
 }
 
@@ -170,34 +174,35 @@ pub(crate) fn apply(
     rules: &[&Compiled],
     within_budget: &dyn Fn() -> bool,
 ) -> Option<Bytes> {
-    let search = |text: &str, tags: bool| {
-        for rule in rules
-            .iter()
-            .filter(|rule| (rule.target == Target::Tag) == tags)
-        {
+    let (mut tags, mut urls): (Vec<_>, Vec<_>) = rules
+        .iter()
+        .map(|&rule| (rule, None))
+        .partition(|(rule, _)| rule.target == Target::Tag);
+    let (mut tag_budget, mut url_budget) = (SearchBudget::default(), SearchBudget::default());
+    let search = |text: &str, rules: &mut [(&Compiled, MatchCache)], budget: &mut SearchBudget| {
+        for (rule, cache) in rules {
             if !within_budget() {
                 return None;
             }
-            if rule.matches(text) {
+            if rule.matches(text, cache, budget) {
                 return Some(true);
             }
         }
         Some(false)
     };
-    let has_url_rules = rules.iter().any(|rule| rule.target != Target::Tag);
     let result = playlist::edit(
         &body,
-        |tag| search(tag, true),
+        |tag| search(tag, &mut tags, &mut tag_budget),
         |line| {
-            if !has_url_rules {
+            if urls.is_empty() {
                 return Some(false);
             }
-            if search(line, false)? {
+            if search(line, &mut urls, &mut url_budget)? {
                 return Some(true);
             }
             // The literal line can still match if it cannot be resolved.
             match playlist::uri::resolve(base, line) {
-                Some(url) if url != line => search(&url, false),
+                Some(url) if url != line => search(&url, &mut urls, &mut url_budget),
                 _ => Some(false),
             }
         },
@@ -224,10 +229,22 @@ mod tests {
         ] {
             let compiled = compile(value).unwrap();
             assert!(compiled.target == target, "{value}");
-            assert_eq!(compiled.matches("AD"), matched, "{value}");
+            assert_eq!(
+                compiled.matches("AD", &mut None, &mut SearchBudget::default()),
+                matched,
+                "{value}"
+            );
         }
-        assert!(compile(r"/a\{b\/c\,d\$/").unwrap().matches("a{b/c,d"));
-        assert!(compile("/a{b/").unwrap().matches("a{b"));
+        assert!(compile(r"/a\{b\/c\,d\$/").unwrap().matches(
+            "a{b/c,d",
+            &mut None,
+            &mut SearchBudget::default()
+        ));
+        assert!(
+            compile("/a{b/")
+                .unwrap()
+                .matches("a{b", &mut None, &mut SearchBudget::default())
+        );
     }
 
     #[test]

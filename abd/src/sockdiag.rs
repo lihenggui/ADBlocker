@@ -18,10 +18,10 @@
 
 #![allow(unsafe_code, reason = "netlink")]
 
+use std::cell::RefCell;
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::os::fd::{AsRawFd, FromRawFd, OwnedFd};
-use std::sync::Mutex;
 
 const SOCK_DIAG_BY_FAMILY: u16 = 20;
 const NLM_F_REQUEST: u16 = 1;
@@ -152,7 +152,7 @@ fn open() -> io::Result<OwnedFd> {
     let fd = unsafe {
         libc::socket(
             libc::AF_NETLINK,
-            libc::SOCK_DGRAM | libc::SOCK_CLOEXEC,
+            libc::SOCK_DGRAM | libc::SOCK_CLOEXEC | libc::SOCK_NONBLOCK,
             libc::NETLINK_SOCK_DIAG,
         )
     };
@@ -160,45 +160,29 @@ fn open() -> io::Result<OwnedFd> {
         return Err(io::Error::last_os_error());
     }
     // SAFETY: just opened, and owned by nothing else.
-    let fd = unsafe { OwnedFd::from_raw_fd(fd) };
-    // The kernel answers before send() returns; the wait is bounded all
-    // the same, so that a connection is never held up by this. A socket
-    // without the bound is not used: it would wait with the lock held.
-    let wait = libc::timeval {
-        tv_sec: 1,
-        tv_usec: 0,
-    };
-    // SAFETY: the timeval lives through the call and is passed with its size.
-    let set = unsafe {
-        libc::setsockopt(
-            fd.as_raw_fd(),
-            libc::SOL_SOCKET,
-            libc::SO_RCVTIMEO,
-            (&raw const wait).cast(),
-            size_of::<libc::timeval>() as u32,
-        )
-    };
-    if set < 0 {
-        return Err(io::Error::last_os_error());
-    }
-    Ok(fd)
+    Ok(unsafe { OwnedFd::from_raw_fd(fd) })
 }
 
-/// The socket the questions are asked on, and the number of the last one.
-/// One for the process, opened when first needed: a socket for every
-/// connection would be three system calls more for each.
-static SOCKET: Mutex<(Option<OwnedFd>, u32)> = Mutex::new((None, 0));
+thread_local! {
+    // The kernel handles each exact lookup during send(). Serializing on
+    // the calling thread lets the runtime workers keep independent sockets.
+    static SOCKET: RefCell<(Option<OwnedFd>, u32)> = const { RefCell::new((None, 0)) };
+}
 
 fn ask(
     protocol: Protocol,
     local: SocketAddr,
     remote: SocketAddr,
 ) -> io::Result<Option<(u32, Option<u32>)>> {
-    // Held for the question and its answer: the kernel answers at once.
-    let mut socket = SOCKET
-        .lock()
-        .unwrap_or_else(|poisoned| poisoned.into_inner());
-    let (fd, last) = &mut *socket;
+    SOCKET.with_borrow_mut(|socket| query(socket, protocol, local, remote))
+}
+
+fn query(
+    (fd, last): &mut (Option<OwnedFd>, u32),
+    protocol: Protocol,
+    local: SocketAddr,
+    remote: SocketAddr,
+) -> io::Result<Option<(u32, Option<u32>)>> {
     *last = last.wrapping_add(1);
     let seq = *last;
     let asked = (|| {

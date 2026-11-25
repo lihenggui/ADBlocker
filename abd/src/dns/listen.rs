@@ -15,6 +15,8 @@
 //! Where TPROXY delivers the lookups, and the system a lookup is served
 //! with.
 
+use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::future::Future;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
@@ -228,8 +230,7 @@ async fn accept(host: Arc<dyn Host>, streams: Arc<Slots>, listener: TcpListener)
 /// The system a lookup is served with.
 pub(super) struct System {
     ctx: Arc<Ctx>,
-    /// Kept open: a socket for every lookup would be calls more for each.
-    routes: Mutex<Option<Netlink>>,
+    replies: Mutex<ReplySockets>,
     stop: Arc<Notify>,
     gave_up: AtomicBool,
 }
@@ -238,34 +239,71 @@ impl System {
     pub(super) fn new(ctx: Arc<Ctx>, stop: Arc<Notify>) -> Self {
         Self {
             ctx,
-            routes: Mutex::new(None),
+            replies: Mutex::default(),
             stop,
             gave_up: AtomicBool::new(false),
         }
     }
+}
 
-    /// A socket that sends as `server`. Binding it fails while another
-    /// program holds the server's port on every address without letting
-    /// others share it.
-    fn as_server(server: SocketAddr) -> io::Result<Socket> {
-        let s = Socket::new(
-            Domain::for_address(server),
-            Type::DGRAM,
-            Some(Protocol::UDP),
-        )?;
-        // Others may be answering for the same server at the same time.
-        s.set_reuse_address(true)?;
-        match server {
-            SocketAddr::V4(_) => s.set_ip_transparent_v4(true)?,
-            SocketAddr::V6(_) => {
-                s.set_only_v6(true)?;
+thread_local! {
+    // RTM_GETROUTE is answered during send. The DNS workers can ask
+    // independently, without waiting for a reply or for each other.
+    static ROUTES: RefCell<Option<Netlink>> = const { RefCell::new(None) };
+}
+
+// Packet info can select an address, but cannot change the bound source
+// port. Keep a small number of exact bindings for the servers in use.
+const MAX_REPLY_SOCKETS: usize = 8;
+
+#[derive(Default)]
+struct ReplySockets(VecDeque<(SocketAddr, Arc<Socket>)>);
+
+impl ReplySockets {
+    fn get(&mut self, server: SocketAddr) -> Option<Arc<Socket>> {
+        let index = self.0.iter().position(|(address, _)| *address == server)?;
+        let entry = self.0.remove(index)?;
+        let socket = entry.1.clone();
+        self.0.push_back(entry);
+        Some(socket)
+    }
+
+    fn insert(&mut self, server: SocketAddr, socket: Arc<Socket>) -> Arc<Socket> {
+        if let Some(existing) = self.get(server) {
+            return existing;
+        }
+        if self.0.len() == MAX_REPLY_SOCKETS {
+            self.0.pop_front();
+        }
+        self.0.push_back((server, socket.clone()));
+        socket
+    }
+}
+
+/// A socket that sends from the original server's address and port.
+fn as_server(server: SocketAddr, transparent: bool) -> io::Result<Socket> {
+    let s = Socket::new(
+        Domain::for_address(server),
+        Type::DGRAM,
+        Some(Protocol::UDP),
+    )?;
+    // Others may be answering for the same server at the same time.
+    s.set_reuse_address(true)?;
+    match server {
+        SocketAddr::V4(_) if transparent => s.set_ip_transparent_v4(true)?,
+        SocketAddr::V6(_) => {
+            s.set_only_v6(true)?;
+            if transparent {
                 s.set_ip_transparent_v6(true)?;
             }
         }
-        s.set_nonblocking(true)?;
-        s.bind(&server.into())?;
-        Ok(s)
+        _ => {}
     }
+    // This socket only sends. Bound the kernel queue for any stray input.
+    s.set_recv_buffer_size(1)?;
+    s.set_nonblocking(true)?;
+    s.bind(&server.into())?;
+    Ok(s)
 }
 
 impl Host for System {
@@ -288,19 +326,18 @@ impl Host for System {
     }
 
     fn is_local(&self, ip: IpAddr) -> bool {
-        let mut routes = self
-            .routes
-            .lock()
-            .unwrap_or_else(|poisoned| poisoned.into_inner());
-        let asked = match &mut *routes {
-            Some(netlink) => netlink.is_local(ip),
-            None => Netlink::open().and_then(|netlink| routes.insert(netlink).is_local(ip)),
-        };
-        // A socket something went wrong with is not asked again, and what
-        // could not be found out is taken for a server elsewhere.
-        asked.unwrap_or_else(|_| {
-            *routes = None;
-            false
+        ROUTES.with_borrow_mut(|routes| {
+            let asked = match routes {
+                Some(netlink) => netlink.is_local(ip),
+                None => {
+                    Netlink::open_lookup().and_then(|netlink| routes.insert(netlink).is_local(ip))
+                }
+            };
+            // A failed lookup has not established that this server is elsewhere.
+            asked.unwrap_or_else(|_| {
+                *routes = None;
+                true
+            })
         })
     }
 
@@ -317,8 +354,17 @@ impl Host for System {
     }
 
     fn reply(&self, server: SocketAddr, client: SocketAddr, answer: &[u8]) -> Result<(), Unsent> {
-        let s = Self::as_server(server).map_err(Unsent::Never)?;
-        s.send_to(answer, &client.into()).map_err(Unsent::Lost)?;
+        let cached = self.replies.lock().unwrap().get(server);
+        let socket = match cached {
+            Some(socket) => socket,
+            None => {
+                let socket = Arc::new(as_server(server, true).map_err(Unsent::Never)?);
+                self.replies.lock().unwrap().insert(server, socket)
+            }
+        };
+        socket
+            .send_to(answer, &client.into())
+            .map_err(Unsent::Lost)?;
         Ok(())
     }
 
@@ -331,5 +377,68 @@ impl Host for System {
 
     fn verbose(&self) -> bool {
         self.ctx.hooks.verbose
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use super::super::DNS_PORT;
+    use super::*;
+
+    #[test]
+    fn a_nonblocking_route_socket_distinguishes_local_and_remote_addresses() {
+        let mut routes = Netlink::open_lookup().unwrap();
+        for ip in [Ipv4Addr::LOCALHOST.into(), Ipv6Addr::LOCALHOST.into()] {
+            assert!(routes.is_local(ip).unwrap(), "{ip}");
+        }
+        assert!(!routes.is_local("198.51.100.53".parse().unwrap()).unwrap());
+        assert!(routes.is_local(Ipv4Addr::LOCALHOST.into()).unwrap());
+    }
+
+    #[test]
+    fn a_cached_reply_socket_keeps_its_source_address_and_port() {
+        let mut cache = ReplySockets::default();
+        for address in [Ipv4Addr::LOCALHOST.into(), Ipv6Addr::LOCALHOST.into()] {
+            let socket = as_server(SocketAddr::new(address, 0), false).unwrap();
+            let address = socket.local_addr().unwrap().as_socket().unwrap();
+            assert_source_for_two_clients(&mut cache, socket, address, address.ip());
+        }
+    }
+
+    #[test]
+    #[ignore = "requires CAP_NET_RAW and a route to the test source addresses through loopback"]
+    fn a_transparent_cached_reply_socket_reuses_a_foreign_dns_source() {
+        let mut cache = ReplySockets::default();
+        for (server, client) in [("198.51.100.53", "127.0.0.1"), ("2001:db8::53", "::1")] {
+            let address = SocketAddr::new(server.parse().unwrap(), DNS_PORT);
+            let socket = as_server(address, true).unwrap();
+            assert_source_for_two_clients(&mut cache, socket, address, client.parse().unwrap());
+        }
+    }
+
+    fn assert_source_for_two_clients(
+        cache: &mut ReplySockets,
+        socket: Socket,
+        address: SocketAddr,
+        client_ip: IpAddr,
+    ) {
+        let socket = cache.insert(address, Arc::new(socket));
+        for answer in [b"first", b"other"] {
+            let client = std::net::UdpSocket::bind((client_ip, 0)).unwrap();
+            client
+                .set_read_timeout(Some(Duration::from_secs(1)))
+                .unwrap();
+            let cached = cache.get(address).unwrap();
+            assert!(Arc::ptr_eq(&cached, &socket));
+            cached
+                .send_to(answer, &client.local_addr().unwrap().into())
+                .unwrap();
+            let mut buffer = [0; 64];
+            let (n, source) = client.recv_from(&mut buffer).unwrap();
+            assert_eq!(source, address);
+            assert_eq!(&buffer[..n], answer);
+        }
     }
 }

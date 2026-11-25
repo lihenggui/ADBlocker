@@ -74,7 +74,7 @@ fn write(regex: &mut String, pattern: &str, wildcard: &str) {
 
 #[cfg(test)]
 mod tests {
-    use super::super::compile;
+    use super::super::{SearchBudget, compile};
 
     #[test]
     fn basic_patterns_match_only_at_their_anchors_and_separators() {
@@ -120,8 +120,15 @@ mod tests {
             (r"odd?(a)[b]+\,\$", "x/odd?(a)[b]+,$/y", "x/odds(a)[b]+,$/y"),
         ] {
             let compiled = compile(pattern).unwrap();
-            assert!(compiled.matches(yes), "{pattern} should match {yes}");
-            assert!(!compiled.matches(no), "{pattern} should miss {no}");
+            let (mut cache, mut budget) = (None, SearchBudget::default());
+            assert!(
+                compiled.matches(yes, &mut cache, &mut budget),
+                "{pattern} should match {yes}"
+            );
+            assert!(
+                !compiled.matches(no, &mut cache, &mut budget),
+                "{pattern} should miss {no}"
+            );
         }
     }
 }

@@ -25,7 +25,7 @@ pub(super) type Compiled = (u64, Result<filter::Filters>);
 
 /// Called both for a reload request and when the worker finishes. Recheck
 /// the files then, so even several edits during a build need only one worker.
-pub(super) fn refresh_filters(
+pub(super) async fn refresh_filters(
     jobs: &mut tokio::task::JoinSet<Compiled>,
     active: &RwLock<Arc<filter::Filters>>,
     paths: &Paths,
@@ -35,7 +35,10 @@ pub(super) fn refresh_filters(
     if !jobs.is_empty() {
         return Ok(false);
     }
-    let files = filter::ListFiles::read(&[&paths.lists(), &paths.rules()])?;
+    let (lists, rules) = (paths.lists(), paths.rules());
+    let files = tokio::task::spawn_blocking(move || filter::ListFiles::read(&[&lists, &rules]))
+        .await
+        .context("list reader task failed")??;
     if let Some((generation, result)) = finished
         && files.generation == generation
     {
@@ -49,8 +52,9 @@ pub(super) fn refresh_filters(
     Ok(false)
 }
 
-pub(super) fn on_signal(jobs: &mut JoinSet<Compiled>, ctx: &mitm::Ctx, paths: &Paths) {
-    if let Err(e) = refresh_filters(jobs, &ctx.lists.filters, paths, ctx.hooks.verbose, None) {
+pub(super) async fn on_signal(jobs: &mut JoinSet<Compiled>, ctx: &mitm::Ctx, paths: &Paths) {
+    if let Err(e) = refresh_filters(jobs, &ctx.lists.filters, paths, ctx.hooks.verbose, None).await
+    {
         eprintln!("lists: kept as they were: {e}");
     }
     ctx.reload_sources(paths, |policy, forget| {
@@ -58,7 +62,7 @@ pub(super) fn on_signal(jobs: &mut JoinSet<Compiled>, ctx: &mitm::Ctx, paths: &P
     });
 }
 
-pub(super) fn on_compiled(
+pub(super) async fn on_compiled(
     jobs: &mut JoinSet<Compiled>,
     ctx: &mitm::Ctx,
     paths: &Paths,
@@ -72,7 +76,9 @@ pub(super) fn on_compiled(
         paths,
         ctx.hooks.verbose,
         Some(compiled),
-    ) {
+    )
+    .await
+    {
         Ok(true) => write_state(ctx, paths, v6),
         Err(e) => eprintln!("lists: kept as they were: {e}"),
         Ok(false) => {}

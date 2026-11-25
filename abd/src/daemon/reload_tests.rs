@@ -63,9 +63,9 @@ async fn both_listeners_accept_fresh_connections_during_a_blocked_control_update
 #[test]
 fn a_retired_group_does_not_need_a_scoped_package_manager_query() {
     let mut active = BTreeMap::from([
-        (10_001, "@com.group".to_owned()),
-        (1_010_001, "37:@com.group".to_owned()),
-        (1_110_001, "38:com.other".to_owned()),
+        (10_001, Arc::from("@com.group")),
+        (1_010_001, Arc::from("37:@com.group")),
+        (1_110_001, Arc::from("38:com.other")),
     ]);
     let changed = BTreeSet::from([10, 11]);
     assert_eq!(changed_group_users(&active, &changed), BTreeSet::from([10]));
@@ -76,10 +76,13 @@ fn a_retired_group_does_not_need_a_scoped_package_manager_query() {
 #[test]
 fn live_capture_requires_every_previous_full_app_identity() {
     let active = BTreeMap::from([
-        (10_001, "com.app".to_owned()),
-        (1_010_001, "33:com.app".to_owned()),
+        (10_001, Arc::<str>::from("com.app")),
+        (1_010_001, Arc::from("33:com.app")),
     ]);
-    let mut resolved = active.clone();
+    let mut resolved: BTreeMap<_, _> = active
+        .iter()
+        .map(|(&uid, name)| (uid, name.to_string()))
+        .collect();
     resolved.insert(10_002, "com.other".to_owned());
     assert!(same_owners(&active, &resolved));
 
@@ -92,7 +95,10 @@ fn live_capture_requires_every_previous_full_app_identity() {
 
 #[test]
 fn a_failed_capture_update_leaves_no_apps_marked_as_actively_filtered() {
-    let active = RwLock::new(Arc::new(BTreeMap::from([(10_001, "com.app".to_owned())])));
+    let active = RwLock::new(Arc::new(BTreeMap::from([(
+        10_001,
+        Arc::<str>::from("com.app"),
+    )])));
     let result = set_capture(&active, |uids| {
         assert_eq!(*uids, BTreeSet::from([10_001]));
         bail!("cannot install capture rules")
@@ -103,7 +109,7 @@ fn a_failed_capture_update_leaves_no_apps_marked_as_actively_filtered() {
 
 #[tokio::test(start_paused = true)]
 async fn a_failed_capture_update_retries_without_another_app_change() {
-    let selected = Arc::new(BTreeMap::from([(10_001, "com.app".to_owned())]));
+    let selected = Arc::new(BTreeMap::from([(10_001, Arc::<str>::from("com.app"))]));
     let active = RwLock::new(selected.clone());
     let mut retry = watch::Retry::new();
 
@@ -129,19 +135,22 @@ async fn only_the_latest_lists_are_published_after_edits_during_a_build() {
     let initial = Arc::new(load_filters(&paths, false).unwrap());
     let active = RwLock::new(initial.clone());
     let mut jobs = tokio::task::JoinSet::new();
-    let refresh =
-        |jobs: &mut _, result| refresh_filters(jobs, &active, &paths, false, result).unwrap();
+    let refresh = async |jobs: &mut _, result| {
+        refresh_filters(jobs, &active, &paths, false, result)
+            .await
+            .unwrap()
+    };
     std::fs::write(paths.user_rules(), "||first.example^").unwrap();
-    refresh(&mut jobs, None);
+    refresh(&mut jobs, None).await;
     std::fs::write(paths.user_rules(), "||second.example^").unwrap();
-    refresh(&mut jobs, None);
+    refresh(&mut jobs, None).await;
     assert_eq!(jobs.len(), 1);
     let first = jobs.join_next().await.unwrap().unwrap();
-    assert!(!refresh(&mut jobs, Some(first)));
+    assert!(!refresh(&mut jobs, Some(first)).await);
     assert!(Arc::ptr_eq(&initial, &active.read().unwrap()));
     let latest = jobs.join_next().await.unwrap().unwrap();
-    assert!(refresh(&mut jobs, Some(latest)));
+    assert!(refresh(&mut jobs, Some(latest)).await);
     assert!(active.read().unwrap().blocks_host("second.example"));
-    assert!(!refresh(&mut jobs, None));
+    assert!(!refresh(&mut jobs, None).await);
     assert!(jobs.is_empty());
 }

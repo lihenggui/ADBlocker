@@ -167,8 +167,12 @@ impl RequestRules {
         kind: &str,
         method: &str,
     ) -> Check {
-        let page = parse_http_page(source);
-        let page = page.as_ref().map_or(Page::NONE, Page::Named);
+        let parsed_source = (source != url).then(|| parse_http_page(source)).flatten();
+        let page = if source == url {
+            Page::Itself
+        } else {
+            parsed_source.as_ref().map_or(Page::NONE, Page::Named)
+        };
         let Some(mut req) = Self::request_with_page(url, page, kind, method) else {
             return Check::default();
         };
@@ -321,7 +325,11 @@ impl Filters {
                 &url, &host, &host, "other", false, "GET",
             ))
         } else {
-            Request::new(&url, &url, "other", "GET").ok()
+            let url = parse_url(&url)?;
+            let host = url.hostname();
+            Some(Request::preparsed(
+                &url.url, host, host, "other", false, "GET",
+            ))
         }
     }
 
@@ -332,22 +340,41 @@ impl Filters {
         let Some(url) = crate::host::canonical_http_url(url) else {
             return Hiding::default();
         };
-        let Ok(page) = Request::new(&url, &url, "document", "GET") else {
+        let Some(parsed) = parse_url(&url) else {
             return Hiding::default();
         };
-        if PageExceptions::matches(self.page_exceptions.all.as_ref(), &page) {
+        let exceptions = &self.page_exceptions;
+        let page = if exceptions.all.is_some()
+            || exceptions.script.is_some()
+            || exceptions.element.is_some()
+            || exceptions.specific.is_some()
+        {
+            let host = parsed.hostname();
+            Some(Request::preparsed(
+                &parsed.url,
+                host,
+                host,
+                "document",
+                false,
+                "GET",
+            ))
+        } else {
+            None
+        };
+        let excepted = |engine: Option<&Engine>| {
+            page.as_ref()
+                .is_some_and(|page| PageExceptions::matches(engine, page))
+        };
+        if excepted(exceptions.all.as_ref()) {
             return Hiding::default();
         }
         let found = self.requests.full.url_cosmetic_resources(&url);
-        let no_scripts = PageExceptions::matches(self.page_exceptions.script.as_ref(), &page);
-        let no_elements = PageExceptions::matches(self.page_exceptions.element.as_ref(), &page);
-        let generic = self
-            .page_exceptions
+        let no_scripts = excepted(exceptions.script.as_ref());
+        let no_elements = excepted(exceptions.element.as_ref());
+        let generic = exceptions
             .specific
             .as_ref()
-            .and_then(|(rules, generic)| {
-                PageExceptions::matches(Some(rules), &page).then_some(generic)
-            });
+            .and_then(|(rules, generic)| excepted(Some(rules)).then_some(generic));
         let actions = if no_elements || generic.is_some() {
             HashSet::new()
         } else {

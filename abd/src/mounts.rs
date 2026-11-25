@@ -211,14 +211,21 @@ impl Mounts {
         self
     }
 
-    fn directory(&self, uid: u32) -> Option<(Arc<Path>, State)> {
+    async fn directory(&self, uid: u32) -> Option<Option<(Arc<Path>, State)>> {
         let cached = self.directories.lock().unwrap().get(&uid).cloned();
-        if let Some(dir) = cached
-            && let Some(stamp) = state(&dir)
-        {
-            return Some((dir, stamp));
+        let resolved = scan(move || {
+            if let Some(dir) = cached
+                && let Some(stamp) = state(&dir)
+            {
+                return (Some((dir, stamp)), true);
+            }
+            (directory(uid), false)
+        })
+        .await?;
+        let (resolved, cached) = resolved;
+        if cached {
+            return Some(resolved);
         }
-        let resolved = directory(uid);
         let mut cache = self.directories.lock().unwrap();
         cache.remove(&uid);
         if let Some((dir, _)) = &resolved
@@ -226,7 +233,7 @@ impl Mounts {
         {
             cache.insert(uid, dir.clone());
         }
-        resolved
+        Some(resolved)
     }
 
     /// Whether every process of `uid` has the stores mounted, having
@@ -255,7 +262,9 @@ impl Mounts {
     async fn all_mounted(&self, uid: u32) -> bool {
         // Read before the processes are gone through: one that starts
         // meanwhile changes the directory, and is found by the next look.
-        let directory = self.directory(uid);
+        let Some(directory) = self.directory(uid).await else {
+            return false;
+        };
         let before = directory.as_ref().map(|(_, state)| *state);
         if let (Some(now), Some((then, trusted))) =
             (before, self.seen.lock().unwrap().get(&uid).copied())
@@ -300,9 +309,9 @@ impl Mounts {
             if !self.is_given(uid) {
                 return;
             }
-            if let Some((trusted, mounted)) = self
-                .go_through(uid, self.directory(uid).map(|(dir, _)| dir))
-                .await
+            if let Some(directory) = self.directory(uid).await
+                && let Some((trusted, mounted)) =
+                    self.go_through(uid, directory.map(|(dir, _)| dir)).await
             {
                 if mounted {
                     // Before the app is told, which takes a while, so that its

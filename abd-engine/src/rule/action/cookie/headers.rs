@@ -14,18 +14,37 @@
 
 //! Apply cookie actions to individual fields without collecting an HTTP body.
 
+use crate::list_regex::{MatchCache, SearchBudget};
 use hyper::HeaderMap;
 use hyper::header::{COOKIE, HeaderName, HeaderValue, SET_COOKIE};
 
 use super::{Attributes, Change, Compiled, age_digits, cookie_name, date};
 
+struct Search<'a> {
+    rules: Vec<(&'a Compiled, MatchCache)>,
+    budget: SearchBudget,
+}
+
+impl<'a> Search<'a> {
+    fn new(rules: impl Iterator<Item = &'a Compiled>) -> Self {
+        Self {
+            rules: rules.map(|rule| (rule, None)).collect(),
+            budget: SearchBudget::default(),
+        }
+    }
+}
+
 pub(crate) fn request<'a>(headers: &mut HeaderMap, rules: impl Iterator<Item = &'a Compiled>) {
     if !headers.contains_key(COOKIE) {
         return;
     }
-    let rules: Vec<_> = rules.collect();
-    if rules.iter().any(|rule| rule.change == Change::Suppress) {
-        edit_fields(headers, COOKIE, |text| request_field(text, &rules));
+    let mut search = Search::new(rules);
+    if search
+        .rules
+        .iter()
+        .any(|(rule, _)| rule.change == Change::Suppress)
+    {
+        edit_fields(headers, COOKIE, |text| request_field(text, &mut search));
     }
 }
 
@@ -41,13 +60,17 @@ fn response_with_clock<'a>(
     if !headers.contains_key(SET_COOKIE) {
         return;
     }
-    let rules: Vec<_> = rules.collect();
-    if rules.iter().any(|rule| rule.change != Change::Exempt) {
+    let mut search = Search::new(rules);
+    if search
+        .rules
+        .iter()
+        .any(|(rule, _)| rule.change != Change::Exempt)
+    {
         // An absolute expiry has second precision. Round the clock up so
         // a fractional second cannot round the remaining lifetime up.
         let now = i64::try_from(now_ms().div_ceil(1000)).unwrap_or(i64::MAX);
         edit_fields(headers, SET_COOKIE, |text| {
-            response_field(text, &rules, now)
+            response_field(text, &mut search, now)
         });
     }
 }
@@ -58,7 +81,7 @@ enum Edit {
     Replace(Vec<u8>),
 }
 
-fn edit_fields(headers: &mut HeaderMap, name: HeaderName, edit: impl Fn(&[u8]) -> Edit) {
+fn edit_fields(headers: &mut HeaderMap, name: HeaderName, mut edit: impl FnMut(&[u8]) -> Edit) {
     let mut changed = false;
     let fields: Vec<_> = headers
         .get_all(&name)
@@ -103,7 +126,7 @@ fn pair_name(pair: &str) -> Option<&str> {
     .then_some(name)
 }
 
-fn request_field(text: &[u8], rules: &[&Compiled]) -> Edit {
+fn request_field(text: &[u8], search: &mut Search<'_>) -> Edit {
     let Ok(text) = std::str::from_utf8(text) else {
         return Edit::Keep;
     };
@@ -113,7 +136,7 @@ fn request_field(text: &[u8], rules: &[&Compiled]) -> Edit {
         let Some(name) = pair_name(pair) else {
             return Edit::Keep;
         };
-        if matches!(change(name.as_bytes(), rules), Some(Change::Suppress)) {
+        if matches!(change(name.as_bytes(), search), Some(Change::Suppress)) {
             removed = true;
         } else {
             kept.push(pair);
@@ -128,9 +151,12 @@ fn request_field(text: &[u8], rules: &[&Compiled]) -> Edit {
     }
 }
 
-fn change(name: &[u8], rules: &[&Compiled]) -> Option<Change> {
+fn change(name: &[u8], search: &mut Search<'_>) -> Option<Change> {
     let mut result = None;
-    for rule in rules.iter().filter(|rule| rule.matches(name)) {
+    for (rule, cache) in &mut search.rules {
+        if !rule.matches(name, cache, &mut search.budget) {
+            continue;
+        }
         result = Some(match (result, rule.change) {
             (_, Change::Exempt) => return None,
             (Some(Change::Suppress), _) | (_, Change::Suppress) => Change::Suppress,
@@ -149,7 +175,7 @@ fn min_age(first: Option<i64>, second: Option<i64>) -> Option<i64> {
     first.into_iter().chain(second).min()
 }
 
-fn response_field(text: &[u8], rules: &[&Compiled], now: i64) -> Edit {
+fn response_field(text: &[u8], search: &mut Search<'_>, now: i64) -> Edit {
     // RFC 6265 §5.2 decides whether there is a name-value pair before
     // interpreting any attributes. Treat its name and value as bytes.
     let mut fields = text.split(|&byte| byte == b';').map(<[u8]>::trim_ascii);
@@ -161,7 +187,7 @@ fn response_field(text: &[u8], rules: &[&Compiled], now: i64) -> Edit {
     if name.is_empty() {
         return Edit::Keep;
     }
-    match change(name, rules) {
+    match change(name, search) {
         Some(Change::Suppress) => Edit::Remove,
         Some(Change::Attributes(attributes)) => rewrite(pair, fields, attributes, now),
         Some(Change::Exempt) | None => Edit::Keep,

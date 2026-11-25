@@ -14,17 +14,18 @@
 
 use std::collections::{HashMap, HashSet};
 use std::io;
-use std::net::Ipv4Addr;
-use std::sync::Arc;
+use std::net::{Ipv4Addr, SocketAddr};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bytes::Bytes;
+use ring::rand::{SecureRandom as _, SystemRandom};
 use tokio::io::{AsyncReadExt as _, AsyncWriteExt as _};
-use tokio::net::{TcpListener, TcpStream};
-use tokio::sync::{Notify, mpsc, oneshot};
+use tokio::net::{TcpListener, TcpSocket, TcpStream};
+use tokio::sync::{Notify, mpsc, oneshot, watch};
 
 use super::Handler;
-use crate::stack::{Id, Opened, Read, Stack};
+use crate::stack::{Id, MAX_FLOWS, Opened, Read, Stack};
 
 /// How much is passed at a time, and how many such pieces for an app may
 /// wait for the socket before no more is taken from the stack.
@@ -44,8 +45,8 @@ enum ToSocket {
 
 /// What the task of a connection tells the stack's task.
 pub(super) enum FromSocket {
-    /// What is for the app, and whom to tell once the stack has it all.
-    Data(Id, Bytes, oneshot::Sender<()>),
+    /// What is for the app. The sender waits for the flow to take it.
+    Data(Id, Bytes),
     /// Nothing more is for the app.
     End(Id),
     /// The connection was refused or broke: the app is to have a reset.
@@ -57,7 +58,8 @@ struct Flow {
     /// For what the app sent. Dropped to say the app reset the connection.
     to_socket: mpsc::Sender<ToSocket>,
     /// What is for the app and not yet all in the stack.
-    pending: Option<(Bytes, oneshot::Sender<()>)>,
+    pending: Option<Bytes>,
+    taken: watch::Sender<()>,
     /// Nothing more is for the app once `pending` is written.
     ending: bool,
     /// The app was told so.
@@ -66,22 +68,90 @@ struct Flow {
     app_ended: bool,
 }
 
-/// Two ends of a connection on the loopback interface.
-///
-/// A listener of its own for each, on a port of the kernel's choosing and
-/// gone at once: what is accepted is taken only if it is the end made
-/// here, since any app on the device can connect to the loopback.
-async fn pair() -> io::Result<(TcpStream, TcpStream)> {
-    let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await?;
-    let ours = TcpStream::connect(listener.local_addr()?).await?;
-    let from = ours.local_addr()?;
+type Ticket = [u8; 16];
+
+struct Waiter {
+    ticket: Ticket,
+    accepted: oneshot::Sender<TcpStream>,
+}
+
+struct Pairs {
+    address: SocketAddr,
+    random: SystemRandom,
+    waiting: Mutex<HashMap<SocketAddr, Waiter>>,
+}
+
+struct PendingPair<'a> {
+    pairs: &'a Pairs,
+    peer: SocketAddr,
+    ticket: Ticket,
+}
+
+impl Drop for PendingPair<'_> {
+    fn drop(&mut self) {
+        let mut waiting = self.pairs.waiting.lock().unwrap();
+        if waiting
+            .get(&self.peer)
+            .is_some_and(|p| p.ticket == self.ticket)
+        {
+            waiting.remove(&self.peer);
+        }
+    }
+}
+
+impl Pairs {
+    async fn connect(&self) -> io::Result<(TcpStream, TcpStream)> {
+        let socket = TcpSocket::new_v4()?;
+        socket.bind((Ipv4Addr::LOCALHOST, 0).into())?;
+        let peer = socket.local_addr()?;
+        let mut ticket = [0; 16];
+        self.random
+            .fill(&mut ticket)
+            .map_err(|_| io::Error::other("loopback ticket"))?;
+        let (accepted, incoming) = oneshot::channel();
+        {
+            let mut waiting = self.waiting.lock().unwrap();
+            if waiting.len() >= MAX_FLOWS {
+                return Err(io::ErrorKind::WouldBlock.into());
+            }
+            waiting.insert(peer, Waiter { ticket, accepted });
+        }
+        let _pending = PendingPair {
+            pairs: self,
+            peer,
+            ticket,
+        };
+        let mut ours = socket.connect(self.address).await?;
+        ours.set_nodelay(true)?;
+        ours.write_all(&ticket).await?;
+        let mut theirs = incoming
+            .await
+            .map_err(|_| io::ErrorKind::ConnectionAborted)?;
+        // A stale connection may still be in the listener backlog when
+        // its peer port is reused. Only our live socket has this ticket.
+        let mut received = [0; 16];
+        theirs.read_exact(&mut received).await?;
+        if received != ticket {
+            return Err(io::ErrorKind::PermissionDenied.into());
+        }
+        theirs.set_nodelay(true)?;
+        Ok((ours, theirs))
+    }
+
+    fn accept(&self, stream: TcpStream, peer: SocketAddr) {
+        if let Some(waiter) = self.waiting.lock().unwrap().remove(&peer) {
+            // Cancellation drops the recipient, and then this socket too.
+            let _ = waiter.accepted.send(stream);
+        }
+    }
+}
+
+async fn accept_pairs(listener: TcpListener, pairs: Arc<Pairs>) {
     loop {
-        let (theirs, peer) = listener.accept().await?;
-        if peer == from {
-            // Nothing is gained on the loopback by waiting to fill a packet.
-            ours.set_nodelay(true)?;
-            theirs.set_nodelay(true)?;
-            return Ok((ours, theirs));
+        match listener.accept().await {
+            Ok((stream, peer)) => pairs.accept(stream, peer),
+            // Resource exhaustion must not stop the established flows.
+            Err(_) => tokio::time::sleep(Duration::from_millis(100)).await,
         }
     }
 }
@@ -94,9 +164,11 @@ async fn carry(
     mut from_stack: mpsc::Receiver<ToSocket>,
     to_stack: mpsc::Sender<FromSocket>,
     room: Arc<Notify>,
+    pairs: Arc<Pairs>,
+    mut taken: watch::Receiver<()>,
 ) {
     let id = opened.id;
-    let Ok(Ok((ours, theirs))) = tokio::time::timeout(PAIR_TIME, pair()).await else {
+    let Ok(Ok((ours, theirs))) = tokio::time::timeout(PAIR_TIME, pairs.connect()).await else {
         let _ = to_stack.send(FromSocket::Reset(id)).await;
         return;
     };
@@ -139,14 +211,13 @@ async fn carry(
                     }
                 }
                 Ok(n) => {
-                    let (taken, took) = oneshot::channel();
                     let piece = Bytes::copy_from_slice(&buf[..n]);
-                    if to_stack.send(FromSocket::Data(id, piece, taken)).await.is_err() {
+                    if to_stack.send(FromSocket::Data(id, piece)).await.is_err() {
                         return;
                     }
                     // No more is read until the stack has this: the app
                     // may be slower than the server.
-                    if took.await.is_err() {
+                    if taken.changed().await.is_err() {
                         // The app is gone, and what was for it with it.
                         for_app = false;
                     }
@@ -167,13 +238,13 @@ impl Flow {
             return Self::receiver_closed(id, stack, moved);
         }
         // What is for the app, as far as the stack has room.
-        if let Some((bytes, taken)) = self.pending.take() {
+        if let Some(bytes) = self.pending.take() {
             let wrote = stack.write(id, &bytes);
             *moved |= wrote > 0;
             if wrote < bytes.len() && stack.open(id) {
-                self.pending = Some((bytes.slice(wrote..), taken));
+                self.pending = Some(bytes.slice(wrote..));
             } else {
-                let _ = taken.send(());
+                self.taken.send_replace(());
             }
         }
         if self.ending && self.pending.is_none() && !self.finished {
@@ -220,6 +291,8 @@ impl Flow {
 
 pub(super) struct Flows {
     active: HashMap<Id, Flow>,
+    pairs: Arc<Pairs>,
+    accepting: tokio::task::AbortHandle,
     handler: Handler,
     to_stack: mpsc::Sender<FromSocket>,
     pub(super) room: Arc<Notify>,
@@ -228,11 +301,26 @@ pub(super) struct Flows {
     piece: Vec<u8>,
 }
 
+impl Drop for Flows {
+    fn drop(&mut self) {
+        self.accepting.abort();
+    }
+}
+
 impl Flows {
-    pub(super) fn new(handler: Handler) -> (Self, mpsc::Receiver<FromSocket>) {
+    pub(super) async fn new(handler: Handler) -> io::Result<(Self, mpsc::Receiver<FromSocket>)> {
+        let listener = TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).await?;
+        let pairs = Arc::new(Pairs {
+            address: listener.local_addr()?,
+            random: SystemRandom::new(),
+            waiting: Mutex::default(),
+        });
+        let accepting = tokio::spawn(accept_pairs(listener, pairs.clone())).abort_handle();
         let (to_stack, from_sockets) = mpsc::channel(64);
         let flows = Self {
             active: HashMap::new(),
+            pairs,
+            accepting,
             handler,
             to_stack,
             room: Arc::new(Notify::new()),
@@ -240,16 +328,14 @@ impl Flows {
             changed: HashSet::new(),
             piece: vec![0u8; PIECE],
         };
-        (flows, from_sockets)
+        Ok((flows, from_sockets))
     }
 
     pub(super) fn on_socket(&mut self, stack: &mut Stack, said: FromSocket) {
         match said {
-            FromSocket::Data(id, bytes, taken) => {
-                // Dropped if the connection is no more, which tells
-                // its task so.
+            FromSocket::Data(id, bytes) => {
                 if let Some(flow) = self.active.get_mut(&id) {
-                    flow.pending = Some((bytes, taken));
+                    flow.pending = Some(bytes);
                     stack.changed(id);
                 }
             }
@@ -296,11 +382,13 @@ impl Flows {
 
     fn open(&mut self, opened: Opened) {
         let (to_socket, from_stack) = mpsc::channel(WAITING);
+        let (ready, taken) = watch::channel(());
         self.active.insert(
             opened.id,
             Flow {
                 to_socket,
                 pending: None,
+                taken: ready,
                 ending: false,
                 finished: false,
                 app_ended: false,
@@ -311,7 +399,15 @@ impl Flows {
             self.to_stack.clone(),
             self.room.clone(),
         );
-        tokio::spawn(carry(opened, handler, from_stack, to_stack, room));
+        tokio::spawn(carry(
+            opened,
+            handler,
+            from_stack,
+            to_stack,
+            room,
+            self.pairs.clone(),
+            taken,
+        ));
     }
 }
 
@@ -321,6 +417,59 @@ mod tests {
     use crate::fake::{MTU, app_and_channels};
     use crate::tunnel::Tun;
     use smoltcp::wire::{Ipv4Packet, TcpPacket};
+
+    #[tokio::test]
+    async fn one_listener_routes_live_pairs_and_closes_unregistered_connections() {
+        let (flows, _) = Flows::new(Arc::new(|_, _, _| unreachable!()))
+            .await
+            .unwrap();
+        tokio::time::timeout(PAIR_TIME, async {
+            let mut stranger = TcpStream::connect(flows.pairs.address).await.unwrap();
+            let (first, second) = tokio::join!(flows.pairs.connect(), flows.pairs.connect());
+            let (mut first, mut first_peer) = first.unwrap();
+            let (mut second, mut second_peer) = second.unwrap();
+            assert_eq!(
+                first_peer.local_addr().unwrap(),
+                second_peer.local_addr().unwrap()
+            );
+            first.write_all(b"A").await.unwrap();
+            second.write_all(b"B").await.unwrap();
+            assert_eq!(first_peer.read_u8().await.unwrap(), b'A');
+            assert_eq!(second_peer.read_u8().await.unwrap(), b'B');
+            assert_eq!(stranger.read(&mut [0]).await.unwrap(), 0);
+        })
+        .await
+        .unwrap();
+    }
+
+    #[tokio::test]
+    async fn a_loopback_connection_with_the_wrong_ticket_cannot_carry_a_flow() {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let pairs = Pairs {
+            address: listener.local_addr().unwrap(),
+            random: SystemRandom::new(),
+            waiting: Mutex::default(),
+        };
+        let substitute = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let mut stranger = TcpStream::connect(substitute.local_addr().unwrap())
+            .await
+            .unwrap();
+        let (wrong, _) = substitute.accept().await.unwrap();
+        stranger.write_all(&[0; 16]).await.unwrap();
+        // Deliver a stream other than the one for this peer, as if a stale
+        // connection from the same ephemeral port were still in the backlog.
+        let dispatch = async {
+            let (actual, peer) = listener.accept().await.unwrap();
+            pairs.accept(wrong, peer);
+            actual
+        };
+        let (result, _actual) =
+            tokio::time::timeout(PAIR_TIME, async { tokio::join!(pairs.connect(), dispatch) })
+                .await
+                .unwrap();
+        assert_eq!(result.unwrap_err().kind(), io::ErrorKind::PermissionDenied);
+        assert!(pairs.waiting.lock().unwrap().is_empty());
+    }
 
     #[tokio::test]
     async fn a_closed_full_flow_receiver_resets_the_connection() {
@@ -348,18 +497,22 @@ mod tests {
         .await
         .unwrap();
 
-        let (mut flows, _) = Flows::new(Arc::new(|_, _, _| unreachable!()));
+        let (mut flows, _) = Flows::new(Arc::new(|_, _, _| unreachable!()))
+            .await
+            .unwrap();
         let (to_socket, mut receiver) = mpsc::channel(1);
         to_socket
             .try_send(ToSocket::Data(Bytes::from_static(b"queued")))
             .unwrap();
         receiver.close();
         assert_eq!(to_socket.capacity(), 0);
+        let (taken, _) = watch::channel(());
         flows.active.insert(
             id,
             Flow {
                 to_socket,
                 pending: None,
+                taken,
                 ending: false,
                 finished: false,
                 app_ended: false,

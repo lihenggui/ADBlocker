@@ -101,9 +101,9 @@ impl Daemon<'_> {
             result = &mut self.accepting => return ControlFlow::Break(self.listener_stopped(result)),
             _ = self.signals.term.recv() => return ControlFlow::Break(Ok(())),
             _ = self.signals.int.recv() => return ControlFlow::Break(Ok(())),
-            _ = self.signals.hup.recv() => self.on_hup(),
+            _ = self.signals.hup.recv() => self.on_hup().await,
             Some(result) = self.compiling.join_next(), if !self.compiling.is_empty() => {
-                if let Err(error) = reload::on_compiled(&mut self.compiling, self.ctx, self.paths, v6, result) {
+                if let Err(error) = reload::on_compiled(&mut self.compiling, self.ctx, self.paths, v6, result).await {
                     return ControlFlow::Break(Err(error));
                 }
             }
@@ -146,8 +146,8 @@ impl Daemon<'_> {
         ControlFlow::Continue(())
     }
 
-    fn on_hup(&mut self) {
-        reload::on_signal(&mut self.compiling, self.ctx, self.paths);
+    async fn on_hup(&mut self) {
+        reload::on_signal(&mut self.compiling, self.ctx, self.paths).await;
         self.reconcile.reapply(self.ipv6.on);
     }
 

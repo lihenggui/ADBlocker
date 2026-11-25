@@ -158,10 +158,12 @@ impl Lists {
     }
 }
 
+pub type ActiveApps = BTreeMap<u32, Arc<str>>;
+
 #[derive(Default)]
 pub struct Selection {
     /// The filtered apps, as the package each UID belongs to.
-    pub apps: RwLock<Arc<BTreeMap<u32, String>>>,
+    pub apps: RwLock<Arc<ActiveApps>>,
     /// A managed profile gets its own system roots and TLS sessions.
     pub profile_tls: RwLock<BTreeMap<u32, Arc<Tls>>>,
     /// Whether request-level rules apply, including on cleartext HTTP.
@@ -369,7 +371,12 @@ impl Ctx {
             }
         }
         let active_count = active.len();
-        *selection.apps.write().unwrap() = Arc::new(active);
+        *selection.apps.write().unwrap() = Arc::new(
+            active
+                .into_iter()
+                .map(|(uid, name)| (uid, Arc::from(name)))
+                .collect(),
+        );
         active_count
     }
 
@@ -385,7 +392,7 @@ impl Ctx {
         filters.for_app_with_pages(package, self.services.policy.has_shown_page(package))
     }
 
-    fn package(&self, uid: u32) -> Option<String> {
+    fn package(&self, uid: u32) -> Option<Arc<str>> {
         self.selection.apps.read().unwrap().get(&uid).cloned()
     }
 
@@ -395,7 +402,7 @@ impl Ctx {
             .read()
             .unwrap()
             .get(&uid)
-            .is_some_and(|package| package == expected)
+            .is_some_and(|package| package.as_ref() == expected)
     }
 
     pub fn has_address_rules(&self) -> bool {
@@ -561,7 +568,7 @@ pub async fn conduct(ctx: Arc<Ctx>, app: TcpStream, origin: Origin) -> Result<()
         let deadline = tokio::time::Instant::now() + HTTP_LOOK_TIME;
         let peeked = clienthello::peek(&app).await?;
         if matches!(peeked, Peeked::NotTls) && plaintext_http(&app, deadline).await? {
-            return serve_plaintext(ctx, app, origin, package).await;
+            return serve_plaintext(ctx, app, origin, package.to_string()).await;
         }
         Some(peeked)
     } else {
@@ -600,7 +607,7 @@ async fn inspect_tls(
     ctx: Arc<Ctx>,
     app: TcpStream,
     origin: Origin,
-    package: String,
+    package: Arc<str>,
     trusting: Trusting,
     hello: Hello,
     url_filtering: bool,
@@ -640,7 +647,7 @@ async fn inspect_tls(
             trace!(ctx, "retry   {package} {host}");
             let peer = Peer {
                 origin,
-                package: package.clone(),
+                package: package.to_string(),
                 host: host.clone(),
                 retry: Some(ticket),
             };
@@ -663,7 +670,7 @@ async fn inspect_tls(
         Verdict::Mitm => {
             let peer = Peer {
                 origin,
-                package,
+                package: package.to_string(),
                 host,
                 retry: None,
             };
