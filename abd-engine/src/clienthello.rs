@@ -195,7 +195,9 @@ fn parse_server_name(mut b: Cur<'_>) -> Option<Option<String>> {
         if kind == 0 {
             name = std::str::from_utf8(bytes)
                 .ok()
-                .map(|s| s.to_ascii_lowercase());
+                .and_then(|s| crate::host::canonical_authority(s, "https"))
+                .filter(|authority| !authority.explicit_port)
+                .map(|authority| authority.host);
         }
     }
     Some(name)

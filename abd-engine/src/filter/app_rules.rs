@@ -99,6 +99,7 @@ fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Result<Projected<'
         unscoped.push_str(option);
         separator = ',';
     }
+    let unscoped = rule::canonical_host_options(&unscoped).into_owned();
     let rule = Scoped {
         pattern: condition.pattern,
         unscoped,
@@ -447,6 +448,13 @@ mod tests {
         assert!(!f.blocks_host("api.shop.example"));
         let any = f.check("https://api.shop.example/ad", "", "other", "GET");
         assert!(!any.blocked);
+    }
+
+    #[test]
+    fn a_rule_for_an_app_keeps_mixed_case_destination_options() {
+        let f = filters("||ads.example/asset$app=com.reader,to=ADS.example");
+        assert!(blocked(&f, "com.reader", "https://ads.example/asset"));
+        assert!(!blocked(&f, "com.other", "https://ads.example/asset"));
     }
 
     #[test]

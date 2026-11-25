@@ -14,7 +14,6 @@
 
 use std::borrow::Cow;
 use std::collections::HashSet;
-use std::net::Ipv6Addr;
 use std::sync::Arc;
 
 use hyper::header::HeaderValue;
@@ -41,6 +40,7 @@ pub(super) fn apply(
     let previous = validated_url(original)?;
     let redirects = matches!(*method, Method::GET | Method::HEAD);
     let url = transform_url(original, redirects, transforms).unwrap_or(Cow::Borrowed(original));
+    let url = crate::host::canonical_http_url(&url)?;
     if !same_origin(&previous, &validated_url(&url)?) {
         // The destination is judged when the client follows the redirect.
         return HeaderValue::from_str(&url).ok().map(Transformed::Redirect);
@@ -57,7 +57,7 @@ pub(super) fn apply(
     if parts.path_and_query.as_ref() == Some(&path) {
         return None;
     }
-    let url = format!("{origin}{path}");
+    let url = crate::host::canonical_http_url(&format!("{origin}{path}"))?;
     if url.len() > MAX_TRANSFORM_URL {
         return None;
     }
@@ -160,20 +160,7 @@ fn validated_url(url: &str) -> Option<Uri> {
     {
         return None;
     }
-    let (origin, _) = split_url(url)?;
-    let uri: Uri = url.parse().ok()?;
-    let authority = uri.authority()?;
-    let host = authority.host();
-    let host_valid = if let Some(ip) = host.strip_prefix('[').and_then(|ip| ip.strip_suffix(']')) {
-        ip.parse::<Ipv6Addr>().is_ok()
-    } else {
-        crate::host::is_host(host)
-    };
-    (matches!(uri.scheme_str(), Some("http" | "https"))
-        && host_valid
-        && !origin.contains('@')
-        && (authority.as_str() == host || authority.port_u16().is_some()))
-    .then_some(uri)
+    crate::host::canonical_http_url(url)?.parse().ok()
 }
 
 fn same_origin(first: &Uri, second: &Uri) -> bool {

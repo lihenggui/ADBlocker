@@ -119,8 +119,7 @@ impl<'a> Question<'a> {
             host.push_str(label);
             name = &name[1 + len..];
         }
-        host.make_ascii_lowercase();
-        Some(host)
+        Some(crate::host::canonical_authority(&host, "https")?.host)
     }
 
     /// Whether `answer` is a response to this question: the same

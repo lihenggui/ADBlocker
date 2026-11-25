@@ -181,7 +181,7 @@ impl RequestRules {
     /// The request for `url`, made by the page `source` if it names one. A
     /// document is its own page.
     fn request_with_page(url: &str, page: Page<'_>, kind: &str, method: &str) -> Option<Request> {
-        let url = parse_url(url)?;
+        let url = parse_url(&crate::host::canonical_http_url(url)?)?;
         let source = match page {
             Page::Itself => Some(&url).filter(|page| is_http_page(page)),
             Page::Named(source) => Some(source),
@@ -254,7 +254,7 @@ fn is_http_page(page: &RequestUrl) -> bool {
 
 pub(crate) fn parse_http_page(source: &str) -> Option<RequestUrl> {
     crate::public_suffix::install();
-    parse_url(source).filter(is_http_page)
+    parse_url(&crate::host::canonical_http_url(source)?).filter(is_http_page)
 }
 
 impl Filters {
@@ -309,10 +309,17 @@ impl Filters {
     }
 
     fn host_request(host: &str) -> Option<Request> {
+        let authority = crate::host::canonical_authority(host, "https")?;
+        if authority.explicit_port {
+            return None;
+        }
+        let host = authority.host;
         let url = format!("https://{host}/");
-        if plain_dns_name(host) {
+        if plain_dns_name(&host) {
             // Source and target are the same, without a public suffix lookup.
-            Some(Request::preparsed(&url, host, host, "other", false, "GET"))
+            Some(Request::preparsed(
+                &url, &host, &host, "other", false, "GET",
+            ))
         } else {
             Request::new(&url, &url, "other", "GET").ok()
         }
@@ -322,13 +329,16 @@ impl Filters {
     pub fn hiding(&self, url: &str) -> Hiding {
         // Not the address of a page: nothing to hide, and nothing to
         // look through.
-        let Ok(page) = Request::new(url, url, "document", "GET") else {
+        let Some(url) = crate::host::canonical_http_url(url) else {
+            return Hiding::default();
+        };
+        let Ok(page) = Request::new(&url, &url, "document", "GET") else {
             return Hiding::default();
         };
         if PageExceptions::matches(self.page_exceptions.all.as_ref(), &page) {
             return Hiding::default();
         }
-        let found = self.requests.full.url_cosmetic_resources(url);
+        let found = self.requests.full.url_cosmetic_resources(&url);
         let no_scripts = PageExceptions::matches(self.page_exceptions.script.as_ref(), &page);
         let no_elements = PageExceptions::matches(self.page_exceptions.element.as_ref(), &page);
         let generic = self
@@ -346,7 +356,7 @@ impl Filters {
         let selectors = match generic {
             _ if no_elements => HashSet::new(),
             Some(_) if found.generichide => HashSet::new(),
-            Some(engine) => engine.url_cosmetic_resources(url).hide_selectors,
+            Some(engine) => engine.url_cosmetic_resources(&url).hide_selectors,
             None => found.hide_selectors,
         };
         Hiding {

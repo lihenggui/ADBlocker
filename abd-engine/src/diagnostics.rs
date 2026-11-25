@@ -378,6 +378,49 @@ mod tests {
     use super::*;
 
     #[test]
+    fn diagnostics_judge_canonical_url_and_page_spellings() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.rules()).unwrap();
+        std::fs::create_dir_all(paths.lists()).unwrap();
+        std::fs::write(
+            paths.user_rules(),
+            "||site.test/ads$script,domain=page.test\n",
+        )
+        .unwrap();
+        for url in [
+            "https://site.test/ads",
+            "https://SITE.TEST/ads",
+            "https://site.test.:443/ads",
+        ] {
+            let result = check(&paths, None, url, "https://PAGE.TEST./article", "script").unwrap();
+            assert!(result.blocked, "{url}");
+            assert_eq!(result.source.as_deref(), Some("rules"));
+        }
+    }
+
+    #[test]
+    fn diagnostics_keep_the_original_app_rule_after_host_option_canonicalization() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir_all(paths.rules()).unwrap();
+        std::fs::create_dir_all(paths.lists()).unwrap();
+        let rule = "||ads.example/asset$app=com.reader,to=ADS.example";
+        std::fs::write(paths.user_rules(), rule).unwrap();
+        let result = check(
+            &paths,
+            Some("com.reader"),
+            "https://ADS.EXAMPLE.:443/asset",
+            "",
+            "other",
+        )
+        .unwrap();
+        assert!(result.blocked);
+        assert_eq!(result.rule.as_deref(), Some(rule));
+        assert_eq!(result.source.as_deref(), Some("rules"));
+    }
+
+    #[test]
     fn diagnostics_skip_inactive_rules_in_the_matcher_and_in_source_attribution() {
         let dir = tempfile::tempdir().unwrap();
         let paths = Paths::new(dir.path());

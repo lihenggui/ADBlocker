@@ -77,6 +77,7 @@ async fn a_block_on_either_the_original_url_or_its_transformation_stands() {
     for rules in [
         "||site.test^$urltransform=/firstpath/secondpath/\n||site.test/firstpath^$document",
         "||site.test^$urltransform=/firstpath/secondpath/\n||site.test/secondpath^$document",
+        "||site.test^$urltransform=/^https:\\/\\/site\\.test\\/firstpath/https:\\/\\/SITE.TEST.:443\\/secondpath/\n||site.test/secondpath^$document",
     ] {
         let rig = rig(Setup {
             rules,

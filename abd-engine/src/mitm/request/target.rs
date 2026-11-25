@@ -16,12 +16,13 @@ use std::borrow::Cow;
 
 use hyper::body::Incoming;
 use hyper::header::HOST;
-use hyper::http::uri::{Authority, PathAndQuery};
+use hyper::http::uri::PathAndQuery;
 use hyper::{Method, Request, Response, StatusCode};
 
 use super::response::empty;
 use super::{Body, InspectedSite, Shared};
 use crate::filter::AppFilters;
+use crate::host::canonical_authority;
 use crate::stats::Counter;
 
 pub(in crate::mitm) fn clear_target(
@@ -30,28 +31,17 @@ pub(in crate::mitm) fn clear_target(
     host: &str,
 ) -> Option<(String, String)> {
     crate::public_suffix::install();
-    if *method == Method::CONNECT
-        || !target.starts_with('/')
-        || target.contains('#')
-        || host.contains('@')
-    {
+    if *method == Method::CONNECT || !target.starts_with('/') || target.contains('#') {
         return None;
     }
     let path: PathAndQuery = target.parse().ok()?;
-    let authority: Authority = host.parse().ok()?;
-    if authority.as_str().ends_with(':')
-        || (authority.port().is_some() && authority.port_u16() != Some(80))
-    {
+    let authority = canonical_authority(host, "http")?;
+    if authority.port != 80 {
         return None;
     }
-    let url = format!("http://{authority}{path}");
+    let url = format!("http://{}{path}", authority.text);
     adblock::url_parser::parse_url(&url)?;
-    let hostname = authority
-        .host()
-        .strip_suffix('.')
-        .unwrap_or(authority.host())
-        .to_ascii_lowercase();
-    Some((url, hostname))
+    Some((url, authority.host))
 }
 
 /// Each request must still belong to the site verified at the TLS handshake.
@@ -68,25 +58,16 @@ fn address<B>(req: &Request<B>, sni: &str, port: u16) -> Option<String> {
     if hosts.next().is_some() {
         return None;
     }
-    let authority = req.uri().authority().map(Authority::as_str);
+    let authority = req.uri().authority().map(|value| value.as_str());
     for raw in [authority, host].into_iter().flatten() {
-        let value: Authority = raw.parse().ok()?;
-        if !value
-            .host()
-            .strip_suffix('.')
-            .unwrap_or(value.host())
-            .eq_ignore_ascii_case(sni)
-            || raw.contains('@')
-            || (raw != value.host() && value.port_u16() != Some(port))
-        {
+        let value = canonical_authority(raw, "https")?;
+        if value.host != sni || (value.explicit_port && value.port != port) {
             return None;
         }
     }
     let path = req.uri().path_and_query().map_or("/", |p| p.as_str());
-    Some(format!(
-        "https://{}{path}",
-        authority.or(host).unwrap_or(sni)
-    ))
+    let named = canonical_authority(authority.or(host).unwrap_or(sni), "https")?;
+    Some(format!("https://{}{path}", named.text))
 }
 
 pub(super) fn guard_site(
@@ -158,15 +139,19 @@ pub(super) fn target_of<'s>(
         Some((url, Cow::Borrowed(site.name.as_str())))
     } else if req.uri().authority().is_none() && req.uri().scheme().is_none() {
         let mut hosts = req.headers().get_all(HOST).iter();
-        let host = hosts.next().and_then(|h| h.to_str().ok());
+        let host = hosts
+            .next()
+            .map(|h| h.to_str().map_err(|_| StatusCode::BAD_REQUEST))
+            .transpose()?;
         let path = req.uri().path_and_query().map(PathAndQuery::as_str);
-        if hosts.next().is_none() {
-            path.zip(host)
-                .and_then(|(path, host)| clear_target(req.method(), path, host))
-                .map(|(url, host)| (url, Cow::Owned(host)))
-        } else {
-            None
+        if hosts.next().is_some()
+            || host.is_some_and(|host| canonical_authority(host, "http").is_none())
+        {
+            return Err(StatusCode::BAD_REQUEST);
         }
+        path.zip(host)
+            .and_then(|(path, host)| clear_target(req.method(), path, host))
+            .map(|(url, host)| (url, Cow::Owned(host)))
     } else {
         None
     };

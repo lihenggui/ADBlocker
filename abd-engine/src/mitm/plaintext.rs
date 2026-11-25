@@ -59,12 +59,21 @@ pub(super) async fn plaintext_http(
                     .headers
                     .iter()
                     .filter(|h| h.name.eq_ignore_ascii_case("host"));
-                let host = hosts.next().and_then(|h| std::str::from_utf8(h.value).ok());
+                let host = hosts.next();
                 let method = request.method.and_then(|s| s.parse().ok());
                 return Ok(hosts.next().is_none()
                     && reliable_body_framing(request.version, request.headers)
                     && method.zip(request.path).zip(host).is_some_and(
-                        |((method, path), host)| clear_target(&method, path, host).is_some(),
+                        |((method, path), host)| {
+                            if method == hyper::Method::CONNECT || !path.starts_with('/') {
+                                return false;
+                            }
+                            let host = std::str::from_utf8(host.value).ok();
+                            host.is_none_or(|host| {
+                                clear_target(&method, path, host).is_some()
+                                    || crate::host::canonical_authority(host, "http").is_none()
+                            })
+                        },
                     ));
             }
             Ok(httparse::Status::Partial) if n < buf.len() => {}

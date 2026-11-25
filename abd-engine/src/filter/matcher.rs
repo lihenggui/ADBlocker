@@ -92,7 +92,10 @@ impl MatcherLists {
         if source.is_scriptlet() && !crate::cosmetic::safe_raw_text(&line) {
             return;
         }
-        list.push(&line, source.original().filter(|_| self.debug));
+        let original = source
+            .original()
+            .or_else(|| (line != source.line).then_some(source.line));
+        list.push(&line, original.filter(|_| self.debug));
     }
 
     pub(crate) fn finish_list(&mut self, list: MatcherList, options: ParseOptions) {

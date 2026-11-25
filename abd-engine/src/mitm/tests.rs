@@ -67,6 +67,7 @@ struct Rig {
     /// The server's own certificate, and the root it is signed by.
     server_leaf: CertificateDer<'static>,
     server_root: CertificateDer<'static>,
+    server_port: u16,
     /// How often the app was made to trust us.
     made_to_trust: Arc<AtomicUsize>,
     dir: tempfile::TempDir,
@@ -97,6 +98,8 @@ struct Setup {
     allow: &'static str,
     /// The original destination port and the test socket it maps to.
     plaintext: Option<(u16, SocketAddr)>,
+    /// An HTTPS destination port represented by the test server's socket.
+    https_destination: Option<u16>,
     additional_name: Option<&'static str>,
 }
 
@@ -115,6 +118,7 @@ impl Default for Setup {
             settings: None,
             allow: "",
             plaintext: None,
+            https_destination: None,
             additional_name: None,
         }
     }
@@ -182,6 +186,18 @@ async fn rig(setup: Setup) -> Rig {
                 let h2 = tls.get_ref().1.alpn_protocol() == Some(b"h2");
                 let svc = service_fn(move |mut req: Request<Incoming>| {
                     hits.fetch_add(1, Relaxed);
+                    if req.uri().path() == "/raw-host" {
+                        let host = req
+                            .headers()
+                            .get(hyper::header::HOST)
+                            .and_then(|value| value.to_str().ok())
+                            .unwrap_or("-");
+                        let authority = req.uri().authority().map_or("-", |value| value.as_str());
+                        let body = format!("{host}|{authority}");
+                        return std::future::ready(Ok(Response::new(
+                            Full::new(Bytes::from(body)).boxed(),
+                        )));
+                    }
                     if let Some(response) = delayed_or_late_fixture(req.uri().path()) {
                         return std::future::ready(Ok(response));
                     }
@@ -303,6 +319,7 @@ async fn rig(setup: Setup) -> Rig {
     let made_to_trust = Arc::new(AtomicUsize::new(0));
     let asked = made_to_trust.clone();
     let plaintext = setup.plaintext;
+    let https_destination = setup.https_destination;
     let uid = setup.uid;
     let dials = Arc::new(AtomicUsize::new(0));
     let dialed = dials.clone();
@@ -332,12 +349,17 @@ async fn rig(setup: Setup) -> Rig {
             dial: Box::new(move |origin| {
                 dialed.fetch_add(1, Relaxed);
                 Box::pin(async move {
-                    let dst = plaintext.map_or(origin.dst, |(port, socket)| {
+                    let dst = if let Some((port, socket)) = plaintext {
                         assert_eq!(origin.dst, SocketAddr::from(([192, 0, 2, 42], port)));
                         assert_eq!(origin.mark, 42);
                         assert_eq!(origin.uid, uid);
                         socket
-                    });
+                    } else if let Some(port) = https_destination {
+                        assert_eq!(origin.dst, SocketAddr::from(([192, 0, 2, 42], port)));
+                        server_addr
+                    } else {
+                        origin.dst
+                    };
                     let server = TcpStream::connect(dst).await?;
                     server.set_nodelay(true)?;
                     Ok(server)
@@ -355,9 +377,12 @@ async fn rig(setup: Setup) -> Rig {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let proxy = listener.local_addr().unwrap();
     let origin = Origin {
-        dst: plaintext.map_or(server_addr, |(port, _)| {
-            SocketAddr::from(([192, 0, 2, 42], port))
-        }),
+        dst: plaintext
+            .map(|(port, _)| port)
+            .or(https_destination)
+            .map_or(server_addr, |port| {
+                SocketAddr::from(([192, 0, 2, 42], port))
+            }),
         mark: if plaintext.is_some() { 42 } else { 0 },
         uid: setup.uid,
     };
@@ -381,6 +406,7 @@ async fn rig(setup: Setup) -> Rig {
         dials,
         server_leaf: leaf.der().clone(),
         server_root: root_cert.der().clone(),
+        server_port: server_addr.port(),
         made_to_trust,
         dir,
     }
@@ -591,9 +617,13 @@ async fn plain_rig(setup: Setup) -> (Rig, TcpListener) {
 }
 
 async fn plain_request(rig: &Rig, path: &str) -> TcpStream {
+    plain_request_named(rig, path, "ads.example").await
+}
+
+async fn plain_request_named(rig: &Rig, path: &str, host: &str) -> TcpStream {
     let mut app = TcpStream::connect(rig.proxy).await.unwrap();
     app.write_all(
-        format!("GET {path} HTTP/1.1\r\nHost: ads.example\r\nConnection: close\r\n\r\n").as_bytes(),
+        format!("GET {path} HTTP/1.1\r\nHost: {host}\r\nConnection: close\r\n\r\n").as_bytes(),
     )
     .await
     .unwrap();
@@ -607,6 +637,274 @@ async fn plain_response(mut app: TcpStream) -> String {
         .unwrap()
         .unwrap();
     response
+}
+
+#[tokio::test]
+async fn https_authority_spellings_are_blocked_and_exceptions_still_apply() {
+    use hyper::header::HeaderValue;
+
+    for host in ["site.test.", "SITE.TEST", "site.test:443"] {
+        for (rules, expected) in [
+            ("||site.test/ads$script\n", StatusCode::FORBIDDEN),
+            (
+                "||site.test/ads$script\n@@||site.test/ads$script\n",
+                StatusCode::OK,
+            ),
+        ] {
+            let rig = rig(Setup {
+                rules,
+                https_destination: Some(443),
+                ..Setup::default()
+            })
+            .await;
+            let mut watcher = rig.ctx.services.live.join(None).unwrap();
+            let (_, status, _, real) = rig
+                .request_response(Trust::System, H1, "/ads", None, |mut req| {
+                    req.headers_mut()
+                        .unwrap()
+                        .insert(HOST_HEADER, HeaderValue::from_static(host));
+                    req.header("sec-fetch-dest", "script")
+                })
+                .await
+                .unwrap();
+            assert!(!real);
+            assert_eq!(status, expected, "{host}: {rules}");
+            assert_eq!(rig.hits(), usize::from(expected == StatusCode::OK));
+            let event = only_watch_event(&mut watcher).await;
+            assert_eq!(event["url"], "https://site.test/ads");
+        }
+    }
+}
+
+#[tokio::test]
+async fn cleartext_authority_spellings_are_blocked_and_exceptions_still_apply() {
+    for host in ["ads.example.", "ads.example:80"] {
+        for (rules, expected) in [
+            ("||ads.example/blocked^\n", StatusCode::FORBIDDEN),
+            (
+                "||ads.example/blocked^\n@@||ads.example/blocked^\n",
+                StatusCode::OK,
+            ),
+        ] {
+            let (rig, server) = plain_rig(Setup {
+                rules,
+                ..Setup::default()
+            })
+            .await;
+            let upstream = (expected == StatusCode::OK).then(|| {
+                tokio::spawn(async move {
+                    let (tcp, _) = server.accept().await.unwrap();
+                    let service = service_fn(|req: Request<Incoming>| async move {
+                        assert_eq!(req.headers()[HOST_HEADER], host);
+                        Ok::<_, hyper::Error>(Response::new(Empty::<Bytes>::new()))
+                    });
+                    hyper::server::conn::http1::Builder::new()
+                        .serve_connection(TokioIo::new(tcp), service)
+                        .await
+                        .unwrap();
+                })
+            });
+            let response = plain_response(plain_request_named(&rig, "/blocked", host).await).await;
+            assert!(
+                response.starts_with(&format!("HTTP/1.1 {} ", expected.as_u16())),
+                "{host}: {response}"
+            );
+            assert_eq!(
+                rig.dials.load(Relaxed),
+                usize::from(expected == StatusCode::OK)
+            );
+            if let Some(upstream) = upstream {
+                upstream.await.unwrap();
+            }
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_non_default_https_port_is_kept_for_a_port_rule() {
+    let rig = rig(Setup::default()).await;
+    let authority = format!("SITE.TEST:{}", rig.server_port);
+    let rules = format!("|https://site.test:{}/ads$script\n", rig.server_port);
+    let dir = rig.dir.path().join("rules");
+    std::fs::write(dir.join("list.txt"), rules).unwrap();
+    *rig.ctx.lists.filters.write().unwrap() = Arc::new(Filters::load(&[&dir], true).unwrap());
+    let (_, status, _, real) = rig
+        .request_response(Trust::System, H1, "/ads", None, |mut req| {
+            req.headers_mut().unwrap().insert(
+                HOST_HEADER,
+                hyper::header::HeaderValue::from_str(&authority).unwrap(),
+            );
+            req.header("sec-fetch-dest", "script")
+        })
+        .await
+        .unwrap();
+    assert!(!real);
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(rig.hits(), 0);
+}
+
+#[tokio::test]
+async fn http2_authority_uses_the_same_rules_and_preserves_the_origin_authority() {
+    for (rules, expected) in [
+        ("||site.test/ads$script\n", StatusCode::FORBIDDEN),
+        (
+            "||site.test/ads$script\n@@||site.test/ads$script\n",
+            StatusCode::OK,
+        ),
+    ] {
+        let rig = rig(Setup {
+            rules,
+            alpn: &["h2"],
+            https_destination: Some(443),
+            ..Setup::default()
+        })
+        .await;
+        let (_, status, _, _) = rig
+            .request_response(Trust::System, &["h2"], "/ads", None, |req| {
+                req.uri("https://SITE.TEST.:443/ads")
+                    .header("sec-fetch-dest", "script")
+            })
+            .await
+            .unwrap();
+        assert_eq!(status, expected);
+        assert_eq!(rig.hits(), usize::from(expected == StatusCode::OK));
+        if expected == StatusCode::OK {
+            let (_, status, body, _) = rig
+                .request_response(Trust::System, &["h2"], "/raw-host", None, |req| {
+                    req.uri("https://SITE.TEST.:443/raw-host")
+                })
+                .await
+                .unwrap();
+            assert_eq!(status, StatusCode::OK);
+            assert_eq!(body, "site.test|SITE.TEST.:443");
+        }
+    }
+}
+
+#[tokio::test]
+async fn a_capitalized_referer_uses_the_named_page_rule() {
+    for (rules, expected) in [
+        (
+            "||site.test/ads$script,domain=page.test\n",
+            StatusCode::FORBIDDEN,
+        ),
+        (
+            "||site.test/ads$script,domain=page.test\n@@||site.test/ads$script,domain=page.test\n",
+            StatusCode::OK,
+        ),
+    ] {
+        let rig = rig(Setup {
+            rules,
+            ..Setup::default()
+        })
+        .await;
+        let (_, status, _, _) = rig
+            .request_response(
+                Trust::System,
+                H1,
+                "/ads",
+                Some("https://PAGE.TEST/article"),
+                |req| req.header("sec-fetch-dest", "script"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(status, expected);
+        assert_eq!(rig.hits(), usize::from(expected == StatusCode::OK));
+    }
+}
+
+#[tokio::test]
+async fn a_capitalized_origin_uses_the_named_page_rule() {
+    let rig = rig(Setup {
+        rules: "||site.test/ads$script,domain=page.test\n",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, _, _) = rig
+        .request_response(Trust::System, H1, "/ads", None, |req| {
+            req.header("origin", "https://PAGE.TEST.:443")
+                .header("sec-fetch-dest", "script")
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(rig.hits(), 0);
+}
+
+#[tokio::test]
+async fn the_response_type_recheck_keeps_the_canonical_request_url() {
+    let rig = rig(Setup {
+        rules: "||site.test/creative/small$image\n",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, _, _) = rig
+        .request_response(Trust::System, H1, "/creative/small", None, |mut req| {
+            req.headers_mut().unwrap().insert(
+                HOST_HEADER,
+                hyper::header::HeaderValue::from_static("SITE.TEST."),
+            );
+            req
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(rig.hits(), 1);
+}
+
+#[tokio::test]
+async fn the_vpn_udp_host_check_uses_the_canonical_name() {
+    let rig = rig(Setup {
+        rules: "||ads.example^\n",
+        ..Setup::default()
+    })
+    .await;
+    assert!(rig.ctx.blocks_udp_host(UID, "ads.example"));
+    assert!(rig.ctx.blocks_udp_host(UID, "ADS.EXAMPLE."));
+    assert!(!rig.ctx.blocks_udp_host(UID, "ads.example.."));
+}
+
+#[tokio::test]
+async fn malformed_authorities_are_refused_before_the_origin_receives_a_request() {
+    let rig = rig(Setup::default()).await;
+    let (_, status, _, _) = rig
+        .request_response(Trust::System, H1, "/ads", None, |mut req| {
+            req.headers_mut().unwrap().insert(
+                HOST_HEADER,
+                hyper::header::HeaderValue::from_static("site.test.."),
+            );
+            req
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::MISDIRECTED_REQUEST);
+    assert_eq!(rig.hits(), 0);
+
+    let (rig, _server) = plain_rig(Setup::default()).await;
+    let response = plain_response(plain_request_named(&rig, "/ads", "ads.example..").await).await;
+    assert!(response.starts_with("HTTP/1.1 400 "), "{response}");
+    assert_eq!(rig.dials.load(Relaxed), 0);
+}
+
+#[tokio::test]
+async fn an_allowed_https_request_reaches_the_origin_with_its_original_host() {
+    let rig = rig(Setup {
+        https_destination: Some(443),
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, body, _) = rig
+        .request_response(Trust::System, H1, "/raw-host", None, |mut req| {
+            req.headers_mut().unwrap().insert(
+                HOST_HEADER,
+                hyper::header::HeaderValue::from_static("SITE.TEST.:443"),
+            );
+            req
+        })
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "SITE.TEST.:443|-");
 }
 
 #[tokio::test]

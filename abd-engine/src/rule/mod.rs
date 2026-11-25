@@ -123,6 +123,35 @@ enum MatcherInput<'a> {
     None,
 }
 
+pub(crate) fn canonical_host_options(line: &str) -> Cow<'_, str> {
+    let Some(options) = Options::read(line, Quoting::AdGuard) else {
+        return Cow::Borrowed(line);
+    };
+    let canonical = |token: OptionToken<'_>| {
+        matches!(token.name(), "domain" | "from" | "to" | "denyallow")
+            && token.value.is_some_and(|value| {
+                !value.contains('/') && value.bytes().any(|byte| byte.is_ascii_uppercase())
+            })
+    };
+    if !options.tokens().any(canonical) {
+        return Cow::Borrowed(line);
+    }
+    let mut normalized = options.pattern.to_owned();
+    let mut separator = '$';
+    for token in options.tokens() {
+        normalized.push(separator);
+        if canonical(token) {
+            normalized.push_str(token.raw_name);
+            normalized.push('=');
+            normalized.push_str(&token.value.unwrap().to_ascii_lowercase());
+        } else {
+            normalized.push_str(token.raw);
+        }
+        separator = ',';
+    }
+    Cow::Owned(normalized)
+}
+
 pub(crate) struct AppRule<'a> {
     options: Options<'a>,
     page: Option<PageException<'a>>,
@@ -282,7 +311,10 @@ impl<'a> Rule<'a> {
                 options,
                 page,
                 denyallow,
-                original: self.original(),
+                // A changed host option still reports the list's spelling.
+                original: self.original().or_else(|| {
+                    (canonical_host_options(self.line).as_ref() != self.line).then_some(self.line)
+                }),
             })
         } else if let Some(page) = page {
             Kind::PageException(page)
@@ -410,7 +442,13 @@ impl<'a> Rule<'a> {
         match self.matcher_route() {
             MatcherInput::Native(line)
             | MatcherInput::Rewritten(line)
-            | MatcherInput::Translated(line) => Some(Cow::Borrowed(line)),
+            | MatcherInput::Translated(line) => {
+                if matches!(self.kind, Kind::Cosmetic | Kind::Comment) {
+                    Some(Cow::Borrowed(line))
+                } else {
+                    Some(canonical_host_options(line))
+                }
+            }
             MatcherInput::Hosts(host) => Some(host_pattern(host)),
             MatcherInput::RedirectOnly(_) | MatcherInput::None => None,
         }

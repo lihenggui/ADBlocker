@@ -441,6 +441,12 @@ impl Ctx {
 
     /// Evaluate a visible name only after the ingress has admitted the app.
     pub fn blocks_udp_host(&self, uid: u32, host: &str) -> bool {
+        let Some(host) = crate::host::canonical_authority(host, "https")
+            .filter(|name| !name.explicit_port)
+            .map(|name| name.host)
+        else {
+            return false;
+        };
         let Some(package) = self.package(uid) else {
             return false;
         };
@@ -448,7 +454,7 @@ impl Ctx {
         let allow = self.lists.allow.read().unwrap().clone();
         let blocked = self.services.policy.decide_named(
             &package,
-            host,
+            &host,
             self.app_filters(&self.filters(), &package),
             &exclusions,
             &allow,
@@ -458,7 +464,7 @@ impl Ctx {
             self.services
                 .stats
                 .count(Some(&package), Counter::HostsBlocked);
-            self.services.live.host_blocked(&package, host);
+            self.services.live.host_blocked(&package, &host);
         }
         blocked
     }

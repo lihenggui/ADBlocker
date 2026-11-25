@@ -15,11 +15,43 @@
 use std::path::Path;
 
 use super::*;
+use proptest::prelude::*;
 
 fn filters(rules: &str) -> Filters {
     let dir = tempfile::tempdir().unwrap();
     std::fs::write(dir.path().join("list.txt"), rules).unwrap();
     Filters::load(&[dir.path()], true).unwrap()
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    #[test]
+    fn authority_spellings_keep_the_same_request_judgement(
+        labels in proptest::collection::vec("[a-z][a-z0-9]{0,7}", 1..4)
+    ) {
+        let host = format!("{}.test", labels.join("."));
+        let rules = format!("||{host}^$script\n@@||{host}/allowed.js$script\n");
+        let filters = filters(&rules);
+        for (scheme, default) in [("http", 80), ("https", 443)] {
+            for path in ["/ads.js", "/allowed.js", "/plain.css"] {
+                let canonical = format!("{scheme}://{host}{path}");
+                let expected = filters.check(&canonical, "", "script", "GET").blocked;
+                prop_assert_eq!(expected, path != "/allowed.js");
+                for spelling in [
+                    host.clone(),
+                    host.to_ascii_uppercase(),
+                    format!("{host}."),
+                    format!("{}.", host.to_ascii_uppercase()),
+                    format!("{host}:{default}"),
+                    format!("{}.:{default}", host.to_ascii_uppercase()),
+                ] {
+                    let candidate = format!("{scheme}://{spelling}{path}");
+                    prop_assert_eq!(filters.check(&candidate, "", "script", "GET").blocked, expected, "{}", candidate);
+                }
+            }
+        }
+    }
 }
 
 mod csp;
@@ -219,6 +251,19 @@ fn matching_preserves_existing_literal_mixed_case_domain_entries() {
             "GET",
         )
         .blocked
+    );
+}
+
+#[test]
+fn a_mixed_case_rule_host_matches_a_canonical_request_url() {
+    let f = filters("||ADS.example/banner.js$script\n@@||ADS.example/allowed.js$script");
+    assert!(
+        f.check("https://ads.example/banner.js", "", "script", "GET")
+            .blocked
+    );
+    assert!(
+        !f.check("https://ads.example/allowed.js", "", "script", "GET")
+            .blocked
     );
 }
 
@@ -728,7 +773,13 @@ mod lists {
                 assert_eq!(request.url, url);
                 assert!(!request.is_third_party);
             }
-            let expected = parsed.is_ok_and(|request| {
+            let canonical = crate::host::canonical_authority(host, "https")
+                .filter(|authority| !authority.explicit_port)
+                .and_then(|authority| {
+                    let url = format!("https://{}/", authority.text);
+                    Request::new(&url, &url, "other", "GET").ok()
+                });
+            let expected = canonical.is_some_and(|request| {
                 let found = f.hosts.check_network_request(&request);
                 found.filter.is_some() && found.exception.is_none()
             });

@@ -14,6 +14,33 @@
 
 use super::*;
 
+#[tokio::test]
+async fn parameter_removal_rechecks_a_canonical_authority() {
+    let rig = rig(Setup {
+        rules: "$removeparam=utm_source\n||site.test/transformed/page?another=2|$document",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, _, _) = rig
+        .request_response(
+            Trust::System,
+            H1,
+            "/transformed/page?utm_source=1&another=2",
+            None,
+            |mut req| {
+                req.headers_mut().unwrap().insert(
+                    HOST_HEADER,
+                    hyper::header::HeaderValue::from_static("SITE.TEST."),
+                );
+                req.header("sec-fetch-dest", "document")
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::FORBIDDEN);
+    assert_eq!(rig.hits(), 0);
+}
+
 async fn request(
     rig: &Rig,
     alpn: &[&str],
