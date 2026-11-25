@@ -32,6 +32,7 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
@@ -45,37 +46,38 @@ class ActivityRecordingService : Service() {
     @Inject
     lateinit var recorder: ActivityRecorder
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val recording by lazy {
+        RecordingServiceSession(
+            recorder,
+            CoroutineScope(SupervisorJob() + Dispatchers.Main),
+            ::enterForeground,
+            ::stopSelf,
+        )
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
-            ACTION_START -> startRecording(startId)
-            ACTION_STOP -> stopSelf()
-            else -> stopSelf(startId)
+            ACTION_START -> recording.start(startId)
+
+            ACTION_STOP -> {
+                recorder.cancelStart()
+                stopSelf()
+            }
+
+            else -> recording.unrecognizedStart(startId)
         }
         return START_NOT_STICKY
     }
 
-    private fun startRecording(startId: Int) {
-        try {
-            val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
-            ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(), type)
-        } catch (e: RuntimeException) {
-            Timber.w("recording service: %s", e.javaClass.simpleName)
-            recorder.startFailed(e.toLoadFailure())
-            stopSelf(startId)
-            return
-        }
-        scope.launch {
-            recorder.record()
-            stopSelf(startId)
-        }
+    private fun enterForeground() {
+        val type = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE else 0
+        ServiceCompat.startForeground(this, NOTIFICATION_ID, notification(), type)
     }
 
     override fun onDestroy() {
-        scope.cancel()
+        recording.destroy()
         super.onDestroy()
     }
 
@@ -118,5 +120,48 @@ class ActivityRecordingService : Service() {
         fun stop(context: Context) {
             context.stopService(intent(context, ACTION_STOP))
         }
+    }
+}
+
+/** Owns the service's starts and recording job on the main thread. */
+internal class RecordingServiceSession(
+    private val recorder: ActivityRecorder,
+    private val scope: CoroutineScope,
+    private val enterForeground: () -> Unit,
+    private val finish: (Int) -> Unit,
+) {
+    private var latestStartId = 0
+    private var job: Job? = null
+
+    fun start(startId: Int) {
+        latestStartId = startId
+        if (job?.isActive == true) return
+        if (recorder.state.value.status != RecordingStatus.Starting) {
+            finish(startId)
+            return
+        }
+        try {
+            enterForeground()
+        } catch (e: RuntimeException) {
+            Timber.w("recording service: %s", e.javaClass.simpleName)
+            recorder.startFailed(e.toLoadFailure())
+            finish(startId)
+            return
+        }
+        job = scope.launch {
+            recorder.record()
+            // Android only stops the service for its most recent start ID.
+            finish(latestStartId)
+        }
+    }
+
+    fun unrecognizedStart(startId: Int) {
+        latestStartId = startId
+        if (job?.isActive != true) finish(startId)
+    }
+
+    fun destroy() {
+        if (job?.isCompleted != true) recorder.cancelStart()
+        scope.cancel()
     }
 }

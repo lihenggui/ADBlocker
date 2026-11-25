@@ -66,6 +66,11 @@ class ActivityRecorder @Inject constructor(
         recording.update { it.copy(status = RecordingStatus.Stopped, failure = failure) }
     }
 
+    @MainThread
+    internal fun cancelStart() {
+        recording.update { if (it.status == RecordingStatus.Starting) it.copy(status = RecordingStatus.Idle) else it }
+    }
+
     /**
      * Called by the foreground service. Cancel the collection to stop and keep what arrived.
      * A switch between the root module and the VPN ends the recording, so that one

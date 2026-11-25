@@ -16,11 +16,14 @@
 
 package li.mercury.adblocker.feature.activity.impl
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdException
@@ -186,6 +189,48 @@ class ActivityRecordingTest {
         assertEquals(RecordingStatus.Starting, recorder.state.value.status)
         assertEquals(null, recorder.state.value.failure)
         assertTrue(opened.isEmpty())
+    }
+
+    @Test
+    fun givenRecordingIsStarting_whenTheServiceIsDestroyedBeforeCollecting_thenAStartCanBeRequestedAgain() = runTest {
+        val scope = CoroutineScope(SupervisorJob() + StandardTestDispatcher(testScheduler))
+        val session = RecordingServiceSession(recorder, scope, {}, { error("destroyed service finished a start") })
+        assertTrue(recorder.requestStart())
+        session.start(1)
+        assertEquals(RecordingStatus.Starting, recorder.state.value.status)
+
+        session.destroy()
+        runCurrent()
+
+        assertEquals(RecordingStatus.Idle, recorder.state.value.status)
+        assertTrue(opened.isEmpty())
+        assertTrue(recorder.requestStart())
+    }
+
+    @Test
+    fun givenPendingAndActiveRecording_whenDuplicateStartsArrive_thenOnlyItsCompletionStopsTheService() = runTest {
+        var foreground = 0
+        val finished = mutableListOf<Int>()
+        val session = RecordingServiceSession(recorder, backgroundScope, { foreground++ }, { finished += it })
+        assertTrue(recorder.requestStart())
+
+        session.start(1)
+        session.start(2)
+        assertTrue(finished.isEmpty())
+        runCurrent()
+        session.start(3)
+        runCurrent()
+
+        assertEquals(1, foreground)
+        assertEquals(listOf<String?>(null), opened)
+        assertEquals(RecordingStatus.Recording, recorder.state.value.status)
+        assertTrue(finished.isEmpty())
+
+        userData.setFilterMethod(FilterMethod.Vpn)
+        runCurrent()
+
+        assertEquals(RecordingStatus.Stopped, recorder.state.value.status)
+        assertEquals(listOf(3), finished)
     }
 
     @Test
