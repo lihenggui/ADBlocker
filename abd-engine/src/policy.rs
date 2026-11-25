@@ -71,7 +71,11 @@ const KEEP_SENSITIVE: u64 = 7 * 24 * 3600;
 /// Closes without a request, in a row, before the host is taken as pinned.
 /// One could be the user leaving a page as it began to load.
 const SILENT_LIMIT: u32 = 3;
-/// The most hosts counted towards [`SILENT_LIMIT`] at a time.
+/// An app may count 256 hosts, well above the three-close threshold. At
+/// that bound it forgets its own oldest host and leaves other apps' counts.
+const MAX_SILENT_PER_PACKAGE: usize = 256;
+/// At 1,024 hosts total, a new app with no entry waits for a free slot;
+/// its connection passes on and no other app loses pin progress.
 const MAX_SILENT: usize = 1024;
 
 pub struct Policy {
@@ -83,7 +87,7 @@ pub struct Policy {
     /// Connections in a row that completed the handshake and then closed
     /// at once without a request: how a pin checked after the handshake
     /// looks.
-    silent: Mutex<HashMap<Pinned, u32>>,
+    silent: Mutex<Vec<(Pinned, u32)>>,
     /// The tries of pinned hosts given at an app's start. Taken after
     /// `pinned` where both are held.
     retries: Mutex<retry::Retries>,
@@ -337,7 +341,7 @@ impl Policy {
     pub fn forget(&self, package: &str, host: Option<&str>) -> bool {
         let matches = |(p, h): &Pinned| p == package && host.is_none_or(|host| host == h);
         let forgotten = forget(&mut self.pinned.lock().unwrap(), package, host);
-        self.silent.lock().unwrap().retain(|key, _| !matches(key));
+        self.silent.lock().unwrap().retain(|(key, _)| !matches(key));
         self.retries.lock().unwrap().retain(|key| !matches(key));
         forgotten
     }
@@ -373,19 +377,26 @@ impl Policy {
     pub fn closed_silent(&self, package: &str, host: &str) -> bool {
         let n = {
             let mut silent = self.silent.lock().unwrap();
-            if silent.len() >= MAX_SILENT {
-                // Its own first: an app that fills the table must not
-                // have what is counted of the others forgotten.
-                silent.retain(|(counted, _), _| counted != package);
-                if silent.len() >= MAX_SILENT {
-                    silent.clear();
+            if let Some((_, count)) = silent
+                .iter_mut()
+                .find(|((counted, name), _)| counted == package && name == host)
+            {
+                *count = count.saturating_add(1);
+                *count
+            } else {
+                let own = silent.iter().filter(|((app, _), _)| app == package).count();
+                if own >= MAX_SILENT_PER_PACKAGE {
+                    let oldest = silent
+                        .iter()
+                        .position(|((app, _), _)| app == package)
+                        .expect("own count guarantees an entry");
+                    silent.remove(oldest);
+                } else if silent.len() >= MAX_SILENT {
+                    return false;
                 }
+                silent.push(((package.to_owned(), host.to_owned()), 1));
+                1
             }
-            let n = silent
-                .entry((package.to_owned(), host.to_owned()))
-                .or_insert(0);
-            *n += 1;
-            *n
         };
         n >= SILENT_LIMIT && self.pin(package, host)
     }
@@ -397,7 +408,10 @@ impl Policy {
     /// app's, which does not check its pins.
     pub fn spoke(&self, package: &str, host: &str, ticket: Option<u64>) {
         let key = (package.to_owned(), host.to_owned());
-        self.silent.lock().unwrap().remove(&key);
+        self.silent
+            .lock()
+            .unwrap()
+            .retain(|(counted, _)| counted != &key);
         let Some(ticket) = ticket else { return };
         let mut pinned = self.pinned.lock().unwrap();
         if self.retries.lock().unwrap().accepted(&key, ticket) && pinned.remove(&key).is_some() {
@@ -417,7 +431,7 @@ impl Policy {
         self.silent
             .lock()
             .unwrap()
-            .retain(|(package, _), _| packages.contains(package.as_str()));
+            .retain(|((package, _), _)| packages.contains(package.as_str()));
         self.retries
             .lock()
             .unwrap()
@@ -610,6 +624,45 @@ mod tests {
         }
         // The third in a row, as if the other app had done nothing.
         assert!(policy.closed_silent("com.app", "h.example"));
+    }
+
+    #[test]
+    fn a_new_apps_close_cannot_erase_another_apps_pin_progress_at_capacity() {
+        let (policy, _dir) = policy();
+        assert!(!policy.closed_silent("com.bank", "api.bank.example"));
+        assert!(!policy.closed_silent("com.bank", "api.bank.example"));
+        for n in 0..MAX_SILENT - 1 {
+            assert!(!policy.closed_silent(&format!("com.other{n}"), "h.example"));
+        }
+        assert!(!policy.closed_silent("com.new", "h.example"));
+        assert!(policy.closed_silent("com.bank", "api.bank.example"));
+    }
+
+    #[test]
+    fn earlier_other_apps_cannot_erase_a_later_apps_pin_progress_at_capacity() {
+        let (policy, _dir) = policy();
+        assert!(!policy.closed_silent("com.other0", "h.example"));
+        assert!(!policy.closed_silent("com.bank", "api.bank.example"));
+        assert!(!policy.closed_silent("com.bank", "api.bank.example"));
+        for n in 1..MAX_SILENT - 1 {
+            assert!(!policy.closed_silent(&format!("com.other{n}"), "h.example"));
+        }
+        assert!(!policy.closed_silent("com.new", "h.example"));
+        assert!(policy.closed_silent("com.bank", "api.bank.example"));
+    }
+
+    #[test]
+    fn an_app_at_its_silent_limit_forgets_its_own_oldest_host() {
+        let (policy, _dir) = policy();
+        assert!(!policy.closed_silent("com.app", "old.example"));
+        assert!(!policy.closed_silent("com.app", "old.example"));
+        for n in 1..MAX_SILENT_PER_PACKAGE {
+            assert!(!policy.closed_silent("com.app", &format!("{n}.example")));
+        }
+        assert!(!policy.closed_silent("com.app", "new.example"));
+        assert!(!policy.closed_silent("com.app", "old.example"));
+        assert!(!policy.closed_silent("com.app", "old.example"));
+        assert!(policy.closed_silent("com.app", "old.example"));
     }
 
     #[test]

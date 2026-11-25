@@ -216,7 +216,11 @@ fn numbers_equal(a: &Number, b: &Number) -> bool {
 }
 
 fn matches_integer(float: &Number, integer: i128) -> bool {
-    comparable_float(float).is_some_and(|f| f.fract() == 0.0 && f as i128 == integer)
+    const EXACT_INTEGER_LIMIT: f64 = 9_007_199_254_740_992.0;
+    // Above 2^53 a parsed float may have rounded from a different token.
+    // Every doubt resolves to "not equal", so pruning never guesses.
+    comparable_float(float)
+        .is_some_and(|f| f.fract() == 0.0 && f.abs() <= EXACT_INTEGER_LIMIT && f as i128 == integer)
 }
 
 /// serde_json stores out-of-range integers as floats. In that range the

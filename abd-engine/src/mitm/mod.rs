@@ -441,7 +441,7 @@ impl Ctx {
 
     /// Evaluate a visible name only after the ingress has admitted the app.
     pub fn blocks_udp_host(&self, uid: u32, host: &str) -> bool {
-        let Some(host) = crate::host::canonical_authority(host, "https")
+        let Some(host) = crate::host::canonical_authority(host, "https", 443)
             .filter(|name| !name.explicit_port)
             .map(|name| name.host)
         else {

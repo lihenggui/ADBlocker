@@ -35,7 +35,7 @@ pub(in crate::mitm) fn clear_target(
         return None;
     }
     let path: PathAndQuery = target.parse().ok()?;
-    let authority = canonical_authority(host, "http")?;
+    let authority = canonical_authority(host, "http", 80)?;
     if authority.port != 80 {
         return None;
     }
@@ -60,13 +60,13 @@ fn address<B>(req: &Request<B>, sni: &str, port: u16) -> Option<String> {
     }
     let authority = req.uri().authority().map(|value| value.as_str());
     for raw in [authority, host].into_iter().flatten() {
-        let value = canonical_authority(raw, "https")?;
+        let value = canonical_authority(raw, "https", port)?;
         if value.host != sni || (value.explicit_port && value.port != port) {
             return None;
         }
     }
     let path = req.uri().path_and_query().map_or("/", |p| p.as_str());
-    let named = canonical_authority(authority.or(host).unwrap_or(sni), "https")?;
+    let named = canonical_authority(authority.or(host).unwrap_or(sni), "https", port)?;
     Some(format!("https://{}{path}", named.text))
 }
 
@@ -145,7 +145,7 @@ pub(super) fn target_of<'s>(
             .transpose()?;
         let path = req.uri().path_and_query().map(PathAndQuery::as_str);
         if hosts.next().is_some()
-            || host.is_some_and(|host| canonical_authority(host, "http").is_none())
+            || host.is_some_and(|host| canonical_authority(host, "http", 80).is_none())
         {
             return Err(StatusCode::BAD_REQUEST);
         }

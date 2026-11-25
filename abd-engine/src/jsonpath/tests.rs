@@ -164,6 +164,93 @@ fn equality_is_type_strict_and_compares_numbers_by_value() {
 }
 
 #[test]
+fn a_rounded_document_float_does_not_equal_a_different_integer_literal() {
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' 9007199254740994)]",
+            "[9007199254740993.0,9007199254740994]"
+        ),
+        "[9007199254740993.0]"
+    );
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' -9007199254740994)]",
+            "[-9007199254740993.0,-9007199254740994]"
+        ),
+        "[-9007199254740993.0]"
+    );
+}
+
+#[test]
+fn a_document_float_at_two_to_the_53rd_matches_only_exact_integers() {
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' 9007199254740992)]",
+            "[9007199254740992.0,9007199254740993.0,9007199254740992]"
+        ),
+        "[9007199254740993.0]"
+    );
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' -9007199254740992)]",
+            "[-9007199254740992.0,-9007199254740993.0,-9007199254740992]"
+        ),
+        "[-9007199254740993.0]"
+    );
+}
+
+#[test]
+fn a_float_literal_compares_with_integers_only_through_exact_magnitude() {
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' 9007199254740992.0)]",
+            "[9007199254740992,9007199254740993]"
+        ),
+        "[9007199254740993]"
+    );
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' -9007199254740994.0)]",
+            "[-9007199254740994,-9007199254740992]"
+        ),
+        "[-9007199254740994,-9007199254740992]"
+    );
+}
+
+#[test]
+fn float_literals_compare_with_document_floats_by_value() {
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' 9007199254740994.0)]",
+            "[9007199254740994.0,9007199254740992.0,9007199254740994]"
+        ),
+        "[9007199254740992.0,9007199254740994]"
+    );
+    assert_eq!(
+        changed("$[?(key-eq '$' -1.5)]", "[-1.5,-1.0,1.5]"),
+        "[-1.0,1.5]"
+    );
+}
+
+#[test]
+fn large_document_integers_compare_exactly_with_integer_literals() {
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' 18446744073709551615)]",
+            "[18446744073709551614,18446744073709551615]"
+        ),
+        "[18446744073709551614]"
+    );
+    assert_eq!(
+        changed(
+            "$[?(key-eq '$' -9223372036854775808)]",
+            "[-9223372036854775808,-9223372036854775807]"
+        ),
+        "[-9223372036854775807]"
+    );
+}
+
+#[test]
 fn nested_equality_can_match_any_of_the_selected_values() {
     assert_eq!(
         changed(

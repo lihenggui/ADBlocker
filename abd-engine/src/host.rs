@@ -32,7 +32,11 @@ pub(crate) struct CanonicalAuthority {
 }
 
 /// The one spelling used for a request authority in policy and rule URLs.
-pub(crate) fn canonical_authority(raw: &str, scheme: &str) -> Option<CanonicalAuthority> {
+pub(crate) fn canonical_authority(
+    raw: &str,
+    scheme: &str,
+    connection_port: u16,
+) -> Option<CanonicalAuthority> {
     let default_port = match scheme {
         "http" => 80,
         "https" => 443,
@@ -64,7 +68,7 @@ pub(crate) fn canonical_authority(raw: &str, scheme: &str) -> Option<CanonicalAu
     let port = if explicit_port {
         authority.port_u16()?
     } else {
-        default_port
+        connection_port
     };
     let text = if port == default_port {
         host.clone()
@@ -89,7 +93,8 @@ pub(crate) fn canonical_http_url(url: &str) -> Option<String> {
         return None;
     };
     let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
-    let authority = canonical_authority(&rest[..end], scheme)?;
+    let default_port = if scheme == "http" { 80 } else { 443 };
+    let authority = canonical_authority(&rest[..end], scheme, default_port)?;
     let tail = &rest[end..];
     let path = if tail.starts_with('/') {
         tail.to_owned()
@@ -123,19 +128,19 @@ mod tests {
                 "SITE.TEST.",
                 &format!("SITE.TEST.:{default}"),
             ] {
-                let name = canonical_authority(raw, scheme).unwrap();
+                let name = canonical_authority(raw, scheme, default).unwrap();
                 assert_eq!(name.host, "site.test");
                 assert_eq!(name.port, default);
                 assert_eq!(name.text, "site.test");
             }
         }
-        let named = canonical_authority("SITE.TEST:8443", "https").unwrap();
+        let named = canonical_authority("SITE.TEST:8443", "https", 443).unwrap();
         assert_eq!(
             (named.host.as_str(), named.port, named.text.as_str()),
             ("site.test", 8443, "site.test:8443")
         );
         assert_eq!(
-            canonical_authority("[2001:0DB8::0001]:443", "https")
+            canonical_authority("[2001:0DB8::0001]:443", "https", 443)
                 .unwrap()
                 .text,
             "[2001:db8::1]"
@@ -153,7 +158,7 @@ mod tests {
             "sité.test",
             "[2001:db8::zz]",
         ] {
-            assert!(canonical_authority(raw, "https").is_none(), "{raw}");
+            assert!(canonical_authority(raw, "https", 443).is_none(), "{raw}");
         }
         assert_eq!(
             canonical_http_url("HTTPS://SITE.TEST.:443/ads?q=1").as_deref(),

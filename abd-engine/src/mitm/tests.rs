@@ -67,7 +67,6 @@ struct Rig {
     /// The server's own certificate, and the root it is signed by.
     server_leaf: CertificateDer<'static>,
     server_root: CertificateDer<'static>,
-    server_port: u16,
     /// How often the app was made to trust us.
     made_to_trust: Arc<AtomicUsize>,
     dir: tempfile::TempDir,
@@ -98,6 +97,7 @@ struct Setup {
     allow: &'static str,
     /// The original destination port and the test socket it maps to.
     plaintext: Option<(u16, SocketAddr)>,
+    plaintext_destination: Option<SocketAddr>,
     /// An HTTPS destination port represented by the test server's socket.
     https_destination: Option<u16>,
     additional_name: Option<&'static str>,
@@ -118,7 +118,8 @@ impl Default for Setup {
             settings: None,
             allow: "",
             plaintext: None,
-            https_destination: None,
+            plaintext_destination: None,
+            https_destination: Some(443),
             additional_name: None,
         }
     }
@@ -320,6 +321,15 @@ async fn rig(setup: Setup) -> Rig {
     let asked = made_to_trust.clone();
     let plaintext = setup.plaintext;
     let https_destination = setup.https_destination;
+    let original_dst = if let Some((port, _)) = plaintext {
+        setup
+            .plaintext_destination
+            .unwrap_or(SocketAddr::from(([192, 0, 2, 42], port)))
+    } else if let Some(port) = https_destination {
+        SocketAddr::from(([192, 0, 2, 42], port))
+    } else {
+        server_addr
+    };
     let uid = setup.uid;
     let dials = Arc::new(AtomicUsize::new(0));
     let dialed = dials.clone();
@@ -349,13 +359,13 @@ async fn rig(setup: Setup) -> Rig {
             dial: Box::new(move |origin| {
                 dialed.fetch_add(1, Relaxed);
                 Box::pin(async move {
-                    let dst = if let Some((port, socket)) = plaintext {
-                        assert_eq!(origin.dst, SocketAddr::from(([192, 0, 2, 42], port)));
+                    let dst = if let Some((_, socket)) = plaintext {
+                        assert_eq!(origin.dst, original_dst);
                         assert_eq!(origin.mark, 42);
                         assert_eq!(origin.uid, uid);
                         socket
-                    } else if let Some(port) = https_destination {
-                        assert_eq!(origin.dst, SocketAddr::from(([192, 0, 2, 42], port)));
+                    } else if https_destination.is_some() {
+                        assert_eq!(origin.dst, original_dst);
                         server_addr
                     } else {
                         origin.dst
@@ -377,12 +387,7 @@ async fn rig(setup: Setup) -> Rig {
     let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let proxy = listener.local_addr().unwrap();
     let origin = Origin {
-        dst: plaintext
-            .map(|(port, _)| port)
-            .or(https_destination)
-            .map_or(server_addr, |port| {
-                SocketAddr::from(([192, 0, 2, 42], port))
-            }),
+        dst: original_dst,
         mark: if plaintext.is_some() { 42 } else { 0 },
         uid: setup.uid,
     };
@@ -406,7 +411,6 @@ async fn rig(setup: Setup) -> Rig {
         dials,
         server_leaf: leaf.der().clone(),
         server_root: root_cert.der().clone(),
-        server_port: server_addr.port(),
         made_to_trust,
         dir,
     }
@@ -722,17 +726,17 @@ async fn cleartext_authority_spellings_are_blocked_and_exceptions_still_apply() 
 
 #[tokio::test]
 async fn a_non_default_https_port_is_kept_for_a_port_rule() {
-    let rig = rig(Setup::default()).await;
-    let authority = format!("SITE.TEST:{}", rig.server_port);
-    let rules = format!("|https://site.test:{}/ads$script\n", rig.server_port);
-    let dir = rig.dir.path().join("rules");
-    std::fs::write(dir.join("list.txt"), rules).unwrap();
-    *rig.ctx.lists.filters.write().unwrap() = Arc::new(Filters::load(&[&dir], true).unwrap());
+    let rig = rig(Setup {
+        rules: "|https://site.test:8443/ads$script\n",
+        https_destination: Some(8443),
+        ..Setup::default()
+    })
+    .await;
     let (_, status, _, real) = rig
         .request_response(Trust::System, H1, "/ads", None, |mut req| {
             req.headers_mut().unwrap().insert(
                 HOST_HEADER,
-                hyper::header::HeaderValue::from_str(&authority).unwrap(),
+                hyper::header::HeaderValue::from_static("SITE.TEST:8443"),
             );
             req.header("sec-fetch-dest", "script")
         })
@@ -741,6 +745,36 @@ async fn a_non_default_https_port_is_kept_for_a_port_rule() {
     assert!(!real);
     assert_eq!(status, StatusCode::FORBIDDEN);
     assert_eq!(rig.hits(), 0);
+}
+
+#[tokio::test]
+async fn an_unnamed_https_port_uses_the_verified_connection_port_for_rules() {
+    for alpn in [H1, &["h2"][..]] {
+        for (rules, expected) in [
+            (
+                "|https://site.test:8443/ads$script\n",
+                StatusCode::FORBIDDEN,
+            ),
+            ("|https://site.test:9443/ads$script\n", StatusCode::OK),
+        ] {
+            let rig = rig(Setup {
+                rules,
+                alpn,
+                https_destination: Some(8443),
+                ..Setup::default()
+            })
+            .await;
+            let (_, status, _, real) = rig
+                .request_response(Trust::System, alpn, "/ads", None, |req| {
+                    req.header("sec-fetch-dest", "script")
+                })
+                .await
+                .unwrap();
+            assert!(!real);
+            assert_eq!(status, expected, "{alpn:?}: {rules}");
+            assert_eq!(rig.hits(), usize::from(expected == StatusCode::OK));
+        }
+    }
 }
 
 #[tokio::test]
@@ -918,6 +952,86 @@ async fn a_cleartext_url_block_returns_forbidden_without_dialing() {
     assert!(response.starts_with("HTTP/1.1 403 "), "{response}");
     assert_eq!(rig.count(Counter::RequestsBlocked), 1);
     assert_eq!(rig.dials.load(Relaxed), 0);
+}
+
+#[tokio::test]
+async fn a_cleartext_banner_named_by_host_and_referer_is_blocked() {
+    use tokio::io::AsyncBufReadExt as _;
+
+    let mut results = Vec::new();
+    for (name, referer, close, rules) in [
+        ("baseline", false, false, "||fixture.example/ads/\n"),
+        ("referer", true, false, "||fixture.example/ads/\n"),
+        ("close", false, true, "||fixture.example/ads/\n"),
+        ("referer and close", true, true, "||fixture.example/ads/\n"),
+        ("shorter path", true, true, "||fixture.example/ads\n"),
+        ("no path", true, true, "||fixture.example^\n"),
+    ] {
+        let (rig, server) = plain_rig(Setup {
+            rules,
+            plaintext_destination: Some(SocketAddr::from(([198, 18, 0, 2], 80))),
+            ..Setup::default()
+        })
+        .await;
+        let upstream = tokio::spawn(async move {
+            let (mut tcp, _) = server.accept().await.unwrap();
+            let mut buf = [0; 1024];
+            assert!(tcp.read(&mut buf).await.unwrap() > 0);
+            tcp.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+                .await
+                .unwrap();
+        });
+        let mut app = TcpStream::connect(rig.proxy).await.unwrap();
+        let mut request = "GET /ads/banner HTTP/1.1\r\nHost: fixture.example\r\n".to_owned();
+        if referer {
+            request.push_str("Referer: http://fixture.example/articles/today\r\n");
+        }
+        if close {
+            request.push_str("Connection: close\r\n");
+        }
+        request.push_str("\r\n");
+        app.write_all(request.as_bytes()).await.unwrap();
+        let mut response = String::new();
+        tokio::time::timeout(
+            Duration::from_secs(2),
+            tokio::io::BufReader::new(app).read_line(&mut response),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        results.push((name, response, rig.dials.load(Relaxed)));
+        upstream.abort();
+    }
+    assert!(
+        results
+            .iter()
+            .all(|(_, response, dials)| response.starts_with("HTTP/1.1 403 ") && *dials == 0),
+        "{results:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_https_banner_named_by_host_and_referer_is_blocked() {
+    for alpn in [H1, &["h2"][..]] {
+        let rig = rig(Setup {
+            rules: "||site.test/ads/\n",
+            alpn,
+            ..Setup::default()
+        })
+        .await;
+        let (status, _, real) = rig
+            .get(
+                Trust::System,
+                alpn,
+                "/ads/banner",
+                Some("https://site.test/articles/today"),
+            )
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::FORBIDDEN, "{alpn:?}");
+        assert!(!real);
+        assert_eq!(rig.hits(), 0);
+    }
 }
 
 #[tokio::test]
@@ -1324,7 +1438,7 @@ async fn incomplete_http_headers_use_the_bounded_raw_fallback() {
 }
 
 #[tokio::test]
-async fn clear_http_on_another_port_remains_opaque() {
+async fn cleartext_http_on_port_8080_is_passed_through_unread() {
     let server = TcpListener::bind("127.0.0.1:0").await.unwrap();
     let rig = rig(Setup {
         rules: "||ads.example^\n",
@@ -1333,12 +1447,22 @@ async fn clear_http_on_another_port_remains_opaque() {
     })
     .await;
     let mut app = TcpStream::connect(rig.proxy).await.unwrap();
-    let sent = b"GET /blocked HTTP/1.1\r\nHost: ads.example\r\n\r\n";
-    app.write_all(sent).await.unwrap();
-    let (mut up, _) = server.accept().await.unwrap();
-    let mut delivered = vec![0; sent.len()];
-    up.read_exact(&mut delivered).await.unwrap();
-    assert_eq!(delivered, sent);
+    let prefix = b"GET /blocked HTTP/1.1\r\nHost: ads.example\r\n";
+    app.write_all(prefix).await.unwrap();
+    tokio::time::timeout(Duration::from_secs(2), async {
+        let (mut up, _) = server.accept().await.unwrap();
+        let mut delivered = vec![0; prefix.len()];
+        up.read_exact(&mut delivered).await.unwrap();
+        assert_eq!(delivered, prefix);
+
+        // A raw relay forwards the prefix before the headers are complete.
+        app.write_all(b"\r\n").await.unwrap();
+        let mut end = [0; 2];
+        up.read_exact(&mut end).await.unwrap();
+        assert_eq!(&end, b"\r\n");
+    })
+    .await
+    .expect("the request should reach the upstream without HTTP classification");
     assert_eq!(rig.count(Counter::Passed), 1);
     assert_eq!(rig.count(Counter::RequestsBlocked), 0);
 }
@@ -1961,6 +2085,7 @@ async fn an_address_block_refuses_a_silent_client_with_or_without_url_filtering(
 async fn an_address_exception_bypasses_even_a_host_block() {
     let rig = rig(Setup {
         rules: "127.0.0.1$network\n@@127.0.0.1$network\n||site.test^\n",
+        https_destination: None,
         ..Setup::default()
     })
     .await;

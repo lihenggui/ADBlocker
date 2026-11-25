@@ -71,7 +71,7 @@ pub(super) async fn plaintext_http(
                             let host = std::str::from_utf8(host.value).ok();
                             host.is_none_or(|host| {
                                 clear_target(&method, path, host).is_some()
-                                    || crate::host::canonical_authority(host, "http").is_none()
+                                    || crate::host::canonical_authority(host, "http", 80).is_none()
                             })
                         },
                     ));

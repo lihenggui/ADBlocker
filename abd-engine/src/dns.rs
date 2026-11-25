@@ -119,7 +119,7 @@ impl<'a> Question<'a> {
             host.push_str(label);
             name = &name[1 + len..];
         }
-        Some(crate::host::canonical_authority(&host, "https")?.host)
+        Some(crate::host::canonical_authority(&host, "https", 443)?.host)
     }
 
     /// Whether `answer` is a response to this question: the same

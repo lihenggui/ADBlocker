@@ -309,7 +309,7 @@ impl Filters {
     }
 
     fn host_request(host: &str) -> Option<Request> {
-        let authority = crate::host::canonical_authority(host, "https")?;
+        let authority = crate::host::canonical_authority(host, "https", 443)?;
         if authority.explicit_port {
             return None;
         }

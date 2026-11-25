@@ -773,7 +773,7 @@ mod lists {
                 assert_eq!(request.url, url);
                 assert!(!request.is_third_party);
             }
-            let canonical = crate::host::canonical_authority(host, "https")
+            let canonical = crate::host::canonical_authority(host, "https", 443)
                 .filter(|authority| !authority.explicit_port)
                 .and_then(|authority| {
                     let url = format!("https://{}/", authority.text);
