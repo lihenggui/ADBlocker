@@ -53,7 +53,7 @@ const MAX_STYLE: usize = 128 << 10;
 /// How much of a page is looked through for the beginning of its head,
 /// and so the most of one that is held back at a time. A head begins
 /// within the first few hundred bytes.
-const MAX_HELD: usize = 16 << 10;
+const MAX_HELD: usize = crate::html::MAX_CHARSET_PREFIX;
 
 const HIDE: &str = "{display:none!important}\n";
 
@@ -127,84 +127,7 @@ pub fn takes<B>(resp: &Response<B>) -> bool {
     resp.status() == StatusCode::OK && html && plain
 }
 
-/// Where in the beginning of a page the style goes.
-#[derive(Debug, PartialEq, Eq)]
-pub enum Place {
-    /// After this many bytes: right after the tag that begins the head.
-    At(usize),
-    /// Not to be told yet from this much of the page.
-    More,
-    /// The page does not begin the way one with a head does. Whatever it
-    /// is, it is not for us to put anything into.
-    Nowhere,
-}
-
-/// Finds where the head of a page begins, going by nothing but what may
-/// come before it: white space, comments, the document type and the tag
-/// of the root. Anything else first, and the page has no head that was
-/// written out: text put there could land in the middle of a script.
-pub fn place(html: &[u8]) -> Place {
-    let find = |from: usize, what: &[u8]| {
-        html[from..]
-            .windows(what.len())
-            .position(|w| w == what)
-            .map(|at| from + at + what.len())
-    };
-    if !html.is_empty() && html.len() < 3 && b"\xef\xbb\xbf".starts_with(html) {
-        return Place::More;
-    }
-    let mut at = if html.starts_with(b"\xef\xbb\xbf") {
-        3
-    } else {
-        0
-    };
-    loop {
-        while html.get(at).copied().is_some_and(script::space) {
-            at += 1;
-        }
-        match html.get(at) {
-            None => return Place::More,
-            Some(b'<') => {}
-            Some(_) => return Place::Nowhere,
-        }
-        let rest = &html[at + 1..];
-        if rest.starts_with(b"!--") {
-            match script::comment_end(&html[at..]) {
-                Some(end) => at += end,
-                None => return Place::More,
-            }
-            continue;
-        }
-        if b"!--".starts_with(rest) {
-            return Place::More;
-        }
-        let Some(len) = rest
-            .iter()
-            .position(|b| script::space(*b) || matches!(b, b'>' | b'/'))
-        else {
-            // No tag that may come before the head is this long.
-            return if rest.len() > 16 {
-                Place::Nowhere
-            } else {
-                Place::More
-            };
-        };
-        let name = rest[..len].to_ascii_lowercase();
-        if !matches!(name.as_slice(), b"!doctype" | b"html" | b"head") {
-            return Place::Nowhere;
-        }
-        let end = if name == b"!doctype" {
-            find(at + 1 + len, b">")
-        } else {
-            script::attributes(html, at + 1 + len).map(|(end, _)| end)
-        };
-        let Some(end) = end else { return Place::More };
-        if name == b"head" {
-            return Place::At(end);
-        }
-        at = end;
-    }
-}
+pub use crate::html::{Place, place};
 
 /// `'sha256-…'`, as a page names an inline style it allows.
 fn source(css: &str) -> String {

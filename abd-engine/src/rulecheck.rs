@@ -38,6 +38,7 @@ pub fn check(text: &str) -> RulesCheck {
         rules += 1;
         let kind = match &rule.kind {
             Kind::Comment => unreachable!(),
+            Kind::Html(_) => continue,
             Kind::Response(response) if valid_response_rule(response, &mut patterns) => continue,
             Kind::App(app) if valid_app_rule(app, &mut patterns) => continue,
             Kind::PageException(_) if valid_script_exception(&rule) => continue,
@@ -91,7 +92,6 @@ mod tests {
                 (4, IssueKind::Cosmetic),
                 (5, IssueKind::Cosmetic),
                 (6, IssueKind::Cosmetic),
-                (7, IssueKind::Cosmetic),
                 (8, IssueKind::Invalid),
                 (9, IssueKind::Invalid),
                 (13, IssueKind::Invalid),
@@ -109,10 +109,7 @@ mod tests {
                     example.org#%#window.close()\n\
                     example.org$$script";
         assert_eq!(check(text).rules, 5);
-        assert_eq!(
-            kinds(text),
-            [(3, IssueKind::Cosmetic), (5, IssueKind::Cosmetic),]
-        );
+        assert_eq!(kinds(text), [(3, IssueKind::Cosmetic)]);
     }
 
     #[test]

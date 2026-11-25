@@ -30,8 +30,9 @@ use hyper_util::rt::TokioIo;
 use super::upstream::{LINGER_TIME, Upstream};
 use super::{Ctx, trace};
 use crate::filter::{AppFilters, Filters, Hiding, Page};
+use crate::htmlfilter::Compiled;
 use crate::relay;
-use crate::rule::action::ResponseAction;
+use crate::rule::action::{ResponseAction, html};
 use crate::stats::Counter;
 use crate::tls::Tls;
 
@@ -269,6 +270,7 @@ struct RequestMetadata<'a, 't> {
 struct RewritePlan {
     actions: Vec<Arc<ResponseAction>>,
     ask_for_identity: bool,
+    html: Vec<Arc<Compiled>>,
 }
 
 impl<'a, 't> RequestMetadata<'a, 't> {
@@ -322,6 +324,7 @@ impl<'a, 't> RequestMetadata<'a, 't> {
             RewritePlan {
                 actions,
                 ask_for_identity,
+                html: Vec::new(),
             },
         )
     }
@@ -345,6 +348,25 @@ struct MatchedRequest<'a> {
 impl MatchedRequest<'_> {
     fn evaluate(&self, kind: RequestKind) -> (RequestDecision<'_>, RewritePlan) {
         self.metadata.evaluate(self.filters, self.url, kind)
+    }
+
+    fn select_html(
+        &self,
+        filters: &Filters,
+        kind: RequestKind,
+        mut plan: RewritePlan,
+    ) -> RewritePlan {
+        if self.metadata.permits_rewrite
+            && matches!(
+                kind,
+                RequestKind::Assumed | RequestKind::Known("document" | "subdocument")
+            )
+            && self.shared.ctx.selection.cosmetic.load(Relaxed)
+        {
+            plan.html = filters.html_rules(self.host, self.url, self.metadata.method);
+            plan.ask_for_identity |= !plan.html.is_empty();
+        }
+        plan
     }
 
     fn record(&self, decision: RequestDecision<'_>) {
@@ -472,6 +494,7 @@ pub(super) async fn serve<'a>(
         if decision.blocked {
             return Ok(request.blocked(decision));
         }
+        let rewrite = request.select_html(&filters, kind, rewrite);
         (Some((request, decision)), rewrite)
     } else {
         (None, RewritePlan::default())
@@ -519,6 +542,11 @@ async fn forward_response(
             return empty(StatusCode::BAD_GATEWAY);
         }
     };
+    let html_document = pending.is_none()
+        || crate::media_type::read(resp.headers()).is_some_and(|mime| {
+            mime.eq_ignore_ascii_case("text/html")
+                || mime.eq_ignore_ascii_case("application/xhtml+xml")
+        });
     // A protocol switch has no response representation to classify.
     if let Some(pending) = pending
         && resp.status() != StatusCode::SWITCHING_PROTOCOLS
@@ -528,7 +556,11 @@ async fn forward_response(
         return blocked;
     }
     join_upgrade(shared, &mut resp, app_upgrade, connect_tunnel);
-    crate::rewrite::wrap(resp, rewrite.actions)
+    let html = (html_document && !rewrite.html.is_empty()).then(|| html::Action {
+        rules: rewrite.html,
+        charset: crate::html::transport_charset(resp.headers()).map(str::to_owned),
+    });
+    crate::rewrite::wrap(resp, rewrite.actions, html)
 }
 
 fn guard_site(

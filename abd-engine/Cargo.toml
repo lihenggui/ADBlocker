@@ -11,7 +11,7 @@ adblock = { version = "0.13.6", default-features = false, features = ["css-valid
 anyhow = { workspace = true, default-features = true }
 base64 = "0.23.1"
 bytes = "1.12.2"
-encoding_rs = { version = "0.8.44", default-features = false }
+encoding_rs = { version = "0.8.44", default-features = false, features = ["alloc"] }
 http-body-util = "0.1.5"
 httparse = "1.10.1"
 hyper = { version = "1.12.0", features = ["server", "client", "http1", "http2"] }

@@ -109,7 +109,8 @@ download fails.
 With URL filtering on, ADBlocker can rewrite uncompressed text responses
 up to 2 MiB in decrypted HTTPS and plaintext HTTP traffic. Only the user's
 custom rules and the AdGuard and uBlock Origin lists marked for response
-rewriting in the subscription catalog can supply these rules. A matching
+rewriting in the subscription catalog can supply `$replace` and
+`$jsonprune` rules. A matching
 `$replace` rule can override a request block and change text the app
 displays or code it runs. A matching `$jsonprune` rule removes items from
 a JSON or JSONP response and leaves request blocking in effect.
@@ -123,6 +124,12 @@ uncompressed HTML documents it already decrypts. You can turn it off in
 Settings or with `abd cosmetic off`.
 A list can hide legitimate content, change the DOM, or alter page behavior.
 
+- Any list can cut matching elements out of the HTML on the pages it
+  names. This can remove page content, scripts, and HTML policy elements.
+  The engine reads at most 2 MiB for this edit. It skips encodings it cannot
+  scan, including UTF-16 and UTF-32, and skips elements beyond its nesting
+  limit. The original body passes through if the element, decoding, or
+  time limit is exceeded.
 - ADBlocker injects selectors as CSS and runs matching functions from a
   bundled uBlock Origin scriptlet library in the page's JavaScript context.
   Compatible AdGuard scriptlet rules use the same library and permissions.
@@ -172,10 +179,10 @@ A list can hide legitimate content, change the DOM, or alter page behavior.
   rules can use ordinary scriptlets. The `trustedScripts` mark uses the
   same direct HTTPS download and exact URL requirements. Redirected
   downloads never receive trusted permissions.
-- The engine requests uncompressed documents and reads at most 16 KiB
-  ahead for up to 250 ms to inspect the explicit head before sending its
-  script. It streams the remaining document and records neither the
-  selected scripts nor their page URLs.
+- For injection, the engine requests uncompressed documents and reads at
+  most 16 KiB ahead for up to 250 ms to inspect the explicit head. It
+  streams the remaining document after any whole-body edits. It records
+  neither the selected scripts nor their page URLs.
 
 ## DNS in root mode
 
@@ -303,8 +310,8 @@ connection falls back to TCP.
 - The engine limits concurrent connections, retained state and filter list
   input. Timeouts bound how long it waits for an app or a server.
 - Filter lists are fetched over HTTPS. They select what is blocked and,
-  while **Hide page elements** is enabled, what is hidden and which
-  scriptlets and trusted JavaScript rules run in decrypted pages, as described in
+  while **Hide page elements** is enabled, what is hidden or removed and
+  which scriptlets and trusted JavaScript rules run in decrypted pages, as described in
   [hiding page elements](#hiding-page-elements).
 - When the daemon stops, its lookup routes go with its process, and
   cleanup removes the lookup routing rules and disables TCP marking and

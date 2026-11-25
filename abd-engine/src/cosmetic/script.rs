@@ -15,7 +15,6 @@
 
 use std::collections::{HashSet, VecDeque};
 use std::fmt::Write as _;
-use std::ops::Range;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
@@ -24,7 +23,9 @@ use bytes::Bytes;
 use encoding_rs::{Encoding, UTF_8};
 use http_body_util::BodyExt;
 use hyper::body::{Body, Frame};
-use hyper::header::{CONTENT_SECURITY_POLICY, CONTENT_TYPE, HeaderMap, HeaderValue};
+use hyper::header::{CONTENT_SECURITY_POLICY, HeaderMap, HeaderValue};
+
+use crate::html::{HeadCharset, encoding, find_ascii, head_charset, transport_charset};
 use tokio::time::{Instant, timeout_at};
 
 use super::csp::{self, By, Element};
@@ -168,118 +169,6 @@ pub(crate) fn safe_raw_text(script: &str) -> bool {
         && find_ascii(script.as_bytes(), b"</script").is_none()
 }
 
-fn find_ascii(haystack: &[u8], needle: &[u8]) -> Option<usize> {
-    haystack
-        .windows(needle.len())
-        .position(|bytes| bytes.eq_ignore_ascii_case(needle))
-}
-
-pub(super) fn space(byte: u8) -> bool {
-    matches!(byte, b' ' | b'\t' | b'\n' | b'\r' | b'\x0c')
-}
-
-fn attr_end(bytes: &[u8], from: usize, until: impl Fn(u8) -> bool) -> Option<usize> {
-    bytes[from..]
-        .iter()
-        .copied()
-        .position(until)
-        .map(|i| from + i)
-}
-
-// The end of a plain start tag, with attributes parsed so '>' inside a
-// quoted value cannot become a place to put markup.
-pub(super) fn attributes(bytes: &[u8], mut at: usize) -> Option<(usize, Vec<Attribute>)> {
-    let mut attrs = Vec::new();
-    loop {
-        while space(*bytes.get(at)?) {
-            at += 1;
-        }
-        match bytes[at] {
-            b'>' => return Some((at + 1, attrs)),
-            b'/' if *bytes.get(at + 1)? == b'>' => return Some((at + 2, attrs)),
-            _ => {}
-        }
-        let end = attr_end(bytes, at, |b| space(b) || matches!(b, b'/' | b'>' | b'='))?;
-        let name = at..end;
-        if name.is_empty()
-            || bytes[name.clone()]
-                .iter()
-                .any(|b| matches!(b, b'\0' | b'\'' | b'"' | b'<'))
-        {
-            return None;
-        }
-        at = end;
-        while space(*bytes.get(at)?) {
-            at += 1;
-        }
-        let value = if bytes[at] == b'=' {
-            at += 1;
-            while space(*bytes.get(at)?) {
-                at += 1;
-            }
-            if matches!(bytes[at], b'\'' | b'"') {
-                let end = attr_end(bytes, at + 1, |b| b == bytes[at])?;
-                let span = at + 1..end;
-                at = end + 1;
-                Some(span)
-            } else {
-                let end = attr_end(bytes, at, |b| space(b) || b == b'>')?;
-                let span = at..end;
-                at = end;
-                Some(span)
-            }
-        } else {
-            None
-        };
-        attrs.push(Attribute { name, value });
-    }
-}
-
-pub(super) struct Attribute {
-    name: Range<usize>,
-    value: Option<Range<usize>>,
-}
-
-// Parse character references in an encoding declaration. Ambiguous entity
-// spellings leave the response on the CSS-only path.
-fn attribute_value(bytes: &[u8]) -> Option<String> {
-    let mut rest = std::str::from_utf8(bytes).ok()?;
-    let mut value = String::new();
-    while let Some((prefix, suffix)) = rest.split_once('&') {
-        value.push_str(prefix);
-        let (entity, next) = suffix.split_once(';')?;
-        let c = match entity {
-            "amp" | "AMP" => '&',
-            "quot" | "QUOT" => '"',
-            "apos" => '\'',
-            "lt" | "LT" => '<',
-            "gt" | "GT" => '>',
-            entity if entity.starts_with('#') => {
-                let entity = &entity[1..];
-                let (radix, digits) = entity
-                    .strip_prefix(['x', 'X'])
-                    .map_or((10, entity), |s| (16, s));
-                let raw = u32::from_str_radix(digits, radix).ok()?;
-                char::from_u32(raw).filter(|c| c.is_ascii() && *c != '\0')?
-            }
-            _ => return None,
-        };
-        value.push(c);
-        rest = next;
-    }
-    value.push_str(rest);
-    value.is_ascii().then_some(value)
-}
-
-pub(super) fn comment_end(bytes: &[u8]) -> Option<usize> {
-    let offset = bytes.strip_prefix(b"<!--")?;
-    if offset.starts_with(b">") || offset.starts_with(b"->") {
-        return None;
-    }
-    let end = find_ascii(offset, b"-->")?;
-    (find_ascii(&offset[..end], b"--!>").is_none()).then_some(end + 7)
-}
-
 struct Head {
     at: usize,
     charset: Option<String>,
@@ -291,143 +180,21 @@ enum Inspect {
     Skip,
 }
 
-fn raw_end(bytes: &[u8], name: &[u8]) -> InspectEnd {
-    let mut end_name = b"</".to_vec();
-    end_name.extend_from_slice(name);
-    let mut start = 0;
-    while let Some(at) = find_ascii(&bytes[start..], &end_name) {
-        let end = start + at + end_name.len();
-        let Some(&tail) = bytes.get(end) else {
-            return InspectEnd::More;
-        };
-        if tail == b'>' || space(tail) || tail == b'/' {
-            // Legacy double-escaped script data changes how closing tags
-            // are tokenized. Leave such a head to the browser.
-            if name.eq_ignore_ascii_case(b"script") && find_ascii(&bytes[..end], b"<!--").is_some()
-            {
-                return InspectEnd::Skip;
-            }
-            return match attributes(bytes, end) {
-                Some((end, _)) => InspectEnd::At(end),
-                None => InspectEnd::More,
-            };
-        }
-        start = end;
-    }
-    InspectEnd::More
-}
-
-enum InspectEnd {
-    At(usize),
-    More,
-    Skip,
-}
-
 fn inspect(bytes: &[u8], header_charset: Option<&str>) -> Inspect {
     let at = match place(bytes) {
         Place::At(at) => at,
         Place::More => return Inspect::More,
         Place::Nowhere => return Inspect::Skip,
     };
-    let mut head = Head { at, charset: None };
     // A BOM or transport declaration takes precedence over a meta charset.
-    // With either one, only the prefix before the injection point matters.
     if Encoding::for_bom(bytes).is_some() || header_charset.is_some() {
-        return Inspect::Ready(head);
+        return Inspect::Ready(Head { at, charset: None });
     }
-    let mut rest = &bytes[at..];
-    while !rest.is_empty() {
-        while rest.first().copied().is_some_and(space) {
-            rest = &rest[1..];
-        }
-        if rest.is_empty() {
-            break;
-        }
-        if rest.starts_with(b"<!--") {
-            let Some(end) = comment_end(rest) else {
-                return Inspect::More;
-            };
-            rest = &rest[end..];
-            continue;
-        }
-        if b"<!--".starts_with(rest) {
-            return Inspect::More;
-        }
-        if !rest.starts_with(b"<") {
-            return Inspect::Ready(head);
-        }
-        let Some(len) = attr_end(rest, 1, |b| space(b) || b == b'>' || b == b'/') else {
-            // A leading slash belongs to a closing tag's name below.
-            return Inspect::More;
-        };
-        let name_end = if rest.get(1) == Some(&b'/') {
-            let Some(end) = attr_end(rest, 2, |b| space(b) || b == b'>' || b == b'/') else {
-                return Inspect::More;
-            };
-            end
-        } else {
-            len
-        };
-        let name = rest[1..name_end].to_ascii_lowercase();
-        let Some((end, attrs)) = attributes(rest, name_end) else {
-            return Inspect::More;
-        };
-        match name.as_slice() {
-            b"/head" | b"body" => return Inspect::Ready(head),
-            b"base" | b"basefont" | b"bgsound" | b"link" | b"html" | b"head" => {}
-            b"meta" if head.charset.is_none() => {
-                let Some(charset) = meta_charset(rest, &attrs) else {
-                    return Inspect::Skip;
-                };
-                head.charset = charset;
-            }
-            b"meta" => {}
-            b"script" | b"style" | b"title" | b"noframes" | b"noscript" => {
-                match raw_end(&rest[end..], &name) {
-                    InspectEnd::At(after) => {
-                        rest = &rest[end + after..];
-                        continue;
-                    }
-                    InspectEnd::More => return Inspect::More,
-                    InspectEnd::Skip => return Inspect::Skip,
-                }
-            }
-            // Templates and unfamiliar head markup can change how the
-            // browser interprets a subsequent charset declaration.
-            _ => return Inspect::Skip,
-        }
-        rest = &rest[end..];
+    match head_charset(&bytes[at..], true) {
+        HeadCharset::Found(charset) => Inspect::Ready(Head { at, charset }),
+        HeadCharset::More => Inspect::More,
+        HeadCharset::Ambiguous => Inspect::Skip,
     }
-    Inspect::More
-}
-
-fn meta_charset(tag: &[u8], attrs: &[Attribute]) -> Option<Option<String>> {
-    let find = |name: &[u8]| {
-        attrs
-            .iter()
-            .find(|a| tag[a.name.clone()].eq_ignore_ascii_case(name))
-    };
-    let value = |attr: &Attribute| -> Option<String> {
-        attribute_value(attr.value.as_ref().map_or(b"", |r| &tag[r.clone()]))
-    };
-    if let Some(charset) = find(b"charset") {
-        return Some(Some(value(charset)?));
-    }
-    if let (Some(equiv), Some(content)) = (find(b"http-equiv"), find(b"content"))
-        && value(equiv)?.eq_ignore_ascii_case("content-type")
-    {
-        return Some(charset(&value(content)?).map(str::to_owned));
-    }
-    Some(None)
-}
-
-fn charset(content: &str) -> Option<&str> {
-    content.split(';').skip(1).find_map(|parameter| {
-        let (name, value) = parameter.split_once('=')?;
-        name.trim()
-            .eq_ignore_ascii_case("charset")
-            .then(|| value.trim().trim_matches(['\'', '"']))
-    })
 }
 
 // An error means the entire script must be skipped. None means this
@@ -506,15 +273,7 @@ fn rewrite(
     script: &str,
     css: Option<&str>,
 ) -> Option<(HeaderMap, Vec<u8>)> {
-    // Use the Encoding Standard's labels and ASCII compatibility. A BOM
-    // takes precedence over the transport and document declarations.
-    let encoding = if let Some((encoding, _)) = Encoding::for_bom(bytes) {
-        Some(encoding)
-    } else if let Some(label) = header_charset.or(head.charset.as_deref()) {
-        Some(Encoding::for_label(label.as_bytes())?)
-    } else {
-        None
-    };
+    let encoding = encoding(bytes, header_charset.or(head.charset.as_deref()))?;
     if encoding.is_some_and(|e| !e.is_ascii_compatible())
         || (encoding != Some(UTF_8) && !script.is_ascii())
     {
@@ -567,9 +326,7 @@ impl<B: Body<Data = Bytes> + Unpin> Prefix<B> {
     ) -> Preparation {
         let mut held = Vec::new();
         let deadline = Instant::now() + HEAD_WAIT;
-        let header_charset = headers
-            .get(CONTENT_TYPE)
-            .and_then(|h| charset(h.to_str().ok()?));
+        let header_charset = transport_charset(headers);
         let head = loop {
             match inspect(&held, header_charset) {
                 Inspect::Ready(head) => break Some(head),
@@ -642,6 +399,7 @@ mod tests {
     use super::*;
     use http_body_util::Full;
     use hyper::header::CONTENT_SECURITY_POLICY_REPORT_ONLY;
+    use hyper::header::CONTENT_TYPE;
 
     #[tokio::test]
     async fn script_hashes_are_scoped_to_elements_in_each_header_and_meta_policies_stay_intact() {

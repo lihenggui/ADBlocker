@@ -34,7 +34,7 @@ use tokio::task::JoinHandle;
 use tokio::time::{Sleep, sleep};
 
 use crate::limits::{MAX_REWRITE_BODY, MAX_REWRITES, REWRITE_WAIT, REWRITE_WORK};
-use crate::rule::action::ResponseAction;
+use crate::rule::action::{ActionKind, ResponseAction, html};
 
 static SLOTS: std::sync::LazyLock<Slots> = std::sync::LazyLock::new(|| Slots::new(MAX_REWRITES));
 
@@ -104,24 +104,26 @@ fn takes<B>(response: &Response<B>) -> bool {
 pub(crate) fn wrap<B>(
     response: Response<B>,
     actions: Vec<Arc<ResponseAction>>,
+    html: Option<html::Action>,
 ) -> Response<BoxBody<Bytes, B::Error>>
 where
     B: Body<Data = Bytes> + Send + Sync + Unpin + 'static,
     B::Error: Send + Sync + Unpin + 'static,
 {
-    wrap_with(response, actions, &SLOTS)
+    wrap_with(response, actions, html, &SLOTS)
 }
 
 fn wrap_with<B>(
     response: Response<B>,
     actions: Vec<Arc<ResponseAction>>,
+    html: Option<html::Action>,
     slots: &Slots,
 ) -> Response<BoxBody<Bytes, B::Error>>
 where
     B: Body<Data = Bytes> + Send + Sync + Unpin + 'static,
     B::Error: Send + Sync + Unpin + 'static,
 {
-    if actions.is_empty() || !takes(&response) {
+    if (actions.is_empty() && html.is_none()) || !takes(&response) {
         return response.map(BodyExt::boxed);
     }
     let Ok(slot) = slots.responses.clone().try_acquire_owned() else {
@@ -135,7 +137,7 @@ where
     parts.headers.remove("digest");
     Response::from_parts(
         parts,
-        Rewrite::new(body, actions, slot, slots.workers.clone()).boxed(),
+        Rewrite::new(body, actions, html, slot, slots.workers.clone()).boxed(),
     )
 }
 
@@ -145,6 +147,7 @@ struct Collection {
     trailers: Option<Frame<Bytes>>,
     timer: Pin<Box<Sleep>>,
     actions: Vec<Arc<ResponseAction>>,
+    html: Option<html::Action>,
     slot: OwnedSemaphorePermit,
 }
 
@@ -153,7 +156,7 @@ struct Collection {
 struct Work {
     original: Bytes,
     trailers: Option<Frame<Bytes>>,
-    task: JoinHandle<Option<Vec<u8>>>,
+    task: JoinHandle<Option<Bytes>>,
     timer: Pin<Box<Sleep>>,
     cancelled: Arc<AtomicBool>,
     _slot: OwnedSemaphorePermit,
@@ -164,7 +167,12 @@ impl Work {
     fn start(
         collection: Collection,
         worker: OwnedSemaphorePermit,
-        run: impl FnOnce(&[u8], Vec<Arc<ResponseAction>>, &dyn Fn() -> bool) -> Option<Vec<u8>>
+        run: impl FnOnce(
+            Bytes,
+            Vec<Arc<ResponseAction>>,
+            Option<html::Action>,
+            &dyn Fn() -> bool,
+        ) -> Option<Bytes>
         + Send
         + 'static,
     ) -> Self {
@@ -180,7 +188,7 @@ impl Work {
             if !within_budget() {
                 return None;
             }
-            let changed = run(&input, collection.actions, &within_budget)?;
+            let changed = run(input, collection.actions, collection.html, &within_budget)?;
             within_budget().then_some(changed)
         });
         Self {
@@ -194,7 +202,7 @@ impl Work {
     }
 
     /// A task that fails or misses its deadline leaves the original intact.
-    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Option<Vec<u8>>> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<Option<Bytes>> {
         if self.timer.as_mut().poll(cx).is_ready() {
             return Poll::Ready(None);
         }
@@ -215,16 +223,25 @@ impl Drop for Work {
 
 /// Keep intermediate results off the body until every action succeeds.
 fn apply_actions(
-    input: &[u8],
+    mut body: Bytes,
     actions: Vec<Arc<ResponseAction>>,
+    mut html: Option<html::Action>,
     within_budget: &dyn Fn() -> bool,
-) -> Option<Vec<u8>> {
-    let (first, rest) = actions.split_first()?;
-    let mut changed = first.apply(input, within_budget)?;
-    for action in rest {
-        changed = action.apply(&changed, within_budget)?;
+) -> Option<Bytes> {
+    // AdGuard's reference leaves HTML filtering and replacement order
+    // unspecified. Remove elements after pruning and before replacement.
+    for action in actions {
+        if action.kind() == ActionKind::Replace
+            && let Some(html) = html.take()
+        {
+            body = html.apply(body, within_budget)?;
+        }
+        body = Bytes::from(action.apply(&body, within_budget)?);
     }
-    Some(changed)
+    if let Some(html) = html {
+        body = html.apply(body, within_budget)?;
+    }
+    Some(body)
 }
 
 type Item<E> = Result<Frame<Bytes>, E>;
@@ -251,6 +268,7 @@ impl<B: Body<Data = Bytes> + Unpin> Rewrite<B> {
     fn new(
         inner: B,
         actions: Vec<Arc<ResponseAction>>,
+        html: Option<html::Action>,
         slot: OwnedSemaphorePermit,
         workers: Arc<Semaphore>,
     ) -> Self {
@@ -261,6 +279,7 @@ impl<B: Body<Data = Bytes> + Unpin> Rewrite<B> {
                 trailers: None,
                 timer: Box::pin(sleep(REWRITE_WAIT)),
                 actions,
+                html,
                 slot,
             }),
             workers,
@@ -322,7 +341,7 @@ impl<B: Body<Data = Bytes> + Unpin> Rewrite<B> {
             unreachable!("polling rewrite work")
         };
         let changed = ready!(work.poll(cx));
-        let bytes = changed.map_or_else(|| std::mem::take(&mut work.original), Bytes::from);
+        let bytes = changed.unwrap_or_else(|| std::mem::take(&mut work.original));
         let trailers = work.trailers.take();
         self.state = State::Ended;
         Poll::Ready(self.finish(bytes, trailers, None))

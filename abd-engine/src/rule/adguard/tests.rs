@@ -224,7 +224,7 @@ fn unsupported_adguard_forms_keep_their_own_reason() {
     }
     assert!(matches!(
         read("example.org$$script[data-ad]").kind,
-        Kind::NotApplied(Reason::HtmlFiltering)
+        Kind::Html(_)
     ));
 }
 

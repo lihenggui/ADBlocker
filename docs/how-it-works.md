@@ -320,8 +320,9 @@ expression and substitutes the replacement for each match. With URL
 filtering on, a matching `$replace` rule takes precedence over
 request-level blocks. A matching `$jsonprune` rule removes items from a
 JSON or JSONP response and leaves request blocking in effect. The engine
-applies `$jsonprune` before `$replace` and uses the same resource type for
-response rules. It can rewrite an eligible
+applies `$jsonprune`, HTML filtering, and `$replace` in that order,
+then inserts cosmetic styles and scripts. The inferred resource type also
+applies to response rules. It can rewrite an eligible
 uncompressed text response up to 2 MiB. It takes these rules from the
 user's custom rules and catalog lists marked as trusted for response
 rules.
@@ -361,11 +362,20 @@ their exceptions to the bundled scriptlets. It maps single CSS rule sets
 with `#$#` or `#$?#` and their exceptions to style and removal actions.
 AdGuard `#%#` JavaScript rules and `#@%#` exceptions require named domains
 and come from marked lists or user rules. `$jsinject` disables scriptlets
-and JavaScript rules on matching pages. `$$` HTML filtering is unsupported.
+and JavaScript rules on matching pages.
+AdGuard `$$` rules and compatible uBlock Origin `##^` rules cut elements
+out of the HTML on the document's own host in decrypted HTTPS and
+eligible plaintext HTTP. They can match a tag, its
+attributes, its inner HTML, and a chain of direct parents. The engine
+requests an uncompressed body when a rule applies to the host. It also
+checks responses labeled `text/html` or `application/xhtml+xml` when
+the request type is unknown. `$@$` and `#@#^` exceptions cancel the same
+selector on the domains they name. `$content` and `$document` exceptions
+disable HTML filtering for the matching page.
 Selectors such as `:has()` stay in native CSS where the parser represents
 them as CSS. Rules based on generic classes and IDs can still use a second
-style at the end of the document. The cache keeps the compiled permissions
-and the JavaScript rule bodies. See
+style at the end of the document. The cache keeps compiled permissions,
+JavaScript rule bodies, and parsed HTML rules. See
 [SECURITY.md](../SECURITY.md#hiding-page-elements) for the CSP and trust
 limits.
 

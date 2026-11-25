@@ -18,6 +18,7 @@ use std::path::Path;
 
 use adblock::Engine;
 
+use super::html_rules::HtmlRules;
 use super::response_rules::ResponseRules;
 use super::{AppRules, Filters, PageExceptions, Patterns, RequestRules, load::use_resources};
 use crate::files;
@@ -51,6 +52,15 @@ fn read_engine(cache: &Path, name: &str, remaining: &mut usize) -> Option<Engine
     // The engine's checksum rejects a truncated or damaged file.
     engine.deserialize(&compiled).ok()?;
     Some(engine)
+}
+
+fn read_html(cache: &Path, present: bool, remaining: &mut usize) -> Option<HtmlRules> {
+    if !present {
+        return Some(HtmlRules::default());
+    }
+    let specs = files::read_bytes(&cache.join("html-rules"), *remaining).ok()?;
+    *remaining -= specs.len();
+    HtmlRules::cached(&specs)
 }
 
 impl Filters {
@@ -97,6 +107,7 @@ impl Filters {
             files::read_bytes(&cache.join("scripts"), remaining.min(MAX_CACHED_SCRIPTS)).ok()?;
         remaining -= script_data.len();
         let scripts = ScriptTable::cached(&script_data)?;
+        let html = read_html(cache, f.next()?.parse().ok()?, &mut remaining)?;
         let mut engine = |name| read_engine(cache, name, &mut remaining);
         let responses = match actions {
             Some(actions) => Some(ResponseRules::cached(engine("response-rules")?, &actions)?),
@@ -131,6 +142,7 @@ impl Filters {
             apps,
             patterns,
             responses,
+            html,
             rules,
             host_rules,
         })
@@ -142,6 +154,7 @@ impl Filters {
         let kept = self.apps.as_ref().map(|rules| rules.serialized().map(Some));
         APPS.into_iter().zip(kept.unwrap_or_default()).chain([
             ("app-patterns", Some(self.patterns.serialized())),
+            ("html-rules", self.html.serialized()),
             ("full", Some(self.requests.full.serialize())),
             ("scripts", Some(self.scripts.serialized())),
             (
@@ -225,7 +238,7 @@ impl Filters {
                 }
             }
             let meta = format!(
-                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
+                "{key} {} {} {} {} {} {} {} {} {} {} {} {} {} {} {}\n",
                 self.rules,
                 self.host_rules,
                 self.guards_incomplete,
@@ -240,6 +253,7 @@ impl Filters {
                 self.responses.is_some(),
                 exceptions.urlblock.is_some(),
                 exceptions.script.is_some(),
+                !self.html.is_empty(),
             );
             files::replace(&cache.join("key"), meta.as_bytes())
         };

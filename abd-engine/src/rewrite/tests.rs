@@ -85,6 +85,7 @@ async fn replacement_uses_captures_both_flags_and_literal_dollars() {
     let response = wrap_with(
         text(Full::new(Bytes::from_static(b"BEFORE A\nB AFTER"))),
         action("(a).(b)", "$2$1 $0 $word", true),
+        None,
         &Slots::new(1),
     );
     assert_eq!(
@@ -106,6 +107,7 @@ async fn replacement_sees_every_frame_and_keeps_the_trailers() {
     let response = wrap_with(
         text(stream(frames)),
         action("start end", "changed", false),
+        None,
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -132,6 +134,7 @@ async fn a_body_one_byte_over_the_limit_passes_through_in_order() {
     let response = wrap_with(
         text(stream(frames)),
         action("x", "q", false),
+        None,
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -159,6 +162,7 @@ async fn a_stalled_body_releases_its_original_prefix_and_streams_the_rest() {
     let response = wrap_with(
         text(inner),
         action("before", "changed", false),
+        None,
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -179,6 +183,7 @@ async fn an_error_follows_the_original_data() {
     let response = wrap_with(
         text(stream(frames)),
         action("before", "changed", false),
+        None,
         &Slots::new(1),
     );
     let mut body = response.into_body();
@@ -196,7 +201,12 @@ async fn a_result_over_the_limit_discards_even_preceding_changes() {
     let original = Bytes::from(bytes);
     let mut actions = action("z", "x", false);
     actions.extend(action("(x+)", "$1$1$1", false));
-    let response = wrap_with(text(Full::new(original.clone())), actions, &Slots::new(1));
+    let response = wrap_with(
+        text(Full::new(original.clone())),
+        actions,
+        None,
+        &Slots::new(1),
+    );
     assert_eq!(
         response.into_body().collect().await.unwrap().to_bytes(),
         original
@@ -220,7 +230,7 @@ async fn the_fifth_response_is_passed_through_without_waiting() {
                 .headers_mut()
                 .insert(name, HeaderValue::from_static(value));
         }
-        wrap_with(response, action("X", "changed", false), &slots)
+        wrap_with(response, action("X", "changed", false), None, &slots)
     };
     let held: Vec<_> = (0..MAX_REWRITES).map(|_| response()).collect();
     let passed = response();
@@ -293,6 +303,7 @@ async fn held_work(
     let mut body = Rewrite::new(
         Full::new(Bytes::new()),
         action("original", "changed", false),
+        None,
         slots.responses.clone().try_acquire_owned().unwrap(),
         slots.workers.clone(),
     );
@@ -307,11 +318,11 @@ async fn held_work(
     body.state = State::Rewriting(Work::start(
         collected,
         worker,
-        move |input, actions, check| {
+        move |input, actions, html, check| {
             began.send(()).ok()?;
             wait.blocking_recv().ok()?;
             report.send(check()).ok()?;
-            apply_actions(input, actions, check)
+            apply_actions(input, actions, html, check)
         },
     ));
     tokio::time::timeout(REWRITE_WORK, started)
@@ -374,6 +385,7 @@ async fn a_worker_that_panics_returns_the_original() {
     let mut body = Rewrite::new(
         Full::new(Bytes::new()),
         action("original", "changed", false),
+        None,
         slots.responses.clone().try_acquire_owned().unwrap(),
         slots.workers.clone(),
     );
@@ -382,7 +394,7 @@ async fn a_worker_that_panics_returns_the_original() {
     };
     collected.bytes = b"original".to_vec();
     let worker = slots.workers.clone().try_acquire_owned().unwrap();
-    body.state = State::Rewriting(Work::start(collected, worker, |_, _, _| {
+    body.state = State::Rewriting(Work::start(collected, worker, |_, _, _, _| {
         panic!("failed search")
     }));
     assert_eq!(
@@ -402,7 +414,7 @@ async fn a_collected_json_body_is_pruned_before_replacement() {
         .header(CONTENT_TYPE, "application/json")
         .body(body)
         .unwrap();
-    let response = wrap_with(response, actions, &Slots::new(1));
+    let response = wrap_with(response, actions, None, &Slots::new(1));
     assert_eq!(
         response.into_body().collect().await.unwrap().to_bytes(),
         r#"{"keep":"changed"}"#

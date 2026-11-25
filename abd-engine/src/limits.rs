@@ -74,6 +74,17 @@ pub(crate) const MAX_JSON_VISITS: usize = 250_000;
 /// The most heap used by one response NFA. Counted Unicode repetitions
 /// expand into UTF-8 transitions for each repetition.
 pub(crate) const MAX_RESPONSE_REGEX: usize = 512 << 10;
+/// Source size, selector depth, and generation limits for HTML filtering.
+pub(crate) const MAX_HTML_RULE: usize = 32 << 10;
+pub(crate) const MAX_HTML_CHAIN: usize = 32;
+pub(crate) const MAX_HTML_CONDITIONS: usize = 32;
+pub(crate) const MAX_HTML_RULES: usize = 4096;
+pub(crate) const MAX_HTML_REGEXES: usize = 512;
+pub(crate) const MAX_HTML_RULES_PER_PAGE: usize = 128;
+/// A deeper subtree is skipped. Exhausting either work limit abandons the rewrite.
+pub(crate) const MAX_HTML_DEPTH: usize = 128;
+pub(crate) const MAX_HTML_ELEMENTS: usize = 100_000;
+pub(crate) const MAX_HTML_DECODED: usize = 4 << 20;
 /// The largest original response that can be rewritten on a phone.
 pub(crate) const MAX_REWRITE_BODY: usize = 2 << 20;
 /// The most bytes a replacement may produce.

@@ -26,9 +26,11 @@ use self::options::{OptionToken, Options, Quoting, unescaped};
 pub(crate) mod action;
 mod adguard;
 mod comment;
+pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
 pub(crate) mod options;
+mod regex;
 mod response;
 
 pub use comment::{count, is_comment};
@@ -50,13 +52,14 @@ pub(crate) enum Kind<'a> {
     Response(ResponseRule<'a>),
     PageException(PageException<'a>),
     Cosmetic,
+    Html(html::Rule),
     NotApplied(Reason),
 }
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Reason {
     Modifier(&'static str),
-    HtmlFiltering,
+    HtmlFiltering(html::Rejection),
     AdGuard(adguard::Unsupported),
 }
 
@@ -105,6 +108,13 @@ pub(crate) fn read_with_scripts<'a>(
     };
     if is_comment(line) {
         rule.kind = Kind::Comment;
+        return rule;
+    }
+    if let Some(fields) = html::fields(line) {
+        rule.kind = match html::read(line, fields) {
+            Ok(parsed) => Kind::Html(parsed),
+            Err(reason) => Kind::NotApplied(Reason::HtmlFiltering(reason)),
+        };
         return rule;
     }
     if javascript::uses_reserved_name(line) {
@@ -157,8 +167,6 @@ pub(crate) fn read_with_scripts<'a>(
         Kind::Cosmetic
     } else if let Some(name) = rule.unsupported_modifier() {
         Kind::NotApplied(Reason::Modifier(name))
-    } else if line.contains("$$") && !line.starts_with('|') && !line.starts_with("@@|") {
-        Kind::NotApplied(Reason::HtmlFiltering)
     } else {
         Kind::Matcher
     };
@@ -202,7 +210,10 @@ impl<'a> Rule<'a> {
             return Some(Cow::Borrowed(&translated.line));
         }
         match self.kind {
-            Kind::App(_) | Kind::Response(_) | Kind::NotApplied(Reason::AdGuard(_)) => None,
+            Kind::App(_)
+            | Kind::Response(_)
+            | Kind::Html(_)
+            | Kind::NotApplied(Reason::AdGuard(_) | Reason::HtmlFiltering(_)) => None,
             _ => Some(self.normalized()),
         }
     }
@@ -256,7 +267,10 @@ impl<'a> Rule<'a> {
         if self.translated.is_some()
             || matches!(
                 self.kind,
-                Kind::App(_) | Kind::Response(_) | Kind::NotApplied(Reason::AdGuard(_))
+                Kind::App(_)
+                    | Kind::Response(_)
+                    | Kind::Html(_)
+                    | Kind::NotApplied(Reason::AdGuard(_) | Reason::HtmlFiltering(_))
             )
         {
             return None;
@@ -274,10 +288,10 @@ impl<'a> Rule<'a> {
                 MatcherCheck::AppliedCosmetic
             };
         }
-        if matches!(
-            self.kind,
-            Kind::Cosmetic | Kind::NotApplied(Reason::HtmlFiltering)
-        ) {
+        if matches!(self.kind, Kind::Cosmetic)
+            || (matches!(self.kind, Kind::NotApplied(Reason::HtmlFiltering(_)))
+                && (self.line.contains("$$") || cosmetic(self.line)))
+        {
             return MatcherCheck::Cosmetic;
         }
         match parse_filter(self.line, false, ParseOptions::default()) {
@@ -444,7 +458,7 @@ fn cosmetic(line: &str) -> bool {
 /// The generic cosmetic engine takes its rules directly from the source
 /// lists, with the default permissions of that matcher.
 pub(crate) fn generic_cosmetic(line: &str) -> bool {
-    if !line.contains('#') || javascript::uses_reserved_name(line) {
+    if !line.contains('#') || html::fields(line).is_some() || javascript::uses_reserved_name(line) {
         return false;
     }
     matches!(parse_filter(line, false, cosmetic_options()), Ok(ParsedLine::Cosmetic(rule))

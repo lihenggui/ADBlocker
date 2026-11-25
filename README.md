@@ -297,7 +297,9 @@ Turn off **URL filtering** to keep HTTPS encrypted.
 ## Limitations
 
 - **Hide page elements** hides elements named by your lists on decrypted
-  pages, such as empty ad frames. It is on by default and can be turned off
+  pages, such as empty ad frames. AdGuard `$$` rules and compatible uBlock
+  Origin `##^` rules remove elements from the HTML before the page loads.
+  The setting is on by default and can be turned off
   in Settings or with `abd cosmetic off` in a root shell. It also runs
   supported uBlock Origin and AdGuard scriptlets, AdGuard JavaScript rules
   from marked lists and user rules, AdGuard CSS injection rules, and

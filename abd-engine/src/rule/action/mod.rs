@@ -16,6 +16,7 @@
 
 use serde::{Deserialize, Serialize};
 
+pub(crate) mod html;
 mod prune;
 mod replace;
 

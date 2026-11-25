@@ -142,6 +142,10 @@ impl PageExceptions {
         )
     }
 
+    pub(super) fn skip_html(&self, url: &str, method: &str) -> bool {
+        self.response(url, Page::Itself, method).all
+    }
+
     pub(super) fn matches(engine: Option<&Engine>, page: &Request) -> bool {
         engine.is_some_and(|engine| {
             engine

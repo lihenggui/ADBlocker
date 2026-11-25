@@ -44,6 +44,7 @@ mod app_patterns;
 mod app_rules;
 mod cache;
 mod host_rules;
+mod html_rules;
 mod load;
 mod page_exceptions;
 mod response_rules;
@@ -72,6 +73,7 @@ pub struct Filters {
     apps: Option<AppRules>,
     patterns: Patterns,
     responses: Option<ResponseRules>,
+    html: html_rules::HtmlRules,
     pub rules: usize,
     pub host_rules: usize,
 }

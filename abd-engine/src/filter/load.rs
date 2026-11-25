@@ -24,6 +24,7 @@ use adblock::resources::{PermissionMask, Resource};
 use anyhow::Result;
 
 use super::host_rules::{AppHostBlocks, HostProjections};
+use super::html_rules::HtmlProjections;
 use super::page_exceptions::PageProjections;
 use super::response_rules::ResponseProjections;
 use super::{AppProjections, Filters, ListFiles, Patterns, RequestRules, app_rules};
@@ -174,6 +175,7 @@ impl Filters {
         let mut pages = PageProjections::default();
         let mut apps = AppProjections::default();
         let mut responses = ResponseProjections::default();
+        let mut html = HtmlProjections::default();
         let mut patterns = Patterns::default();
         let mut scripts = Scripts::default();
         for (path, text) in &lists {
@@ -187,6 +189,9 @@ impl Filters {
                 pages.add(&source);
                 match source.kind {
                     Kind::App(app) => apps.add(&app, &mut patterns),
+                    // AdGuard allows any list to cut elements. This grants
+                    // less power than the cosmetic rules any list can use.
+                    Kind::Html(rule) => html.add(source.line, rule),
                     Kind::Response(response) if trust_responses => {
                         responses.add(source.line, response)
                     }
@@ -229,6 +234,7 @@ impl Filters {
             apps,
             patterns,
             responses,
+            html: html.finish(),
             rules: rules_count,
             host_rules: host_rules.count,
         })

@@ -3130,3 +3130,120 @@ fn only_replacement_actions_override_request_blocking() {
         );
     }
 }
+
+#[tokio::test]
+async fn html_removes_elements_before_replacement_and_cosmetic_injection() {
+    let rig = rig(Setup {
+        rules: r#"site.test$$div[class="ad-box"]
+site.test##title
+||site.test/page$replace=/ad-box/kept/,document
+||site.test/page$replace=/identity/replaced/,document
+||site.test/page$replace=/display:none/changed/,document
+"#,
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/page/named", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("<head><style>title{display:none!important}"));
+    assert!(body.contains("<body>replaced</body>"), "{body}");
+}
+
+#[tokio::test]
+async fn html_filtering_does_not_request_identity_on_other_hosts() {
+    let rig = rig(Setup {
+        rules: "other.test$$div[class=ad-box]\n@@||site.test^$elemhide",
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/page/named", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("<body>gzip, br<div class=\"ad-box\">"),
+        "{body}"
+    );
+}
+
+#[tokio::test]
+async fn html_filtering_off_leaves_the_elements_and_the_request_encoding() {
+    let rig = rig(Setup {
+        rules: "site.test$$div[class=ad-box]",
+        settings: Some("cosmetic off\n"),
+        ..Setup::default()
+    })
+    .await;
+    let (status, body, _) = rig
+        .get(Trust::System, H1, "/page/named", None)
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("<body>gzip, br<div class=\"ad-box\">"),
+        "{body}"
+    );
+}
+
+#[tokio::test]
+async fn an_assumed_request_answered_with_html_uses_its_own_host() {
+    let rig = rig(Setup {
+        rules: "site.test$$div[class=ad-box]",
+        ..Setup::default()
+    })
+    .await;
+    let (_, status, body, _) = rig
+        .request_response(
+            Trust::System,
+            H1,
+            "/page/named",
+            Some("https://other.test/"),
+            |mut req| {
+                req.headers_mut().unwrap().remove("sec-fetch-dest");
+                req
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(status, StatusCode::OK);
+    assert!(body.contains("<body>identity</body>"), "{body}");
+}
+
+#[tokio::test]
+async fn a_subdocument_uses_its_own_html_rules_and_page_exceptions() {
+    let rig = rig(Setup {
+        rules: "site.test$$div[class=ad-box]\n@@||site.test/page/excepted$content\n@@||site.test^$elemhide",
+        ..Setup::default()
+    })
+    .await;
+    for (path, expected) in [
+        ("/page/named", "<body>identity</body>"),
+        (
+            "/page/excepted/named",
+            "<body>gzip, br<div class=\"ad-box\">",
+        ),
+    ] {
+        let (_, status, body, _) = rig
+            .request_response(
+                Trust::System,
+                H1,
+                path,
+                Some("https://other.test/"),
+                |mut req| {
+                    req.headers_mut().unwrap().insert(
+                        "sec-fetch-dest",
+                        hyper::header::HeaderValue::from_static("iframe"),
+                    );
+                    req
+                },
+            )
+            .await
+            .unwrap();
+        assert_eq!(status, StatusCode::OK);
+        assert!(body.contains(expected), "{body}");
+    }
+}

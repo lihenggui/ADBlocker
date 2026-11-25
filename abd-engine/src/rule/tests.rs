@@ -109,10 +109,7 @@ fn a_known_unapplied_modifier_names_the_option_that_cannot_be_applied() {
         rule.kind,
         Kind::NotApplied(Reason::Modifier("removeheader"))
     ));
-    assert!(matches!(
-        read("example.org$$script").kind,
-        Kind::NotApplied(Reason::HtmlFiltering)
-    ));
+    assert!(matches!(read("example.org$$script").kind, Kind::Html(_)));
 }
 
 #[test]
