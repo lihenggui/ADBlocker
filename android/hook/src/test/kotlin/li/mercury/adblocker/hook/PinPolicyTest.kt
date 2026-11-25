@@ -18,6 +18,7 @@ package li.mercury.adblocker.hook
 
 import org.junit.Rule
 import org.junit.rules.TemporaryFolder
+import java.security.cert.CertificateException
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -151,6 +152,27 @@ class PinPolicyTest {
             .validatedToLocalRoot(presented, "RSA", peerHost(engine), engine)
 
         assertEquals(presented + authority.system.certificate, validated)
+    }
+
+    @Test
+    fun givenPlatformValidationDelegatesToAnotherHookedManager_whenItFails_thenNoNestedValidationCanAcceptIt() {
+        val presented = authority.presented("a.example")
+        val pkix = PkixTrust(authority.system.certificate)
+        lateinit var policy: PinPolicy
+        var delegatedFailure = true
+        policy = policy(
+            PlatformTrust { chain, authType, host, connection ->
+                if (delegatedFailure) {
+                    assertNull(policy.validatedToLocalRoot(chain, authType, host, connection))
+                    throw CertificateException("platform rejected the chain")
+                }
+                pkix.validate(chain, authType, host, connection)
+            },
+        )
+
+        assertNull(policy.validatedToLocalRoot(presented, "RSA", "a.example"))
+        delegatedFailure = false
+        assertEquals(presented + authority.system.certificate, policy.validatedToLocalRoot(presented, "RSA", "a.example"))
     }
 
     @Test

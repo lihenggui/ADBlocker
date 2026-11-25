@@ -16,6 +16,7 @@
 
 package li.mercury.adblocker.hook
 
+import java.lang.reflect.Executable
 import java.lang.reflect.Method
 import java.lang.reflect.Modifier
 
@@ -24,6 +25,14 @@ import java.lang.reflect.Modifier
 
 /** OkHttp's certificate pinner, under the name only an app that does not obfuscate OkHttp keeps. */
 internal const val OKHTTP_PINNER = "okhttp3.CertificatePinner"
+
+// TrustManagerFactory can return Conscrypt's manager when given a custom key store.
+internal val platformTrustManagers = listOf(
+    "android.security.net.config.RootTrustManager",
+    "com.android.org.conscrypt.TrustManagerImpl",
+)
+
+internal fun platformServerChecks(members: List<Executable>): List<Method> = members.filterIsInstance<Method>().filter(::isServerCheck)
 
 private val bootLoader = Any::class.java.classLoader
 private val ownLoader = Accepted::class.java.classLoader

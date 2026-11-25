@@ -150,7 +150,7 @@ private fun sign(
         builder.addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.keyCertSign or KeyUsage.cRLSign))
     } else {
         builder.addExtension(Extension.keyUsage, true, KeyUsage(KeyUsage.digitalSignature))
-        val type = if (host.orEmpty().all { it.isDigit() || it == '.' }) GeneralName.iPAddress else GeneralName.dNSName
+        val type = if (':' in host.orEmpty() || host.orEmpty().all { it.isDigit() || it == '.' }) GeneralName.iPAddress else GeneralName.dNSName
         builder.addExtension(Extension.subjectAlternativeName, false, GeneralNames(GeneralName(type, host)))
     }
     val holder = builder.build(JcaContentSignerBuilder("SHA256withECDSA").build(signer.private))

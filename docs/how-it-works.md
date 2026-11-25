@@ -254,8 +254,9 @@ to Android's own:
 
 - Network Security Config pin sets
   (`NetworkSecurityTrustManager.checkPins`);
-- trust managers an app builds from its own key store, which are Network
-  Security Config's (`RootTrustManager`);
+- Network Security Config's `RootTrustManager` and Conscrypt's
+  `TrustManagerImpl`, which a trust manager factory can return when an app
+  gives it a custom key store;
 - trust managers the app implements, when it hands them to
   `SSLContext.init`;
 - OkHttp's `CertificatePinner`, versions 3 to 5, where the app keeps

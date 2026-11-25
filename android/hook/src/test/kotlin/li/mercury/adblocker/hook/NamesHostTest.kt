@@ -52,6 +52,26 @@ class NamesHostTest {
     }
 
     @Test
+    fun givenAnIpv6San_whenComparedWithOtherSpellings_thenOnlyTheSameNumericAddressMatches() {
+        val leaf = leaf("2001:db8:0:0:0:0:0:1", issuer)
+
+        assertTrue(namesHost(leaf, "2001:db8::1"))
+        assertTrue(namesHost(leaf, "[2001:0DB8:0:0:0:0:0:0001]"))
+        assertFalse(namesHost(leaf, "2001:db8::2"))
+        assertFalse(namesHost(leaf, "2001:db8:::1"))
+        assertFalse(namesHost(leaf, "a.example"))
+    }
+
+    @Test
+    fun givenAnIpv6San_whenItsLastGroupsAreWrittenAsIpv4_thenTheAddressStillMatches() {
+        val leaf = leaf("2001:db8::c000:201", issuer)
+
+        assertTrue(namesHost(leaf, "2001:db8::192.0.2.1"))
+        assertFalse(namesHost(leaf, "192.0.2.1"))
+        assertFalse(namesHost(leaf, "2001:db8::192.0.2.257"))
+    }
+
+    @Test
     fun givenARootWithoutAlternativeNames_whenAskedForItsCommonName_thenItIsNotNamed() {
         assertFalse(namesHost(issuer.certificate, "Example Root"))
     }

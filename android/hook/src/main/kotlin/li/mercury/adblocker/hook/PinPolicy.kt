@@ -42,6 +42,7 @@ internal fun interface PlatformTrust {
  * check that fails on the server's name stays failed.
  */
 internal class PinPolicy(private val authority: LocalAuthority, private val platform: PlatformTrust) {
+    private val validating = ThreadLocal<Boolean>()
 
     /** Whether [validated], a chain the platform has already validated, ends in a local root. */
     fun endsInLocalRoot(validated: List<*>): Boolean {
@@ -63,14 +64,20 @@ internal class PinPolicy(private val authority: LocalAuthority, private val plat
         host: String?,
         connection: Any? = null,
     ): List<X509Certificate>? {
+        // Network Security Config delegates to Conscrypt. A delegated
+        // failure during platform validation must reach the platform unchanged.
+        if (validating.get() == true) return null
         val chain = presented.map { it as? X509Certificate ?: return null }
         if (chain.none(LocalAuthority::named)) return null
         // Where the process has no roots of ours, nothing is validated.
         if (authority.roots() == null) return null
         val validated = try {
+            validating.set(true)
             platform.validate(chain, authType ?: DEFAULT_AUTH_TYPE, host, connection)
         } catch (_: CertificateException) {
             return null
+        } finally {
+            validating.remove()
         }
         if (!endsInLocalRoot(validated)) return null
         // The app's check may have failed on the server's name: that stands.
@@ -88,25 +95,76 @@ internal class PinPolicy(private val authority: LocalAuthority, private val plat
 /**
  * Whether [certificate] names [host] in its subject alternative names: a
  * DNS name, or one whose first label is a wildcard for exactly one label,
- * or the same IP address written the same way. Anything else, a common
- * name included, does not count.
+ * or the same IP address. A common name does not count.
  */
 internal fun namesHost(certificate: X509Certificate, host: String): Boolean {
-    val wanted = host.trimEnd('.').lowercase(Locale.ROOT)
+    val normalized = host.lowercase(Locale.ROOT)
+    val wanted = normalized.trimEnd('.')
+    val wantedIp = normalized.removeSurrounding("[", "]")
+    val wantedIpv6 = ipv6Groups(wantedIp)
     val names = try {
         certificate.subjectAlternativeNames
     } catch (_: CertificateParsingException) {
         null
     } ?: return false
     return names.any { entry ->
-        val name = (entry.getOrNull(1) as? String)?.trimEnd('.')?.lowercase(Locale.ROOT)
+        val name = (entry.getOrNull(1) as? String)?.lowercase(Locale.ROOT)
         when {
             name == null -> false
-            entry[0] == DNS_NAME -> name == wanted || coversOneLabel(name, wanted)
-            entry[0] == IP_ADDRESS -> name == wanted.removePrefix("[").removeSuffix("]")
+
+            entry[0] == DNS_NAME -> {
+                val dns = name.trimEnd('.')
+                dns == wanted || coversOneLabel(dns, wanted)
+            }
+
+            entry[0] == IP_ADDRESS -> if (':' in name) {
+                wantedIpv6 != null && ipv6Groups(name)?.contentEquals(wantedIpv6) == true
+            } else {
+                name == wantedIp
+            }
+
             else -> false
         }
     }
+}
+
+/** Parses numeric IPv6 groups without consulting an address resolver. */
+private fun ipv6Groups(address: String): IntArray? {
+    if (':' !in address || address.length > 45) return null
+    val withHexTail = if ('.' in address) {
+        val tail = ipv4Groups(address.substringAfterLast(':')) ?: return null
+        address.substringBeforeLast(':') + ":" + tail
+    } else {
+        address
+    }
+    val pieces = withHexTail.split("::", limit = 2)
+    val head = hexGroups(pieces[0]) ?: return null
+    val tail = hexGroups(pieces.getOrElse(1) { "" }) ?: return null
+    val size = head.size + tail.size
+    val validSize = if (pieces.size == 1) size == 8 else size < 8
+    if (!validSize) return null
+    return IntArray(8).also {
+        head.copyInto(it)
+        tail.copyInto(it, destinationOffset = 8 - tail.size)
+    }
+}
+
+private fun hexGroups(text: String): IntArray? {
+    if (text.isEmpty()) return intArrayOf()
+    return text.split(':').map { group ->
+        if (group.length !in 1..4 || group.any { it !in '0'..'9' && it !in 'a'..'f' }) return null
+        group.toInt(16)
+    }.toIntArray()
+}
+
+private fun ipv4Groups(text: String): String? {
+    val octets = text.split('.')
+    if (octets.size != 4) return null
+    val bytes = octets.map {
+        if (it.length !in 1..3 || it.any { digit -> digit !in '0'..'9' } || (it.length > 1 && it.startsWith('0'))) return null
+        it.toInt().takeIf { value -> value <= 255 } ?: return null
+    }
+    return ((bytes[0] shl 8) or bytes[1]).toString(16) + ":" + ((bytes[2] shl 8) or bytes[3]).toString(16)
 }
 
 private fun coversOneLabel(pattern: String, host: String): Boolean {

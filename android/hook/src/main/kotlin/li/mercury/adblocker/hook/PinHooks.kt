@@ -56,9 +56,8 @@ internal class PinHooks(private val xposed: XposedInterface, private val platfor
     /** Hooks Android's checks, once per process. Returns how many were hooked. */
     fun installPlatform(): Int = listOf(
         ::hookNetworkSecurityPins,
-        ::hookPlatformTrustManagers,
         ::hookSslContextInit,
-    ).sumOf { install ->
+    ).plus(platformTrustManagers.map { name -> { hookPlatformTrustManager(name) } }).sumOf { install ->
         // Each on its own: a check that is not where it is looked for leaves
         // the others hooked.
         try {
@@ -113,17 +112,10 @@ internal class PinHooks(private val xposed: XposedInterface, private val platfor
         }
     }
 
-    /**
-     * Network Security Config's trust managers, which are also what an app
-     * gets from a TrustManagerFactory given its own key store.
-     */
     @SuppressLint("PrivateApi")
-    private fun hookPlatformTrustManagers(): Int {
-        val type = Class.forName("android.security.net.config.RootTrustManager")
-        return HiddenApiBypass.getDeclaredMethods(type)
-            .filterIsInstance<Method>()
-            .filter(::isServerCheck)
-            .count { hook(it, platformTrustManagerHooker) }
+    private fun hookPlatformTrustManager(name: String): Int {
+        val type = Class.forName(name, false, null)
+        return platformServerChecks(HiddenApiBypass.getDeclaredMethods(type)).count { hook(it, platformTrustManagerHooker) }
     }
 
     private fun hookSslContextInit(): Int {
