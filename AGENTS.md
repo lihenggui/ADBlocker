@@ -164,7 +164,8 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
   (`nothing_is_signed_for_a_server_that_cannot_be_verified`), with no
   `test_` prefix. Add or update tests for the code you change.
 - Dependencies stay on their latest stable versions. Dependabot proposes
-  updates for Cargo and GitHub Actions.
+  updates for Cargo and GitHub Actions, except `psl`, which a release
+  updates with `scripts/update-psl.sh`.
 
 ## Code structure
 
