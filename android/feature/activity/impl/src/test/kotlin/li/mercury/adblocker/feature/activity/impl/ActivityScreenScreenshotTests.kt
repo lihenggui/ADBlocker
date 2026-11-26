@@ -83,6 +83,12 @@ class ActivityScreenScreenshotTests {
     }
 
     @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenRequests_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "Activity") { Activity(state) }
+    }
+
+    @Test
     fun givenRecording_whenShownInDarkTheme_thenOffersToStop() {
         capturePhone("Activity", darkMode = true) { Activity(state.copy(recording = RecordingStatus.Recording)) }
         composeTestRule.onNodeWithContentDescription(composeTestRule.activity.getString(R.string.feature_activity_stop_recording)).assertHasClickAction()
