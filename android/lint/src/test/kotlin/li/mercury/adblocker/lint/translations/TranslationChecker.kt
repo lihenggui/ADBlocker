@@ -17,16 +17,16 @@
 package li.mercury.adblocker.lint.translations
 
 import com.android.ide.common.resources.configuration.FolderConfiguration
-import com.ibm.icu.text.PluralRules
-import com.ibm.icu.util.ULocale
+import com.android.tools.lint.checks.PluralsDatabase
 import org.w3c.dom.Element
 import org.xml.sax.SAXException
 import java.io.File
 import javax.xml.XMLConstants
 import javax.xml.parsers.DocumentBuilderFactory
 
-internal fun checkTranslations(modules: List<File>, root: File, releaseLocales: Set<String>): List<String> {
+internal fun checkTranslations(modules: List<File>, root: File, releaseLocales: Set<String>, targetSdk: Int): List<String> {
     val requiredLocales = releaseLocales - "en"
+    val pluralDatabase = PluralsDatabase.get(targetSdk)
     return buildList {
         for (module in modules) {
             val res = module.resolve("src/main/res")
@@ -45,7 +45,7 @@ internal fun checkTranslations(modules: List<File>, root: File, releaseLocales: 
             }
 
             val defaults = readResources(moduleName, module, defaultFile)
-            addAll(checkPlurals(defaults, ULocale.ENGLISH))
+            addAll(checkPlurals(defaults, "en", pluralDatabase))
             val actualLocales = translations.map { (locale, _) -> locale.folderSegment }.toSet()
             for (missing in requiredLocales - actualLocales) {
                 add("$moduleName src/main/res/values-$missing/strings.xml: missing translation for $missing in appLocales")
@@ -56,7 +56,7 @@ internal fun checkTranslations(modules: List<File>, root: File, releaseLocales: 
                     add("$moduleName ${file.relativeTo(module)}: ${locale.folderSegment} is missing from appLocales")
                 }
                 val translated = readResources(moduleName, module, file)
-                addAll(checkPlurals(translated, ULocale.forLanguageTag(locale.tag)))
+                addAll(checkPlurals(translated, locale.language ?: locale.folderSegment, pluralDatabase))
                 addAll(compareResources(defaults, translated))
             }
         }
@@ -131,12 +131,16 @@ private fun formatArguments(value: String, location: String): Set<FormatArgument
     return arguments.map { FormatArgument(it.groupValues[1], it.groupValues[2]) }.toSet()
 }
 
-private fun checkPlurals(file: ResourceFile, locale: ULocale): List<String> = buildList {
-    val required = PluralRules.forLocale(locale).keywords
-    for ((name, entry) in file.entries) {
-        if (entry.type != "plurals") continue
-        for (missing in required - entry.formats.keys) {
-            add("${file.at(name)}: missing plural quantity $missing for ${locale.toLanguageTag()}")
+private fun checkPlurals(file: ResourceFile, language: String, database: PluralsDatabase): List<String> {
+    val relevant = database.getRelevant(language)
+        ?: return listOf("${file.location}: unknown plural language $language")
+    val required = relevant.map { it.name } + PluralsDatabase.Quantity.other.name
+    return buildList {
+        for ((name, entry) in file.entries) {
+            if (entry.type != "plurals") continue
+            for (missing in required - entry.formats.keys) {
+                add("${file.at(name)}: missing plural quantity $missing for $language")
+            }
         }
     }
 }
