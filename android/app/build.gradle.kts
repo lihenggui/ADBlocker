@@ -65,6 +65,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            isPseudoLocalesEnabled = true
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -109,6 +112,10 @@ android {
 }
 
 androidComponents {
+    // The locale filter would otherwise drop the pseudo-locales from debug builds.
+    onVariants(selector().withBuildType("debug")) { variant ->
+        variant.androidResources.localeFilters.addAll("en-rXA", "ar-rXB")
+    }
     onVariants { variant ->
         // The benchmark fixture seeds settings without installing a module or starting a VPN.
         if (variant.buildType == "benchmarkRelease" || variant.buildType == "nonMinifiedRelease") {
