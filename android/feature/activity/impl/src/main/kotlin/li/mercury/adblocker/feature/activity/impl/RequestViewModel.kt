@@ -18,8 +18,6 @@ package li.mercury.adblocker.feature.activity.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.common.net.InetAddresses
-import com.google.common.net.InternetDomainName
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -126,19 +124,5 @@ class RequestViewModel @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(requestId: Long): RequestViewModel
-    }
-}
-
-/** A hosted tenant is a site of its own. An unrecognized suffix can only be trusted at the requested host. */
-internal fun siteOf(host: String): String? {
-    val name = host.removeSuffix(".").lowercase()
-    if (InetAddresses.isInetAddress(name)) return name
-    if (name.any { it !in 'a'..'z' && it !in '0'..'9' && it != '.' && it != '-' }) return null
-    if (!InternetDomainName.isValid(name)) return null
-    val domain = InternetDomainName.from(name)
-    return when {
-        domain.isUnderPublicSuffix -> domain.topPrivateDomain().toString()
-        domain.isPublicSuffix || !domain.hasParent() -> null
-        else -> domain.toString()
     }
 }

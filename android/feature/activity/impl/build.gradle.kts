@@ -23,6 +23,9 @@ plugins {
 android {
     namespace = "li.mercury.adblocker.feature.activity.impl"
     testOptions.unitTests.isIncludeAndroidResources = true
+    sourceSets.named("main") {
+        resources.directories.add(rootDir.resolve("../abd-engine/resources/psl").path)
+    }
 }
 
 dependencies {
@@ -32,8 +35,6 @@ dependencies {
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.material3.adaptive.navigation3)
-
-    implementation(libs.guava)
 
     testImplementation(libs.robolectric)
     testImplementation(projects.core.screenshotTesting)

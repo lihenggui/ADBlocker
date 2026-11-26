@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
@@ -104,7 +105,7 @@ fun SegmentedItem(
 ) {
     val shapes = ListItemDefaults.segmentedShapes(index, count)
     val content: @Composable () -> Unit = {
-        if (headlineStyle == null) Text(headline, maxLines = 1) else Text(headline, maxLines = 1, style = headlineStyle)
+        if (headlineStyle == null) Text(headline, maxLines = 1, overflow = TextOverflow.Ellipsis) else Text(headline, maxLines = 1, overflow = TextOverflow.Ellipsis, style = headlineStyle)
     }
     when {
         onClick == null -> SegmentedListItem(
@@ -166,7 +167,7 @@ fun SegmentedToggleItem(
         trailingContent = trailing,
         supportingContent = supporting,
         colors = if (showsSelection) segmentedColors() else settingColors(),
-        content = { Text(headline, maxLines = headlineLines) },
+        content = { Text(headline, maxLines = headlineLines, overflow = TextOverflow.Ellipsis) },
     )
 }
 

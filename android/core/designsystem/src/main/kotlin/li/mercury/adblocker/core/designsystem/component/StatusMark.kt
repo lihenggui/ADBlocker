@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Matrix
@@ -100,31 +101,36 @@ fun StatusMark(
     }
     val morph = remember(from, to) { Morph(shapeOf(from), shapeOf(to)) }
 
-    val armAngle by animateFloatAsState(
+    val armAngle = animateFloatAsState(
         targetValue = if (armDown) ARM_DOWN else ARM_UP,
         animationSpec = if (armDown) motion.fastSpatialSpec() else motion.defaultSpatialSpec(),
         label = "arm",
     )
-    val face by animateColorAsState(colors.face, motion.slowEffectsSpec(), label = "face")
-    val eye by animateColorAsState(colors.eye, motion.slowEffectsSpec(), label = "eye")
-    val arm by animateColorAsState(colors.arm, motion.slowEffectsSpec(), label = "arm color")
-    val stripe by animateColorAsState(colors.stripe, motion.slowEffectsSpec(), label = "stripe")
-    val bolt by animateColorAsState(colors.bolt, motion.slowEffectsSpec(), label = "bolt")
-    val post by animateColorAsState(colors.post, motion.slowEffectsSpec(), label = "post")
+    val face = animateColorAsState(colors.face, motion.slowEffectsSpec(), label = "face")
+    val eye = animateColorAsState(colors.eye, motion.slowEffectsSpec(), label = "eye")
+    val arm = animateColorAsState(colors.arm, motion.slowEffectsSpec(), label = "arm color")
+    val stripe = animateColorAsState(colors.stripe, motion.slowEffectsSpec(), label = "stripe")
+    val bolt = animateColorAsState(colors.bolt, motion.slowEffectsSpec(), label = "bolt")
+    val post = animateColorAsState(colors.post, motion.slowEffectsSpec(), label = "post")
 
     val shapePath = remember { Path() }
     val scaled = remember { Path() }
+    val matrix = remember { Matrix() }
+    val barrier = remember { BarrierPaths() }
     Box(modifier.size(size)) {
         Canvas(Modifier.fillMaxSize()) {
             // Shapes that are all symmetric under a quarter turn: turning the
             // morph by what is left of one lands it where it started to look.
-            val turn = 90f * (1f - progress.value)
-            morph.toPath(progress.value, shapePath)
+            val fraction = progress.value
+            val turn = 90f * (1f - fraction)
+            morph.toPath(fraction, shapePath)
             scaled.reset()
             scaled.addPath(shapePath)
-            scaled.transform(Matrix().apply { scale(this@Canvas.size.width, this@Canvas.size.height) })
-            rotate(turn) { drawPath(scaled, face) }
-            drawBarrier(armAngle, eye = eye, arm = arm, stripe = stripe, hub = arm, bolt = bolt, post = post)
+            matrix.reset()
+            matrix.scale(this.size.width, this.size.height)
+            scaled.transform(matrix)
+            rotate(turn) { drawPath(scaled, face.value) }
+            drawBarrier(barrier, armAngle.value, eye.value, arm.value, stripe.value, bolt.value, post.value)
         }
     }
 }
@@ -204,12 +210,28 @@ private const val ARM_DOWN = 0f
 private const val ARM_UP = -62f
 private val HUB = Offset(31f, 65.5f)
 
+private class BarrierPaths {
+    val bar = Path().apply {
+        addRoundRect(RoundRect(25f, 59f, 95f, 72f, CornerRadius(6.5f)))
+    }
+    val stripes = Array(3) { index ->
+        val x = 42f + index * 16f
+        Path().apply {
+            moveTo(x, 59f)
+            lineTo(x + 7.5f, 59f)
+            lineTo(x + 11.8f, 72f)
+            lineTo(x + 4.3f, 72f)
+            close()
+        }
+    }
+}
+
 /**
  * The barrier as on the launcher icon, scaled to fill 3/4 of the mark: the
  * eyes, the post, the striped arm turned [armAngle] degrees about the hub,
  * and the hub.
  */
-private fun DrawScope.drawBarrier(armAngle: Float, eye: Color, arm: Color, stripe: Color, hub: Color, bolt: Color, post: Color) {
+private fun DrawScope.drawBarrier(paths: BarrierPaths, armAngle: Float, eye: Color, arm: Color, stripe: Color, bolt: Color, post: Color) {
     val k = size.minDimension * 0.76f / GRID
     val inset = (size.minDimension - GRID * k) / 2f
     translate(inset, inset) {
@@ -218,24 +240,12 @@ private fun DrawScope.drawBarrier(armAngle: Float, eye: Color, arm: Color, strip
             drawCircle(eye, radius = 6f, center = Offset(68f, 40f))
             drawRoundRect(post, topLeft = Offset(25.5f, 66f), size = Size(11f, 30f), cornerRadius = CornerRadius(3f))
             rotate(armAngle, pivot = HUB) {
-                val bar = Path().apply {
-                    addRoundRect(androidx.compose.ui.geometry.RoundRect(25f, 59f, 95f, 72f, CornerRadius(6.5f)))
-                }
-                drawPath(bar, arm)
-                clipPath(bar) {
-                    for (x in listOf(42f, 58f, 74f)) {
-                        val stripePath = Path().apply {
-                            moveTo(x, 59f)
-                            lineTo(x + 7.5f, 59f)
-                            lineTo(x + 11.8f, 72f)
-                            lineTo(x + 4.3f, 72f)
-                            close()
-                        }
-                        drawPath(stripePath, stripe)
-                    }
+                drawPath(paths.bar, arm)
+                clipPath(paths.bar) {
+                    for (path in paths.stripes) drawPath(path, stripe)
                 }
             }
-            drawCircle(hub, radius = 8.5f, center = HUB)
+            drawCircle(arm, radius = 8.5f, center = HUB)
             drawCircle(bolt, radius = 3f, center = HUB)
         }
     }

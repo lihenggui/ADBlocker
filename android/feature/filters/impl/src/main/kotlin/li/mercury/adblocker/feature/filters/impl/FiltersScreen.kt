@@ -49,8 +49,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import li.mercury.adblocker.core.data.CatalogEntry
@@ -102,7 +104,7 @@ fun FiltersScreen(
     )
 }
 
-internal class FiltersActions(
+internal data class FiltersActions(
     val selectTab: (FiltersTab) -> Unit,
     val update: () -> Unit,
     val setEnabled: (FilterList, Boolean) -> Unit,
@@ -144,6 +146,7 @@ internal fun FiltersScreen(state: FiltersUiState, actions: FiltersActions, modif
     val scope = rememberCoroutineScope()
     // The rule counts as an update starts, to tell afterwards how many each list gained.
     var countsBefore by remember { mutableStateOf<Map<String, Int?>>(emptyMap()) }
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
     val updating = state.updating != null
     LaunchedEffect(updating) { if (updating) countsBefore = state.lists.associate { it.url to it.rules } }
     // The FAB folds to its icon while the list moves on, and opens again when it comes back (M3 FAB).
@@ -198,7 +201,7 @@ internal fun FiltersScreen(state: FiltersUiState, actions: FiltersActions, modif
                     // Peers: the lateral pattern, sliding together, no fade.
                     else -> AnimatedContent(
                         targetState = state.tab,
-                        transitionSpec = { lateralTransform(forward = targetState.ordinal > initialState.ordinal) },
+                        transitionSpec = { lateralTransform(forward = targetState.ordinal > initialState.ordinal, isRtl) },
                         label = "tabs",
                     ) { tab ->
                         when (tab) {

@@ -81,6 +81,7 @@ android {
     androidResources {
         // Locales the app is translated into; drives the per-app language picker.
         generateLocaleConfig = true
+        localeFilters += listOf("en", "zh")
     }
 
     testOptions.unitTests.isIncludeAndroidResources = true
@@ -105,6 +106,16 @@ android {
     // carries count in full in what is downloaded, and the engine's alone
     // made up more than half of it.
     packaging.jniLibs.useLegacyPackaging = true
+}
+
+androidComponents {
+    onVariants { variant ->
+        // The benchmark fixture seeds settings without installing a module or starting a VPN.
+        if (variant.buildType == "benchmarkRelease" || variant.buildType == "nonMinifiedRelease") {
+            variant.sources.kotlin?.addStaticSourceDirectory("src/benchmarkSetup/kotlin")
+            variant.sources.manifests?.addStaticManifestFile("src/benchmarkSetup/AndroidManifest.xml")
+        }
+    }
 }
 
 baselineProfile {

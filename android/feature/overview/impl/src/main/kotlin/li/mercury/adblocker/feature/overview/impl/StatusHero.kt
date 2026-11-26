@@ -85,7 +85,7 @@ private val PAUSES: List<Int?> = listOf(15, 60, null)
 private const val DEFAULT_PAUSE = 60
 
 /** What the status card's button can do. */
-internal class HeroActions(
+internal data class HeroActions(
     val pause: (Int?) -> Unit,
     val resume: () -> Unit,
     val start: () -> Unit,

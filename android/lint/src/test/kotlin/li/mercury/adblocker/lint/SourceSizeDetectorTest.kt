@@ -129,6 +129,28 @@ ${statements(80)}
     }
 
     @Test
+    fun givenComposableGettersAndFunctionTypes_whenLintChecksSource_thenTheComposeLimitApplies() {
+        val declarations = listOf(
+            "val label: String @Ui get() = \"label\"",
+            "val content: @Ui () -> Unit = {}",
+            "fun render(content: @Ui () -> Unit) = content()",
+        )
+        lint().issues(LongSourceFileDetector.COMPOSE_ISSUE, LongSourceFileDetector.SOURCE_ISSUE)
+            .files(
+                composable,
+                *declarations.mapIndexed { index, declaration ->
+                    val source = "package example\nimport androidx.compose.runtime.Composable as Ui\n$declaration"
+                    kotlin("src/example/Composable$index.kt", withLineCount(source, 501))
+                }.toTypedArray(),
+            )
+            .allowMissingSdk()
+            .testModes(TestMode.DEFAULT)
+            .run()
+            .expectErrorCount(3)
+            .expectContains("File has 501 lines (limit 500). Split it by responsibility. [LongComposeFile]")
+    }
+
+    @Test
     fun givenLongTestSources_whenLintChecksStructure_thenSizeRulesIgnoreThem() {
         lint().issues(
             LongFunctionDetector.ISSUE,
@@ -149,7 +171,10 @@ ${statements(80)}
     private companion object {
         val composable = kotlin(
             "src/androidx/compose/runtime/Composable.kt",
-            "package androidx.compose.runtime\nannotation class Composable",
+            """package androidx.compose.runtime
+@Target(AnnotationTarget.FUNCTION, AnnotationTarget.PROPERTY_GETTER, AnnotationTarget.TYPE)
+annotation class Composable
+""",
         )
 
         fun composeSource(name: String) = """

@@ -16,6 +16,8 @@
 
 package li.mercury.adblocker.feature.settings.impl
 
+import android.content.ActivityNotFoundException
+import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -128,7 +130,7 @@ internal fun SettingsScreen(
     var choosingInterval by rememberSaveable { mutableStateOf(false) }
     var showingPinned by rememberSaveable { mutableStateOf(false) }
     val context = LocalContext.current
-    val openCosmeticSecurity = { context.startActivity(Intent(Intent.ACTION_VIEW, SECURITY_URL.toUri())) }
+    val openCosmeticSecurity = { context.openLink(SECURITY_URL) }
     val data = state.userData
     val service = state.service
     Scaffold(
@@ -175,7 +177,7 @@ internal fun SettingsScreen(
                 ModuleService(state, rootActions) { showingPinned = true }
             }
 
-            DataAndAboutRows(state.appVersion, onExportLogs, onOpenSource = { context.startActivity(Intent(Intent.ACTION_VIEW, SOURCE_URL.toUri())) })
+            DataAndAboutRows(state.appVersion, onExportLogs, onOpenSource = { context.openLink(SOURCE_URL) })
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -195,4 +197,12 @@ private fun SettingsBar(scrollBehavior: TopAppBarScrollBehavior, onBack: () -> U
         },
         scrollBehavior = scrollBehavior,
     )
+}
+
+private fun Context.openLink(url: String) {
+    try {
+        startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+    } catch (_: ActivityNotFoundException) {
+        // Devices without a browser stay on the settings page.
+    }
 }

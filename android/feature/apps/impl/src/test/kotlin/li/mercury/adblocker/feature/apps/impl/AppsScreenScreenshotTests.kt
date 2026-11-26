@@ -92,6 +92,14 @@ class AppsScreenScreenshotTests {
     }
 
     @Test
+    fun givenALongAppName_whenShownOnPhone_thenTheRowEllipsizesAndKeepsTheFullAccessibleName() {
+        val label = "Example News and Weather for the Pacific Northwest"
+        val entry = DemoData.entry(DemoApp.News)
+        capturePhone("AppsLongName") { Apps(state.copy(entries = listOf(entry.copy(app = entry.app.copy(label = label))))) }
+        composeTestRule.onNodeWithText(label).assertIsDisplayed()
+    }
+
+    @Test
     fun givenNoFilteredApps_whenBrowsingAppsFromTheEmptyState_thenItSelectsAllApps() {
         val filters = mutableListOf<AppFilter>()
         val available = DemoData.entry(DemoApp.News).copy(filter = null)

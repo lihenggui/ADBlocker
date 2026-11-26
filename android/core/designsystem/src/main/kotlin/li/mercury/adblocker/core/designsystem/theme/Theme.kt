@@ -29,12 +29,11 @@ import androidx.compose.ui.platform.LocalContext
 /**
  * Material 3 Expressive theme.
  *
- * Colors come from the system's dynamic palette by default (always available:
- * minSdk is 31), so the app follows the wallpaper and the contrast setting
- * like the rest of the system; with [useDynamicColor] off it uses the app's
- * own scheme. Components move on the expressive motion scheme, as the spec
- * recommends for most products; screen transitions are set separately, in
- * the app's navigation. The type scale carries its emphasized styles
+ * From Android 12 (API 31), the dynamic palette follows the wallpaper and
+ * contrast setting by default. Android 10 and 11 use the app's own scheme,
+ * as does turning [useDynamicColor] off. Components use the expressive
+ * motion scheme, as the specification recommends for most products.
+ * The app's navigation sets screen transitions separately. The type scale carries its emphasized styles
  * ([ExpressiveTypography]).
  *
  * The app's own scheme has one contrast level: the design names medium and

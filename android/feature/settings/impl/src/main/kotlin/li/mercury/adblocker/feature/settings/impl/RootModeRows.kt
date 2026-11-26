@@ -44,7 +44,7 @@ import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.relativeTime
 
 /** What the rows about root mode do. */
-class RootActions(
+data class RootActions(
     val onRestart: () -> Unit = {},
     val onTurnOnAgain: () -> Unit = {},
     val onSetUp: () -> Unit = {},
