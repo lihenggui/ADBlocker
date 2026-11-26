@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Tìm ứng dụng</string>
+    <string name="feature_apps_settings">Cài đặt</string>
+    <string name="feature_apps_filtered">Đang lọc %1$d</string>
+    <string name="feature_apps_all">Tất cả %1$d</string>
+    <string name="feature_apps_section_filtered">Đang lọc</string>
+    <string name="feature_apps_section_others">Ứng dụng khác</string>
+    <string name="feature_apps_empty_filtered">Chưa lọc ứng dụng nào</string>
+    <string name="feature_apps_empty_filtered_text">Chọn một ứng dụng rồi bật công tắc của ứng dụng đó để bắt đầu lọc.</string>
+    <string name="feature_apps_browse_apps">Xem ứng dụng</string>
+    <string name="feature_apps_status_filtered">Đã chặn %1$s lượt hôm nay</string>
+    <string name="feature_apps_status_hosts">Chỉ theo tên miền · Đã chặn %1$s lượt hôm nay</string>
+    <string name="feature_apps_status_paused">Đã tạm dừng · Lọc tiếp sau %1$s</string>
+    <string name="feature_apps_status_off">Không lọc</string>
+    <string name="feature_apps_now_filtering">Đang lọc %1$s</string>
+    <string name="feature_apps_stopped_filtering">Đã dừng lọc %1$s</string>
+    <string name="feature_apps_undo">Hoàn tác</string>
+    <string name="feature_apps_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
+    <string name="feature_apps_select">Chọn ứng dụng</string>
+    <string name="feature_apps_select_text">Xem chế độ lọc và số lượt chặn của ứng dụng</string>
+    <string name="feature_apps_status_work_quiet">Hồ sơ công việc đã tạm dừng</string>
+    <string name="feature_apps_status_work_unavailable">Không có trong hồ sơ công việc</string>
+    <string name="feature_apps_work_inventory_unavailable">Không tải được một số ứng dụng công việc.</string>
+    <string name="feature_apps_work_inventory_retry">Thử lại</string>
+    <string name="feature_apps_selection_removed">Đã bỏ chọn %1$s</string>
+    <string name="feature_apps_status_mixed">Yêu cầu HTTP và tên miền HTTPS · Đã chặn %1$s lượt hôm nay</string>
+    <string name="feature_apps_exclude">Loại trừ</string>
+    <string name="feature_apps_include">Lọc lại</string>
+    <string name="feature_apps_excluded">Đã loại trừ</string>
+    <string name="feature_apps_included">Đã đưa %1$s vào phạm vi lọc</string>
+    <string name="feature_apps_excluded_message">Đã loại trừ %1$s</string>
+    <string name="feature_apps_status_filtered_no_count">Không xem được số lượt chặn</string>
+    <string name="feature_apps_status_hosts_no_count">Chỉ theo tên miền · Không xem được số lượt chặn</string>
+    <string name="feature_apps_status_mixed_no_count">Yêu cầu HTTP và tên miền HTTPS · Không xem được số lượt chặn</string>
+</resources>

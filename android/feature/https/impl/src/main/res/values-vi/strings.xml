@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">Lọc HTTPS</string>
+    <string name="feature_https_back">Quay lại</string>
+    <string name="feature_https_step">Bước %1$d/%2$d</string>
+    <string name="feature_https_later">Để sau</string>
+    <string name="feature_https_continue">Tiếp tục</string>
+    <string name="feature_https_previous">Quay lại</string>
+    <string name="feature_https_impact_title">Ảnh hưởng đến bảo mật</string>
+    <string name="feature_https_impact_text">Để lọc yêu cầu trong HTTPS, chứng chỉ ADBlocker phải có trong danh sách chứng chỉ người dùng của hệ thống.</string>
+    <string name="feature_https_impact_key">Chứng chỉ được tạo trên thiết bị này. Khóa riêng tư của chứng chỉ nằm trong bộ nhớ riêng của ứng dụng và sẽ bị xóa khi gỡ cài đặt ứng dụng.</string>
+    <string name="feature_https_impact_apps">Chỉ có thể giải mã lưu lượng HTTPS của các ứng dụng tin cậy chứng chỉ người dùng, chủ yếu là một số trình duyệt. Các ứng dụng khác vẫn được lọc theo tên miền.</string>
+    <string name="feature_https_impact_notice">Sau khi cài đặt chứng chỉ, hệ thống sẽ tiếp tục hiện thông báo “Mạng có thể được giám sát”.</string>
+    <string name="feature_https_impact_remove">Bạn có thể gỡ cài đặt chứng chỉ bất cứ lúc nào trong phần cài đặt hệ thống. Chọn Cài đặt › HTTPS để mở mục đó.</string>
+    <string name="feature_https_install_title">Cài đặt chứng chỉ</string>
+    <string name="feature_https_install_text">Android không cho phép ứng dụng cài đặt chứng chỉ. Bạn cần cài đặt chứng chỉ trong phần cài đặt hệ thống.</string>
+    <string name="feature_https_install_save">Lưu chứng chỉ</string>
+    <string name="feature_https_install_save_text">Lưu ADBlocker.crt trên thiết bị</string>
+    <string name="feature_https_install_saved">Đã lưu thành ADBlocker.crt</string>
+    <string name="feature_https_install_open">Mở cài đặt hệ thống</string>
+    <string name="feature_https_install_open_text">Bảo mật và quyền riêng tư › Các chế độ khác về bảo mật và quyền riêng tư › Mã hóa và thông tin xác thực › Cài đặt chứng chỉ › Chứng chỉ CA</string>
+    <string name="feature_https_install_choose">Chọn ADBlocker.crt và xác nhận</string>
+    <string name="feature_https_install_choose_text">Tên mục có thể khác tùy theo nhà sản xuất</string>
+    <string name="feature_https_install_not_found">Chưa thấy chứng chỉ trong danh sách chứng chỉ người dùng.</string>
+    <string name="feature_https_save">Lưu chứng chỉ</string>
+    <string name="feature_https_open_security">Mở cài đặt bảo mật</string>
+    <string name="feature_https_save_failed">Không lưu được chứng chỉ</string>
+    <string name="feature_https_apps_title">Đã cài đặt chứng chỉ</string>
+    <string name="feature_https_apps_text">Quy tắc URL áp dụng cho mọi ứng dụng được lọc nếu có hỗ trợ. Kết nối của các ứng dụng từ chối chứng chỉ vẫn được mã hóa.</string>
+    <string name="feature_https_turn_on">Tiếp tục</string>
+    <string name="feature_https_failed">Không thực hiện được</string>
+    <string name="feature_https_done_title">Đã bật lọc theo URL</string>
+    <string name="feature_https_result_full">Lọc đầy đủ</string>
+    <string name="feature_https_result_hosts">Chỉ theo tên miền</string>
+    <string name="feature_https_done_hint">Thay đổi chế độ lọc theo URL trong phần Cài đặt.</string>
+    <string name="feature_https_finish">Xong</string>
+    <string name="feature_https_work_title">HTTPS trong hồ sơ công việc</string>
+    <string name="feature_https_work_instructions">Lưu chứng chỉ công khai rồi nhờ quản trị viên hồ sơ công việc cài đặt chứng chỉ trong hồ sơ đó. Bạn cũng có thể dùng mục cài đặt chứng chỉ của hồ sơ nếu chính sách của tổ chức cho phép. Tính năng lọc HTTPS áp dụng cho các ứng dụng tin cậy chứng chỉ của hồ sơ công việc.</string>
+    <string name="feature_https_work_save">Lưu chứng chỉ</string>
+    <string name="feature_https_work_saved">Đã lưu chứng chỉ</string>
+    <string name="feature_https_result_certificate">Chỉ theo tên miền · Thiếu chứng chỉ</string>
+    <string name="feature_https_result_exclusions">Chỉ theo tên miền · Đang tải danh sách loại trừ HTTPS</string>
+    <string name="feature_https_results_unavailable">Không đọc được kết quả lọc ứng dụng</string>
+</resources>

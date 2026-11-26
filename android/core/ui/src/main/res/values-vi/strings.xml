@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Thử lại</string>
+    <string name="core_ui_failure_no_root">Không có quyền root</string>
+    <string name="core_ui_failure_no_root_text">Cấp quyền root cho ADBlocker trong trình quản lý root rồi thử lại.</string>
+    <string name="core_ui_failure_module_missing">Chưa thiết lập chế độ root</string>
+    <string name="core_ui_failure_module_missing_text">Thiết lập chế độ root trong phần Cài đặt.</string>
+    <string name="core_ui_failure_update_needed">Cần cập nhật chế độ root</string>
+    <string name="core_ui_failure_update_needed_text">Cập nhật trong phần Cài đặt.</string>
+    <string name="core_ui_failure_failed">Không tải được</string>
+    <string name="core_ui_failure_failed_text">Dịch vụ lọc không phản hồi. Kiểm tra trạng thái trong phần Cài đặt.</string>
+    <string name="core_ui_failure_timed_out">Hết thời gian chờ</string>
+    <string name="core_ui_failure_timed_out_text">Dịch vụ lọc không phản hồi kịp thời. Hãy thử lại. Nếu lỗi vẫn xảy ra, hãy khởi động lại dịch vụ lọc trong phần Cài đặt.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="other">%1$d phút</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="other">%1$d giờ</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="other">%1$d ngày</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">Không dùng được chế độ VPN</string>
+    <string name="core_ui_failure_engine_missing_text">Bản dựng này không có thành phần lọc không cần quyền root.</string>
+    <string name="core_ui_work_app_label">%1$s · Công việc</string>
+    <string name="core_ui_shared_uid">Dùng chung UID trên Android, không thể lọc riêng</string>
+    <string name="core_ui_shared_app_label">%1$s · Nhóm ứng dụng</string>
+    <string name="core_ui_shared_app_members">Các ứng dụng được lọc cùng nhau · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Không thể lọc ở chế độ root</string>
+    <string name="core_ui_remove_app_selection">Bỏ chọn</string>
+    <string name="core_ui_personal_eligibility_unavailable">Không kiểm tra được ứng dụng cá nhân nào có thể lọc.</string>
+    <string name="core_ui_app_list_withheld">Không xem được ứng dụng đã cài đặt</string>
+    <string name="core_ui_app_list_withheld_text">Hệ thống chưa cho phép ADBlocker đọc danh sách ứng dụng đã cài đặt. Hãy cấp quyền để chọn ứng dụng cần lọc.</string>
+    <string name="core_ui_app_list_allow">Cho phép</string>
+    <string name="core_ui_app_list_check_again">Kiểm tra lại</string>
+    <string name="core_ui_filtering_scope">Phạm vi lọc</string>
+    <string name="core_ui_scope_chosen">Ứng dụng đã chọn</string>
+    <string name="core_ui_scope_all">Tất cả ứng dụng</string>
+    <string name="core_ui_scope_all_text">Lọc các ứng dụng cá nhân, kể cả ứng dụng mới cài đặt. Bạn có thể loại trừ ứng dụng trên trang Ứng dụng. Vẫn cần chọn riêng từng ứng dụng công việc.</string>
+    <string name="core_ui_category_ads">Quảng cáo</string>
+    <string name="core_ui_category_privacy">Quyền riêng tư</string>
+    <string name="core_ui_category_security">Bảo mật</string>
+    <string name="core_ui_category_regional">Theo khu vực</string>
+    <string name="core_ui_category_annoyances">Phiền toái</string>
+    <string name="core_ui_vpn_transfer_incomplete">Không thể chuyển một số cài đặt của chế độ root sang.</string>
+    <string name="core_ui_vpn_transfer_apps">Không thể chuyển cài đặt lọc ứng dụng của chế độ root sang.</string>
+    <string name="core_ui_vpn_transfer_lists">Không thể chuyển một số cài đặt danh sách lọc của chế độ root sang.</string>
+    <string name="core_ui_vpn_transfer_rules">Không thể chuyển các quy tắc tùy chỉnh của chế độ root sang.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Không thể chuyển một số trang tin cậy của chế độ root sang.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Không thể chuyển cài đặt lọc theo URL của chế độ root sang.</string>
+</resources>

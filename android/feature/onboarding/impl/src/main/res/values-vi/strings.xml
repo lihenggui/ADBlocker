@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">Tìm ứng dụng</string>
+    <string name="feature_onboarding_back">Quay lại</string>
+    <string name="feature_onboarding_step">Bước %1$d/%2$d</string>
+    <string name="feature_onboarding_welcome_text">Lọc yêu cầu mạng của các ứng dụng đã chọn bằng danh sách lọc của các trình chặn quảng cáo trên trình duyệt.</string>
+    <string name="feature_onboarding_start">Bắt đầu</string>
+    <string name="feature_onboarding_fact_private">Không có dữ liệu nào rời khỏi thiết bị. ADBlocker chỉ kết nối ở chế độ VPN, tới các đích kết nối của ứng dụng đã chọn và các nguồn danh sách lọc.</string>
+    <string name="feature_onboarding_fact_methods">Hoạt động ở chế độ root hoặc chế độ VPN.</string>
+    <string name="feature_onboarding_fact_chosen">Chỉ lọc các ứng dụng đã chọn. ADBlocker không đọc kết nối của các ứng dụng khác.</string>
+    <string name="feature_onboarding_check_title">Kiểm tra thiết bị</string>
+    <string name="feature_onboarding_check_text">Kiểm tra xem thiết bị này có thể chạy ADBlocker hay không.</string>
+    <string name="feature_onboarding_checking">Đang kiểm tra</string>
+    <string name="feature_onboarding_ok">OK</string>
+    <string name="feature_onboarding_check_root">Quyền root</string>
+    <string name="feature_onboarding_check_android">Phiên bản Android</string>
+    <string name="feature_onboarding_check_kernel">Tính năng của nhân hệ điều hành</string>
+    <string name="feature_onboarding_check_arch">Bộ xử lý</string>
+    <string name="feature_onboarding_check_root_failed">Chưa cấp quyền. Hãy cấp quyền root cho ADBlocker trong trình quản lý root (KernelSU, Magisk hoặc APatch).</string>
+    <string name="feature_onboarding_check_android_failed">Cần Android 12 trở lên</string>
+    <string name="feature_onboarding_check_kernel_failed">Thiếu tính năng cần thiết để lọc</string>
+    <string name="feature_onboarding_check_arch_failed">Chỉ hỗ trợ arm64 và x86_64</string>
+    <string name="feature_onboarding_check_again">Kiểm tra lại</string>
+    <string name="feature_onboarding_continue">Tiếp tục</string>
+    <string name="feature_onboarding_cert_title">Lọc theo URL</string>
+    <string name="feature_onboarding_cert_text">Quy tắc URL áp dụng cho ứng dụng được lọc nếu có hỗ trợ, kể cả trong HTTPS. Để chỉ chặn cả tên miền, hãy tắt tính năng lọc theo URL trong phần Cài đặt.</string>
+    <string name="feature_onboarding_cert_key">Khóa riêng tư được tạo và lưu trên thiết bị này, chỉ root mới đọc được và sẽ bị xóa khi gỡ bỏ chế độ root.</string>
+    <string name="feature_onboarding_cert_notice">Trước tiên, mỗi máy chủ được xác minh dựa trên chứng chỉ tin cậy của hệ thống. Không có gì được ký cho máy chủ không vượt qua bước xác minh.</string>
+    <string name="feature_onboarding_cert_browsers">Các trình duyệt được lọc bỏ qua một số bước kiểm tra chứng chỉ, chẳng hạn như Certificate Transparency.</string>
+    <string name="feature_onboarding_cert_ack">Tôi hiểu</string>
+    <string name="feature_onboarding_apps_title">Chọn ứng dụng để lọc</string>
+    <string name="feature_onboarding_apps_text">Chọn ứng dụng bạn muốn lọc. Bạn cũng có thể thêm ứng dụng sau.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="other">Tiếp tục (đã chọn %1$d)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">Danh sách lọc</string>
+    <string name="feature_onboarding_lists_text">Danh sách lọc theo khu vực được chọn dựa trên khu vực của hệ thống. Bạn có thể thay đổi lựa chọn này.</string>
+    <string name="feature_onboarding_installing_title">Đang thiết lập</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="other">Đang lọc %1$d ứng dụng</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">Các ứng dụng đã chọn hiện được lọc. Nếu ứng dụng ngừng hoạt động, hãy tạm dừng lọc trên trang Tổng quan.</string>
+    <string name="feature_onboarding_failed_title">Thiết lập không thành công</string>
+    <string name="feature_onboarding_failed_text">Không thiết lập được chế độ root. Quyền truy cập mạng của các ứng dụng không bị ảnh hưởng.</string>
+    <string name="feature_onboarding_restart_to_update">Khởi động lại thiết bị để hoàn tất cập nhật mô-đun, sau đó mở lại ADBlocker.</string>
+    <string name="feature_onboarding_try_again">Thử lại</string>
+    <string name="feature_onboarding_finish">Xong</string>
+    <string name="feature_onboarding_check_after_root">Kiểm tra sau khi được cấp quyền root</string>
+    <string name="feature_onboarding_apps_none">Không có ứng dụng để lọc</string>
+    <string name="feature_onboarding_apps_none_text">Các ứng dụng đã cài đặt có thể dùng mạng xuất hiện ở đây.</string>
+    <string name="feature_onboarding_all_apps_withheld">Hệ thống chưa cho phép ADBlocker đọc danh sách ứng dụng đã cài đặt. Hầu hết ứng dụng chưa được lọc cho đến khi có quyền.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · Đã cấp quyền</string>
+    <string name="feature_onboarding_check_root_granted_plain">Đã cấp quyền</string>
+    <string name="feature_onboarding_check_kernel_ok">Có hỗ trợ các tính năng cần thiết để lọc</string>
+    <string name="feature_onboarding_check_kernel_unverified">Kiểm tra khi bắt đầu lọc</string>
+    <string name="feature_onboarding_lists_hint">Có thêm danh sách lọc trong mục Bộ lọc.</string>
+    <string name="feature_onboarding_step_module">Thiết lập chế độ root</string>
+    <string name="feature_onboarding_step_apps">Thêm ứng dụng đã chọn</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="other">Tải %1$d danh sách</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">Bắt đầu lọc</string>
+    <string name="feature_onboarding_install_progress">Tiến trình thiết lập</string>
+    <string name="feature_onboarding_check_no_root_text">Không phát hiện quyền root. Có thể lọc ở chế độ VPN hoặc dùng chế độ root sau khi được cấp quyền root.</string>
+    <string name="feature_onboarding_check_unsupported_text">Thiết bị này không hỗ trợ chế độ root. Có thể lọc ở chế độ VPN.</string>
+    <string name="feature_onboarding_check_root_not_detected">Không phát hiện</string>
+    <string name="feature_onboarding_check_root_again">Kiểm tra lại quyền root</string>
+    <string name="feature_onboarding_method">Phương thức lọc</string>
+    <string name="feature_onboarding_method_vpn">Chế độ VPN</string>
+    <string name="feature_onboarding_method_vpn_text">Không cần quyền root. Lọc các ứng dụng đã chọn theo tên miền và dùng vị trí dành cho VPN trên hệ thống.</string>
+    <string name="feature_onboarding_method_root">Chế độ root</string>
+    <string name="feature_onboarding_method_root_no_root">Lọc trang web mã hóa theo URL. Cần quyền root.</string>
+    <string name="feature_onboarding_method_root_unsupported">Lọc trang web mã hóa theo URL. Thiết bị này không hỗ trợ.</string>
+    <string name="feature_onboarding_vpn_title">Chế độ VPN</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker thiết lập VPN trên thiết bị này. Chỉ kết nối của các ứng dụng đã chọn mới đi qua VPN này.</string>
+    <string name="feature_onboarding_vpn_apps">Các ứng dụng đã chọn kết nối qua VPN cục bộ. Các ứng dụng khác không bị ảnh hưởng.</string>
+    <string name="feature_onboarding_vpn_domains">ADBlocker chặn tên miền quảng cáo và theo dõi dựa trên tên miền đích của từng kết nối. Các kết nối không được giải mã.</string>
+    <string name="feature_onboarding_vpn_one">Android chỉ cho phép một VPN hoạt động tại một thời điểm. Ứng dụng VPN khác sẽ ngắt kết nối khi tính năng lọc bắt đầu.</string>
+    <string name="feature_onboarding_vpn_local">VPN không kết nối với máy chủ từ xa nào. Dữ liệu vẫn ở trên thiết bị.</string>
+    <string name="feature_onboarding_vpn_hint">Bạn có thể thiết lập lọc theo URL cho các trang web mã hóa sau trong phần Cài đặt.</string>
+    <string name="feature_onboarding_filter_later_title">Lọc ứng dụng sau</string>
+    <string name="feature_onboarding_filter_later_text">Thêm ứng dụng từ trang Ứng dụng khi bạn muốn bắt đầu lọc.</string>
+    <string name="feature_onboarding_save_setup">Lưu thiết lập</string>
+    <string name="feature_onboarding_start_text">Cần hai quyền của hệ thống trước khi bắt đầu lọc.</string>
+    <string name="feature_onboarding_grant_notifications">Thông báo</string>
+    <string name="feature_onboarding_grant_notifications_text">Hiện trong khi lọc và có nút tạm dừng lọc</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">Xác nhận trong hộp thoại của hệ thống</string>
+    <string name="feature_onboarding_grant_lists_text">Cần kết nối mạng trong lần đầu tiên</string>
+    <string name="feature_onboarding_vpn_refused">VPN không được cấp quyền. Không thể bắt đầu lọc nếu không có VPN.</string>
+    <string name="feature_onboarding_starting_title">Đang khởi động</string>
+    <string name="feature_onboarding_start_failed_title">Chưa bắt đầu lọc</string>
+    <string name="feature_onboarding_start_failed_text">Không khởi động được VPN. Quyền truy cập mạng của các ứng dụng không bị ảnh hưởng.</string>
+    <string name="feature_onboarding_done_text_vpn">Bạn có thể tạm dừng lọc bất cứ lúc nào từ thông báo.</string>
+    <string name="feature_onboarding_notifications_allowed">Đã cho phép thông báo</string>
+    <string name="feature_onboarding_notifications_off">Chưa cho phép thông báo</string>
+    <string name="feature_onboarding_notifications_off_text">Có thể cho phép trong phần Cài đặt</string>
+    <string name="feature_onboarding_vpn_connected">VPN đã kết nối</string>
+    <string name="feature_onboarding_vpn_connected_text">Chỉ các ứng dụng đã chọn mới dùng VPN</string>
+    <string name="feature_onboarding_lists_downloaded">Đã tải danh sách</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="other">%1$d danh sách</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="other">%1$s quy tắc</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">Chưa tải danh sách</string>
+    <string name="feature_onboarding_lists_failed_text">Sẽ thử lại trong nền</string>
+    <string name="feature_onboarding_done_https">Để lọc trang web mã hóa theo URL trong trình duyệt, hãy thiết lập giải mã trong phần Cài đặt.</string>
+</resources>

@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">Bộ lọc</string>
+    <string name="feature_filters_settings">Cài đặt</string>
+    <string name="feature_filters_tab_lists">Danh sách</string>
+    <string name="feature_filters_tab_rules">Quy tắc của tôi</string>
+    <string name="feature_filters_tab_trusted">Trang tin cậy</string>
+    <string name="feature_filters_add_list">Thêm danh sách</string>
+    <string name="feature_filters_add_list_text">URL của danh sách lọc dùng cú pháp EasyList hoặc uBlock Origin. Chỉ hỗ trợ URL HTTPS.</string>
+    <string name="feature_filters_add_list_label">URL danh sách</string>
+    <string name="feature_filters_add">Thêm</string>
+    <string name="feature_filters_cancel">Hủy</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="other">quy tắc đã tải · %1$d danh sách</item>
+    </plurals>
+    <string name="feature_filters_update_now">Cập nhật ngay</string>
+    <string name="feature_filters_updating">Đang cập nhật</string>
+    <string name="feature_filters_update_progress">Tiến trình cập nhật</string>
+    <string name="feature_filters_last_updated">Đã cập nhật %1$s</string>
+    <string name="feature_filters_never_updated">Chưa tải xuống</string>
+    <string name="feature_filters_subscribed_header">Đã đăng ký</string>
+    <string name="feature_filters_available">Có sẵn · %1$s</string>
+    <string name="feature_filters_subscribe">Đăng ký %1$s</string>
+    <string name="feature_filters_list_fetching">Đang tải xuống và kiểm tra</string>
+    <string name="feature_filters_list_failed">Cập nhật không thành công</string>
+    <string name="feature_filters_list_done">%1$s quy tắc · Vừa cập nhật</string>
+    <string name="feature_filters_list_off">Tắt</string>
+    <string name="feature_filters_list_error">Lần cập nhật gần nhất không thành công</string>
+    <string name="feature_filters_list_pending">Đang chờ tải xuống</string>
+    <string name="feature_filters_list_detail">%1$s quy tắc · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s quy tắc</string>
+    <string name="feature_filters_list_last_error">Lỗi gần nhất: %1$s</string>
+    <string name="feature_filters_remove_list">Hủy đăng ký</string>
+    <string name="feature_filters_cosmetic_note">Các danh sách này chủ yếu dùng để ẩn phần tử trang. Tắt mục Ẩn phần tử trang trong phần Cài đặt để tắt các quy tắc này.</string>
+    <string name="feature_filters_my_rules">Quy tắc của tôi</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="other">%1$d quy tắc</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="other">%1$d quy tắc · %2$d không được áp dụng</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">Không kiểm tra được quy tắc</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">Sửa</string>
+    <string name="feature_filters_tools">Công cụ</string>
+    <string name="feature_filters_block_domain">Chặn tên miền</string>
+    <string name="feature_filters_block_domain_supporting">Thêm quy tắc như ||example.com^</string>
+    <string name="feature_filters_block_domain_text">Chặn tên miền và các tên miền phụ của nó trong tất cả ứng dụng được lọc.</string>
+    <string name="feature_filters_domain_label">Tên miền</string>
+    <string name="feature_filters_block">Chặn</string>
+    <string name="feature_filters_test_url">Thử URL</string>
+    <string name="feature_filters_test_url_supporting">Cho biết quy tắc nào sẽ chặn URL này</string>
+    <string name="feature_filters_import">Nhập quy tắc</string>
+    <string name="feature_filters_import_supporting">Dùng cú pháp uBlock Origin hoặc AdGuard</string>
+    <string name="feature_filters_export">Xuất quy tắc</string>
+    <string name="feature_filters_export_supporting">Dưới dạng tệp .txt</string>
+    <string name="feature_filters_syntax_note">Tắt mục Ẩn phần tử trang trong phần Cài đặt để tắt các quy tắc ẩn phần tử (##).</string>
+    <string name="feature_filters_trusted_text">Kết nối đến các trang này không bị giải mã hoặc chặn. Dành cho ngân hàng trực tuyến, mạng nội bộ và trang thanh toán.</string>
+    <string name="feature_filters_add_trusted">Thêm trang</string>
+    <string name="feature_filters_remove_trusted">Xóa %1$s</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">Trang nguồn (không bắt buộc)</string>
+    <string name="feature_filters_check">Kiểm tra</string>
+    <string name="feature_filters_would_block">Sẽ bị chặn</string>
+    <string name="feature_filters_would_allow">Sẽ không bị chặn</string>
+    <string name="feature_filters_source_mine">Quy tắc của tôi</string>
+    <string name="feature_filters_kind_script">Tập lệnh</string>
+    <string name="feature_filters_kind_image">Hình ảnh</string>
+    <string name="feature_filters_kind_document">Trang</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">Khác</string>
+    <string name="feature_filters_issue_invalid">không đọc được dòng này dưới dạng quy tắc.</string>
+    <string name="feature_filters_issue_invalid_option">dòng này có tùy chọn không hợp lệ, %1$s.</string>
+    <string name="feature_filters_issue_unsupported">phiên bản này không áp dụng dạng quy tắc này.</string>
+    <string name="feature_filters_issue_unsupported_named">phiên bản này không áp dụng %1$s.</string>
+    <string name="feature_filters_issue_inapplicable">quy tắc này không có đối tượng để áp dụng ở đây.</string>
+    <string name="feature_filters_issue_inapplicable_named">tùy chọn %1$s không có đối tượng để áp dụng ở đây.</string>
+    <string name="feature_filters_issue_malformed_directive">chỉ thị điều kiện sai cú pháp.</string>
+    <string name="feature_filters_issue_unsupported_include">phiên bản này không tải danh sách được nhúng.</string>
+    <string name="feature_filters_issue_line">Dòng %1$d</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="other">Còn %1$d vấn đề.</item>
+    </plurals>
+    <string name="feature_filters_back">Quay lại</string>
+    <string name="feature_filters_save">Lưu và áp dụng</string>
+    <string name="feature_filters_undo">Hoàn tác</string>
+    <string name="feature_filters_redo">Làm lại</string>
+    <string name="feature_filters_discard_title">Bỏ thay đổi?</string>
+    <string name="feature_filters_discard_text">Các thay đổi đối với quy tắc chưa được lưu.</string>
+    <string name="feature_filters_discard_failed">Không xóa được bản nháp. Hãy thử bỏ bản nháp lần nữa.</string>
+    <string name="feature_filters_discard">Bỏ</string>
+    <string name="feature_filters_keep_editing">Sửa tiếp</string>
+    <string name="feature_filters_rules_saved">Đã lưu và áp dụng quy tắc</string>
+    <string name="feature_filters_earlier_rules_saved">Đã áp dụng các thay đổi trước đó. Chưa lưu những chỉnh sửa mới.</string>
+    <string name="feature_filters_draft_failed">Không lưu được bản nháp quy tắc để sửa sau</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="other">Đã cập nhật %1$d danh sách</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="other">Đã cập nhật %1$d danh sách, %2$d không cập nhật được</item>
+    </plurals>
+    <string name="feature_filters_update_failed">Không cập nhật được danh sách</string>
+    <string name="feature_filters_subscribed">Đã đăng ký. Đang tải danh sách.</string>
+    <string name="feature_filters_removed">Đã hủy đăng ký</string>
+    <string name="feature_filters_https_only">Chỉ hỗ trợ URL HTTPS</string>
+    <string name="feature_filters_not_a_domain">Tên miền không hợp lệ</string>
+    <string name="feature_filters_blocked_domain">Đã chặn %1$s</string>
+    <string name="feature_filters_trusted">Đã thêm %1$s vào danh sách trang tin cậy</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="other">Đã nhập %1$d quy tắc</item>
+    </plurals>
+    <string name="feature_filters_exported">Đã xuất quy tắc</string>
+    <string name="feature_filters_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
+    <string name="feature_filters_issue_separator">": "</string>
+    <string name="feature_filters_search">Tìm danh sách và quy tắc</string>
+    <string name="feature_filters_search_hint">Tìm danh sách và quy tắc</string>
+    <string name="feature_filters_search_none">Không có kết quả</string>
+    <string name="feature_filters_search_available">Danh sách có sẵn</string>
+    <string name="feature_filters_list_on">Bật</string>
+    <string name="feature_filters_block_preview">Thêm %1$s</string>
+    <string name="feature_filters_list_added">%1$s quy tắc · Vừa cập nhật, thêm %2$s</string>
+    <string name="feature_filters_test_url_text">Kiểm tra yêu cầu theo danh sách lọc và quy tắc hiện tại.</string>
+    <string name="feature_filters_syntax">Cú pháp quy tắc</string>
+    <string name="feature_filters_syntax_text">Mỗi dòng một quy tắc, dùng cú pháp EasyList, uBlock Origin hoặc AdGuard.</string>
+    <string name="feature_filters_syntax_host">Chặn một tên miền và các tên miền phụ của nó.</string>
+    <string name="feature_filters_syntax_option">Các tùy chọn sau $ giới hạn phạm vi của quy tắc. Ở đây chỉ chặn yêu cầu từ các trang web khác.</string>
+    <string name="feature_filters_syntax_app">$app= giới hạn quy tắc trong ứng dụng được chỉ định.</string>
+    <string name="feature_filters_syntax_path">Chặn URL khớp với quy tắc. * khớp với văn bản bất kỳ và $image giới hạn quy tắc cho hình ảnh.</string>
+    <string name="feature_filters_syntax_exception">@@ cho phép các yêu cầu mà quy tắc khác sẽ chặn.</string>
+    <string name="feature_filters_syntax_cosmetic">Ẩn phần tử trang. Tắt mục Ẩn phần tử trang trong phần Cài đặt để tắt quy tắc này.</string>
+    <string name="feature_filters_syntax_comment">Dòng bắt đầu bằng ! là dòng chú thích.</string>
+    <string name="feature_filters_import_too_large">Tệp vượt quá giới hạn 16 MB cho quy tắc</string>
+    <string name="feature_filters_schedule">cập nhật %1$s</string>
+    <string name="feature_filters_schedule_wifi">cập nhật %1$s qua Wi-Fi</string>
+    <string name="feature_filters_schedule_never">không tự động cập nhật</string>
+    <string name="feature_filters_every_day">hằng ngày</string>
+    <string name="feature_filters_every_three_days">mỗi 3 ngày</string>
+    <string name="feature_filters_every_week">hằng tuần</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="other">Đã cập nhật %1$d danh sách, thêm %2$s quy tắc</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">Danh sách loại trừ HTTPS chưa sẵn sàng. Chỉ lọc theo tên miền.</string>
+    <string name="feature_filters_exclusions_failed">Không cập nhật được một số danh sách loại trừ HTTPS. Vẫn dùng các bản đã lưu.</string>
+</resources>
