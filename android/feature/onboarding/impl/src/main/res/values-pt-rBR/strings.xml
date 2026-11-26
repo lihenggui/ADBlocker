@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Etapa %1$d de %2$d</string>
     <string name="feature_onboarding_welcome_text">Filtra as solicitações de rede dos apps selecionados com listas de filtros de bloqueadores de anúncios para navegadores.</string>
     <string name="feature_onboarding_start">Iniciar</string>
-    <string name="feature_onboarding_fact_private">Nenhum dado sai do dispositivo. O app só se conecta no modo VPN, aos destinos dos apps selecionados e às fontes das listas.</string>
+    <string name="feature_onboarding_fact_private">O ADBlocker não envia dados próprios. Ele só encaminha as conexões dos apps selecionados e baixa as listas de filtros.</string>
     <string name="feature_onboarding_fact_methods">Funciona no modo root ou no modo VPN.</string>
     <string name="feature_onboarding_fact_chosen">Só os apps selecionados são filtrados. As conexões dos outros apps não são lidas.</string>
     <string name="feature_onboarding_check_title">Verificação do dispositivo</string>
@@ -96,12 +96,12 @@
     <string name="feature_onboarding_vpn_apps">Os apps selecionados se conectam pela VPN local. Os outros apps não são afetados.</string>
     <string name="feature_onboarding_vpn_domains">Os domínios de anúncios e rastreadores são bloqueados conforme o domínio de destino de cada conexão. As conexões não são descriptografadas.</string>
     <string name="feature_onboarding_vpn_one">O Android permite uma VPN por vez. Outro app de VPN é desconectado quando a filtragem começa.</string>
-    <string name="feature_onboarding_vpn_local">A VPN não se conecta a nenhum servidor remoto. Os dados ficam no dispositivo.</string>
+    <string name="feature_onboarding_vpn_local">A VPN funciona neste dispositivo e não se conecta a nenhum servidor VPN remoto. O tráfego de cada app vai diretamente ao seu destino.</string>
     <string name="feature_onboarding_vpn_hint">Você pode configurar a filtragem de URL para sites criptografados mais tarde em Configurações.</string>
     <string name="feature_onboarding_filter_later_title">Filtrar apps depois</string>
     <string name="feature_onboarding_filter_later_text">Adicione um app na página Apps quando quiser começar a filtrar.</string>
     <string name="feature_onboarding_save_setup">Salvar configuração</string>
-    <string name="feature_onboarding_start_text">A filtragem precisa de duas permissões do sistema para começar.</string>
+    <string name="feature_onboarding_start_text">A filtragem precisa da permissão da VPN. Permitir notificações é opcional.</string>
     <string name="feature_onboarding_grant_notifications">Notificações</string>
     <string name="feature_onboarding_grant_notifications_text">Exibidas durante a filtragem, com uma opção para pausá-la</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

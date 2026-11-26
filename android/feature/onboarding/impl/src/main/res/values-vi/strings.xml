@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Bước %1$d/%2$d</string>
     <string name="feature_onboarding_welcome_text">Lọc yêu cầu mạng của các ứng dụng đã chọn bằng danh sách lọc của các trình chặn quảng cáo trên trình duyệt.</string>
     <string name="feature_onboarding_start">Bắt đầu</string>
-    <string name="feature_onboarding_fact_private">Không có dữ liệu nào rời khỏi thiết bị. ADBlocker chỉ kết nối ở chế độ VPN, tới các đích kết nối của ứng dụng đã chọn và các nguồn danh sách lọc.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker không gửi bất kỳ dữ liệu nào của riêng mình. Ứng dụng chỉ chuyển tiếp kết nối của các ứng dụng đã chọn và tải xuống danh sách lọc.</string>
     <string name="feature_onboarding_fact_methods">Hoạt động ở chế độ root hoặc chế độ VPN.</string>
     <string name="feature_onboarding_fact_chosen">Chỉ lọc các ứng dụng đã chọn. ADBlocker không đọc kết nối của các ứng dụng khác.</string>
     <string name="feature_onboarding_check_title">Kiểm tra thiết bị</string>
@@ -90,12 +90,12 @@
     <string name="feature_onboarding_vpn_apps">Các ứng dụng đã chọn kết nối qua VPN cục bộ. Các ứng dụng khác không bị ảnh hưởng.</string>
     <string name="feature_onboarding_vpn_domains">ADBlocker chặn tên miền quảng cáo và theo dõi dựa trên tên miền đích của từng kết nối. Các kết nối không được giải mã.</string>
     <string name="feature_onboarding_vpn_one">Android chỉ cho phép một VPN hoạt động tại một thời điểm. Ứng dụng VPN khác sẽ ngắt kết nối khi tính năng lọc bắt đầu.</string>
-    <string name="feature_onboarding_vpn_local">VPN không kết nối với máy chủ từ xa nào. Dữ liệu vẫn ở trên thiết bị.</string>
+    <string name="feature_onboarding_vpn_local">VPN chạy trên thiết bị này và không kết nối với bất kỳ máy chủ VPN từ xa nào. Lưu lượng của mỗi ứng dụng đi thẳng đến đích.</string>
     <string name="feature_onboarding_vpn_hint">Bạn có thể thiết lập lọc theo URL cho các trang web mã hóa sau trong phần Cài đặt.</string>
     <string name="feature_onboarding_filter_later_title">Lọc ứng dụng sau</string>
     <string name="feature_onboarding_filter_later_text">Thêm ứng dụng từ trang Ứng dụng khi bạn muốn bắt đầu lọc.</string>
     <string name="feature_onboarding_save_setup">Lưu thiết lập</string>
-    <string name="feature_onboarding_start_text">Cần hai quyền của hệ thống trước khi bắt đầu lọc.</string>
+    <string name="feature_onboarding_start_text">Cần cấp quyền VPN để lọc. Việc cho phép thông báo là tùy chọn.</string>
     <string name="feature_onboarding_grant_notifications">Thông báo</string>
     <string name="feature_onboarding_grant_notifications_text">Hiện trong khi lọc và có nút tạm dừng lọc</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

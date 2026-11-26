@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">第 %1$d 步，共 %2$d 步</string>
     <string name="feature_onboarding_welcome_text">使用浏览器广告拦截器的订阅规则，过滤所选应用的网络请求。</string>
     <string name="feature_onboarding_start">开始</string>
-    <string name="feature_onboarding_fact_private">不向设备外发送任何数据。应用仅在 VPN 模式下联网，且只连接所选应用的目标地址与订阅源。</string>
+    <string name="feature_onboarding_fact_private">ADBlocker 不会发送自己的任何数据，只转发所选应用的连接并下载订阅规则。</string>
     <string name="feature_onboarding_fact_methods">支持 root 模式与 VPN 模式两种过滤方式。</string>
     <string name="feature_onboarding_fact_chosen">只过滤所选应用，不读取其他应用的连接。</string>
     <string name="feature_onboarding_check_title">设备检查</string>
@@ -90,12 +90,12 @@
     <string name="feature_onboarding_vpn_apps">所选应用经本机 VPN 联网，其他应用不受影响。</string>
     <string name="feature_onboarding_vpn_domains">按连接的目标域名拦截广告与跟踪域名，不解密连接内容。</string>
     <string name="feature_onboarding_vpn_one">系统同一时间仅允许一个 VPN。启用后，其他 VPN 应用将断开。</string>
-    <string name="feature_onboarding_vpn_local">VPN 不连接任何远程服务器，数据保留在本机。</string>
+    <string name="feature_onboarding_vpn_local">VPN 在本机运行，不连接任何远程 VPN 服务器。应用的流量直接发往其目标地址。</string>
     <string name="feature_onboarding_vpn_hint">可稍后在设置中启用加密网站的网址过滤。</string>
     <string name="feature_onboarding_filter_later_title">稍后过滤应用</string>
     <string name="feature_onboarding_filter_later_text">需要过滤时，可在“应用”页面添加应用。</string>
     <string name="feature_onboarding_save_setup">保存设置</string>
-    <string name="feature_onboarding_start_text">开始前需要以下两项系统授权。</string>
+    <string name="feature_onboarding_start_text">开始过滤需要 VPN 授权，通知权限可选。</string>
     <string name="feature_onboarding_grant_notifications">通知</string>
     <string name="feature_onboarding_grant_notifications_text">过滤期间显示常驻通知，可在通知中暂停过滤</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Güvenliğe etkisi</string>
     <string name="feature_https_impact_text">HTTPS içindeki istekleri filtrelemek için ADBlocker sertifikasının, sistemin kullanıcı sertifikaları arasında bulunması gerekir.</string>
     <string name="feature_https_impact_key">Sertifika bu cihazda oluşturulur. Sertifikanın özel anahtarı uygulamanın özel depolama alanında kalır ve uygulama kaldırıldığında silinir.</string>
-    <string name="feature_https_impact_apps">Yalnızca kullanıcı sertifikalarına güvenen uygulamaların bağlantılarının şifresi çözülebilir. Bunlar çoğunlukla bazı tarayıcılardır. Diğer uygulamalar alan adına göre filtrelenmeye devam eder.</string>
+    <string name="feature_https_impact_apps">Yalnızca kullanıcı sertifikalarına güvenen uygulamaların HTTPS trafiğinin şifresi çözülebilir. Bu, daha çok bazı tarayıcılar için geçerlidir. Diğer uygulamalar alan adına göre filtrelenmeye devam eder.</string>
     <string name="feature_https_impact_notice">Sertifika yüklendikten sonra sistem \"Ağ etkinliği izlenebilir\" bildirimini göstermeye devam eder.</string>
     <string name="feature_https_impact_remove">Sertifika, sistem ayarlarından istediğiniz zaman kaldırılabilir. Ayarlar › HTTPS bölümü sizi oraya yönlendirir.</string>
     <string name="feature_https_install_title">Sertifikayı yükle</string>

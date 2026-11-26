@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Paso %1$d de %2$d</string>
     <string name="feature_onboarding_welcome_text">Filtra las solicitudes de red de las aplicaciones seleccionadas con listas de filtros de bloqueadores de anuncios para navegadores.</string>
     <string name="feature_onboarding_start">Iniciar</string>
-    <string name="feature_onboarding_fact_private">Ningún dato sale del dispositivo. La aplicación solo se conecta en modo VPN, a los destinos de las aplicaciones seleccionadas y a las fuentes de las listas.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker no envía datos propios. Solo reenvía las conexiones de las aplicaciones seleccionadas y descarga las listas de filtros.</string>
     <string name="feature_onboarding_fact_methods">Funciona en modo root o en modo VPN.</string>
     <string name="feature_onboarding_fact_chosen">Solo se filtran las aplicaciones seleccionadas. No se leen las conexiones de otras aplicaciones.</string>
     <string name="feature_onboarding_check_title">Comprobación del dispositivo</string>
@@ -96,12 +96,12 @@
     <string name="feature_onboarding_vpn_apps">Las aplicaciones seleccionadas se conectan mediante la VPN local. Las demás aplicaciones no se ven afectadas.</string>
     <string name="feature_onboarding_vpn_domains">Se bloquean los dominios de anuncios y rastreadores según el dominio de destino de cada conexión. Las conexiones no se descifran.</string>
     <string name="feature_onboarding_vpn_one">Android permite una sola VPN a la vez. Si hay otra aplicación de VPN conectada, se desconecta al iniciar el filtrado.</string>
-    <string name="feature_onboarding_vpn_local">La VPN no se conecta a ningún servidor remoto. Los datos se quedan en el dispositivo.</string>
+    <string name="feature_onboarding_vpn_local">La VPN funciona en este dispositivo y no se conecta a ningún servidor VPN remoto. El tráfico de cada aplicación va directamente a su destino.</string>
     <string name="feature_onboarding_vpn_hint">Puedes configurar más tarde el filtrado por URL para sitios cifrados en Ajustes.</string>
     <string name="feature_onboarding_filter_later_title">Filtrar más tarde</string>
     <string name="feature_onboarding_filter_later_text">Añade una aplicación desde la pantalla Aplicaciones cuando quieras empezar a filtrar.</string>
     <string name="feature_onboarding_save_setup">Guardar configuración</string>
-    <string name="feature_onboarding_start_text">Para filtrar, primero se necesitan dos permisos del sistema.</string>
+    <string name="feature_onboarding_start_text">El filtrado requiere el permiso de VPN. Permitir las notificaciones es opcional.</string>
     <string name="feature_onboarding_grant_notifications">Notificaciones</string>
     <string name="feature_onboarding_grant_notifications_text">Se muestran durante el filtrado e incluyen una opción para pausarlo</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

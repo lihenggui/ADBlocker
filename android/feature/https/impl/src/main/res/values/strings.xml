@@ -25,8 +25,8 @@
     <string name="feature_https_impact_text">Filtering requests inside HTTPS requires the ADBlocker certificate among the system’s user certificates.</string>
     <!-- Security: The certificate is public, and its private key stays on the device. -->
     <string name="feature_https_impact_key">The certificate is created on this device. Its private key stays in the app’s private storage and is deleted when the app is uninstalled.</string>
-    <!-- Security: App trust in the user store determines whether HTTPS can be decrypted. -->
-    <string name="feature_https_impact_apps">Only apps that trust user certificates can be decrypted, mainly some browsers. Other apps are still filtered by domain.</string>
+    <!-- Security: An app’s trust in user certificates determines whether its HTTPS traffic can be decrypted. -->
+    <string name="feature_https_impact_apps">Only the HTTPS traffic of apps that trust user certificates can be decrypted, mainly some browsers. Other apps are still filtered by domain.</string>
     <!-- Security: “Network may be monitored” is Android's certificate warning. -->
     <string name="feature_https_impact_notice">Once it is installed, the system keeps showing a “Network may be monitored” notice.</string>
     <!-- Security: Removing the user certificate is an Android settings action. -->

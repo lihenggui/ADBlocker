@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">安全影响</string>
     <string name="feature_https_impact_text">过滤 HTTPS 内的请求，需要将 ADBlocker 证书安装至系统的用户证书。</string>
     <string name="feature_https_impact_key">证书在本机生成，私钥存放于应用私有目录，卸载应用时销毁。</string>
-    <string name="feature_https_impact_apps">仅信任用户证书的应用可被解密，主要为部分浏览器。其他应用仍按域名过滤。</string>
+    <string name="feature_https_impact_apps">仅信任用户证书的应用（主要为部分浏览器）的 HTTPS 流量可被解密，其他应用仍按域名过滤。</string>
     <string name="feature_https_impact_notice">安装后，系统将持续显示“网络可能受到监控”提示。</string>
     <string name="feature_https_impact_remove">可随时在系统设置中移除证书，入口位于“设置 › HTTPS”。</string>
     <string name="feature_https_install_title">安装证书</string>

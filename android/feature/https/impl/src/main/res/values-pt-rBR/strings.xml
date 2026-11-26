@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Impacto na segurança</string>
     <string name="feature_https_impact_text">Para filtrar solicitações em conexões HTTPS, o certificado do ADBlocker precisa estar entre os certificados do usuário no sistema.</string>
     <string name="feature_https_impact_key">O certificado é criado neste dispositivo. A chave privada fica no armazenamento privado do app e é apagada quando o app é desinstalado.</string>
-    <string name="feature_https_impact_apps">Só é possível descriptografar o tráfego de apps que confiam nos certificados do usuário, principalmente alguns navegadores. Os outros apps ainda são filtrados por domínio.</string>
+    <string name="feature_https_impact_apps">Só é possível descriptografar o tráfego HTTPS de apps que confiam nos certificados do usuário, principalmente alguns navegadores. Os outros apps ainda são filtrados por domínio.</string>
     <string name="feature_https_impact_notice">Depois da instalação, o sistema continua mostrando o aviso \"A rede pode ser monitorada\".</string>
     <string name="feature_https_impact_remove">O certificado pode ser removido a qualquer momento nas configurações do sistema. Para acessá-las, vá a Configurações › HTTPS.</string>
     <string name="feature_https_install_title">Instalar o certificado</string>

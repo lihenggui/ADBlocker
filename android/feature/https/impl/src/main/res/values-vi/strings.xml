@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Ảnh hưởng đến bảo mật</string>
     <string name="feature_https_impact_text">Để lọc yêu cầu trong HTTPS, chứng chỉ ADBlocker phải có trong danh sách chứng chỉ người dùng của hệ thống.</string>
     <string name="feature_https_impact_key">Chứng chỉ được tạo trên thiết bị này. Khóa riêng tư của chứng chỉ nằm trong bộ nhớ riêng của ứng dụng và sẽ bị xóa khi gỡ cài đặt ứng dụng.</string>
-    <string name="feature_https_impact_apps">Chỉ có thể giải mã lưu lượng HTTPS của các ứng dụng tin cậy chứng chỉ người dùng, chủ yếu là một số trình duyệt. Các ứng dụng khác vẫn được lọc theo tên miền.</string>
+    <string name="feature_https_impact_apps">Chỉ lưu lượng HTTPS của các ứng dụng tin cậy chứng chỉ người dùng mới có thể được giải mã. Điều này chủ yếu áp dụng cho một số trình duyệt. Các ứng dụng khác vẫn được lọc theo tên miền.</string>
     <string name="feature_https_impact_notice">Sau khi cài đặt chứng chỉ, hệ thống sẽ tiếp tục hiện thông báo “Mạng có thể được giám sát”.</string>
     <string name="feature_https_impact_remove">Bạn có thể gỡ cài đặt chứng chỉ bất cứ lúc nào trong phần cài đặt hệ thống. Chọn Cài đặt › HTTPS để mở mục đó.</string>
     <string name="feature_https_install_title">Cài đặt chứng chỉ</string>

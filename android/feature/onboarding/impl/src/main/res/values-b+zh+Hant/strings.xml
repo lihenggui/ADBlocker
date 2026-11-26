@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">步驟 %1$d，共 %2$d 步</string>
     <string name="feature_onboarding_welcome_text">使用瀏覽器廣告封鎖工具的過濾清單，過濾來自選定的應用程式的網路請求。</string>
     <string name="feature_onboarding_start">開始</string>
-    <string name="feature_onboarding_fact_private">沒有資料會傳出裝置。ADBlocker 只會在 VPN 模式下連線，且僅連往選定的應用程式指定的目的地，以及過濾清單的來源。</string>
+    <string name="feature_onboarding_fact_private">ADBlocker 不會傳送自己的任何資料，只會轉送選定的應用程式的連線，並下載過濾清單。</string>
     <string name="feature_onboarding_fact_methods">可使用 root 模式或 VPN 模式。</string>
     <string name="feature_onboarding_fact_chosen">只會過濾選定的應用程式。其他應用程式的連線不會被讀取。</string>
     <string name="feature_onboarding_check_title">裝置檢查</string>
@@ -90,12 +90,12 @@
     <string name="feature_onboarding_vpn_apps">選定的應用程式會透過本機 VPN 連線。其他應用程式不受影響。</string>
     <string name="feature_onboarding_vpn_domains">會依各筆連線的目的網域封鎖廣告和追蹤器的網域。連線不會被解密。</string>
     <string name="feature_onboarding_vpn_one">Android 同一時間只允許一個 VPN。開始過濾時，其他 VPN 應用程式會中斷連線。</string>
-    <string name="feature_onboarding_vpn_local">VPN 不會連線到任何遠端伺服器。資料會留在裝置上。</string>
+    <string name="feature_onboarding_vpn_local">VPN 在這部裝置上執行，不會連線到任何遠端 VPN 伺服器。應用程式的流量會直接傳送到目的地。</string>
     <string name="feature_onboarding_vpn_hint">之後可以在「設定」中設定依網址過濾加密網站。</string>
     <string name="feature_onboarding_filter_later_title">稍後再過濾應用程式</string>
     <string name="feature_onboarding_filter_later_text">準備好開始過濾時，可在「應用程式」頁面新增要過濾的項目。</string>
     <string name="feature_onboarding_save_setup">儲存設定</string>
-    <string name="feature_onboarding_start_text">開始過濾前，需要取得兩項系統權限。</string>
+    <string name="feature_onboarding_start_text">開始過濾需要 VPN 權限，通知權限為選用。</string>
     <string name="feature_onboarding_grant_notifications">通知</string>
     <string name="feature_onboarding_grant_notifications_text">過濾時會顯示通知，可從通知暫停過濾</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

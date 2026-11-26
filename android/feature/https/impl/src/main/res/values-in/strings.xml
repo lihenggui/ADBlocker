@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Dampak keamanan</string>
     <string name="feature_https_impact_text">Penyaringan permintaan di dalam HTTPS memerlukan sertifikat ADBlocker dalam daftar sertifikat pengguna sistem.</string>
     <string name="feature_https_impact_key">Sertifikat dibuat di perangkat ini. Kunci privatnya tetap berada di penyimpanan pribadi aplikasi dan dihapus saat aplikasi diuninstal.</string>
-    <string name="feature_https_impact_apps">Hanya lalu lintas aplikasi yang memercayai sertifikat pengguna yang dapat didekripsi, terutama beberapa browser. Aplikasi lain tetap disaring berdasarkan domain.</string>
+    <string name="feature_https_impact_apps">Hanya lalu lintas HTTPS dari aplikasi yang memercayai sertifikat pengguna yang dapat didekripsi, terutama pada beberapa browser. Aplikasi lain tetap disaring berdasarkan domain.</string>
     <string name="feature_https_impact_notice">Setelah sertifikat diinstal, sistem terus menampilkan notifikasi “Jaringan mungkin dipantau”.</string>
     <string name="feature_https_impact_remove">Sertifikat dapat dihapus kapan saja di setelan sistem. Setelan › HTTPS membuka setelan tersebut.</string>
     <string name="feature_https_install_title">Instal sertifikat</string>

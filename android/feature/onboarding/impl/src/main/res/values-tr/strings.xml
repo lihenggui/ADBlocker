@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Adım %1$d/%2$d</string>
     <string name="feature_onboarding_welcome_text">Seçilen uygulamaların ağ isteklerini, tarayıcı reklam engelleyicilerinin filtre listeleriyle filtreler.</string>
     <string name="feature_onboarding_start">Başlat</string>
-    <string name="feature_onboarding_fact_private">Cihazdan hiçbir veri çıkmaz. Uygulama yalnızca VPN modunda, seçilen uygulamaların bağlandığı hedeflere ve listelerin kaynaklarına bağlanır.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker kendine ait hiçbir veri göndermez. Yalnızca seçilen uygulamaların bağlantılarını iletir ve listeleri indirir.</string>
     <string name="feature_onboarding_fact_methods">Root modunda veya VPN modunda çalışır.</string>
     <string name="feature_onboarding_fact_chosen">Yalnızca seçilen uygulamalar filtrelenir. Diğer uygulamaların bağlantıları okunmaz.</string>
     <string name="feature_onboarding_check_title">Cihaz kontrolü</string>
@@ -93,12 +93,12 @@
     <string name="feature_onboarding_vpn_apps">Seçilen uygulamalar yerel VPN üzerinden bağlanır. Diğer uygulamalar etkilenmez.</string>
     <string name="feature_onboarding_vpn_domains">Reklam ve izleyici alan adları, her bağlantının gittiği alan adına göre engellenir. Bağlantıların şifresi çözülmez.</string>
     <string name="feature_onboarding_vpn_one">Android aynı anda tek bir VPN\'ye izin verir. Filtreleme başladığında diğer VPN uygulamasının bağlantısı kesilir.</string>
-    <string name="feature_onboarding_vpn_local">VPN hiçbir uzak sunucuya bağlanmaz. Veriler cihazda kalır.</string>
+    <string name="feature_onboarding_vpn_local">VPN bu cihazda çalışır ve hiçbir uzak VPN sunucusuna bağlanmaz. Her uygulamanın trafiği doğrudan hedefine gider.</string>
     <string name="feature_onboarding_vpn_hint">Şifreli siteler için URL filtrelemeyi daha sonra Ayarlar\'dan kurabilirsiniz.</string>
     <string name="feature_onboarding_filter_later_title">Uygulamaları daha sonra filtrele</string>
     <string name="feature_onboarding_filter_later_text">Filtrelemeye başlamak istediğinizde Uygulamalar sayfasından bir uygulama ekleyin.</string>
     <string name="feature_onboarding_save_setup">Kurulumu kaydet</string>
-    <string name="feature_onboarding_start_text">Filtrelemeyi başlatmak için önce iki sistem izni gerekir.</string>
+    <string name="feature_onboarding_start_text">Filtreleme için VPN izni gerekir. Bildirimlere izin vermek isteğe bağlıdır.</string>
     <string name="feature_onboarding_grant_notifications">Bildirimler</string>
     <string name="feature_onboarding_grant_notifications_text">Filtreleme sırasında gösterilir ve filtrelemeyi duraklatabilirsiniz</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

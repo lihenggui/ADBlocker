@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Schritt %1$d von %2$d</string>
     <string name="feature_onboarding_welcome_text">Filtert die Netzwerkanfragen ausgewählter Apps mit den Filterlisten von Werbeblockern für Browser.</string>
     <string name="feature_onboarding_start">Starten</string>
-    <string name="feature_onboarding_fact_private">Keine Daten verlassen das Gerät. Die App stellt nur im VPN-Modus Verbindungen her, und zwar zu den Zielen der ausgewählten Apps und den Quellen der Filterlisten.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker sendet keine eigenen Daten. Die App leitet lediglich die Verbindungen der ausgewählten Apps weiter und lädt die Filterlisten herunter.</string>
     <string name="feature_onboarding_fact_methods">Funktioniert im root-Modus oder im VPN-Modus.</string>
     <string name="feature_onboarding_fact_chosen">Nur ausgewählte Apps werden gefiltert. Die Verbindungen anderer Apps werden nicht gelesen.</string>
     <string name="feature_onboarding_check_title">Geräteprüfung</string>
@@ -93,12 +93,12 @@
     <string name="feature_onboarding_vpn_apps">Die ausgewählten Apps verbinden sich über das lokale VPN. Andere Apps sind davon nicht betroffen.</string>
     <string name="feature_onboarding_vpn_domains">Werbe- und Tracker-Domains werden anhand der Zieldomain jeder Verbindung blockiert. Die Verbindungen werden nicht entschlüsselt.</string>
     <string name="feature_onboarding_vpn_one">Android erlaubt nur ein VPN gleichzeitig. Wenn die Filterung startet, wird die Verbindung einer anderen VPN-App getrennt.</string>
-    <string name="feature_onboarding_vpn_local">Das VPN verbindet sich mit keinem externen Server. Die Daten bleiben auf dem Gerät.</string>
+    <string name="feature_onboarding_vpn_local">Das VPN läuft auf diesem Gerät und verbindet sich mit keinem entfernten VPN-Server. Der Datenverkehr jeder App geht direkt an sein Ziel.</string>
     <string name="feature_onboarding_vpn_hint">Du kannst die URL-Filterung für verschlüsselte Websites später in den Einstellungen einrichten.</string>
     <string name="feature_onboarding_filter_later_title">Apps später filtern</string>
     <string name="feature_onboarding_filter_later_text">Füge unter „Apps“ eine App hinzu, wenn du mit dem Filtern beginnen möchtest.</string>
     <string name="feature_onboarding_save_setup">Einrichtung speichern</string>
-    <string name="feature_onboarding_start_text">Für die Filterung sind zuerst zwei Systemberechtigungen erforderlich.</string>
+    <string name="feature_onboarding_start_text">Für die Filterung ist die VPN-Berechtigung erforderlich. Benachrichtigungen zuzulassen ist optional.</string>
     <string name="feature_onboarding_grant_notifications">Benachrichtigungen</string>
     <string name="feature_onboarding_grant_notifications_text">Werden während der Filterung angezeigt und bieten die Möglichkeit, sie zu pausieren</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>
