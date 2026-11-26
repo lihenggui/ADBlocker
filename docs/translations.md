@@ -76,3 +76,10 @@ URLs, package names, and certificate file names as written.
 | Notification | A message shown by Android in the notification shade. | 通知 | 通知 | Уведомление | Notificación | Notificação | Notifikasi | Thông báo | Bildirim | 通知 | 알림 | Benachrichtigung | Notification |
 | Update (verb) | Download a fresh list or install a newer version of root mode. | 更新 | 更新 | Обновить | Actualizar | Atualizar | Perbarui | Cập nhật | Güncelle | 更新 | 업데이트 | Aktualisieren | Mettre à jour |
 | Log / record | Operational logs or the action of recording network requests. | 日志 / 记录 | 記錄 | Журнал / записывать | Registro / registrar | Registro / gravar | Log / rekam | Nhật ký / Ghi | Günlük / kaydet | ログ / 記録 | 로그 / 기록 | Protokoll / aufzeichnen | Journal / Enregistrer |
+
+## README
+
+[README.zh-CN.md](../README.zh-CN.md) is the Simplified Chinese translation
+of [README.md](../README.md). A change to README.md changes it in the same
+commit, with the terms of the glossary above. Where the two differ,
+README.md applies.
