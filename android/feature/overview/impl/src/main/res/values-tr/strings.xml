@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">Ayarlar</string>
+    <string name="feature_overview_filtering">Filtreleme</string>
+    <string name="feature_overview_paused">Duraklatıldı</string>
+    <string name="feature_overview_stopped">Filtreleme hizmeti çalışmıyor</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s uygulama</item>
+        <item quantity="other">%1$s uygulama</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s kural</item>
+        <item quantity="other">%1$s kural</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">%1$s sonra devam eder</string>
+    <string name="feature_overview_paused_detail">Devam edilene kadar</string>
+    <string name="feature_overview_stopped_detail">Uygulamalar filtrelenmeden bağlanır</string>
+    <string name="feature_overview_resume">Devam et</string>
+    <string name="feature_overview_start">Başlat</string>
+    <string name="feature_overview_pause_hour">1 saat duraklat</string>
+    <string name="feature_overview_more_durations">Diğer duraklatma süreleri</string>
+    <string name="feature_overview_expanded">Genişletildi</string>
+    <string name="feature_overview_collapsed">Daraltıldı</string>
+    <string name="feature_overview_until_resumed">Devam edilene kadar</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d saat</item>
+        <item quantity="other">%1$d saat</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d dakika</item>
+        <item quantity="other">%1$d dakika</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Bugün engellenenler</string>
+    <string name="feature_overview_blocked_breakdown">%1$s istek · %2$s bağlantı</string>
+    <string name="feature_overview_week_description">Son 7 günde engellenenler: %1$s</string>
+    <string name="feature_overview_today">Bugün</string>
+    <string name="feature_overview_top_apps">En çok engellenen</string>
+    <string name="feature_overview_status">Durum</string>
+    <string name="feature_overview_lists">Filtre listeleri</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">%1$d etkin · %2$s güncellendi</item>
+        <item quantity="other">%1$d etkin · %2$s güncellendi</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">%1$d etkin · Henüz indirilmedi</item>
+        <item quantity="other">%1$d etkin · Henüz indirilmedi</item>
+    </plurals>
+    <string name="feature_overview_service">Filtreleme hizmeti</string>
+    <string name="feature_overview_service_running">Çalışıyor</string>
+    <string name="feature_overview_service_running_since">%1$s süredir çalışıyor</string>
+    <string name="feature_overview_service_stopped">Çalışmıyor</string>
+    <string name="feature_overview_updating">Root modu güncelleniyor…</string>
+    <string name="feature_overview_restart_to_update">Modül güncellemesini tamamlamak için cihazı yeniden başlatın.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">%1$d saatliğine duraklatıldı. Uygulamalar filtrelenmeden bağlanır.</item>
+        <item quantity="other">%1$d saatliğine duraklatıldı. Uygulamalar filtrelenmeden bağlanır.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">%1$d dakikalığına duraklatıldı. Uygulamalar filtrelenmeden bağlanır.</item>
+        <item quantity="other">%1$d dakikalığına duraklatıldı. Uygulamalar filtrelenmeden bağlanır.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Devam edilene kadar duraklatıldı. Uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_undo">Geri al</string>
+    <string name="feature_overview_module_disabled">ADBlocker modülü root yöneticisinde kapatıldı veya kaldırılmak üzere işaretlendi. Ayarı oradan değiştirin.</string>
+    <string name="feature_overview_module_disabled_in">ADBlocker modülü %1$s içinde kapatıldı veya kaldırılmak üzere işaretlendi. Ayarı oradan değiştirin.</string>
+    <string name="feature_overview_service_timeout">Filtreleme hizmeti zamanında yanıt vermedi.</string>
+    <string name="feature_overview_root_pending">Root moduna geçiş tamamlanmadı. Ayarlar\'dan tekrar deneyin.</string>
+    <string name="feature_overview_action_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
+    <string name="feature_overview_turned_off">Kapatıldı</string>
+    <string name="feature_overview_turned_off_detail">Art arda iki başlatma tamamlanamadığından filtreleme %1$s tarihinde kendiliğinden kapandı. Uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_turn_on_again">Yeniden aç</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Bağlanıyor</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Bağlantı kesildi</string>
+    <string name="feature_overview_vpn_off_detail">Seçilen uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_vpn_revoked_detail">VPN, başka bir VPN uygulaması tarafından veya sistem ayarlarından kapatıldı. Seçilen uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_vpn_failed_detail">Filtreleme beklenmedik şekilde durdu. Seçilen uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_vpn_lockdown_detail">\"VPN\'si olmayan bağlantıları engelle\" ayarı açık. VPN yeniden bağlanana kadar seçilen uygulamalar bağlanamaz.</string>
+    <string name="feature_overview_reconnect">Yeniden bağlan</string>
+    <string name="feature_overview_vpn_refused">VPN\'ye izin verilmedi. Seçilen uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="feature_overview_method">Filtreleme yöntemi</string>
+    <string name="feature_overview_method_vpn_on">VPN · Bağlı</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Bağlanıyor</string>
+    <string name="feature_overview_method_vpn_off">VPN · Bağlı değil</string>
+    <string name="feature_overview_https">Şifreli siteler</string>
+    <string name="feature_overview_https_not_set_up">Yalnızca alan adı · Tarayıcılar için kurulabilir</string>
+    <string name="feature_overview_https_off">Yalnızca alan adı · Şifre çözme kapalı</string>
+    <string name="feature_overview_https_none">Yalnızca alan adı</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">%1$d uygulamada şifre çözüldü</item>
+        <item quantity="other">%1$d uygulamada şifre çözüldü</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">\"VPN\'si olmayan bağlantıları engelle\" ayarı açık</string>
+    <string name="feature_overview_lockdown_text">Filtreleme durduğunda seçilen uygulamalar bağlanamaz.</string>
+    <string name="feature_overview_notice_ok">Tamam</string>
+    <string name="feature_overview_root_title">Root erişimi algılandı</string>
+    <string name="feature_overview_root_text">Root modu, VPN kullanmadan şifreli siteleri URL\'ye göre filtreler. Seçilen uygulamalar, listeler ve kurallar korunur.</string>
+    <string name="feature_overview_root_dismiss">Şimdi değil</string>
+    <string name="feature_overview_root_switch">Root moduna geç</string>
+    <string name="feature_overview_battery_title">Android VPN\'yi durdurdu</string>
+    <string name="feature_overview_battery_text">Filtreleme arka planda durdu. Filtrelemenin açık kalmasına yardımcı olmak için ADBlocker\'ın pil kısıtlaması olmadan çalışmasına izin verin.</string>
+    <string name="feature_overview_battery_action">Arka planda kullanıma izin ver</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="one">%1$d liste henüz indirilmedi</item>
+        <item quantity="other">%1$d liste henüz indirilmedi</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="one">%1$d liste indirilemedi</item>
+        <item quantity="other">%1$d liste indirilemedi</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="one">İndirildiğinde filtrelemede kullanılmaya başlar.</item>
+        <item quantity="other">İndirildiklerinde filtrelemede kullanılmaya başlar.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="one">İndirildiğinde filtrelemede kullanılmaya başlar.</item>
+        <item quantity="other">İndirildiklerinde filtrelemede kullanılmaya başlar.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Şimdi indir</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="one">Filtreleme önceki kopyayla devam eder.</item>
+        <item quantity="other">Filtreleme önceki kopyalarla devam eder.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Listeleri aç</string>
+    <string name="feature_overview_lists_download_failed">İndirme başarısız oldu</string>
+    <string name="feature_overview_app_list_withheld_title">Çoğu uygulama filtrelenmiyor</string>
+    <string name="feature_overview_app_list_withheld_text">Sistem, ADBlocker\'ın yüklü uygulamaların listesini okumasına izin vermedi. İzin verildiğinde bu uygulamalar filtrelenir.</string>
+</resources>

@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Ayarlar</string>
+    <string name="feature_settings_back">Geri</string>
+    <string name="feature_settings_appearance">Görünüm</string>
+    <string name="feature_settings_theme">Tema</string>
+    <string name="feature_settings_theme_system">Sistem</string>
+    <string name="feature_settings_theme_light">Açık</string>
+    <string name="feature_settings_theme_dark">Koyu</string>
+    <string name="feature_settings_dynamic_color">Duvar kâğıdı renkleri</string>
+    <string name="feature_settings_dynamic_color_text">Duvar kâğıdındaki renkleri kullanır</string>
+    <string name="feature_settings_updates">Liste güncellemeleri</string>
+    <string name="feature_settings_update_interval">Otomatik güncelle</string>
+    <string name="feature_settings_interval_daily">Her gün</string>
+    <string name="feature_settings_interval_three_days">3 günde bir</string>
+    <string name="feature_settings_interval_weekly">Her hafta</string>
+    <string name="feature_settings_interval_never">Hiçbir zaman</string>
+    <string name="feature_settings_wifi_only">Yalnızca Wi-Fi ile güncelle</string>
+    <string name="feature_settings_wifi_only_text">Listeler mobil veri üzerinden indirilmez</string>
+    <string name="feature_settings_app_list">Uygulama listesi</string>
+    <string name="feature_settings_system_apps">Sistem uygulamalarını göster</string>
+    <string name="feature_settings_system_apps_text">Varsayılan olarak gizli</string>
+    <string name="feature_settings_service">Filtreleme hizmeti</string>
+    <string name="feature_settings_scope_checking">Filtreleme kapsamı kontrol ediliyor…</string>
+    <string name="feature_settings_scope_unavailable">Filtreleme kapsamı alınamadı</string>
+    <string name="feature_settings_status_unknown">Durum bilinmiyor</string>
+    <string name="feature_settings_status_running">Çalışıyor</string>
+    <string name="feature_settings_status_paused">Duraklatıldı</string>
+    <string name="feature_settings_status_stopped">Çalışmıyor</string>
+    <string name="feature_settings_status_turned_off">Kapatıldı</string>
+    <string name="feature_settings_turned_off_text">Art arda iki başlatma tamamlanamadı</string>
+    <string name="feature_settings_started">%1$s başlatıldı</string>
+    <string name="feature_settings_restart">Filtreleme hizmetini yeniden başlat</string>
+    <string name="feature_settings_restart_text">Yeniden başlatma sırasında uygulamalar filtrelenmeden bağlanır</string>
+    <string name="feature_settings_turn_on_again">Yeniden aç</string>
+    <string name="feature_settings_module_install">Root modunu kur</string>
+    <string name="feature_settings_module_reinstall">Root modunu güncelle</string>
+    <string name="feature_settings_module_unavailable">Root modu durumu alınamadı</string>
+    <string name="feature_settings_module_check_again">Root modu durumu alınamadı · Tekrar kontrol et</string>
+    <string name="feature_settings_root_not_set_up_text">Kurulmadı · Uygulamalar filtrelenmeden bağlanır</string>
+    <string name="feature_settings_root_setting_up">Root modu kuruluyor…</string>
+    <string name="feature_settings_root_setup_failed">Kurulum başarısız oldu · Tekrar dene</string>
+    <string name="feature_settings_root_update_text">Yüklü sürüm, bu uygulamanın sürümünden farklı</string>
+    <string name="feature_settings_root_updating">Root modu güncelleniyor…</string>
+    <string name="feature_settings_root_update_failed">Güncelleme başarısız oldu · Tekrar dene</string>
+    <string name="feature_settings_root_updated">Root modu güncellendi</string>
+    <string name="feature_settings_root_missing_text">Root yöneticisinde ADBlocker için root erişimine izin verin · Tekrar kontrol et</string>
+    <string name="feature_settings_root_remove">Root modunu kaldır</string>
+    <string name="feature_settings_root_remove_text">Filtrelemeyi durdurur ve root modu verilerini siler</string>
+    <string name="feature_settings_root_removing">Root modu kaldırılıyor…</string>
+    <string name="feature_settings_root_remove_failed">Kaldırılamadı · Tekrar dene</string>
+    <string name="feature_settings_root_remove_title">Root modu kaldırılsın mı?</string>
+    <string name="feature_settings_root_remove_explain">Filtreleme durur ve uygulamalar filtrelenmeden bağlanır. Root modunun sertifika yetkilisi, uygulama seçimleri, listeleri, kuralları, güvenilen siteleri ve istatistikleri silinir. Tema gibi uygulama ayarları korunur. Root modu buradan tekrar kurulabilir.</string>
+    <string name="feature_settings_root_remove_confirm">Kaldır</string>
+    <string name="feature_settings_root_removed">Root modu kaldırıldı</string>
+    <string name="feature_settings_root_flashed">Modül olarak yüklendi</string>
+    <string name="feature_settings_root_flashed_in">%1$s içinde modül olarak yüklendi</string>
+    <string name="feature_settings_root_flashed_text">Root modunu kaldırmak için modülü oradan kaldırın ve cihazı yeniden başlatın</string>
+    <string name="feature_settings_root_flashed_manager_text">Root modunu kaldırmak için modülü root yöneticisinden kaldırın ve cihazı yeniden başlatın</string>
+    <string name="feature_settings_root_flashed_pending_text">Sonraki yeniden başlatmada geçerli olur</string>
+    <string name="feature_settings_root_restart_to_update">Güncellemeyi tamamlamak için cihazı yeniden başlatın</string>
+    <string name="feature_settings_root_marked_removal">Root yöneticisinde kaldırılmak üzere işaretlendi · Kaldırmak için cihazı yeniden başlatın</string>
+    <string name="feature_settings_pinned">Sertifikayı reddeden alan adları</string>
+    <string name="feature_settings_pinned_checking">Alan adları kontrol ediliyor…</string>
+    <string name="feature_settings_pinned_unavailable">Alan adı listesi alınamadı</string>
+    <string name="feature_settings_pinned_none">Yok</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="one">%1$d uygulama</item>
+        <item quantity="other">%1$d uygulama</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="one">%1$d alan adı</item>
+        <item quantity="other">%1$d alan adı</item>
+    </plurals>
+    <string name="feature_settings_data">Veriler</string>
+    <string name="feature_settings_export_logs">Günlükleri dışa aktar</string>
+    <string name="feature_settings_export_logs_text">Günlükler, hangi işlemlerin çalıştığını ve nasıl sonuçlandığını kaydeder. Uygulamaların bağlandığı hedefleri kaydetmez.</string>
+    <string name="feature_settings_about">Hakkında</string>
+    <string name="feature_settings_app_version">Sürüm %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Kaynak kodu</string>
+    <string name="feature_settings_source_text">Uygulamanın ve filtre listelerinin lisansları</string>
+    <string name="feature_settings_restarted">Filtreleme hizmeti yeniden başlatıldı</string>
+    <string name="feature_settings_service_timeout">Filtreleme hizmeti zamanında yanıt vermedi.</string>
+    <string name="feature_settings_module_disabled">ADBlocker modülü root yöneticisinde kapatıldı veya kaldırılmak üzere işaretlendi. Ayarı oradan değiştirin.</string>
+    <string name="feature_settings_module_disabled_in">ADBlocker modülü %1$s içinde kapatıldı veya kaldırılmak üzere işaretlendi. Ayarı oradan değiştirin.</string>
+    <string name="feature_settings_module_installed">Root modu çalışıyor</string>
+    <string name="feature_settings_pinned_forgotten">Unutuldu. Sonraki bağlantıda şifre çözme yeniden denenir.</string>
+    <string name="feature_settings_logs_exported_partial">Uygulama günlükleri dışa aktarıldı. Root modu günlüğünün tamamı okunamadı.</string>
+    <string name="feature_settings_logs_exported">Günlükler dışa aktarıldı</string>
+    <string name="feature_settings_failed">İşlem başarısız oldu</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">URL filtreleme</string>
+    <string name="feature_settings_url_filtering_text">URL kurallarını, desteklendiği durumlarda filtrelenen tüm uygulamalara uygular. Kapalıyken alan adlarının tamamını engeller.</string>
+    <string name="feature_settings_url_filtering_unknown">Güncel ve çalışan bir filtreleme hizmeti gerekir</string>
+    <string name="feature_settings_url_filtering_on">URL filtreleme açık</string>
+    <string name="feature_settings_url_filtering_off">URL filtreleme kapalı</string>
+    <string name="feature_settings_cancel">İptal</string>
+    <string name="feature_settings_cosmetic">Sayfa öğelerini gizle</string>
+    <string name="feature_settings_cosmetic_text">Filtre kurallarında belirtilen öğeleri (örneğin boş reklam çerçevelerini) gizlemek için şifresi çözülen sayfaları değiştirir.</string>
+    <string name="feature_settings_cosmetic_security">Güvenliğe etkileri</string>
+    <string name="feature_settings_pinned_text">Bu uygulamalar, bu alan adlarının sertifikalarını kendileri kontrol eder. Bu yüzden bağlantılar yalnızca alan adına göre filtrelenir. Bir alan adı unutulduğunda, o alan adına sonraki bağlantıda şifre çözme yeniden denenir.</string>
+    <string name="feature_settings_forget">Unut</string>
+    <string name="feature_settings_forget_all">Tümünü unut</string>
+    <string name="feature_settings_forget_all_title">Tüm alan adları unutulsun mu?</string>
+    <string name="feature_settings_forget_all_text">Bu alan adlarının her biri için sonraki bağlantıda şifre çözme yeniden denenir.</string>
+    <string name="feature_settings_method">Filtreleme yöntemi</string>
+    <string name="feature_settings_method_vpn">VPN modu</string>
+    <string name="feature_settings_method_vpn_text">Kullanımda · Root gerekmez</string>
+    <string name="feature_settings_method_vpn_available">Root gerekmez · Alan adına göre filtreler</string>
+    <string name="feature_settings_method_root">Root modu</string>
+    <string name="feature_settings_method_root_not_set_up">Kurulmadı · HTTPS içinde URL\'ye göre filtreler</string>
+    <string name="feature_settings_method_root_restart_first">Modül güncellemesini tamamlamak için önce cihazı yeniden başlatın</string>
+    <string name="feature_settings_method_root_checking">Root erişimi kontrol ediliyor</string>
+    <string name="feature_settings_method_root_available">Root erişimi verildi · HTTPS içinde URL\'ye göre filtreler</string>
+    <string name="feature_settings_method_root_missing">Root erişimi algılanmadı · Tekrar kontrol et</string>
+    <string name="feature_settings_root_missing">Root erişimi algılanmadı</string>
+    <string name="feature_settings_switch_root_title">Root moduna geçilsin mi?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker, VPN\'den görevi devralacak root modunu kurar. Root modu çalışana kadar VPN bağlı kalır. Uygulamalar, listeler, kurallar ve güvenilen siteler aktarılır.</string>
+    <string name="feature_settings_switch_root">Geç</string>
+    <string name="feature_settings_switched_to_root">Root moduna geçildi</string>
+    <string name="feature_settings_switched_to_vpn">VPN moduna geçildi</string>
+    <string name="feature_settings_switch_root_pending">Root moduna geçiş tamamlanmadı.</string>
+    <string name="feature_settings_switch_root_retry">Geçiş tamamlanmadı · Tekrar dene</string>
+    <string name="feature_settings_cancel_root_switch">Root moduna geçişi iptal et</string>
+    <string name="feature_settings_cancel_root_pending">İptal işlemi bekliyor</string>
+    <string name="feature_settings_retry_root_cancel">İptali tekrar dene</string>
+    <string name="feature_settings_always_on">Her zaman açık VPN</string>
+    <string name="feature_settings_always_on_text">Android, ADBlocker\'ı cihaz açıldığında ve uygulama beklenmedik şekilde durduktan sonra başlatır</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">Açık</string>
+    <string name="feature_settings_state_off">Kapalı</string>
+    <string name="feature_settings_lockdown">VPN\'si olmayan bağlantıları engelle</string>
+    <string name="feature_settings_lockdown_on">Açık · Filtreleme durduğunda seçilen uygulamalar bağlanamaz</string>
+    <string name="feature_settings_lockdown_off">Açıkken filtreleme durduğunda seçilen uygulamalar bağlanamaz. Bu seçenek yalnızca sistem ayarlarından değiştirilebilir.</string>
+    <string name="feature_settings_notifications">Bildirimler</string>
+    <string name="feature_settings_notifications_on">İzin verildi · Filtreleme bildirimden duraklatılabilir</string>
+    <string name="feature_settings_notifications_off">İzin verilmedi · Filtreleme bildirim olmadan da çalışır</string>
+    <string name="feature_settings_https_setup">HTTPS filtrelemeyi kur</string>
+    <string name="feature_settings_https_not_set_up">Kurulmadı · Kullanıcı sertifikalarına güvenen uygulamalar gerekir</string>
+    <string name="feature_settings_https_installed">Sertifika yüklendi · URL filtrelemeyi yönet</string>
+    <string name="feature_settings_url_filtering_needs_certificate">HTTPS URL\'lerini filtrelemek için sertifikayı yükleyin.</string>
+    <string name="feature_settings_remove_certificate">Sertifikayı kaldır</string>
+    <string name="feature_settings_remove_certificate_text">Şifre çözmeyi kapatır ve sistem ayarlarını açar</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker önce HTTPS şifre çözmeyi kapatır. Ardından Android ayarlarından sertifikayı kaldırabilirsiniz.</string>
+    <string name="feature_settings_remove_certificate_path">Güvenlik ve gizlilik › Daha fazla güvenlik ve gizlilik › Şifreleme ve kimlik bilgileri › Güvenilen kimlik bilgileri › Kullanıcı › ADBlocker user CA › Kaldır</string>
+    <string name="feature_settings_remove_certificate_vary">Menü adları üreticiye göre değişir.</string>
+    <string name="feature_settings_remove_certificate_open">Kapat ve ayarları aç</string>
+</resources>

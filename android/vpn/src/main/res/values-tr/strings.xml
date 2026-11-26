@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">Filtreleme</string>
+    <string name="vpn_channel_stopped">Filtreleme durdu</string>
+    <string name="vpn_starting">Filtreleme başlatılıyor</string>
+    <plurals name="vpn_filtering">
+        <item quantity="one">%d uygulama filtreleniyor</item>
+        <item quantity="other">%d uygulama filtreleniyor</item>
+    </plurals>
+    <string name="vpn_no_apps">Uygulama seçilmedi</string>
+    <string name="vpn_paused_until">%s saatine kadar duraklatıldı</string>
+    <string name="vpn_paused">Duraklatıldı</string>
+    <string name="vpn_action_pause_hour">1 saat duraklat</string>
+    <string name="vpn_action_resume">Devam et</string>
+    <string name="vpn_action_open">Aç</string>
+    <string name="vpn_revoked_title">Filtreleme durdu</string>
+    <string name="vpn_revoked_text">VPN, başka bir VPN uygulaması tarafından veya sistem ayarlarından kapatıldı. Seçilen uygulamalar filtrelenmeden bağlanır.</string>
+    <string name="vpn_status_unavailable">Filtreleme durumu alınamadı</string>
+</resources>

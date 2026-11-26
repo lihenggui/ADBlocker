@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">Uygulama bul</string>
+    <string name="feature_onboarding_back">Geri</string>
+    <string name="feature_onboarding_step">Adım %1$d/%2$d</string>
+    <string name="feature_onboarding_welcome_text">Seçilen uygulamaların ağ isteklerini, tarayıcı reklam engelleyicilerinin filtre listeleriyle filtreler.</string>
+    <string name="feature_onboarding_start">Başlat</string>
+    <string name="feature_onboarding_fact_private">Cihazdan hiçbir veri çıkmaz. Uygulama yalnızca VPN modunda, seçilen uygulamaların bağlandığı hedeflere ve listelerin kaynaklarına bağlanır.</string>
+    <string name="feature_onboarding_fact_methods">Root modunda veya VPN modunda çalışır.</string>
+    <string name="feature_onboarding_fact_chosen">Yalnızca seçilen uygulamalar filtrelenir. Diğer uygulamaların bağlantıları okunmaz.</string>
+    <string name="feature_onboarding_check_title">Cihaz kontrolü</string>
+    <string name="feature_onboarding_check_text">Bu cihazın ADBlocker\'ı çalıştırıp çalıştıramayacağını kontrol eder.</string>
+    <string name="feature_onboarding_checking">Kontrol ediliyor</string>
+    <string name="feature_onboarding_ok">Tamam</string>
+    <string name="feature_onboarding_check_root">Root erişimi</string>
+    <string name="feature_onboarding_check_android">Android sürümü</string>
+    <string name="feature_onboarding_check_kernel">Çekirdek özellikleri</string>
+    <string name="feature_onboarding_check_arch">İşlemci</string>
+    <string name="feature_onboarding_check_root_failed">İzin verilmedi. Root yöneticisinde (KernelSU, Magisk veya APatch) ADBlocker için root erişimine izin verin.</string>
+    <string name="feature_onboarding_check_android_failed">Android 12 veya sonraki bir sürüm gerekir</string>
+    <string name="feature_onboarding_check_kernel_failed">Gerekli filtreleme özellikleri kullanılamıyor</string>
+    <string name="feature_onboarding_check_arch_failed">Yalnızca arm64 ve x86_64 desteklenir</string>
+    <string name="feature_onboarding_check_again">Tekrar kontrol et</string>
+    <string name="feature_onboarding_continue">Devam et</string>
+    <string name="feature_onboarding_cert_title">URL filtreleme</string>
+    <string name="feature_onboarding_cert_text">URL kuralları, desteklendiği durumlarda HTTPS dahil olmak üzere filtrelenen uygulamalara uygulanır. Yalnızca alan adlarının tamamını engellemek için Ayarlar\'dan URL filtrelemeyi kapatın.</string>
+    <string name="feature_onboarding_cert_key">Özel anahtar bu cihazda oluşturulur ve saklanır. Yalnızca root tarafından okunabilir ve root modu kaldırıldığında silinir.</string>
+    <string name="feature_onboarding_cert_notice">Önce her sunucu, sistemin güvendiği sertifikalarla doğrulanır. Doğrulanamayan sunucular için hiçbir şey imzalanmaz.</string>
+    <string name="feature_onboarding_cert_browsers">Filtrelenen tarayıcılar, Sertifika Şeffaflığı gibi bazı sertifika kontrollerini atlar.</string>
+    <string name="feature_onboarding_cert_ack">Anladım</string>
+    <string name="feature_onboarding_apps_title">Filtrelenecek uygulamaları seçin</string>
+    <string name="feature_onboarding_apps_text">Filtrelemek istediğiniz uygulamaları seçin. Daha sonra da uygulama ekleyebilirsiniz.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="one">Devam et (%1$d seçildi)</item>
+        <item quantity="other">Devam et (%1$d seçildi)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">Filtre listeleri</string>
+    <string name="feature_onboarding_lists_text">Bölgesel listeler, sistemin bölge ayarına göre seçilir. Seçimi değiştirebilirsiniz.</string>
+    <string name="feature_onboarding_installing_title">Kuruluyor</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="one">%1$d uygulama filtreleniyor</item>
+        <item quantity="other">%1$d uygulama filtreleniyor</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">Seçilen uygulamalar artık filtreleniyor. Bir uygulama çalışmayı durdurursa Genel bakış sayfasından filtrelemeyi duraklatın.</string>
+    <string name="feature_onboarding_failed_title">Kurulum başarısız oldu</string>
+    <string name="feature_onboarding_failed_text">Root modu kurulamadı. Uygulamaların ağ erişimi etkilenmez.</string>
+    <string name="feature_onboarding_restart_to_update">Modül güncellemesini tamamlamak için cihazı yeniden başlatın, ardından ADBlocker\'ı tekrar açın.</string>
+    <string name="feature_onboarding_try_again">Tekrar dene</string>
+    <string name="feature_onboarding_finish">Bitti</string>
+    <string name="feature_onboarding_check_after_root">Root erişimi verildikten sonra kontrol edilir</string>
+    <string name="feature_onboarding_apps_none">Filtrelenecek uygulama yok</string>
+    <string name="feature_onboarding_apps_none_text">Ağı kullanabilen yüklü uygulamalar burada görünür.</string>
+    <string name="feature_onboarding_all_apps_withheld">Sistem, ADBlocker\'ın yüklü uygulamaların listesini okumasına izin vermedi. İzin verilene kadar çoğu uygulama filtrelenmez.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · İzin verildi</string>
+    <string name="feature_onboarding_check_root_granted_plain">İzin verildi</string>
+    <string name="feature_onboarding_check_kernel_ok">Gerekli filtreleme özellikleri destekleniyor</string>
+    <string name="feature_onboarding_check_kernel_unverified">Filtreleme başladığında kontrol edilir</string>
+    <string name="feature_onboarding_lists_hint">Filtreler bölümünde daha fazla liste var.</string>
+    <string name="feature_onboarding_step_module">Root modunu kur</string>
+    <string name="feature_onboarding_step_apps">Seçilen uygulamaları ekle</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="one">%1$d listeyi indir</item>
+        <item quantity="other">%1$d listeyi indir</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">Filtrelemeyi başlat</string>
+    <string name="feature_onboarding_install_progress">Kurulum ilerlemesi</string>
+    <string name="feature_onboarding_check_no_root_text">Root erişimi algılanmadı. Filtreleme için VPN modunu kullanabilir veya root erişimi verildikten sonra root moduna geçebilirsiniz.</string>
+    <string name="feature_onboarding_check_unsupported_text">Bu cihaz root modunu desteklemiyor. Filtreleme için VPN modu kullanılabilir.</string>
+    <string name="feature_onboarding_check_root_not_detected">Algılanmadı</string>
+    <string name="feature_onboarding_check_root_again">Root erişimini tekrar kontrol et</string>
+    <string name="feature_onboarding_method">Filtreleme yöntemi</string>
+    <string name="feature_onboarding_method_vpn">VPN modu</string>
+    <string name="feature_onboarding_method_vpn_text">Root gerekmez. Seçilen uygulamaları alan adına göre filtreler ve sistemin VPN yuvasını kullanır.</string>
+    <string name="feature_onboarding_method_root">Root modu</string>
+    <string name="feature_onboarding_method_root_no_root">Şifreli siteleri URL\'ye göre filtreler. Root erişimi gerekir.</string>
+    <string name="feature_onboarding_method_root_unsupported">Şifreli siteleri URL\'ye göre filtreler. Bu cihazda desteklenmiyor.</string>
+    <string name="feature_onboarding_vpn_title">VPN modu</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker bu cihazda bir VPN kurar. Yalnızca seçilen uygulamaların bağlantıları bu VPN üzerinden geçer.</string>
+    <string name="feature_onboarding_vpn_apps">Seçilen uygulamalar yerel VPN üzerinden bağlanır. Diğer uygulamalar etkilenmez.</string>
+    <string name="feature_onboarding_vpn_domains">Reklam ve izleyici alan adları, her bağlantının gittiği alan adına göre engellenir. Bağlantıların şifresi çözülmez.</string>
+    <string name="feature_onboarding_vpn_one">Android aynı anda tek bir VPN\'ye izin verir. Filtreleme başladığında diğer VPN uygulamasının bağlantısı kesilir.</string>
+    <string name="feature_onboarding_vpn_local">VPN hiçbir uzak sunucuya bağlanmaz. Veriler cihazda kalır.</string>
+    <string name="feature_onboarding_vpn_hint">Şifreli siteler için URL filtrelemeyi daha sonra Ayarlar\'dan kurabilirsiniz.</string>
+    <string name="feature_onboarding_filter_later_title">Uygulamaları daha sonra filtrele</string>
+    <string name="feature_onboarding_filter_later_text">Filtrelemeye başlamak istediğinizde Uygulamalar sayfasından bir uygulama ekleyin.</string>
+    <string name="feature_onboarding_save_setup">Kurulumu kaydet</string>
+    <string name="feature_onboarding_start_text">Filtrelemeyi başlatmak için önce iki sistem izni gerekir.</string>
+    <string name="feature_onboarding_grant_notifications">Bildirimler</string>
+    <string name="feature_onboarding_grant_notifications_text">Filtreleme sırasında gösterilir ve filtrelemeyi duraklatabilirsiniz</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">Sistem iletişim kutusunda onaylanır</string>
+    <string name="feature_onboarding_grant_lists_text">İlk seferde ağ bağlantısı gerekir</string>
+    <string name="feature_onboarding_vpn_refused">VPN\'ye izin verilmedi. VPN olmadan filtreleme başlatılamaz.</string>
+    <string name="feature_onboarding_starting_title">Başlatılıyor</string>
+    <string name="feature_onboarding_start_failed_title">Filtreleme başlamadı</string>
+    <string name="feature_onboarding_start_failed_text">VPN başlatılamadı. Uygulamaların ağ erişimi etkilenmez.</string>
+    <string name="feature_onboarding_done_text_vpn">Filtreleme, bildirimden istediğiniz zaman duraklatılabilir.</string>
+    <string name="feature_onboarding_notifications_allowed">Bildirimlere izin verildi</string>
+    <string name="feature_onboarding_notifications_off">Bildirimlere izin verilmedi</string>
+    <string name="feature_onboarding_notifications_off_text">Ayarlar\'dan izin verilebilir</string>
+    <string name="feature_onboarding_vpn_connected">VPN bağlandı</string>
+    <string name="feature_onboarding_vpn_connected_text">VPN\'yi yalnızca seçilen uygulamalar kullanır</string>
+    <string name="feature_onboarding_lists_downloaded">Listeler indirildi</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="one">%1$d liste</item>
+        <item quantity="other">%1$d liste</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="one">%1$s kural</item>
+        <item quantity="other">%1$s kural</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">Listeler indirilemedi</string>
+    <string name="feature_onboarding_lists_failed_text">Arka planda yeniden denenir</string>
+    <string name="feature_onboarding_done_https">Tarayıcılarda şifreli siteleri URL\'ye göre filtrelemek için Ayarlar\'dan şifre çözmeyi kurun.</string>
+</resources>

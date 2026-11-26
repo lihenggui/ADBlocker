@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">Seçilen uygulamaların trafiğini, HTTPS trafiği dahil, tarayıcı reklam engelleyicilerinin filtre listeleriyle filtreler.</string>
+    <string name="nav_overview">Genel bakış</string>
+    <string name="nav_apps">Uygulamalar</string>
+    <string name="nav_filters">Filtreler</string>
+    <string name="nav_activity">Etkinlik</string>
+    <string name="pane_drag_handle">Bölme boyutunu ayarlama tutamacı</string>
+    <string name="pane_current_split">Geçerli bölme oranı: %1$s</string>
+    <string name="pane_change_split">Bölme oranını %1$s olarak değiştir</string>
+    <string name="tile_label">Reklam engelleme</string>
+    <string name="tile_filtering">Açık</string>
+    <string name="tile_paused">Duraklatıldı</string>
+    <string name="tile_stopped">Çalışmıyor</string>
+</resources>
