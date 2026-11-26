@@ -29,12 +29,14 @@ class TranslationCheckerTest {
     @get:Rule
     val fixture = TemporaryFolder()
 
+    private val targetSdk = System.getProperty("translations.targetSdk").toInt()
+
     @Test
     fun givenAppResources_whenCheckingTranslations_thenEveryLocaleIsComplete() {
         val root = File(System.getProperty("translations.root"))
         val modules = System.getProperty("translations.modules").split(',').map(root::resolve)
         val locales = System.getProperty("translations.locales").split(',').toSet()
-        val errors = checkTranslations(modules, root, locales)
+        val errors = checkTranslations(modules, root, locales, targetSdk)
         assertTrue(errors.isEmpty(), errors.joinToString("\n"))
     }
 
@@ -60,17 +62,41 @@ class TranslationCheckerTest {
     }
 
     @Test
-    fun givenMissingRussianQuantity_whenCheckingTranslation_thenRequiresFew() {
+    fun givenVietnameseTranslationWithOnlyOther_whenCheckingTranslation_thenPasses() {
         resources("values", plurals("one", "other"))
-        resources("values-ru", plurals("one", "many", "other"))
-        assertContains(errors("ru").single(), "[count]: missing plural quantity few for ru")
+        resources("values-vi", plurals("other"))
+        assertEquals(emptyList(), errors("vi"))
     }
 
     @Test
-    fun givenFrenchTranslationWithoutMany_whenCheckingCurrentCldr_thenRequiresMany() {
+    fun givenVietnameseTranslationWithoutOther_whenCheckingTranslation_thenRequiresOther() {
+        resources("values", plurals("one", "other"))
+        resources("values-vi", plurals("one"))
+        assertContains(errors("vi").single(), "[count]: missing plural quantity other for vi")
+    }
+
+    @Test
+    fun givenRussianTranslationWithoutRequiredQuantities_whenCheckingTranslation_thenRequiresOneFewManyAndOther() {
+        resources("values", plurals("one", "other"))
+        resources("values-ru", plurals())
+        val expected = setOf("one", "few", "many", "other").map { quantity ->
+            ":feature src/main/res/values-ru/strings.xml [count]: missing plural quantity $quantity for ru"
+        }
+        assertEquals(expected.toSet(), errors("ru").toSet())
+    }
+
+    @Test
+    fun givenFrenchTranslationWithoutMany_whenCheckingTranslation_thenRequiresMany() {
         resources("values", plurals("one", "other"))
         resources("values-fr", plurals("one", "other"))
         assertContains(errors("fr").single(), "[count]: missing plural quantity many for fr")
+    }
+
+    @Test
+    fun givenUnknownLanguage_whenCheckingTranslation_thenReportsItsCode() {
+        resources("values", plurals("one", "other"))
+        resources("values-zz", plurals("other"))
+        assertContains(errors("zz").single(), "values-zz/strings.xml: unknown plural language zz")
     }
 
     @Test
@@ -137,7 +163,12 @@ class TranslationCheckerTest {
         }
     }
 
-    private fun errors(vararg translated: String) = checkTranslations(listOf(fixture.root.resolve("feature")), fixture.root, setOf("en", *translated))
+    private fun errors(vararg translated: String) = checkTranslations(
+        listOf(fixture.root.resolve("feature")),
+        fixture.root,
+        setOf("en", *translated),
+        targetSdk,
+    )
 
     private fun plurals(vararg quantities: String): String = quantities.joinToString(
         separator = "",

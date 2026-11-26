@@ -23,8 +23,9 @@
    language tag `zh-Hant`.
 4. Run `./gradlew test` and `./gradlew :app:lintRelease` from `android/`.
    The JVM test checks coverage, resource types, format arguments, and
-   cardinal plural quantities from ICU4J's CLDR data. The failure names
-   the module and resource to fix. Chinese plurals use only `other`.
+   cardinal plural quantities using the same data as Android lint for the
+   app's target SDK. The failure names the module and resource to fix.
+   Chinese plurals use only `other`.
 5. Run `./gradlew :app:generateReleaseLocaleConfig :app:assembleRelease`.
    Check the generated XML under `app/build/generated/res/localeConfig/release/`
    for the new language tag. Check that `aapt2 dump configurations` on the

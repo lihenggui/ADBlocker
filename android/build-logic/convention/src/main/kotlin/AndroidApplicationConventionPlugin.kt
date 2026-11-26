@@ -20,6 +20,7 @@ import li.mercury.adblocker.configureBadgingTasks
 import li.mercury.adblocker.configureKotlinAndroid
 import li.mercury.adblocker.configureLicensee
 import li.mercury.adblocker.configureSpotlessForAndroid
+import li.mercury.adblocker.libs
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.kotlin.dsl.apply
@@ -33,7 +34,7 @@ class AndroidApplicationConventionPlugin : Plugin<Project> {
             apply(plugin = "adblocker.android.lint")
             extensions.configure<ApplicationExtension> {
                 configureKotlinAndroid(this)
-                defaultConfig.targetSdk = 37
+                defaultConfig.targetSdk = libs.findVersion("androidTargetSdk").get().requiredVersion.toInt()
             }
             configureSpotlessForAndroid()
             configureLicensee()
