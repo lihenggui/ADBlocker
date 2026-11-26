@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Langkah %1$d dari %2$d</string>
     <string name="feature_onboarding_welcome_text">Menyaring permintaan jaringan dari aplikasi pilihan dengan daftar filter pemblokir iklan browser.</string>
     <string name="feature_onboarding_start">Mulai</string>
-    <string name="feature_onboarding_fact_private">Tidak ada data yang keluar dari perangkat. Aplikasi hanya terhubung dalam mode VPN, ke tujuan koneksi aplikasi pilihan dan sumber daftar filter.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker tidak mengirim data miliknya sendiri. Aplikasi ini hanya meneruskan koneksi aplikasi pilihan dan mengunduh daftar filter.</string>
     <string name="feature_onboarding_fact_methods">Berfungsi dalam mode root atau mode VPN.</string>
     <string name="feature_onboarding_fact_chosen">Hanya aplikasi pilihan yang disaring. Koneksi aplikasi lain tidak dibaca.</string>
     <string name="feature_onboarding_check_title">Pemeriksaan perangkat</string>
@@ -90,12 +90,12 @@
     <string name="feature_onboarding_vpn_apps">Aplikasi pilihan terhubung melalui VPN lokal. Aplikasi lain tidak terpengaruh.</string>
     <string name="feature_onboarding_vpn_domains">Domain iklan dan pelacak diblokir berdasarkan domain tujuan setiap koneksi. Koneksi tidak didekripsi.</string>
     <string name="feature_onboarding_vpn_one">Android hanya mengizinkan satu VPN pada satu waktu. Koneksi aplikasi VPN lain terputus saat penyaringan dimulai.</string>
-    <string name="feature_onboarding_vpn_local">VPN tidak terhubung ke server jarak jauh. Data tetap berada di perangkat.</string>
+    <string name="feature_onboarding_vpn_local">VPN berjalan di perangkat ini dan tidak terhubung ke server VPN jarak jauh mana pun. Lalu lintas setiap aplikasi langsung menuju tujuannya.</string>
     <string name="feature_onboarding_vpn_hint">Anda dapat menyiapkan penyaringan URL untuk situs terenkripsi nanti di Setelan.</string>
     <string name="feature_onboarding_filter_later_title">Saring aplikasi nanti</string>
     <string name="feature_onboarding_filter_later_text">Tambahkan aplikasi dari halaman Aplikasi saat Anda siap mulai menyaring.</string>
     <string name="feature_onboarding_save_setup">Simpan setelan</string>
-    <string name="feature_onboarding_start_text">Penyaringan memerlukan dua izin sistem terlebih dahulu.</string>
+    <string name="feature_onboarding_start_text">Penyaringan memerlukan izin VPN. Mengizinkan notifikasi bersifat opsional.</string>
     <string name="feature_onboarding_grant_notifications">Notifikasi</string>
     <string name="feature_onboarding_grant_notifications_text">Ditampilkan selama penyaringan, dengan opsi untuk menjedanya</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

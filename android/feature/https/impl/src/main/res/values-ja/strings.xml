@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">セキュリティへの影響</string>
     <string name="feature_https_impact_text">HTTPS 内のリクエストをフィルタリングするには、システムのユーザー証明書に ADBlocker の証明書が含まれている必要があります。</string>
     <string name="feature_https_impact_key">証明書はこのデバイスで作成されます。秘密鍵はアプリの非公開ストレージに保存され、アプリをアンインストールすると削除されます。</string>
-    <string name="feature_https_impact_apps">HTTPS 通信を復号できるのは、ユーザー証明書を信頼するアプリ（主に一部のブラウザ）だけです。その他のアプリは引き続きドメインでフィルタリングされます。</string>
+    <string name="feature_https_impact_apps">復号できるのは、ユーザー証明書を信頼するアプリ（主に一部のブラウザ）の HTTPS 通信だけです。その他のアプリは引き続きドメインでフィルタリングされます。</string>
     <string name="feature_https_impact_notice">インストールすると、システムには「ネットワークが監視されている可能性があります」という通知が表示され続けます。</string>
     <string name="feature_https_impact_remove">証明書はいつでもシステム設定から削除できます。「設定 › HTTPS」からシステム設定に進めます。</string>
     <string name="feature_https_install_title">証明書のインストール</string>

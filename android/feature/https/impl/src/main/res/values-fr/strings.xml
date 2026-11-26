@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Impact sur la sécurité</string>
     <string name="feature_https_impact_text">Pour filtrer les requêtes dans le trafic HTTPS, le certificat ADBlocker doit figurer parmi les certificats utilisateur du système.</string>
     <string name="feature_https_impact_key">Le certificat est créé sur cet appareil. Sa clé privée reste dans l\'espace de stockage privé de l\'application et est supprimée lors de la désinstallation de celle-ci.</string>
-    <string name="feature_https_impact_apps">Seul le trafic des applications qui font confiance aux certificats utilisateur peut être déchiffré. Il s\'agit surtout de certains navigateurs. Le filtrage des autres applications se fait toujours par domaine.</string>
+    <string name="feature_https_impact_apps">Seul le trafic HTTPS des applications qui font confiance aux certificats utilisateur peut être déchiffré. Cela concerne principalement certains navigateurs. Les autres applications restent filtrées par domaine.</string>
     <string name="feature_https_impact_notice">Une fois le certificat installé, le système continue d\'afficher le message « Il est possible que le réseau soit surveillé ».</string>
     <string name="feature_https_impact_remove">Vous pouvez retirer le certificat à tout moment dans les paramètres système. Le chemin Paramètres › HTTPS vous y mène.</string>
     <string name="feature_https_install_title">Installer le certificat</string>

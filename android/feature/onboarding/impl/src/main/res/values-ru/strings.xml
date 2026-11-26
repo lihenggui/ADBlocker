@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">Шаг %1$d из %2$d</string>
     <string name="feature_onboarding_welcome_text">Фильтрует сетевые запросы выбранных приложений по спискам фильтров браузерных блокировщиков рекламы.</string>
     <string name="feature_onboarding_start">Начать</string>
-    <string name="feature_onboarding_fact_private">Данные не покидают устройство. Приложение устанавливает сетевые соединения только в режиме VPN — с узлами, к которым обращаются выбранные приложения, и с источниками списков.</string>
+    <string name="feature_onboarding_fact_private">ADBlocker не отправляет собственных данных. Он лишь направляет соединения выбранных приложений по назначению и загружает списки фильтров.</string>
     <string name="feature_onboarding_fact_methods">Работает в режиме root или VPN.</string>
     <string name="feature_onboarding_fact_chosen">Фильтруются только выбранные приложения. Соединения других приложений не считываются.</string>
     <string name="feature_onboarding_check_title">Проверка устройства</string>
@@ -99,12 +99,12 @@
     <string name="feature_onboarding_vpn_apps">Выбранные приложения подключаются через локальную VPN. На другие приложения это не влияет.</string>
     <string name="feature_onboarding_vpn_domains">Домены рекламы и трекеров блокируются по домену назначения каждого соединения. Соединения не расшифровываются.</string>
     <string name="feature_onboarding_vpn_one">Android позволяет использовать только одну VPN одновременно. При запуске фильтрации другое VPN-приложение отключается.</string>
-    <string name="feature_onboarding_vpn_local">VPN не подключается ни к одному удаленному серверу. Данные остаются на устройстве.</string>
+    <string name="feature_onboarding_vpn_local">VPN работает на этом устройстве и не подключается ни к одному удаленному VPN-серверу. Трафик каждого приложения идет напрямую к месту назначения.</string>
     <string name="feature_onboarding_vpn_hint">Фильтрацию зашифрованных сайтов по URL можно настроить позже в настройках.</string>
     <string name="feature_onboarding_filter_later_title">Настроить фильтрацию позже</string>
     <string name="feature_onboarding_filter_later_text">Добавьте приложение на странице «Приложения», когда будете готовы начать фильтрацию.</string>
     <string name="feature_onboarding_save_setup">Сохранить настройки</string>
-    <string name="feature_onboarding_start_text">Для запуска фильтрации нужны два системных разрешения.</string>
+    <string name="feature_onboarding_start_text">Для фильтрации требуется разрешение на использование VPN. Разрешать уведомления необязательно.</string>
     <string name="feature_onboarding_grant_notifications">Уведомления</string>
     <string name="feature_onboarding_grant_notifications_text">Показываются во время фильтрации и позволяют ее приостановить</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

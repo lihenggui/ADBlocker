@@ -21,8 +21,8 @@
     <string name="feature_onboarding_welcome_text">Filters the network requests of chosen apps with the filter lists of browser ad blockers.</string>
     <!-- Starts the setup wizard. -->
     <string name="feature_onboarding_start">Start</string>
-    <!-- Security: Distinguish local filtering from network traffic sent to app destinations or list sources. -->
-    <string name="feature_onboarding_fact_private">No data leaves the device. The app connects only in VPN mode, to the chosen apps’ destinations and the list sources.</string>
+    <!-- Security: Distinguish ADBlocker’s own data from forwarded app connections and list downloads. -->
+    <string name="feature_onboarding_fact_private">ADBlocker sends no data of its own. It only forwards the chosen apps’ connections and downloads the lists.</string>
     <string name="feature_onboarding_fact_methods">Works in root mode or VPN mode.</string>
     <!-- Security: Describes what traffic is inspected when using chosen apps. -->
     <string name="feature_onboarding_fact_chosen">Only chosen apps are filtered. Connections of other apps are not read.</string>
@@ -110,13 +110,13 @@
     <string name="feature_onboarding_vpn_domains">Ad and tracker domains are blocked by the domain each connection goes to. Connections are not decrypted.</string>
     <!-- Security: Starting the local VPN disconnects any other VPN. -->
     <string name="feature_onboarding_vpn_one">Android allows one VPN at a time. Another VPN app disconnects when filtering starts.</string>
-    <!-- Security: The app uses a local VPN without a remote VPN endpoint. -->
-    <string name="feature_onboarding_vpn_local">The VPN connects to no remote server. Data stays on the device.</string>
+    <!-- Security: The VPN runs locally and forwards app traffic directly to its destination. -->
+    <string name="feature_onboarding_vpn_local">The VPN runs on this device and connects to no remote VPN server. Each app’s traffic goes straight to its destination.</string>
     <string name="feature_onboarding_vpn_hint">You can set up URL filtering for encrypted sites later in Settings.</string>
     <string name="feature_onboarding_filter_later_title">Filter apps later</string>
     <string name="feature_onboarding_filter_later_text">Add an app from the Apps page when you’re ready to start filtering.</string>
     <string name="feature_onboarding_save_setup">Save setup</string>
-    <string name="feature_onboarding_start_text">Filtering needs two system permissions first.</string>
+    <string name="feature_onboarding_start_text">Filtering needs the VPN permission. Allowing notifications is optional.</string>
     <string name="feature_onboarding_grant_notifications">Notifications</string>
     <string name="feature_onboarding_grant_notifications_text">Shown while filtering, with an action to pause it</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>

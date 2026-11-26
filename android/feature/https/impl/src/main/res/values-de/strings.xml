@@ -23,7 +23,7 @@
     <string name="feature_https_impact_title">Auswirkungen auf die Sicherheit</string>
     <string name="feature_https_impact_text">Um Anfragen in HTTPS-Verbindungen zu filtern, muss das ADBlocker-Zertifikat zu den Nutzerzertifikaten des Systems gehören.</string>
     <string name="feature_https_impact_key">Das Zertifikat wird auf diesem Gerät erstellt. Sein privater Schlüssel bleibt im privaten Speicher der App und wird gelöscht, wenn du die App deinstallierst.</string>
-    <string name="feature_https_impact_apps">Der HTTPS-Datenverkehr lässt sich nur bei Apps entschlüsseln, die Nutzerzertifikaten vertrauen. Das sind vor allem einige Browser. Andere Apps werden weiterhin nach Domain gefiltert.</string>
+    <string name="feature_https_impact_apps">Nur der HTTPS-Datenverkehr von Apps, die Nutzerzertifikaten vertrauen, lässt sich entschlüsseln. Das sind vor allem einige Browser. Andere Apps werden weiterhin nach Domain gefiltert.</string>
     <string name="feature_https_impact_notice">Nach der Installation zeigt das System dauerhaft den Hinweis „Das Netzwerk wird eventuell überwacht.“</string>
     <string name="feature_https_impact_remove">Du kannst das Zertifikat jederzeit in den Systemeinstellungen entfernen. Unter „Einstellungen › HTTPS“ gelangst du dorthin.</string>
     <string name="feature_https_install_title">Zertifikat installieren</string>

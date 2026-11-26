@@ -19,7 +19,7 @@
     <string name="feature_onboarding_step">ステップ %1$d/%2$d</string>
     <string name="feature_onboarding_welcome_text">ブラウザ用広告ブロッカーのフィルタリストを使い、選択したアプリのネットワークリクエストをフィルタリングします。</string>
     <string name="feature_onboarding_start">開始</string>
-    <string name="feature_onboarding_fact_private">データはデバイスの外に出ません。VPN モードでのみ、アプリは選択したアプリの接続先とリストの配布元に接続します。</string>
+    <string name="feature_onboarding_fact_private">ADBlocker は自身のデータを送信しません。選択したアプリの接続を転送し、フィルタリストをダウンロードするだけです。</string>
     <string name="feature_onboarding_fact_methods">root モードまたは VPN モードで動作します。</string>
     <string name="feature_onboarding_fact_chosen">選択したアプリのみをフィルタリングします。その他のアプリの接続内容は読み取りません。</string>
     <string name="feature_onboarding_check_title">デバイスの確認</string>
@@ -90,12 +90,12 @@
     <string name="feature_onboarding_vpn_apps">選択したアプリはローカル VPN 経由で接続します。その他のアプリに影響はありません。</string>
     <string name="feature_onboarding_vpn_domains">各接続の宛先ドメインに基づいて、広告やトラッカーのドメインをブロックします。接続は復号されません。</string>
     <string name="feature_onboarding_vpn_one">Android で同時に使用できる VPN は 1 つです。フィルタリングを開始すると、他の VPN アプリの接続が切断されます。</string>
-    <string name="feature_onboarding_vpn_local">この VPN はリモートサーバーに接続しません。データはデバイス内にとどまります。</string>
+    <string name="feature_onboarding_vpn_local">VPN はこのデバイス上で動作し、リモートの VPN サーバーには接続しません。各アプリの通信は接続先に直接送られます。</string>
     <string name="feature_onboarding_vpn_hint">暗号化されたサイトの URL フィルタリングは、後から「設定」で設定できます。</string>
     <string name="feature_onboarding_filter_later_title">後からフィルタリング</string>
     <string name="feature_onboarding_filter_later_text">フィルタリングを開始するには、「アプリ」画面からアプリを追加してください。</string>
     <string name="feature_onboarding_save_setup">設定を保存</string>
-    <string name="feature_onboarding_start_text">フィルタリングを始めるには、システムで 2 つの権限を許可する必要があります。</string>
+    <string name="feature_onboarding_start_text">フィルタリングには VPN の許可が必要です。通知の許可は任意です。</string>
     <string name="feature_onboarding_grant_notifications">通知</string>
     <string name="feature_onboarding_grant_notifications_text">フィルタリング中に表示され、通知から一時停止できます</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>
