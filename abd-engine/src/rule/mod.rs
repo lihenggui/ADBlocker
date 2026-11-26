@@ -208,6 +208,9 @@ pub(crate) fn read_with_scripts<'a>(
         rule.kind = Kind::Comment;
         return rule;
     }
+    if is_bare_host_anchor(line) {
+        return rule;
+    }
     // A regex condition can contain text that otherwise starts a cosmetic rule.
     let custom = may_have_owned_options(line)
         .then(|| Options::read(line, Quoting::AdGuard))
@@ -763,6 +766,15 @@ fn hosts_rule(line: &str) -> Option<&str> {
 
 fn host_pattern(host: &str) -> Cow<'_, str> {
     Cow::Owned(format!("||{host}^"))
+}
+
+// Bare anchors draw all their tokens from hostname labels. In adblock-rust,
+// rule counts can still change bucket selection, and request tokenization
+// skips tokens beside '*' and is bounded.
+pub(crate) fn is_bare_host_anchor(line: &str) -> bool {
+    line.strip_prefix("||")
+        .and_then(|host| host.strip_suffix('^'))
+        .is_some_and(crate::host::has_hostname_labels)
 }
 
 /// A host anchor with no request conditions, or an equivalent hosts-file line.

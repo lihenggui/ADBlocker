@@ -24,6 +24,33 @@ pub fn is_host(host: &str) -> bool {
             .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-' | b'_' | b':'))
 }
 
+pub(crate) fn has_hostname_labels(host: &str) -> bool {
+    // Leave Punycode labels to the matcher, which can reject malformed encodings.
+    if host.split('.').any(|label| {
+        label
+            .get(..4)
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case("xn--"))
+    }) {
+        return false;
+    }
+    hostname_labels(host)
+        || (!host.is_ascii()
+            && idna::domain_to_ascii(host).is_ok_and(|host| hostname_labels(&host)))
+}
+
+fn hostname_labels(host: &str) -> bool {
+    let host = host.strip_suffix('.').unwrap_or(host);
+    let mut empty_label = true;
+    for byte in host.bytes() {
+        match byte {
+            b'.' if !empty_label => empty_label = true,
+            b'a'..=b'z' | b'A'..=b'Z' | b'0'..=b'9' | b'-' | b'_' => empty_label = false,
+            _ => return false,
+        }
+    }
+    !empty_label
+}
+
 pub(crate) struct CanonicalAuthority {
     pub host: String,
     pub port: u16,

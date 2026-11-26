@@ -20,7 +20,7 @@ use std::collections::{HashMap, HashSet};
 use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
 use adblock::lists::{FilterSet, ParseOptions};
 
-use super::{domain_named, is_network_exception};
+use super::{SeenAnchors, domain_named, is_network_exception};
 use crate::rule::{self, ExceptionHost, Rule};
 use crate::{host::suffixes, public_suffix};
 
@@ -149,17 +149,19 @@ pub(super) struct HostProjections<'a> {
     scope_rules: String,
     page_rules: String,
     current: String,
+    anchors: Option<SeenAnchors<'a>>,
 }
 
 impl<'a> HostProjections<'a> {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(debug: bool, anchor_capacity: usize) -> Self {
         Self {
             hosts: FilterSet::new(false),
-            blocked: HashSet::new(),
+            blocked: HashSet::with_capacity(anchor_capacity),
             count: 0,
             scope_rules: String::new(),
             page_rules: String::new(),
             current: String::new(),
+            anchors: (!debug).then(|| SeenAnchors::with_capacity(anchor_capacity)),
         }
     }
 
@@ -180,8 +182,14 @@ impl<'a> HostProjections<'a> {
         if let Some((candidate, original)) = &whole
             && !rule.is_badfilter()
         {
-            self.current.push_str(candidate);
-            self.current.push('\n');
+            if self
+                .anchors
+                .as_mut()
+                .is_none_or(|anchors| anchors.insert(candidate, source.line))
+            {
+                self.current.push_str(candidate);
+                self.current.push('\n');
+            }
             self.count += 1;
             if !exception && let Some(name) = rule.hostname.as_deref() {
                 // Reuse the source text except where the parser normalized it.
@@ -200,6 +208,11 @@ impl<'a> HostProjections<'a> {
             };
             write_guards(source, &rule, out);
         }
+    }
+
+    #[cfg(test)]
+    pub(super) fn current(&self) -> &str {
+        &self.current
     }
 
     pub(super) fn finish_list(&mut self) {
