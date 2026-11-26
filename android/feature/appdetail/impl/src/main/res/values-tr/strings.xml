@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Geri</string>
+    <string name="feature_appdetail_open">%1$s uygulamasını aç</string>
+    <string name="feature_appdetail_not_installed">Bu uygulama artık yüklü değil</string>
+    <string name="feature_appdetail_filter_this">Bu uygulamayı filtrele</string>
+    <string name="feature_appdetail_filter_group">Bu uygulamaları birlikte filtrele</string>
+    <string name="feature_appdetail_pause_group">Bu grubu 1 saat duraklat</string>
+    <string name="feature_appdetail_shared_members">Bu UID\'yi paylaşan uygulamalar</string>
+    <string name="feature_appdetail_off">Trafik ADBlocker üzerinden geçmez</string>
+    <string name="feature_appdetail_on_full">Reklamları ve izleyicileri engeller</string>
+    <string name="feature_appdetail_on_hosts">Yalnızca reklam ve izleyici alan adlarını engeller</string>
+    <string name="feature_appdetail_blocked">Engellendi</string>
+    <string name="feature_appdetail_today">Bugün</string>
+    <string name="feature_appdetail_week">7 gün</string>
+    <string name="feature_appdetail_trouble">Sorun giderme</string>
+    <string name="feature_appdetail_pause">Bu uygulamayı 1 saat duraklat</string>
+    <string name="feature_appdetail_pause_text">Bir sayfa veya özellik çalışmadığında kullanın</string>
+    <string name="feature_appdetail_resume">Bu uygulamayı filtrelemeye devam et</string>
+    <string name="feature_appdetail_paused_until">%1$s saatine kadar duraklatıldı</string>
+    <string name="feature_appdetail_requests">İstekleri göster</string>
+    <string name="feature_appdetail_requests_text">Etkinlik sayfasını yalnızca bu uygulamanın isteklerini gösterecek şekilde açar</string>
+    <string name="feature_appdetail_group_requests_text">Etkinlik sayfasını yalnızca bu grubun isteklerini gösterecek şekilde açar</string>
+    <string name="feature_appdetail_pinned">Sertifikayı reddeden alan adları</string>
+    <string name="feature_appdetail_pinned_none">Yok</string>
+    <string name="feature_appdetail_pinned_count">%1$d · yalnızca alan adına göre filtrelenir</string>
+    <string name="feature_appdetail_pinned_text">Bu uygulama, bu alan adlarının sertifikalarını kendisi kontrol eder. Bir alan adı unutulduğunda, o alan adına sonraki bağlantıda şifre çözme yeniden denenir.</string>
+    <string name="feature_appdetail_forget">Unut</string>
+    <string name="feature_appdetail_forget_all">Tümünü unut</string>
+    <string name="feature_appdetail_forgotten">Unutuldu. Sonraki bağlantıda şifre çözme yeniden denenir.</string>
+    <string name="feature_appdetail_paused">Uygulama 1 saatliğine duraklatıldı</string>
+    <string name="feature_appdetail_group_paused">Grup 1 saatliğine duraklatıldı</string>
+    <string name="feature_appdetail_undo">Geri al</string>
+    <string name="feature_appdetail_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
+    <string name="feature_appdetail_level_url_filtering_off">Ayarlar\'da URL filtreleme kapalı. Yalnızca alan adlarının tamamı engellenir.</string>
+    <string name="feature_appdetail_level_unknown">Filtreleme hizmeti şu anda bu uygulamanın bağlantılarının şifresini çözemiyor. Bu yüzden HTTPS bağlantıları yalnızca alan adına göre filtreleniyor.</string>
+    <string name="feature_appdetail_level_needs_certificate">HTTPS içindeki URL\'leri filtrelemek için sertifikayı yükleyin. Uygulamanın kullanıcı sertifikalarına güvenmesi gerekir.</string>
+    <string name="feature_appdetail_set_up_https">HTTPS filtrelemeyi kur</string>
+    <string name="feature_appdetail_exclusions_pending">HTTPS bağlantıları, hariç tutma listeleri hazır olana kadar alan adına göre filtrelenir.</string>
+    <string name="feature_appdetail_work_certificate">Bu uygulama iş profilindeki sertifikaya güvenene kadar HTTPS bağlantıları şifreli kalır.</string>
+    <string name="feature_appdetail_work_quiet">Bu uygulamayı kullanmak için iş profilini açın.</string>
+    <string name="feature_appdetail_work_unavailable">Bu uygulama iş profilinde kullanılamıyor.</string>
+    <string name="feature_appdetail_shared_uid">Bu uygulama, Android UID\'sini başka bir uygulamayla paylaşıyor. Root modu bu uygulamayı ayrı filtreleyemez.</string>
+    <string name="feature_appdetail_mixed">HTTP isteklerini ve HTTPS alan adlarını filtreler</string>
+    <string name="feature_appdetail_include">Filtrelemeye dahil et</string>
+    <string name="feature_appdetail_counts_checking">Engelleme sayıları kontrol ediliyor…</string>
+    <string name="feature_appdetail_counts_unavailable">Engelleme sayıları alınamadı</string>
+    <string name="feature_appdetail_pinned_checking">Kontrol ediliyor…</string>
+    <string name="feature_appdetail_pinned_unavailable">Alan adları okunamadı</string>
+</resources>

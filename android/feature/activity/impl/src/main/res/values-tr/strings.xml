@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Etkinlik</string>
+    <string name="feature_activity_settings">Ayarlar</string>
+    <string name="feature_activity_start_recording">Kaydı başlat</string>
+    <string name="feature_activity_stop_recording">Kaydı durdur</string>
+    <string name="feature_activity_starting">Kayıt başlatılıyor…</string>
+    <string name="feature_activity_recording">İstekler kaydediliyor</string>
+    <string name="feature_activity_recorded">Kayıt durdu</string>
+    <string name="feature_activity_interrupted">Kayıt kesintiye uğradı</string>
+    <string name="feature_activity_no_recording">Henüz kayıt yok</string>
+    <string name="feature_activity_recording_intro">Filtrelenen uygulamaların isteklerini kaydedin. Kayıt sırasında uygulamalar arasında geçiş yapabilirsiniz. Son 500 istek bellekte kalır.</string>
+    <string name="feature_activity_no_matches">Bu filtrelerle eşleşen istek yok</string>
+    <string name="feature_activity_empty_result">İstek kaydedilmedi</string>
+    <string name="feature_activity_app_requests_hint">İstekleri burada görmek için Etkinlik sayfasında kayıt başlatın.</string>
+    <string name="feature_activity_notification_channel">Etkinlik kaydı</string>
+    <string name="feature_activity_notification_title">ADBlocker etkinlik kaydediyor</string>
+    <string name="feature_activity_all">Tümü</string>
+    <string name="feature_activity_blocked">Engellendi</string>
+    <string name="feature_activity_allowed">İzin verildi</string>
+    <string name="feature_activity_encrypted">Şifresi çözülmedi</string>
+    <string name="feature_activity_all_apps">Tüm uygulamalar</string>
+    <string name="feature_activity_dropped">(%1$d atlandı)</string>
+    <string name="feature_activity_empty">İstekler bekleniyor</string>
+    <string name="feature_activity_empty_idle">Filtrelenen trafik yok</string>
+    <string name="feature_activity_verdict_blocked">İstek engellendi</string>
+    <string name="feature_activity_verdict_host_blocked">Alan adı engellendi</string>
+    <string name="feature_activity_verdict_allowed">İzin verildi</string>
+    <string name="feature_activity_verdict_passed">Şifresi çözülmedi</string>
+    <string name="feature_activity_kind_script">Komut dosyası</string>
+    <string name="feature_activity_kind_image">Resim</string>
+    <string name="feature_activity_kind_document">Sayfa</string>
+    <string name="feature_activity_kind_stylesheet">Stil</string>
+    <string name="feature_activity_kind_font">Yazı tipi</string>
+    <string name="feature_activity_kind_media">Medya</string>
+    <string name="feature_activity_app">Uygulama</string>
+    <string name="feature_activity_kind">Tür</string>
+    <string name="feature_activity_page">Sayfa</string>
+    <string name="feature_activity_rule">Geçerli kural eşleşmesi (GET)</string>
+    <string name="feature_activity_rule_unavailable">Kullanılamıyor</string>
+    <string name="feature_activity_why">Neden</string>
+    <string name="feature_activity_my_rules">Kurallarım</string>
+    <string name="feature_activity_reason_pinned">Uygulama bu alan adı için ADBlocker sertifikasını kabul etmiyor, bu yüzden yalnızca alan adına göre filtreleme yapılıyor.</string>
+    <string name="feature_activity_reason_hosts_only">Bu bağlantı alan adına göre filtrelendi. URL filtreleme kapalıydı veya HTTPS incelemesi kullanılamıyordu.</string>
+    <string name="feature_activity_reason_excluded">Alan adı, banka listesi gibi bir HTTPS hariç tutma listesinde yer alıyor.</string>
+    <string name="feature_activity_reason_trusted">Bu siteye güveniliyor.</string>
+    <string name="feature_activity_reason_sensitive">Sunucunun Genişletilmiş Doğrulama sertifikası var, bu yüzden bağlantının şifresi çözülmüyor.</string>
+    <string name="feature_activity_reason_no_name">Bağlantıda alan adı belirtilmedi.</string>
+    <string name="feature_activity_reason_untrusted">Bu uygulama henüz ADBlocker\'a güvenmiyor.</string>
+    <string name="feature_activity_reason_unverified">Sunucu doğrulanamadı, bu yüzden kontrolü uygulama kendisi yapar.</string>
+    <string name="feature_activity_reason_other">Okunmadan uygulamaya iletildi.</string>
+    <string name="feature_activity_trust_site">%1$s sitesine güven</string>
+    <string name="feature_activity_block_host">Bu alan adını engelle</string>
+    <string name="feature_activity_block_in_app">%1$s uygulamasında engelle</string>
+    <string name="feature_activity_block_in_all_apps">Tüm uygulamalarda engelle</string>
+    <string name="feature_activity_forget">Şifre çözmeyi yeniden dene</string>
+    <string name="feature_activity_copy">Kopyala</string>
+    <string name="feature_activity_trusted">%1$s güvenilen sitelere eklendi</string>
+    <string name="feature_activity_blocked_host_everywhere">%1$s tüm uygulamalarda engellendi</string>
+    <string name="feature_activity_blocked_host_in_app">%1$s, %2$s uygulamasında engellendi</string>
+    <string name="feature_activity_forgotten">Sonraki bağlantıda şifre çözme yeniden denenir</string>
+    <string name="feature_activity_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
+    <string name="feature_activity_select">İstek seçin</string>
+    <string name="feature_activity_select_text">URL\'yi geçerli kurallarla kontrol edin ya da siteye güvenin veya siteyi engelleyin</string>
+    <string name="feature_activity_reason_host_blocked">Alan adının tamamı engellendiği için bağlantı reddedildi.</string>
+    <string name="feature_activity_app_requests">İstekler</string>
+    <string name="feature_activity_open_activity">Etkinlik\'te aç</string>
+    <string name="feature_activity_reason_exclusions_pending">HTTPS hariç tutma listeleri hazır değil</string>
+    <string name="feature_activity_apps_unavailable">Uygulama adları veya filtre seçenekleri yüklenemedi</string>
+    <string name="feature_activity_status_unavailable">Filtreleme durumu alınamadı</string>
+</resources>

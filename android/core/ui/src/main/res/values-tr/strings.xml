@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Tekrar dene</string>
+    <string name="core_ui_failure_no_root">Root erişimi yok</string>
+    <string name="core_ui_failure_no_root_text">Root yöneticisinde ADBlocker için root erişimine izin verin, ardından tekrar deneyin.</string>
+    <string name="core_ui_failure_module_missing">Root modu kurulmadı</string>
+    <string name="core_ui_failure_module_missing_text">Ayarlar\'da root modunu kurun.</string>
+    <string name="core_ui_failure_update_needed">Root modu güncellenmeli</string>
+    <string name="core_ui_failure_update_needed_text">Ayarlar\'dan güncelleyin.</string>
+    <string name="core_ui_failure_failed">Yüklenemedi</string>
+    <string name="core_ui_failure_failed_text">Filtreleme hizmeti yanıt vermedi. Ayarlar\'dan durumunu kontrol edin.</string>
+    <string name="core_ui_failure_timed_out">Zaman aşımı</string>
+    <string name="core_ui_failure_timed_out_text">Filtreleme hizmeti zamanında yanıt vermedi. Tekrar deneyin. Sorun sürerse Ayarlar\'dan filtreleme hizmetini yeniden başlatın.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="one">%1$d dakika</item>
+        <item quantity="other">%1$d dakika</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="one">%1$d saat</item>
+        <item quantity="other">%1$d saat</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="one">%1$d gün</item>
+        <item quantity="other">%1$d gün</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">VPN modu kullanılamıyor</string>
+    <string name="core_ui_failure_engine_missing_text">Bu derleme, root olmadan filtreleme yapan motoru içermiyor.</string>
+    <string name="core_ui_work_app_label">%1$s · İş</string>
+    <string name="core_ui_shared_uid">Android UID\'si paylaşıldığı için ayrı filtrelenemez</string>
+    <string name="core_ui_shared_app_label">%1$s · Ortak uygulamalar</string>
+    <string name="core_ui_shared_app_members">Birlikte filtrelenen uygulamalar · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Root ile filtreleme kullanılamıyor</string>
+    <string name="core_ui_remove_app_selection">Seçimi kaldır</string>
+    <string name="core_ui_personal_eligibility_unavailable">Hangi kişisel uygulamaların filtrelenebileceği kontrol edilemedi.</string>
+    <string name="core_ui_app_list_withheld">Yüklü uygulamalar görülemiyor</string>
+    <string name="core_ui_app_list_withheld_text">Sistem, ADBlocker\'ın yüklü uygulamaların listesini okumasına izin vermedi. Filtrelenecek uygulamaları seçmek için izin verin.</string>
+    <string name="core_ui_app_list_allow">İzin ver</string>
+    <string name="core_ui_app_list_check_again">Tekrar kontrol et</string>
+    <string name="core_ui_filtering_scope">Filtreleme kapsamı</string>
+    <string name="core_ui_scope_chosen">Seçilen uygulamalar</string>
+    <string name="core_ui_scope_all">Tüm uygulamalar</string>
+    <string name="core_ui_scope_all_text">Yeni yüklenenler dahil kişisel uygulamaları filtreler. Uygulamaları, Uygulamalar sayfasından hariç tutun. İş uygulamaları yine tek tek seçilir.</string>
+    <string name="core_ui_category_ads">Reklamlar</string>
+    <string name="core_ui_category_privacy">Gizlilik</string>
+    <string name="core_ui_category_security">Güvenlik</string>
+    <string name="core_ui_category_regional">Bölgesel</string>
+    <string name="core_ui_category_annoyances">Rahatsız edici öğeler</string>
+    <string name="core_ui_vpn_transfer_incomplete">Bazı root modu ayarları aktarılamadı.</string>
+    <string name="core_ui_vpn_transfer_apps">Root modunun uygulama filtreleme ayarları aktarılamadı.</string>
+    <string name="core_ui_vpn_transfer_lists">Bazı root modu filtre listesi ayarları aktarılamadı.</string>
+    <string name="core_ui_vpn_transfer_rules">Root modundaki özel kurallar aktarılamadı.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Root modundaki bazı güvenilen siteler aktarılamadı.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Root modunun URL filtreleme ayarları aktarılamadı.</string>
+</resources>

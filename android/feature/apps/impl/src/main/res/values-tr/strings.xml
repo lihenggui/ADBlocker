@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Uygulama ara</string>
+    <string name="feature_apps_settings">Ayarlar</string>
+    <string name="feature_apps_filtered">Filtrelenen %1$d</string>
+    <string name="feature_apps_all">Tümü %1$d</string>
+    <string name="feature_apps_section_filtered">Filtrelenenler</string>
+    <string name="feature_apps_section_others">Diğer uygulamalar</string>
+    <string name="feature_apps_empty_filtered">Filtrelenen uygulama yok</string>
+    <string name="feature_apps_empty_filtered_text">Filtrelemeyi başlatmak için bir uygulama seçip anahtarını açın.</string>
+    <string name="feature_apps_browse_apps">Uygulamalara göz at</string>
+    <string name="feature_apps_status_filtered">Bugün %1$s engellendi</string>
+    <string name="feature_apps_status_hosts">Yalnızca alan adı · Bugün %1$s engellendi</string>
+    <string name="feature_apps_status_paused">Duraklatıldı · %1$s sonra devam eder</string>
+    <string name="feature_apps_status_off">Filtrelenmiyor</string>
+    <string name="feature_apps_now_filtering">%1$s filtreleniyor</string>
+    <string name="feature_apps_stopped_filtering">%1$s için filtreleme durdu</string>
+    <string name="feature_apps_undo">Geri al</string>
+    <string name="feature_apps_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
+    <string name="feature_apps_select">Uygulama seçin</string>
+    <string name="feature_apps_select_text">Filtreleme modunu ve engelleme sayılarını görün</string>
+    <string name="feature_apps_status_work_quiet">İş profili duraklatıldı</string>
+    <string name="feature_apps_status_work_unavailable">İş profilinde kullanılamıyor</string>
+    <string name="feature_apps_work_inventory_unavailable">Bazı iş uygulamaları yüklenemedi.</string>
+    <string name="feature_apps_work_inventory_retry">Tekrar dene</string>
+    <string name="feature_apps_selection_removed">%1$s için seçim kaldırıldı</string>
+    <string name="feature_apps_status_mixed">HTTP istekleri ve HTTPS alan adları · Bugün %1$s engellendi</string>
+    <string name="feature_apps_exclude">Hariç tut</string>
+    <string name="feature_apps_include">Dahil et</string>
+    <string name="feature_apps_excluded">Hariç tutuldu</string>
+    <string name="feature_apps_included">%1$s dahil edildi</string>
+    <string name="feature_apps_excluded_message">%1$s hariç tutuldu</string>
+    <string name="feature_apps_status_filtered_no_count">Engelleme sayısı alınamadı</string>
+    <string name="feature_apps_status_hosts_no_count">Yalnızca alan adı · Sayı alınamadı</string>
+    <string name="feature_apps_status_mixed_no_count">HTTP istekleri ve HTTPS alan adları · Sayı alınamadı</string>
+</resources>

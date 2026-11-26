@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">Filtreler</string>
+    <string name="feature_filters_settings">Ayarlar</string>
+    <string name="feature_filters_tab_lists">Listeler</string>
+    <string name="feature_filters_tab_rules">Kurallarım</string>
+    <string name="feature_filters_tab_trusted">Güvenilen siteler</string>
+    <string name="feature_filters_add_list">Liste ekle</string>
+    <string name="feature_filters_add_list_text">EasyList veya uBlock Origin sözdizimini kullanan bir filtre listesinin URL\'si. Yalnızca HTTPS URL\'leri desteklenir.</string>
+    <string name="feature_filters_add_list_label">Liste URL\'si</string>
+    <string name="feature_filters_add">Ekle</string>
+    <string name="feature_filters_cancel">İptal</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="one">indirilen kurallar · %1$d liste</item>
+        <item quantity="other">indirilen kurallar · %1$d liste</item>
+    </plurals>
+    <string name="feature_filters_update_now">Şimdi güncelle</string>
+    <string name="feature_filters_updating">Güncelleniyor</string>
+    <string name="feature_filters_update_progress">Güncelleme ilerlemesi</string>
+    <string name="feature_filters_last_updated">%1$s güncellendi</string>
+    <string name="feature_filters_never_updated">Henüz indirilmedi</string>
+    <string name="feature_filters_subscribed_header">Abone olunanlar</string>
+    <string name="feature_filters_available">Kullanılabilir · %1$s</string>
+    <string name="feature_filters_subscribe">%1$s listesine abone ol</string>
+    <string name="feature_filters_list_fetching">İndiriliyor ve kontrol ediliyor</string>
+    <string name="feature_filters_list_failed">Güncelleme başarısız oldu</string>
+    <string name="feature_filters_list_done">%1$s kural · Az önce güncellendi</string>
+    <string name="feature_filters_list_off">Kapalı</string>
+    <string name="feature_filters_list_error">Son güncelleme başarısız oldu</string>
+    <string name="feature_filters_list_pending">İndirilmeyi bekliyor</string>
+    <string name="feature_filters_list_detail">%1$s kural · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s kural</string>
+    <string name="feature_filters_list_last_error">Son hata: %1$s</string>
+    <string name="feature_filters_remove_list">Abonelikten çık</string>
+    <string name="feature_filters_cosmetic_note">Bu kategorideki listeler ağırlıklı olarak sayfa öğelerini gizler. Bu kuralları devre dışı bırakmak için Ayarlar\'da Sayfa öğelerini gizle seçeneğini kapatın.</string>
+    <string name="feature_filters_my_rules">Kurallarım</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="one">%1$d kural</item>
+        <item quantity="other">%1$d kural</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="one">%1$d kural · %2$d uygulanmadı</item>
+        <item quantity="other">%1$d kural · %2$d uygulanmadı</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">Kural kontrolü yapılamıyor</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">Düzenle</string>
+    <string name="feature_filters_tools">Araçlar</string>
+    <string name="feature_filters_block_domain">Alan adı engelle</string>
+    <string name="feature_filters_block_domain_supporting">||example.com^ gibi bir kural ekler</string>
+    <string name="feature_filters_block_domain_text">Filtrelenen tüm uygulamalarda alan adını ve alt alan adlarını engeller.</string>
+    <string name="feature_filters_domain_label">Alan adı</string>
+    <string name="feature_filters_block">Engelle</string>
+    <string name="feature_filters_test_url">URL\'yi test et</string>
+    <string name="feature_filters_test_url_supporting">Hangi kuralın URL\'yi engelleyeceğini gösterir</string>
+    <string name="feature_filters_import">Kuralları içe aktar</string>
+    <string name="feature_filters_import_supporting">uBlock Origin veya AdGuard sözdiziminde</string>
+    <string name="feature_filters_export">Kuralları dışa aktar</string>
+    <string name="feature_filters_export_supporting">.txt dosyası olarak</string>
+    <string name="feature_filters_syntax_note">Öğe gizleme kurallarını (##) devre dışı bırakmak için Ayarlar\'da Sayfa öğelerini gizle seçeneğini kapatın.</string>
+    <string name="feature_filters_trusted_text">Bu sitelere giden bağlantıların şifresi çözülmez ve bağlantılar engellenmez. İnternet bankacılığı, kurum içi ağlar ve ödeme sayfaları için tasarlanmıştır.</string>
+    <string name="feature_filters_add_trusted">Site ekle</string>
+    <string name="feature_filters_remove_trusted">%1$s sitesini kaldır</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">Kaynak sayfa (isteğe bağlı)</string>
+    <string name="feature_filters_check">Kontrol et</string>
+    <string name="feature_filters_would_block">Engellenir</string>
+    <string name="feature_filters_would_allow">Engellenmez</string>
+    <string name="feature_filters_source_mine">Kurallarım</string>
+    <string name="feature_filters_kind_script">Komut dosyası</string>
+    <string name="feature_filters_kind_image">Resim</string>
+    <string name="feature_filters_kind_document">Sayfa</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">Diğer</string>
+    <string name="feature_filters_issue_invalid">bu satır kural olarak okunamıyor.</string>
+    <string name="feature_filters_issue_invalid_option">bu satırda geçersiz bir seçenek var (%1$s).</string>
+    <string name="feature_filters_issue_unsupported">bu sürüm bu kural biçimini uygulamıyor.</string>
+    <string name="feature_filters_issue_unsupported_named">bu sürüm %1$s öğesini uygulamıyor.</string>
+    <string name="feature_filters_issue_inapplicable">bu kuralın burada uygulanacağı bir öğe yok.</string>
+    <string name="feature_filters_issue_inapplicable_named">%1$s seçeneğinin burada uygulanacağı bir öğe yok.</string>
+    <string name="feature_filters_issue_malformed_directive">koşullu yönergenin biçimi geçersiz.</string>
+    <string name="feature_filters_issue_unsupported_include">bu sürüm, yönergeyle eklenen listeleri yüklemiyor.</string>
+    <string name="feature_filters_issue_line">Satır %1$d</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="one">%1$d tane daha.</item>
+        <item quantity="other">%1$d tane daha.</item>
+    </plurals>
+    <string name="feature_filters_back">Geri</string>
+    <string name="feature_filters_save">Kaydet ve uygula</string>
+    <string name="feature_filters_undo">Geri al</string>
+    <string name="feature_filters_redo">Yinele</string>
+    <string name="feature_filters_discard_title">Değişiklikler silinsin mi?</string>
+    <string name="feature_filters_discard_text">Kurallardaki değişiklikler kaydedilmedi.</string>
+    <string name="feature_filters_discard_failed">Taslak silinemedi. Tekrar silmeyi deneyin.</string>
+    <string name="feature_filters_discard">Sil</string>
+    <string name="feature_filters_keep_editing">Düzenlemeye devam et</string>
+    <string name="feature_filters_rules_saved">Kurallar kaydedildi ve uygulandı</string>
+    <string name="feature_filters_earlier_rules_saved">Önceki değişiklikler uygulandı. Yeni düzenlemeler kaydedilmedi.</string>
+    <string name="feature_filters_draft_failed">Kural taslağı daha sonra kullanılmak üzere saklanamadı</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="one">%1$d liste güncellendi</item>
+        <item quantity="other">%1$d liste güncellendi</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="one">%1$d liste güncellendi, %2$d liste güncellenemedi</item>
+        <item quantity="other">%1$d liste güncellendi, %2$d liste güncellenemedi</item>
+    </plurals>
+    <string name="feature_filters_update_failed">Liste güncellenemedi</string>
+    <string name="feature_filters_subscribed">Abone olundu. Liste indiriliyor.</string>
+    <string name="feature_filters_removed">Abonelikten çıkıldı</string>
+    <string name="feature_filters_https_only">Yalnızca HTTPS URL\'leri desteklenir</string>
+    <string name="feature_filters_not_a_domain">Geçersiz alan adı</string>
+    <string name="feature_filters_blocked_domain">%1$s engellendi</string>
+    <string name="feature_filters_trusted">%1$s güvenilen sitelere eklendi</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="one">%1$d kural içe aktarıldı</item>
+        <item quantity="other">%1$d kural içe aktarıldı</item>
+    </plurals>
+    <string name="feature_filters_exported">Kurallar dışa aktarıldı</string>
+    <string name="feature_filters_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
+    <string name="feature_filters_issue_separator">": "</string>
+    <string name="feature_filters_search">Liste ve kural ara</string>
+    <string name="feature_filters_search_hint">Liste ve kural ara</string>
+    <string name="feature_filters_search_none">Sonuç yok</string>
+    <string name="feature_filters_search_available">Kullanılabilir listeler</string>
+    <string name="feature_filters_list_on">Açık</string>
+    <string name="feature_filters_block_preview">%1$s kuralını ekler</string>
+    <string name="feature_filters_list_added">%1$s kural · Az önce güncellendi, %2$s yeni kural</string>
+    <string name="feature_filters_test_url_text">Bir isteği geçerli listelere ve kurallara göre kontrol eder.</string>
+    <string name="feature_filters_syntax">Kural sözdizimi</string>
+    <string name="feature_filters_syntax_text">Her satıra EasyList, uBlock Origin veya AdGuard sözdiziminde bir kural yazın.</string>
+    <string name="feature_filters_syntax_host">Bir alan adını ve alt alan adlarını engeller.</string>
+    <string name="feature_filters_syntax_option">$ işaretinden sonraki seçenekler kuralı sınırlar. Burada yalnızca diğer sitelerden gelen istekler engellenir.</string>
+    <string name="feature_filters_syntax_app">$app= seçeneği kuralı, adı belirtilen uygulamayla sınırlar.</string>
+    <string name="feature_filters_syntax_path">Eşleşen URL\'leri engeller. * her türlü metinle eşleşir ve $image kuralı resimlerle sınırlar.</string>
+    <string name="feature_filters_syntax_exception">Diğer kuralların engelleyeceği isteklere @@ ile izin verilir.</string>
+    <string name="feature_filters_syntax_cosmetic">Sayfa öğelerini gizler. Bu kuralı devre dışı bırakmak için Ayarlar\'da Sayfa öğelerini gizle seçeneğini kapatın.</string>
+    <string name="feature_filters_syntax_comment">! ile başlayan satır yorumdur.</string>
+    <string name="feature_filters_import_too_large">Dosya, kurallar için belirlenen 16 MB sınırını aşıyor</string>
+    <string name="feature_filters_schedule">%1$s güncellenir</string>
+    <string name="feature_filters_schedule_wifi">%1$s Wi-Fi üzerinden güncellenir</string>
+    <string name="feature_filters_schedule_never">otomatik güncelleme yok</string>
+    <string name="feature_filters_every_day">her gün</string>
+    <string name="feature_filters_every_three_days">3 günde bir</string>
+    <string name="feature_filters_every_week">her hafta</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="one">%1$d liste güncellendi, %2$s kural eklendi</item>
+        <item quantity="other">%1$d liste güncellendi, %2$s kural eklendi</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">HTTPS hariç tutma listeleri hazır değil. Yalnızca alan adları filtreleniyor.</string>
+    <string name="feature_filters_exclusions_failed">Bazı HTTPS hariç tutma listeleri güncellenemedi. Kayıtlı kopyalar kullanılmaya devam ediyor.</string>
+</resources>

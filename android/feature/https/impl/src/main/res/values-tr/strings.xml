@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">HTTPS filtreleme</string>
+    <string name="feature_https_back">Geri</string>
+    <string name="feature_https_step">Adım %1$d/%2$d</string>
+    <string name="feature_https_later">Daha sonra</string>
+    <string name="feature_https_continue">Devam et</string>
+    <string name="feature_https_previous">Geri</string>
+    <string name="feature_https_impact_title">Güvenliğe etkisi</string>
+    <string name="feature_https_impact_text">HTTPS içindeki istekleri filtrelemek için ADBlocker sertifikasının, sistemin kullanıcı sertifikaları arasında bulunması gerekir.</string>
+    <string name="feature_https_impact_key">Sertifika bu cihazda oluşturulur. Sertifikanın özel anahtarı uygulamanın özel depolama alanında kalır ve uygulama kaldırıldığında silinir.</string>
+    <string name="feature_https_impact_apps">Yalnızca kullanıcı sertifikalarına güvenen uygulamaların bağlantılarının şifresi çözülebilir. Bunlar çoğunlukla bazı tarayıcılardır. Diğer uygulamalar alan adına göre filtrelenmeye devam eder.</string>
+    <string name="feature_https_impact_notice">Sertifika yüklendikten sonra sistem \"Ağ etkinliği izlenebilir\" bildirimini göstermeye devam eder.</string>
+    <string name="feature_https_impact_remove">Sertifika, sistem ayarlarından istediğiniz zaman kaldırılabilir. Ayarlar › HTTPS bölümü sizi oraya yönlendirir.</string>
+    <string name="feature_https_install_title">Sertifikayı yükle</string>
+    <string name="feature_https_install_text">Android, uygulamaların sertifika yüklemesine izin vermez. Sertifika sistem ayarlarından yüklenir.</string>
+    <string name="feature_https_install_save">Sertifikayı kaydet</string>
+    <string name="feature_https_install_save_text">ADBlocker.crt dosyasını cihaza kaydeder</string>
+    <string name="feature_https_install_saved">ADBlocker.crt olarak kaydedildi</string>
+    <string name="feature_https_install_open">Sistem ayarlarını aç</string>
+    <string name="feature_https_install_open_text">Güvenlik ve gizlilik › Daha fazla güvenlik ve gizlilik › Şifreleme ve kimlik bilgileri › Sertifika yükleme › CA sertifikası</string>
+    <string name="feature_https_install_choose">ADBlocker.crt dosyasını seçin ve onaylayın</string>
+    <string name="feature_https_install_choose_text">Menü adları üreticiye göre değişir</string>
+    <string name="feature_https_install_not_found">Sertifika henüz kullanıcı sertifikaları arasında yok.</string>
+    <string name="feature_https_save">Sertifikayı kaydet</string>
+    <string name="feature_https_open_security">Güvenlik ayarlarını aç</string>
+    <string name="feature_https_save_failed">Sertifika kaydedilemedi</string>
+    <string name="feature_https_apps_title">Sertifika yüklendi</string>
+    <string name="feature_https_apps_text">URL kuralları, desteklendiği durumlarda filtrelenen tüm uygulamalara uygulanır. Sertifikayı reddeden uygulamaların bağlantıları şifreli kalır.</string>
+    <string name="feature_https_turn_on">Devam et</string>
+    <string name="feature_https_failed">İşlem başarısız oldu</string>
+    <string name="feature_https_done_title">URL filtreleme açık</string>
+    <string name="feature_https_result_full">Tam filtreleme</string>
+    <string name="feature_https_result_hosts">Yalnızca alan adı</string>
+    <string name="feature_https_done_hint">URL filtrelemeyi Ayarlar\'dan değiştirin.</string>
+    <string name="feature_https_finish">Bitti</string>
+    <string name="feature_https_work_title">İş profilinde HTTPS</string>
+    <string name="feature_https_work_instructions">Herkese açık sertifikayı kaydedin ve iş profili yöneticisinden sertifikayı o profile yüklemesini isteyin. Kuruluş politikası izin veriyorsa profilin sertifika ayarlarını da kullanabilirsiniz. HTTPS filtreleme, iş profili sertifikalarına güvenen uygulamalarda geçerlidir.</string>
+    <string name="feature_https_work_save">Sertifikayı kaydet</string>
+    <string name="feature_https_work_saved">Sertifika kaydedildi</string>
+    <string name="feature_https_result_certificate">Yalnızca alan adı · Sertifika eksik</string>
+    <string name="feature_https_result_exclusions">Yalnızca alan adı · HTTPS hariç tutma listeleri yükleniyor</string>
+    <string name="feature_https_results_unavailable">Uygulama filtreleme sonuçları okunamadı</string>
+</resources>
