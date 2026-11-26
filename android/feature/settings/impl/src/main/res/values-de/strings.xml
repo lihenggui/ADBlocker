@@ -1,0 +1,162 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Einstellungen</string>
+    <string name="feature_settings_back">Zurück</string>
+    <string name="feature_settings_appearance">Darstellung</string>
+    <string name="feature_settings_theme">Design</string>
+    <string name="feature_settings_theme_system">Systemstandard</string>
+    <string name="feature_settings_theme_light">Hell</string>
+    <string name="feature_settings_theme_dark">Dunkel</string>
+    <string name="feature_settings_dynamic_color">Hintergrundfarben</string>
+    <string name="feature_settings_dynamic_color_text">Verwendet die Farben des Hintergrundbilds</string>
+    <string name="feature_settings_updates">Listenaktualisierungen</string>
+    <string name="feature_settings_update_interval">Automatisch aktualisieren</string>
+    <string name="feature_settings_interval_daily">Täglich</string>
+    <string name="feature_settings_interval_three_days">Alle 3 Tage</string>
+    <string name="feature_settings_interval_weekly">Wöchentlich</string>
+    <string name="feature_settings_interval_never">Nie</string>
+    <string name="feature_settings_wifi_only">Nur per WLAN aktualisieren</string>
+    <string name="feature_settings_wifi_only_text">Filterlisten werden nicht über mobile Daten heruntergeladen</string>
+    <string name="feature_settings_app_list">App-Liste</string>
+    <string name="feature_settings_system_apps">System-Apps anzeigen</string>
+    <string name="feature_settings_system_apps_text">Standardmäßig ausgeblendet</string>
+    <string name="feature_settings_service">Filterdienst</string>
+    <string name="feature_settings_scope_checking">App-Auswahl wird geprüft …</string>
+    <string name="feature_settings_scope_unavailable">App-Auswahl nicht verfügbar</string>
+    <string name="feature_settings_status_unknown">Status unbekannt</string>
+    <string name="feature_settings_status_running">Aktiv</string>
+    <string name="feature_settings_status_paused">Pausiert</string>
+    <string name="feature_settings_status_stopped">Inaktiv</string>
+    <string name="feature_settings_status_turned_off">Deaktiviert</string>
+    <string name="feature_settings_turned_off_text">Zwei Startvorgänge in Folge wurden nicht abgeschlossen</string>
+    <string name="feature_settings_started">%1$s gestartet</string>
+    <string name="feature_settings_restart">Filterdienst neu starten</string>
+    <string name="feature_settings_restart_text">Apps verbinden sich während des Neustarts ohne Filterung</string>
+    <string name="feature_settings_turn_on_again">Wieder aktivieren</string>
+    <string name="feature_settings_module_install">root-Modus einrichten</string>
+    <string name="feature_settings_module_reinstall">root-Modus aktualisieren</string>
+    <string name="feature_settings_module_unavailable">Status des root-Modus nicht verfügbar</string>
+    <string name="feature_settings_module_check_again">Status des root-Modus nicht verfügbar · Erneut prüfen</string>
+    <string name="feature_settings_root_not_set_up_text">Nicht eingerichtet · Apps verbinden sich ohne Filterung</string>
+    <string name="feature_settings_root_setting_up">root-Modus wird eingerichtet …</string>
+    <string name="feature_settings_root_setup_failed">Einrichtung fehlgeschlagen · Erneut versuchen</string>
+    <string name="feature_settings_root_update_text">Die installierte Version weicht von dieser App ab</string>
+    <string name="feature_settings_root_updating">root-Modus wird aktualisiert …</string>
+    <string name="feature_settings_root_update_failed">Aktualisierung fehlgeschlagen · Erneut versuchen</string>
+    <string name="feature_settings_root_updated">root-Modus aktualisiert</string>
+    <string name="feature_settings_root_missing_text">Erlaube ADBlocker den root-Zugriff im root-Manager · Erneut prüfen</string>
+    <string name="feature_settings_root_remove">root-Modus entfernen</string>
+    <string name="feature_settings_root_remove_text">Stoppt die Filterung und löscht die Daten des root-Modus</string>
+    <string name="feature_settings_root_removing">root-Modus wird entfernt …</string>
+    <string name="feature_settings_root_remove_failed">Nicht entfernt · Erneut versuchen</string>
+    <string name="feature_settings_root_remove_title">root-Modus entfernen?</string>
+    <string name="feature_settings_root_remove_explain">Die Filterung wird gestoppt und Apps verbinden sich ohne Filterung. Die Zertifizierungsstelle des root-Modus wird zusammen mit der App-Auswahl, den Filterlisten, Regeln, vertrauten Websites und Statistiken des Modus gelöscht. App-Einstellungen wie das Design bleiben erhalten. Du kannst den root-Modus hier erneut einrichten.</string>
+    <string name="feature_settings_root_remove_confirm">Entfernen</string>
+    <string name="feature_settings_root_removed">root-Modus entfernt</string>
+    <string name="feature_settings_root_flashed">Als Modul installiert</string>
+    <string name="feature_settings_root_flashed_in">Als Modul in %1$s installiert</string>
+    <string name="feature_settings_root_flashed_text">Entferne dort das Modul und starte das Gerät neu, um den root-Modus zu entfernen</string>
+    <string name="feature_settings_root_flashed_manager_text">Entferne das Modul im root-Manager und starte das Gerät neu, um den root-Modus zu entfernen</string>
+    <string name="feature_settings_root_flashed_pending_text">Wird nach dem nächsten Neustart wirksam</string>
+    <string name="feature_settings_root_restart_to_update">Starte das Gerät neu, um die Aktualisierung abzuschließen</string>
+    <string name="feature_settings_root_marked_removal">Im root-Manager zur Entfernung markiert · Zum Entfernen neu starten</string>
+    <string name="feature_settings_pinned">Domains mit abgelehntem Zertifikat</string>
+    <string name="feature_settings_pinned_checking">Domains werden geprüft …</string>
+    <string name="feature_settings_pinned_unavailable">Domainliste nicht verfügbar</string>
+    <string name="feature_settings_pinned_none">Keine</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="one">%1$d App</item>
+        <item quantity="other">%1$d Apps</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="one">%1$d Domain</item>
+        <item quantity="other">%1$d Domains</item>
+    </plurals>
+    <string name="feature_settings_data">Daten</string>
+    <string name="feature_settings_export_logs">Protokolle exportieren</string>
+    <string name="feature_settings_export_logs_text">Die Protokolle erfassen, was ausgeführt wurde und wie es endete. Die Verbindungsziele der Apps werden nicht erfasst.</string>
+    <string name="feature_settings_about">Über die App</string>
+    <string name="feature_settings_app_version">Version %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Quellcode</string>
+    <string name="feature_settings_source_text">Lizenzen der App und der Filterlisten</string>
+    <string name="feature_settings_restarted">Filterdienst neu gestartet</string>
+    <string name="feature_settings_service_timeout">Der Filterdienst hat nicht rechtzeitig geantwortet.</string>
+    <string name="feature_settings_module_disabled">Das ADBlocker-Modul ist im root-Manager deaktiviert oder zur Entfernung markiert. Ändere die Einstellung dort.</string>
+    <string name="feature_settings_module_disabled_in">Das ADBlocker-Modul ist in %1$s deaktiviert oder zur Entfernung markiert. Ändere die Einstellung dort.</string>
+    <string name="feature_settings_module_installed">root-Modus aktiv</string>
+    <string name="feature_settings_pinned_forgotten">Entfernt. Beim nächsten Verbindungsaufbau wird die Entschlüsselung erneut versucht.</string>
+    <string name="feature_settings_logs_exported_partial">App-Protokolle exportiert. Das Protokoll des root-Modus konnte nicht vollständig gelesen werden.</string>
+    <string name="feature_settings_logs_exported">Protokolle exportiert</string>
+    <string name="feature_settings_failed">Aktion fehlgeschlagen</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">URL-Filterung</string>
+    <string name="feature_settings_url_filtering_text">Wendet URL-Regeln, soweit unterstützt, auf alle gefilterten Apps an. Ist die URL-Filterung deaktiviert, werden ganze Domains blockiert.</string>
+    <string name="feature_settings_url_filtering_unknown">Erfordert einen aktiven, aktuellen Filterdienst</string>
+    <string name="feature_settings_url_filtering_on">URL-Filterung aktiviert</string>
+    <string name="feature_settings_url_filtering_off">URL-Filterung deaktiviert</string>
+    <string name="feature_settings_cancel">Abbrechen</string>
+    <string name="feature_settings_cosmetic">Seitenelemente ausblenden</string>
+    <string name="feature_settings_cosmetic_text">Verändert entschlüsselte Seiten, um in Filterregeln angegebene Elemente auszublenden, etwa leere Werberahmen.</string>
+    <string name="feature_settings_cosmetic_security">Auswirkungen auf die Sicherheit</string>
+    <string name="feature_settings_pinned_text">Diese Apps prüfen die Zertifikate dieser Domains selbst. Deshalb werden die Verbindungen nur nach Domain gefiltert. Wenn du eine Domain aus der Liste entfernst, wird beim nächsten Verbindungsaufbau erneut versucht, die Verbindung zu entschlüsseln.</string>
+    <string name="feature_settings_forget">Entfernen</string>
+    <string name="feature_settings_forget_all">Alle entfernen</string>
+    <string name="feature_settings_forget_all_title">Alle Domains entfernen?</string>
+    <string name="feature_settings_forget_all_text">Für jede dieser Domains wird beim nächsten Verbindungsaufbau die Entschlüsselung erneut versucht.</string>
+    <string name="feature_settings_method">Filtermethode</string>
+    <string name="feature_settings_method_vpn">VPN-Modus</string>
+    <string name="feature_settings_method_vpn_text">In Verwendung · Kein root nötig</string>
+    <string name="feature_settings_method_vpn_available">Kein root nötig · Filtert nach Domain</string>
+    <string name="feature_settings_method_root">root-Modus</string>
+    <string name="feature_settings_method_root_not_set_up">Nicht eingerichtet · Filtert nach URL in HTTPS-Verbindungen</string>
+    <string name="feature_settings_method_root_restart_first">Starte zuerst das Gerät neu, um das Modulupdate abzuschließen</string>
+    <string name="feature_settings_method_root_checking">root-Zugriff wird geprüft</string>
+    <string name="feature_settings_method_root_available">root-Zugriff erteilt · Filtert nach URL in HTTPS-Verbindungen</string>
+    <string name="feature_settings_method_root_missing">Kein root-Zugriff erkannt · Erneut prüfen</string>
+    <string name="feature_settings_root_missing">Kein root-Zugriff erkannt</string>
+    <string name="feature_settings_switch_root_title">Zum root-Modus wechseln?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker richtet den root-Modus ein, der dann die Filterung vom VPN übernimmt. Das VPN bleibt verbunden, bis der root-Modus läuft. Apps, Filterlisten, Regeln und vertraute Websites werden übernommen.</string>
+    <string name="feature_settings_switch_root">Wechseln</string>
+    <string name="feature_settings_switched_to_root">Zum root-Modus gewechselt</string>
+    <string name="feature_settings_switched_to_vpn">Zum VPN-Modus gewechselt</string>
+    <string name="feature_settings_switch_root_pending">Der Wechsel zum root-Modus wurde nicht abgeschlossen.</string>
+    <string name="feature_settings_switch_root_retry">Wechsel nicht abgeschlossen · Erneut versuchen</string>
+    <string name="feature_settings_cancel_root_switch">Wechsel zum root-Modus abbrechen</string>
+    <string name="feature_settings_cancel_root_pending">Abbruch ausstehend</string>
+    <string name="feature_settings_retry_root_cancel">Abbruch erneut versuchen</string>
+    <string name="feature_settings_always_on">Durchgehend aktives VPN</string>
+    <string name="feature_settings_always_on_text">Android startet ADBlocker beim Hochfahren und nach einem unerwarteten Stopp der App</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">An</string>
+    <string name="feature_settings_state_off">Aus</string>
+    <string name="feature_settings_lockdown">Verbindungen ohne VPN blockieren</string>
+    <string name="feature_settings_lockdown_on">An · Die ausgewählten Apps können keine Verbindung herstellen, solange die Filterung gestoppt ist</string>
+    <string name="feature_settings_lockdown_off">Ist die Option aktiviert, können die ausgewählten Apps keine Verbindung herstellen, solange die Filterung gestoppt ist. Nur in den Systemeinstellungen änderbar.</string>
+    <string name="feature_settings_notifications">Benachrichtigungen</string>
+    <string name="feature_settings_notifications_on">Zugelassen · Filterung über die Benachrichtigung pausierbar</string>
+    <string name="feature_settings_notifications_off">Nicht zugelassen · Filterung funktioniert auch ohne Benachrichtigungen</string>
+    <string name="feature_settings_https_setup">HTTPS-Filterung einrichten</string>
+    <string name="feature_settings_https_not_set_up">Nicht eingerichtet · Erfordert Apps, die Nutzerzertifikaten vertrauen</string>
+    <string name="feature_settings_https_installed">Zertifikat installiert · URL-Filterung verwalten</string>
+    <string name="feature_settings_url_filtering_needs_certificate">Installiere das Zertifikat, um HTTPS-URLs zu filtern.</string>
+    <string name="feature_settings_remove_certificate">Zertifikat entfernen</string>
+    <string name="feature_settings_remove_certificate_text">Deaktiviert die Entschlüsselung und öffnet die Systemeinstellungen</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker deaktiviert zuerst die HTTPS-Entschlüsselung. Danach kannst du das Zertifikat in den Android-Einstellungen entfernen.</string>
+    <string name="feature_settings_remove_certificate_path">Datenschutz &amp; Sicherheit › Mehr Sicherheit und Datenschutz › Verschlüsselung &amp; Anmeldedaten › Vertrauenswürdige Anmeldedaten › Nutzer › ADBlocker user CA › Deinstallieren</string>
+    <string name="feature_settings_remove_certificate_vary">Menünamen können je nach Hersteller abweichen.</string>
+    <string name="feature_settings_remove_certificate_open">Deaktivieren und Einstellungen öffnen</string>
+</resources>

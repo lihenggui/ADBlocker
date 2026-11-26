@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">Einstellungen</string>
+    <string name="feature_overview_filtering">Filterung aktiv</string>
+    <string name="feature_overview_paused">Pausiert</string>
+    <string name="feature_overview_stopped">Filterdienst inaktiv</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s App</item>
+        <item quantity="other">%1$s Apps</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s Regel</item>
+        <item quantity="other">%1$s Regeln</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Weiter in %1$s</string>
+    <string name="feature_overview_paused_detail">Bis zum Fortsetzen</string>
+    <string name="feature_overview_stopped_detail">Apps verbinden sich ohne Filterung</string>
+    <string name="feature_overview_resume">Fortsetzen</string>
+    <string name="feature_overview_start">Starten</string>
+    <string name="feature_overview_pause_hour">1 Stunde pausieren</string>
+    <string name="feature_overview_more_durations">Weitere Pausenzeiten</string>
+    <string name="feature_overview_expanded">Ausgeklappt</string>
+    <string name="feature_overview_collapsed">Eingeklappt</string>
+    <string name="feature_overview_until_resumed">Bis zum Fortsetzen</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d Stunde</item>
+        <item quantity="other">%1$d Stunden</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d Minute</item>
+        <item quantity="other">%1$d Minuten</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Heute blockiert</string>
+    <string name="feature_overview_blocked_breakdown">%1$s Anfragen · %2$s Verbindungen</string>
+    <string name="feature_overview_week_description">In den letzten 7 Tagen blockiert: %1$s</string>
+    <string name="feature_overview_today">Heute</string>
+    <string name="feature_overview_top_apps">Meiste Blockierungen</string>
+    <string name="feature_overview_status">Filterstatus</string>
+    <string name="feature_overview_lists">Filterlisten</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">%1$d aktiv · %2$s aktualisiert</item>
+        <item quantity="other">%1$d aktiv · %2$s aktualisiert</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">%1$d aktiv · noch nicht heruntergeladen</item>
+        <item quantity="other">%1$d aktiv · noch nicht heruntergeladen</item>
+    </plurals>
+    <string name="feature_overview_service">Filterdienst</string>
+    <string name="feature_overview_service_running">Aktiv</string>
+    <string name="feature_overview_service_running_since">Seit %1$s aktiv</string>
+    <string name="feature_overview_service_stopped">Inaktiv</string>
+    <string name="feature_overview_updating">root-Modus wird aktualisiert …</string>
+    <string name="feature_overview_restart_to_update">Starte das Gerät neu, um das Modulupdate abzuschließen.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">%1$d Stunde pausiert. Apps verbinden sich ohne Filterung.</item>
+        <item quantity="other">%1$d Stunden pausiert. Apps verbinden sich ohne Filterung.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">%1$d Minute pausiert. Apps verbinden sich ohne Filterung.</item>
+        <item quantity="other">%1$d Minuten pausiert. Apps verbinden sich ohne Filterung.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Bis zum Fortsetzen pausiert. Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_undo">Rückgängig</string>
+    <string name="feature_overview_module_disabled">Das ADBlocker-Modul ist im root-Manager deaktiviert oder zur Entfernung markiert. Ändere die Einstellung dort.</string>
+    <string name="feature_overview_module_disabled_in">Das ADBlocker-Modul ist in %1$s deaktiviert oder zur Entfernung markiert. Ändere die Einstellung dort.</string>
+    <string name="feature_overview_service_timeout">Der Filterdienst hat nicht rechtzeitig geantwortet.</string>
+    <string name="feature_overview_root_pending">Der Wechsel zum root-Modus wurde nicht abgeschlossen. Versuche es in den Einstellungen erneut.</string>
+    <string name="feature_overview_action_failed">Aktion fehlgeschlagen. Prüfe den Filterdienst in den Einstellungen.</string>
+    <string name="feature_overview_turned_off">Deaktiviert</string>
+    <string name="feature_overview_turned_off_detail">Die Filterung hat sich am %1$s deaktiviert, nachdem zwei Startvorgänge in Folge nicht abgeschlossen wurden. Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_turn_on_again">Wieder aktivieren</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Wird verbunden</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Getrennt</string>
+    <string name="feature_overview_vpn_off_detail">Die ausgewählten Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_vpn_revoked_detail">Das VPN wurde durch eine andere VPN-App oder in den Systemeinstellungen deaktiviert. Die ausgewählten Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_vpn_failed_detail">Die Filterung wurde unerwartet gestoppt. Die ausgewählten Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_vpn_lockdown_detail">„Verbindungen ohne VPN blockieren“ ist aktiviert. Die ausgewählten Apps können erst wieder eine Verbindung herstellen, wenn das VPN wieder verbunden ist.</string>
+    <string name="feature_overview_reconnect">Neu verbinden</string>
+    <string name="feature_overview_vpn_refused">Das VPN wurde nicht zugelassen. Die ausgewählten Apps verbinden sich ohne Filterung.</string>
+    <string name="feature_overview_method">Filtermethode</string>
+    <string name="feature_overview_method_vpn_on">VPN · Verbunden</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Wird verbunden</string>
+    <string name="feature_overview_method_vpn_off">VPN · Getrennt</string>
+    <string name="feature_overview_https">Verschlüsselte Websites</string>
+    <string name="feature_overview_https_not_set_up">Nur nach Domain · Für Browser einrichtbar</string>
+    <string name="feature_overview_https_off">Nur nach Domain · Entschlüsselung aus</string>
+    <string name="feature_overview_https_none">Nur nach Domain</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">%1$d App mit Entschlüsselung</item>
+        <item quantity="other">%1$d Apps mit Entschlüsselung</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">„Verbindungen ohne VPN blockieren“ ist aktiviert</string>
+    <string name="feature_overview_lockdown_text">Solange die Filterung gestoppt ist, können die ausgewählten Apps keine Verbindung herstellen.</string>
+    <string name="feature_overview_notice_ok">OK</string>
+    <string name="feature_overview_root_title">root-Zugriff erkannt</string>
+    <string name="feature_overview_root_text">Der root-Modus filtert verschlüsselte Websites nach URL, ohne das VPN zu verwenden. Die ausgewählten Apps, Filterlisten und Regeln bleiben erhalten.</string>
+    <string name="feature_overview_root_dismiss">Jetzt nicht</string>
+    <string name="feature_overview_root_switch">Zum root-Modus wechseln</string>
+    <string name="feature_overview_battery_title">Android hat das VPN beendet</string>
+    <string name="feature_overview_battery_text">Die Filterung wurde im Hintergrund gestoppt. Erlaube ADBlocker, ohne Akkubeschränkungen zu laufen, damit die Filterung zuverlässiger aktiv bleibt.</string>
+    <string name="feature_overview_battery_action">Hintergrundnutzung zulassen</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="one">%1$d Liste noch nicht heruntergeladen</item>
+        <item quantity="other">%1$d Listen noch nicht heruntergeladen</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="one">%1$d Liste konnte nicht heruntergeladen werden</item>
+        <item quantity="other">%1$d Listen konnten nicht heruntergeladen werden</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="one">Die Liste wird nach dem Download zum Filtern verwendet.</item>
+        <item quantity="other">Die Listen werden nach dem Download zum Filtern verwendet.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="one">Die Liste wird nach dem Download zum Filtern verwendet.</item>
+        <item quantity="other">Die Listen werden nach dem Download zum Filtern verwendet.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Jetzt herunterladen</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="one">Die Filterung läuft mit der bisherigen Kopie weiter.</item>
+        <item quantity="other">Die Filterung läuft mit den bisherigen Kopien weiter.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Listen öffnen</string>
+    <string name="feature_overview_lists_download_failed">Download fehlgeschlagen</string>
+    <string name="feature_overview_app_list_withheld_title">Die meisten Apps werden nicht gefiltert</string>
+    <string name="feature_overview_app_list_withheld_text">Das System hat ADBlocker den Zugriff auf die Liste installierter Apps nicht erlaubt. Die Apps werden gefiltert, sobald der Zugriff erlaubt ist.</string>
+</resources>
