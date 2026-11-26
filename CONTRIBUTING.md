@@ -100,6 +100,7 @@ updating that crate.
 
 Run `scripts/update-psl.sh [VERSION]` to sync the bundled Public Suffix List
 with `Cargo.lock`, optionally updating the locked `psl` version first.
+Dependabot does not update `psl`; a release does.
 
 Run the parser [fuzz targets](fuzz/README.md) by hand with nightly Rust.
 
@@ -232,7 +233,8 @@ for such a log.
 (`v0.2.0`) and increases `versionCode`. The same commit adds
 `fastlane/metadata/android/en-US/changelogs/<versionCode>.txt`, the
 changes in a few sentences, which app stores such as F-Droid show for the
-version. The rest of `fastlane/metadata/` describes the app there; its
+version. Before it, `cargo update -p psl && scripts/update-psl.sh` brings
+the Public Suffix List up to date; commit that on its own. The rest of `fastlane/metadata/` describes the app there; its
 screenshots are copies of the `*_phone.png` screenshot tests.
 
 Generate a release keystore and keep a private backup. Android uses the

@@ -16,6 +16,9 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # A release updates psl with scripts/update-psl.sh (CONTRIBUTING.md).
+      - dependency-name: psl
 
   # The standalone parser fuzz targets.
   - package-ecosystem: cargo
