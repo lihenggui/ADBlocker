@@ -293,7 +293,7 @@ private fun Filters(state: ActivityUiState, onVerdict: (VerdictFilter) -> Unit, 
                         if (identity == null) {
                             stringResource(R.string.feature_activity_all_apps)
                         } else {
-                            profileAppLabel(app?.label ?: identity.packageName.removePrefix("@"), identity.profileSerial != null, identity.isSharedGroup)
+                            profileAppLabel(app?.label ?: identity.packageName.removePrefix("@"), identity.packageName, identity.profileSerial != null, identity.isSharedGroup)
                         },
                     )
                 },
@@ -315,7 +315,7 @@ private fun Filters(state: ActivityUiState, onVerdict: (VerdictFilter) -> Unit, 
                                     if (option == null) {
                                         stringResource(R.string.feature_activity_all_apps)
                                     } else {
-                                        profileAppLabel(option.label, option.profileSerial != null, option.isSharedGroup)
+                                        profileAppLabel(option.label, option.packageName, option.profileSerial != null, option.isSharedGroup)
                                     },
                                 )
                             },
@@ -430,7 +430,7 @@ internal fun RequestRow(
                     Text(stringResource(label), color = color, style = MaterialTheme.typography.bodyMedium, maxLines = 1)
                     // The app and the kind give way first: the verdict is what the row is for.
                     Text(
-                        "· " + profileAppLabel(app?.label ?: event.packageName.removePrefix("@"), event.profileSerial != null, event.packageName.startsWith('@')) + (event.kind?.let { " · " + kindName(it) } ?: ""),
+                        "· " + profileAppLabel(app?.label ?: event.packageName.removePrefix("@"), event.packageName, event.profileSerial != null, event.packageName.startsWith('@')) + (event.kind?.let { " · " + kindName(it) } ?: ""),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.bodyMedium,

@@ -69,7 +69,9 @@ import li.mercury.adblocker.core.ui.AppIcon
 import li.mercury.adblocker.core.ui.AppSnackbarHost
 import li.mercury.adblocker.core.ui.LocalShowsDetailBesideList
 import li.mercury.adblocker.core.ui.MessageEffect
+import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.formatClockTime
+import li.mercury.adblocker.core.ui.isolateLtr
 import li.mercury.adblocker.core.ui.profileAppLabel
 
 /**
@@ -129,7 +131,7 @@ internal fun RequestContent(
             verdict = request.verdict,
             reason = request.reason,
             trustSite = state.trustSite,
-            blockApp = state.blockPackage?.let { state.app?.label ?: it },
+            blockApp = state.blockPackage?.let { appLabelArgument(state.app?.label ?: it, it) },
             onTrust = onTrust,
             onBlock = onBlock,
             onBlockInApp = onBlockInApp,
@@ -175,7 +177,7 @@ private fun RequestFacts(request: RequestEvent, state: RequestUiState) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             val label = state.app?.label ?: request.packageName.removePrefix("@")
             AppIcon(state.app, label, size = 24.dp)
-            Text(profileAppLabel(label, request.profileSerial != null, request.packageName.startsWith('@')))
+            Text(profileAppLabel(label, request.packageName, request.profileSerial != null, request.packageName.startsWith('@')))
         }
     }
     request.kind?.let { Fact(stringResource(R.string.feature_activity_kind)) { Text(kindName(it)) } }
@@ -231,7 +233,7 @@ private fun RequestActions(
             trustSite != null && (verdict == Verdict.Blocked || verdict == Verdict.HostBlocked) -> Button(onClick = onTrust) {
                 Icon(AdbIcons.VerifiedUser, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
                 Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.feature_activity_trust_site, trustSite))
+                Text(stringResource(R.string.feature_activity_trust_site, isolateLtr(trustSite)))
             }
 
             // The request's own app first; every app is the wider alternative.

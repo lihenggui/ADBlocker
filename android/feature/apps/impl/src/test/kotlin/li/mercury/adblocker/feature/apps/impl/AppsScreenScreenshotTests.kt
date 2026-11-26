@@ -173,7 +173,7 @@ class AppsScreenScreenshotTests {
                 )
             }
         }
-        composeTestRule.onNodeWithText("Apps filtered together · News, com.example.hidden").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Apps filtered together · News, \u2066com.example.hidden\u2069").assertIsDisplayed()
         composeTestRule.onNode(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Switch)).performClick()
         composeTestRule.runOnIdle { assertEquals(listOf("37:@com.example.suite" to true), actions) }
     }

@@ -22,6 +22,7 @@ import androidx.compose.ui.res.stringResource
 import li.mercury.adblocker.core.model.RuleIssue
 import li.mercury.adblocker.core.model.RuleIssueCode.Known
 import li.mercury.adblocker.core.model.RuleIssueKind
+import li.mercury.adblocker.core.ui.isolateLtr
 
 internal data class RuleIssueMessage(@StringRes val resource: Int, val name: String? = null)
 
@@ -58,5 +59,5 @@ internal fun RuleIssue.message(): RuleIssueMessage {
 @Composable
 internal fun ruleIssueText(issue: RuleIssue): String {
     val (resource, name) = issue.message()
-    return if (name == null) stringResource(resource) else stringResource(resource, name)
+    return if (name == null) stringResource(resource) else stringResource(resource, isolateLtr(name))
 }

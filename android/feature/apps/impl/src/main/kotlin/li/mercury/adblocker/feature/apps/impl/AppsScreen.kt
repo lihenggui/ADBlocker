@@ -90,6 +90,7 @@ import li.mercury.adblocker.core.ui.MessageEffect
 import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.animatedRow
+import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.formatCount
 import li.mercury.adblocker.core.ui.message
 import li.mercury.adblocker.core.ui.pageMargin
@@ -335,7 +336,7 @@ internal fun AppRow(
     modifier: Modifier = Modifier,
     member: SharedAppMember? = null,
 ) {
-    val label = profileAppLabel(member?.label ?: entry.app.label, entry.app.profileSerial != null, entry.app.isSharedGroup)
+    val label = profileAppLabel(member?.label ?: entry.app.label, member?.packageName ?: entry.app.packageName, entry.app.profileSerial != null, entry.app.isSharedGroup)
     Box(modifier.padding(bottom = ListItemDefaults.SegmentedGap)) {
         SegmentedListItem(
             selected = selected && LocalShowsDetailBesideList.current,
@@ -350,7 +351,7 @@ internal fun AppRow(
                     Column {
                         AppStatus(entry, counts)
                         Text(
-                            stringResource(UiR.string.core_ui_shared_app_members, entry.app.sharedMembers.joinToString { it.label }),
+                            stringResource(UiR.string.core_ui_shared_app_members, entry.app.sharedMembers.joinToString { appLabelArgument(it.label, it.packageName) }),
                             maxLines = 2,
                             overflow = TextOverflow.Ellipsis,
                         )

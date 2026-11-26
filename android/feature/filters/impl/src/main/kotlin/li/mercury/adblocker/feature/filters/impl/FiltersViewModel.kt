@@ -53,6 +53,7 @@ import li.mercury.adblocker.core.model.UpdateEvent
 import li.mercury.adblocker.core.model.UpdateInterval
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
+import li.mercury.adblocker.core.ui.isolateLtr
 import java.text.NumberFormat
 import javax.inject.Inject
 
@@ -314,7 +315,7 @@ class FiltersViewModel @Inject constructor(
             return@act
         }
         rules.blockDomain(host)
-        messages.show(UiMessage(R.string.feature_filters_blocked_domain, listOf(host)))
+        messages.show(UiMessage(R.string.feature_filters_blocked_domain, listOf(isolateLtr(host))))
     }
 
     fun trust(input: String) = act {
@@ -324,7 +325,7 @@ class FiltersViewModel @Inject constructor(
             return@act
         }
         rules.trust(host)
-        messages.show(UiMessage(R.string.feature_filters_trusted, listOf(host), R.string.feature_filters_undo) { untrust(host) })
+        messages.show(UiMessage(R.string.feature_filters_trusted, listOf(isolateLtr(host)), R.string.feature_filters_undo) { untrust(host) })
     }
 
     fun untrust(host: String) = act { rules.untrust(host) }

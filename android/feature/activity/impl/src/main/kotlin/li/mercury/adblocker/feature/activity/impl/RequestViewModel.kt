@@ -37,6 +37,8 @@ import li.mercury.adblocker.core.model.RequestEvent
 import li.mercury.adblocker.core.model.RuleCheckResult
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
+import li.mercury.adblocker.core.ui.appLabelArgument
+import li.mercury.adblocker.core.ui.isolateLtr
 
 data class RequestUiState(
     /** The request, as the feed received it; null when it is no longer kept. */
@@ -86,14 +88,14 @@ class RequestViewModel @AssistedInject constructor(
         val site = initial.trustSite ?: return
         act {
             rules.trust(site)
-            messages.show(UiMessage(R.string.feature_activity_trusted, listOf(site)))
+            messages.show(UiMessage(R.string.feature_activity_trusted, listOf(isolateLtr(site))))
         }
     }
 
     /** Blocks the request's host and every name below it, in every app. */
     fun blockHost() = act { request ->
         rules.blockDomain(request.host)
-        messages.show(UiMessage(R.string.feature_activity_blocked_host_everywhere, listOf(request.host)))
+        messages.show(UiMessage(R.string.feature_activity_blocked_host_everywhere, listOf(isolateLtr(request.host))))
     }
 
     /** Blocks the request's host and every name below it in the app that made the request, in each of its profiles. */
@@ -101,8 +103,8 @@ class RequestViewModel @AssistedInject constructor(
         val app = initial.blockPackage ?: return
         act { request ->
             rules.blockDomain(request.host, app)
-            val label = uiState.value.app?.label ?: app
-            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(request.host, label)))
+            val label = appLabelArgument(uiState.value.app?.label ?: app, app)
+            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(isolateLtr(request.host), label)))
         }
     }
 

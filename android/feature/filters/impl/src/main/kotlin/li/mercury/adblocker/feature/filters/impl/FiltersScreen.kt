@@ -68,6 +68,7 @@ import li.mercury.adblocker.core.ui.FailureView
 import li.mercury.adblocker.core.ui.MaxContentWidth
 import li.mercury.adblocker.core.ui.MessageEffect
 import li.mercury.adblocker.core.ui.Pop
+import li.mercury.adblocker.core.ui.isolateLtr
 
 @Composable
 fun FiltersScreen(
@@ -238,7 +239,7 @@ private fun FiltersOverlay(overlay: Overlay?, state: FiltersUiState, actions: Fi
             confirm = stringResource(R.string.feature_filters_block),
             onConfirm = actions.blockDomain,
             onDismiss = onDismiss,
-            preview = { value -> hostOf(value, HostInput.RulePreview)?.let { stringResource(R.string.feature_filters_block_preview, "||$it^") } },
+            preview = { value -> hostOf(value, HostInput.RulePreview)?.let { stringResource(R.string.feature_filters_block_preview, isolateLtr("||$it^")) } },
         )
 
         Overlay.Trust -> TextInputSheet(

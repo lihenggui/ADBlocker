@@ -59,6 +59,7 @@ import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.SegmentedToggleItem
+import li.mercury.adblocker.core.ui.isolateLtr
 import li.mercury.adblocker.core.ui.relativeTime
 import li.mercury.adblocker.core.ui.segmentedColors
 import li.mercury.adblocker.core.ui.R as CoreUiR
@@ -368,7 +369,7 @@ internal fun DataAndAboutRows(appVersion: String, onExportLogs: () -> Unit, onOp
                 index = 0,
                 count = 2,
                 headline = stringResource(R.string.feature_settings_app_name),
-                supporting = { Text(stringResource(R.string.feature_settings_app_version, appVersion)) },
+                supporting = { Text(stringResource(R.string.feature_settings_app_version, isolateLtr(appVersion))) },
                 leading = { Icon(AdbIcons.Info, contentDescription = null, Modifier.size(20.dp)) },
             )
         } else {

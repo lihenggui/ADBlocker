@@ -96,6 +96,7 @@ import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.core.ui.Pop
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SectionHeader
+import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.formatCount
 import li.mercury.adblocker.core.ui.message
 import li.mercury.adblocker.core.ui.pageMargin
@@ -175,7 +176,7 @@ internal fun AppDetailScreen(
                     Pop(launchable != null) {
                         launchable?.let { entry ->
                             IconButton(onClick = { launch(context, entry.app) }) {
-                                Icon(AdbIcons.OpenInNew, contentDescription = stringResource(R.string.feature_appdetail_open, entry.app.label))
+                                Icon(AdbIcons.OpenInNew, contentDescription = stringResource(R.string.feature_appdetail_open, appLabelArgument(entry.app.label, entry.app.packageName)))
                             }
                         }
                     }
@@ -216,7 +217,7 @@ private fun Details(
         Row(Modifier.padding(start = 4.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             AppIcon(entry.app, entry.app.label, size = 56.dp)
             Column {
-                Text(profileAppLabel(entry.app.label, entry.app.profileSerial != null, entry.app.isSharedGroup), style = MaterialTheme.typography.headlineSmall)
+                Text(profileAppLabel(entry.app.label, entry.app.packageName, entry.app.profileSerial != null, entry.app.isSharedGroup), style = MaterialTheme.typography.headlineSmall)
                 Text(
                     entry.packageName,
                     style = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
