@@ -1,0 +1,1 @@
+Bloque pubs et traceurs d’applis via des listes de navigateur, avec ou sans root

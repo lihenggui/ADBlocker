@@ -1,0 +1,1 @@
+Bloqueia anúncios e rastreadores em apps via listas de navegador, com/sem root

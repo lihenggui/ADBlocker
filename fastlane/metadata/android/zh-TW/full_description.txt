@@ -1,0 +1,19 @@
+<p>ADBlocker 使用瀏覽器廣告封鎖工具的過濾清單（例如 EasyList、uBlock Origin 和 AdGuard），封鎖 Android 應用程式中的廣告和追蹤器。你可以選擇要過濾的應用程式，或過濾所有個人應用程式。ADBlocker 會下載你訂閱的過濾清單，不會傳送遙測資料。</p>
+
+<p>有兩種過濾方式。</p>
+<ul>
+<li><b>root 模式</b>（需要 root 權限和使用 GKI 核心的 Android 12 或更新版本，root 權限可透過 KernelSU、Magisk 或 APatch 等方式取得）。ADBlocker 使用 root 權限進行設定，無須重新啟動。Android 的 VPN 連線名額仍可供其他 VPN 使用，每條連線仍歸屬於發起連線的應用程式。</li>
+<li><b>VPN 模式</b>（無須 root，需要 Android 10 或更新版本）。納入過濾的應用程式流量會經過 ADBlocker 的本機 VPN。</li>
+</ul>
+
+<p>開啟依網址過濾後，ADBlocker 透過本機憑證授權單位，對 HTTPS 流量套用網址和資源規則。該授權單位的金鑰會留在裝置上。在 root 模式下，ADBlocker 會將該授權單位的憑證提供給納入過濾的個人應用程式。在 VPN 模式下，你要自行安裝這張憑證，且只有信任使用者憑證的應用程式會接受它。安裝前，HTTPS 會維持加密，只套用網域規則。拒絕這張憑證的應用程式也是如此。你可以關閉依網址過濾，只依網域過濾。</p>
+
+<p>功能</p>
+<ul>
+<li>逐一選擇要過濾的應用程式，或過濾所有個人應用程式並設定排除項目。有 root 權限時可過濾工作資料夾中的應用程式</li>
+<li>訂閱 EasyList、uBlock Origin 和 AdGuard 的過濾清單，可新增自訂規則和信任的網站</li>
+<li>記錄單一應用程式的請求，查看規則如何處理每個請求</li>
+<li>暫停單一應用程式或所有應用程式的過濾，並提供快速設定方塊</li>
+</ul>
+
+<p>root 模式包含 LSPosed/Vector 模組，僅在應用程式自行檢查憑證時使用。僅支援 64 位元的 ARM 和 x86 裝置。</p>

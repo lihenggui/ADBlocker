@@ -1,0 +1,19 @@
+<p>ADBlocker bloquea anuncios y rastreadores en aplicaciones de Android con listas de filtros para bloqueadores de anuncios de navegador (por ejemplo, EasyList, uBlock Origin y AdGuard). Puedes elegir las aplicaciones que se filtran o dejar que se filtren todas tus aplicaciones personales. ADBlocker descarga las listas de filtros a las que te suscribes y no envía datos de telemetría.</p>
+
+<p>Hay dos modos de filtrado.</p>
+<ul>
+<li><b>Modo root</b> (acceso root, por ejemplo mediante KernelSU, Magisk o APatch, y Android 12 o posterior con un kernel GKI). ADBlocker configura este modo con acceso root, sin reiniciar el dispositivo. El espacio de Android para una VPN queda libre para otra VPN, y cada conexión sigue asociada a la aplicación que la inició.</li>
+<li><b>Modo VPN</b> (sin root, Android 10 o posterior). El tráfico de las aplicaciones filtradas pasa por la VPN local de ADBlocker.</li>
+</ul>
+
+<p>Con el filtrado por URL activado, ADBlocker aplica reglas de URL y de recursos dentro de las conexiones HTTPS mediante una autoridad de certificación local cuya clave permanece en el dispositivo. En modo root, ADBlocker pone el certificado de esta autoridad a disposición de las aplicaciones personales filtradas. En modo VPN, instalas el certificado por tu cuenta y solo lo aceptan las aplicaciones que confían en los certificados de usuario. Hasta que lo instales, y para cualquier aplicación que lo rechace, HTTPS permanece cifrado y solo se aplican las reglas de dominio. Puedes desactivar el filtrado por URL para filtrar solo por dominio.</p>
+
+<p>Funciones</p>
+<ul>
+<li>Selección por aplicación o filtrado de todas las aplicaciones personales con exclusiones. Con root también se pueden filtrar las aplicaciones del perfil de trabajo</li>
+<li>Suscripciones a listas de filtros de EasyList, uBlock Origin y AdGuard, reglas personalizadas y sitios de confianza</li>
+<li>Registro de las solicitudes de una aplicación para ver cómo trata cada una el conjunto de reglas</li>
+<li>Pausa del filtrado para una aplicación o para todas, y un recuadro en los ajustes rápidos</li>
+</ul>
+
+<p>El modo root incluye un módulo LSPosed/Vector que solo se usa cuando una aplicación comprueba los certificados por su cuenta. Solo se admiten dispositivos ARM y x86 de 64 bits.</p>

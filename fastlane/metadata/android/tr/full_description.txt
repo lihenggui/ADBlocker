@@ -1,0 +1,19 @@
+<p>ADBlocker, tarayıcı reklam engelleyicilerinde kullanılan filtre listeleriyle (örneğin EasyList, uBlock Origin ve AdGuard) Android uygulamalarındaki reklamları ve izleyicileri engeller. Filtrelenecek uygulamaları seçebilir veya tüm kişisel uygulamalarınızın filtrelenmesini sağlayabilirsiniz. ADBlocker abone olduğunuz filtre listelerini indirir ve telemetri verisi göndermez.</p>
+
+<p>İki filtreleme yöntemi vardır.</p>
+<ul>
+<li><b>Root modu</b> (örneğin KernelSU, Magisk veya APatch ile root erişimi ve GKI çekirdekli Android 12 veya üzeri gerekir). ADBlocker bu modu root erişimiyle, yeniden başlatma gerektirmeden kurar. Android'in VPN yuvası başka bir VPN için boş kalır ve her bağlantı onu başlatan uygulamayla ilişkilendirilmeye devam eder.</li>
+<li><b>VPN modu</b> (root gerekmez, Android 10 veya üzeri gerekir). Filtrelenen uygulamaların trafiği ADBlocker'ın yerel VPN'i üzerinden geçer.</li>
+</ul>
+
+<p>URL filtreleme açıkken ADBlocker, anahtarı cihazda kalan yerel bir sertifika yetkilisi aracılığıyla HTTPS bağlantıları içinde URL ve kaynak kurallarını uygular. Root modunda ADBlocker bu yetkilinin sertifikasını filtrelenen kişisel uygulamaların kullanımına sunar. VPN modunda sertifikayı kendiniz yüklersiniz ve yalnızca kullanıcı sertifikalarına güvenen uygulamalar sertifikayı kabul eder. Sertifika yüklenene kadar ve sertifikayı reddeden tüm uygulamalar için HTTPS şifreli kalır ve yalnızca alan adı kuralları uygulanır. Yalnızca alan adına göre filtrelemek için URL filtrelemeyi kapatabilirsiniz.</p>
+
+<p>Özellikler</p>
+<ul>
+<li>Uygulamaları tek tek seçme veya istisnalar belirleyerek tüm kişisel uygulamaları filtreleme. Root erişimiyle iş profilindeki uygulamalar da filtrelenebilir</li>
+<li>EasyList, uBlock Origin ve AdGuard filtre listelerine abonelikler, özel kurallar ve güvenilen siteler</li>
+<li>Kuralların her isteği nasıl işlediğini görmek için bir uygulamanın isteklerini kaydetme</li>
+<li>Bir uygulama veya tüm uygulamalar için filtrelemeyi duraklatma ve Hızlı Ayarlar kutusu</li>
+</ul>
+
+<p>Root modu, yalnızca bir uygulama sertifikaları kendi denetlediğinde kullanılan bir LSPosed/Vector modülü içerir. Yalnızca 64 bit ARM ve x86 cihazlar desteklenir.</p>

@@ -1,0 +1,1 @@
+Blokir iklan dan pelacak di aplikasi via daftar filter browser, root opsional

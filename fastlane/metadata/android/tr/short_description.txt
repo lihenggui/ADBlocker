@@ -1,0 +1,1 @@
+Tarayıcı listeleriyle uygulama içi reklam ve izleyici engelleme, root şart değil

@@ -1,0 +1,1 @@
+Blockiert Werbung und Tracker in Apps mit Browserfilterlisten, mit und ohne root

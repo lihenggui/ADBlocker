@@ -1,0 +1,19 @@
+<p>ADBlocker blockiert Werbung und Tracker in Android-Apps mit Filterlisten für Browser-Werbeblocker (zum Beispiel EasyList, uBlock Origin und AdGuard). Du kannst die zu filternden Apps auswählen oder alle persönlichen Apps filtern lassen. ADBlocker lädt die Filterlisten herunter, die du abonniert hast, und sendet keine Telemetriedaten.</p>
+
+<p>Es gibt zwei Filtermethoden.</p>
+<ul>
+<li><b>root-Modus</b> (root-Zugriff, etwa über KernelSU, Magisk oder APatch, und Android 12 oder neuer mit GKI-Kernel erforderlich). ADBlocker richtet diesen Modus mit root-Zugriff ein, ohne dass ein Neustart nötig ist. Der Platz für eine VPN-Verbindung bleibt unter Android für ein anderes VPN frei, und jede Verbindung bleibt der App zugeordnet, die sie aufgebaut hat.</li>
+<li><b>VPN-Modus</b> (ohne root, Android 10 oder neuer). Der Datenverkehr der gefilterten Apps läuft durch das lokale VPN von ADBlocker.</li>
+</ul>
+
+<p>Bei aktiver URL-Filterung wendet ADBlocker innerhalb von HTTPS-Verbindungen Regeln für URLs und Ressourcen an. Dazu dient eine lokale Zertifizierungsstelle, deren Schlüssel auf dem Gerät bleibt. Im root-Modus stellt ADBlocker das Zertifikat dieser Stelle den gefilterten persönlichen Apps zur Verfügung. Im VPN-Modus installierst du das Zertifikat selbst. Nur Apps, die Nutzerzertifikaten vertrauen, akzeptieren es. Bis zur Installation und für alle Apps, die das Zertifikat ablehnen, bleibt HTTPS verschlüsselt und es gelten nur Domainregeln. Du kannst die URL-Filterung ausschalten, um nur nach Domains zu filtern.</p>
+
+<p>Funktionen</p>
+<ul>
+<li>Auswahl einzelner Apps oder Filterung aller persönlichen Apps mit Ausnahmen. Mit root-Zugriff lassen sich auch Apps im Arbeitsprofil filtern</li>
+<li>Abos für Filterlisten von EasyList, uBlock Origin und AdGuard, eigene Regeln und vertraute Websites</li>
+<li>Aufzeichnung der Anfragen einer App, um zu sehen, wie die Regeln jede Anfrage behandeln</li>
+<li>Pausieren der Filterung für eine oder alle Apps und eine Kachel in den Schnelleinstellungen</li>
+</ul>
+
+<p>Der root-Modus enthält ein LSPosed/Vector-Modul, das nur verwendet wird, wenn eine App Zertifikate selbst prüft. Unterstützt werden ausschließlich 64-Bit-Geräte mit ARM- oder x86-Architektur.</p>
