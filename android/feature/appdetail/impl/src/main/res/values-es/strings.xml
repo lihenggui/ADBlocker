@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Atrás</string>
+    <string name="feature_appdetail_open">Abrir %1$s</string>
+    <string name="feature_appdetail_not_installed">Esta aplicación ya no está instalada</string>
+    <string name="feature_appdetail_filter_this">Filtrar esta aplicación</string>
+    <string name="feature_appdetail_filter_group">Filtrar como grupo</string>
+    <string name="feature_appdetail_pause_group">Pausar el grupo 1 hora</string>
+    <string name="feature_appdetail_shared_members">Aplicaciones que comparten este UID</string>
+    <string name="feature_appdetail_off">El tráfico no pasa por ADBlocker</string>
+    <string name="feature_appdetail_on_full">Bloquea anuncios y rastreadores</string>
+    <string name="feature_appdetail_on_hosts">Solo bloquea dominios de anuncios y rastreadores</string>
+    <string name="feature_appdetail_blocked">Bloqueos</string>
+    <string name="feature_appdetail_today">Hoy</string>
+    <string name="feature_appdetail_week">7 días</string>
+    <string name="feature_appdetail_trouble">Solución de problemas</string>
+    <string name="feature_appdetail_pause">Pausar la aplicación 1 hora</string>
+    <string name="feature_appdetail_pause_text">Úsalo si una página o función no funciona</string>
+    <string name="feature_appdetail_resume">Reanudar el filtrado</string>
+    <string name="feature_appdetail_paused_until">En pausa hasta las %1$s</string>
+    <string name="feature_appdetail_requests">Ver solicitudes</string>
+    <string name="feature_appdetail_requests_text">Abre Actividad y muestra solo esta aplicación</string>
+    <string name="feature_appdetail_group_requests_text">Abre Actividad y muestra solo este grupo</string>
+    <string name="feature_appdetail_pinned">Dominios que rechazan el certificado</string>
+    <string name="feature_appdetail_pinned_none">Ninguno</string>
+    <string name="feature_appdetail_pinned_count">%1$d · filtrados solo por dominio</string>
+    <string name="feature_appdetail_pinned_text">La propia aplicación comprueba los certificados de estos dominios. Si olvidas un dominio, se volverá a intentar descifrar el tráfico en la siguiente conexión a ese dominio.</string>
+    <string name="feature_appdetail_forget">Olvidar</string>
+    <string name="feature_appdetail_forget_all">Olvidar todos</string>
+    <string name="feature_appdetail_forgotten">Dominio olvidado. Se volverá a intentar el descifrado en la siguiente conexión.</string>
+    <string name="feature_appdetail_paused">Aplicación en pausa durante 1 hora</string>
+    <string name="feature_appdetail_group_paused">Grupo en pausa durante 1 hora</string>
+    <string name="feature_appdetail_undo">Deshacer</string>
+    <string name="feature_appdetail_failed">La acción falló. Comprueba el servicio de filtrado en Ajustes.</string>
+    <string name="feature_appdetail_level_url_filtering_off">El filtrado por URL está desactivado en Ajustes. Solo se bloquean dominios completos.</string>
+    <string name="feature_appdetail_level_unknown">El servicio de filtrado no puede descifrar el tráfico de esta aplicación en este momento, así que las conexiones HTTPS solo se filtran por dominio.</string>
+    <string name="feature_appdetail_level_needs_certificate">Para filtrar URL dentro de HTTPS, configura el certificado. La aplicación debe confiar en los certificados de usuario.</string>
+    <string name="feature_appdetail_set_up_https">Configurar filtrado HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">Las conexiones HTTPS se filtran por dominio hasta que estén listas las listas de exclusión.</string>
+    <string name="feature_appdetail_work_certificate">Las conexiones HTTPS siguen cifradas hasta que esta aplicación confíe en el certificado de su perfil de trabajo.</string>
+    <string name="feature_appdetail_work_quiet">Activa el perfil de trabajo para usar esta aplicación.</string>
+    <string name="feature_appdetail_work_unavailable">Esta aplicación no está disponible en el perfil de trabajo.</string>
+    <string name="feature_appdetail_shared_uid">Esta aplicación comparte un UID de Android con otra. El modo root no puede filtrarla por separado.</string>
+    <string name="feature_appdetail_mixed">Filtra solicitudes HTTP y dominios HTTPS</string>
+    <string name="feature_appdetail_include">Incluir en el filtrado</string>
+    <string name="feature_appdetail_counts_checking">Comprobando el recuento de bloqueos…</string>
+    <string name="feature_appdetail_counts_unavailable">Recuento de bloqueos no disponible</string>
+    <string name="feature_appdetail_pinned_checking">Comprobando…</string>
+    <string name="feature_appdetail_pinned_unavailable">No se pudieron leer los dominios</string>
+</resources>

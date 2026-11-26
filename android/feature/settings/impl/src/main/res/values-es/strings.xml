@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Ajustes</string>
+    <string name="feature_settings_back">Atrás</string>
+    <string name="feature_settings_appearance">Apariencia</string>
+    <string name="feature_settings_theme">Tema</string>
+    <string name="feature_settings_theme_system">Sistema</string>
+    <string name="feature_settings_theme_light">Claro</string>
+    <string name="feature_settings_theme_dark">Oscuro</string>
+    <string name="feature_settings_dynamic_color">Colores del fondo de pantalla</string>
+    <string name="feature_settings_dynamic_color_text">Usa los colores del fondo de pantalla</string>
+    <string name="feature_settings_updates">Actualización de listas</string>
+    <string name="feature_settings_update_interval">Actualizar automáticamente</string>
+    <string name="feature_settings_interval_daily">Cada día</string>
+    <string name="feature_settings_interval_three_days">Cada 3 días</string>
+    <string name="feature_settings_interval_weekly">Cada semana</string>
+    <string name="feature_settings_interval_never">Nunca</string>
+    <string name="feature_settings_wifi_only">Actualizar solo por Wi-Fi</string>
+    <string name="feature_settings_wifi_only_text">Las listas no se descargan con datos móviles</string>
+    <string name="feature_settings_app_list">Lista de aplicaciones</string>
+    <string name="feature_settings_system_apps">Mostrar aplicaciones del sistema</string>
+    <string name="feature_settings_system_apps_text">Se ocultan de forma predeterminada</string>
+    <string name="feature_settings_service">Servicio de filtrado</string>
+    <string name="feature_settings_scope_checking">Comprobando el alcance del filtrado…</string>
+    <string name="feature_settings_scope_unavailable">Alcance del filtrado no disponible</string>
+    <string name="feature_settings_status_unknown">Estado desconocido</string>
+    <string name="feature_settings_status_running">En ejecución</string>
+    <string name="feature_settings_status_paused">En pausa</string>
+    <string name="feature_settings_status_stopped">Detenido</string>
+    <string name="feature_settings_status_turned_off">Desactivado</string>
+    <string name="feature_settings_turned_off_text">Dos arranques consecutivos no se completaron</string>
+    <string name="feature_settings_started">iniciado %1$s</string>
+    <string name="feature_settings_restart">Reiniciar el servicio de filtrado</string>
+    <string name="feature_settings_restart_text">Las aplicaciones se conectan sin filtrado durante el reinicio</string>
+    <string name="feature_settings_turn_on_again">Volver a activar</string>
+    <string name="feature_settings_module_install">Configurar modo root</string>
+    <string name="feature_settings_module_reinstall">Actualizar modo root</string>
+    <string name="feature_settings_module_unavailable">Estado del modo root no disponible</string>
+    <string name="feature_settings_module_check_again">Estado del modo root no disponible · Volver a comprobar</string>
+    <string name="feature_settings_root_not_set_up_text">Sin configurar · Las aplicaciones se conectan sin filtrado</string>
+    <string name="feature_settings_root_setting_up">Configurando el modo root…</string>
+    <string name="feature_settings_root_setup_failed">Error de configuración · Reintentar</string>
+    <string name="feature_settings_root_update_text">La versión instalada es distinta de la de esta aplicación</string>
+    <string name="feature_settings_root_updating">Actualizando el modo root…</string>
+    <string name="feature_settings_root_update_failed">Error de actualización · Reintentar</string>
+    <string name="feature_settings_root_updated">Modo root actualizado</string>
+    <string name="feature_settings_root_missing_text">Concede acceso root a ADBlocker en el gestor de root · Volver a comprobar</string>
+    <string name="feature_settings_root_remove">Quitar modo root</string>
+    <string name="feature_settings_root_remove_text">Detiene el filtrado y elimina los datos del modo root</string>
+    <string name="feature_settings_root_removing">Quitando el modo root…</string>
+    <string name="feature_settings_root_remove_failed">No se pudo quitar · Reintentar</string>
+    <string name="feature_settings_root_remove_title">¿Quitar el modo root?</string>
+    <string name="feature_settings_root_remove_explain">El filtrado se detiene y las aplicaciones se conectan sin filtrado. Se elimina la autoridad de certificación del modo root junto con sus aplicaciones seleccionadas, listas, reglas, sitios de confianza y estadísticas. Se conservan los ajustes de la aplicación, como el tema. Puedes volver a configurar el modo root aquí.</string>
+    <string name="feature_settings_root_remove_confirm">Quitar</string>
+    <string name="feature_settings_root_removed">Modo root eliminado</string>
+    <string name="feature_settings_root_flashed">Instalado como módulo</string>
+    <string name="feature_settings_root_flashed_in">Instalado como módulo en %1$s</string>
+    <string name="feature_settings_root_flashed_text">Para quitar el modo root, quita el módulo allí y reinicia el dispositivo</string>
+    <string name="feature_settings_root_flashed_manager_text">Para quitar el modo root, quita el módulo en el gestor de root y reinicia el dispositivo</string>
+    <string name="feature_settings_root_flashed_pending_text">Se aplica tras el próximo reinicio</string>
+    <string name="feature_settings_root_restart_to_update">Reinicia el dispositivo para terminar la actualización</string>
+    <string name="feature_settings_root_marked_removal">Marcado para quitar en el gestor de root · Reinicia para quitarlo</string>
+    <string name="feature_settings_pinned">Dominios que rechazan el certificado</string>
+    <string name="feature_settings_pinned_checking">Comprobando dominios…</string>
+    <string name="feature_settings_pinned_unavailable">Lista de dominios no disponible</string>
+    <string name="feature_settings_pinned_none">Ninguno</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="one">%1$d aplicación</item>
+        <item quantity="many">%1$d aplicaciones</item>
+        <item quantity="other">%1$d aplicaciones</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="one">%1$d dominio</item>
+        <item quantity="many">%1$d dominios</item>
+        <item quantity="other">%1$d dominios</item>
+    </plurals>
+    <string name="feature_settings_data">Datos</string>
+    <string name="feature_settings_export_logs">Exportar registros</string>
+    <string name="feature_settings_export_logs_text">Los registros indican qué se ejecutó y cómo terminó, pero no a qué se conectan las aplicaciones</string>
+    <string name="feature_settings_about">Acerca de</string>
+    <string name="feature_settings_app_version">Versión %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Código fuente</string>
+    <string name="feature_settings_source_text">Licencias de la aplicación y de las listas de filtros</string>
+    <string name="feature_settings_restarted">Servicio de filtrado reiniciado</string>
+    <string name="feature_settings_service_timeout">El servicio de filtrado no respondió a tiempo.</string>
+    <string name="feature_settings_module_disabled">El módulo de ADBlocker está desactivado o marcado para eliminarse en el gestor de root. Cámbialo allí.</string>
+    <string name="feature_settings_module_disabled_in">El módulo de ADBlocker está desactivado o marcado para eliminarse en %1$s. Cámbialo allí.</string>
+    <string name="feature_settings_module_installed">Modo root en ejecución</string>
+    <string name="feature_settings_pinned_forgotten">Dominio olvidado. Se volverá a intentar el descifrado en la siguiente conexión.</string>
+    <string name="feature_settings_logs_exported_partial">Se exportaron los registros de la aplicación. No se pudo leer por completo el registro del modo root.</string>
+    <string name="feature_settings_logs_exported">Registros exportados</string>
+    <string name="feature_settings_failed">La acción falló</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">Filtrado por URL</string>
+    <string name="feature_settings_url_filtering_text">Aplica las reglas de URL a todas las aplicaciones filtradas que las admiten. Si desactivas el filtrado por URL, solo se bloquean dominios completos.</string>
+    <string name="feature_settings_url_filtering_unknown">Requiere que el servicio de filtrado esté actualizado y en ejecución</string>
+    <string name="feature_settings_url_filtering_on">Filtrado por URL activado</string>
+    <string name="feature_settings_url_filtering_off">Filtrado por URL desactivado</string>
+    <string name="feature_settings_cancel">Cancelar</string>
+    <string name="feature_settings_cosmetic">Ocultar elementos de página</string>
+    <string name="feature_settings_cosmetic_text">Modifica las páginas descifradas para ocultar los elementos que indican las reglas de filtrado, como los marcos publicitarios vacíos.</string>
+    <string name="feature_settings_cosmetic_security">Efectos en la seguridad</string>
+    <string name="feature_settings_pinned_text">Estas aplicaciones comprueban por su cuenta los certificados de estos dominios, así que las conexiones solo se filtran por dominio. Si olvidas un dominio, se volverá a intentar descifrar el tráfico en la siguiente conexión a ese dominio.</string>
+    <string name="feature_settings_forget">Olvidar</string>
+    <string name="feature_settings_forget_all">Olvidar todos</string>
+    <string name="feature_settings_forget_all_title">¿Olvidar todos los dominios?</string>
+    <string name="feature_settings_forget_all_text">Se volverá a intentar el descifrado en la siguiente conexión a cada uno de estos dominios.</string>
+    <string name="feature_settings_method">Método de filtrado</string>
+    <string name="feature_settings_method_vpn">Modo VPN</string>
+    <string name="feature_settings_method_vpn_text">En uso · No requiere root</string>
+    <string name="feature_settings_method_vpn_available">No requiere root · Filtra por dominio</string>
+    <string name="feature_settings_method_root">Modo root</string>
+    <string name="feature_settings_method_root_not_set_up">Sin configurar · Filtra por URL dentro de HTTPS</string>
+    <string name="feature_settings_method_root_restart_first">Reinicia primero el dispositivo para terminar de actualizar el módulo</string>
+    <string name="feature_settings_method_root_checking">Comprobando el acceso root</string>
+    <string name="feature_settings_method_root_available">Acceso root concedido · Filtra por URL dentro de HTTPS</string>
+    <string name="feature_settings_method_root_missing">Acceso root no detectado · Volver a comprobar</string>
+    <string name="feature_settings_root_missing">Acceso root no detectado</string>
+    <string name="feature_settings_switch_root_title">¿Cambiar al modo root?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker configura el modo root, que luego toma el relevo de la VPN. La VPN sigue conectada hasta que se ejecuta el modo root. Se transfieren las aplicaciones, las listas, las reglas y los sitios de confianza.</string>
+    <string name="feature_settings_switch_root">Cambiar</string>
+    <string name="feature_settings_switched_to_root">Se cambió al modo root</string>
+    <string name="feature_settings_switched_to_vpn">Se cambió al modo VPN</string>
+    <string name="feature_settings_switch_root_pending">El cambio al modo root no se completó.</string>
+    <string name="feature_settings_switch_root_retry">El cambio no se completó · Reintentar</string>
+    <string name="feature_settings_cancel_root_switch">Cancelar cambio a modo root</string>
+    <string name="feature_settings_cancel_root_pending">Cancelación pendiente</string>
+    <string name="feature_settings_retry_root_cancel">Reintentar cancelación</string>
+    <string name="feature_settings_always_on">VPN siempre activada</string>
+    <string name="feature_settings_always_on_text">Android inicia ADBlocker al arrancar y después de que se detenga de forma inesperada</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">Activado</string>
+    <string name="feature_settings_state_off">Desactivado</string>
+    <string name="feature_settings_lockdown">Bloquear conexiones sin VPN</string>
+    <string name="feature_settings_lockdown_on">Activado · Las aplicaciones seleccionadas no pueden conectarse mientras el filtrado esté detenido</string>
+    <string name="feature_settings_lockdown_off">Al activar esta opción, las aplicaciones seleccionadas no pueden conectarse mientras el filtrado esté detenido. Solo se puede configurar en los ajustes del sistema.</string>
+    <string name="feature_settings_notifications">Notificaciones</string>
+    <string name="feature_settings_notifications_on">Permitidas · Puedes pausar el filtrado desde la notificación</string>
+    <string name="feature_settings_notifications_off">Sin permiso · El filtrado funciona sin ellas</string>
+    <string name="feature_settings_https_setup">Configurar filtrado HTTPS</string>
+    <string name="feature_settings_https_not_set_up">Sin configurar · Requiere aplicaciones que confíen en los certificados de usuario</string>
+    <string name="feature_settings_https_installed">Certificado instalado · Gestionar el filtrado por URL</string>
+    <string name="feature_settings_url_filtering_needs_certificate">Instala el certificado para filtrar URL HTTPS.</string>
+    <string name="feature_settings_remove_certificate">Quitar el certificado</string>
+    <string name="feature_settings_remove_certificate_text">Desactiva el descifrado y abre los ajustes del sistema</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker desactiva primero el descifrado HTTPS. Después puedes quitar el certificado en los ajustes de Android.</string>
+    <string name="feature_settings_remove_certificate_path">Seguridad y privacidad › Más seguridad y privacidad › Cifrado y credenciales › Credenciales de confianza › Usuario › ADBlocker user CA › Desinstalar</string>
+    <string name="feature_settings_remove_certificate_vary">Los nombres de los menús varían según el fabricante.</string>
+    <string name="feature_settings_remove_certificate_open">Desactivar y abrir Ajustes</string>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">Filtra el tráfico de las aplicaciones seleccionadas con listas de filtros de bloqueadores de anuncios para navegadores, incluso el tráfico HTTPS.</string>
+    <string name="nav_overview">Resumen</string>
+    <string name="nav_apps">Aplicaciones</string>
+    <string name="nav_filters">Filtros</string>
+    <string name="nav_activity">Actividad</string>
+    <string name="pane_drag_handle">Control para ampliar el panel</string>
+    <string name="pane_current_split">División actual entre paneles: %1$s</string>
+    <string name="pane_change_split">Cambiar la división entre paneles a %1$s</string>
+    <string name="tile_label">Bloqueo de anuncios</string>
+    <string name="tile_filtering">Activo</string>
+    <string name="tile_paused">En pausa</string>
+    <string name="tile_stopped">Inactivo</string>
+</resources>

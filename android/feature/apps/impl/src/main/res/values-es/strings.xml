@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Buscar aplicaciones</string>
+    <string name="feature_apps_settings">Ajustes</string>
+    <string name="feature_apps_filtered">Filtradas %1$d</string>
+    <string name="feature_apps_all">Todas %1$d</string>
+    <string name="feature_apps_section_filtered">Filtradas</string>
+    <string name="feature_apps_section_others">Otras aplicaciones</string>
+    <string name="feature_apps_empty_filtered">Sin aplicaciones filtradas</string>
+    <string name="feature_apps_empty_filtered_text">Selecciona una aplicación y activa su interruptor para empezar a filtrarla.</string>
+    <string name="feature_apps_browse_apps">Ver aplicaciones</string>
+    <string name="feature_apps_status_filtered">%1$s bloqueos hoy</string>
+    <string name="feature_apps_status_hosts">Solo por dominio · %1$s bloqueos hoy</string>
+    <string name="feature_apps_status_paused">En pausa · se reanuda en %1$s</string>
+    <string name="feature_apps_status_off">Sin filtrado</string>
+    <string name="feature_apps_now_filtering">Filtrando %1$s</string>
+    <string name="feature_apps_stopped_filtering">Se dejó de filtrar %1$s</string>
+    <string name="feature_apps_undo">Deshacer</string>
+    <string name="feature_apps_failed">La acción falló. Comprueba el servicio de filtrado en Ajustes.</string>
+    <string name="feature_apps_select">Selecciona una aplicación</string>
+    <string name="feature_apps_select_text">Consulta el modo de filtrado y el recuento de bloqueos</string>
+    <string name="feature_apps_status_work_quiet">Perfil de trabajo en pausa</string>
+    <string name="feature_apps_status_work_unavailable">No disponible en el perfil de trabajo</string>
+    <string name="feature_apps_work_inventory_unavailable">No se pudieron cargar algunas aplicaciones del perfil de trabajo.</string>
+    <string name="feature_apps_work_inventory_retry">Reintentar</string>
+    <string name="feature_apps_selection_removed">Se quitó %1$s de la selección</string>
+    <string name="feature_apps_status_mixed">Solicitudes HTTP y dominios HTTPS · %1$s bloqueos hoy</string>
+    <string name="feature_apps_exclude">Excluir</string>
+    <string name="feature_apps_include">Incluir</string>
+    <string name="feature_apps_excluded">Excluida</string>
+    <string name="feature_apps_included">Se incluyó %1$s</string>
+    <string name="feature_apps_excluded_message">Se excluyó %1$s</string>
+    <string name="feature_apps_status_filtered_no_count">Recuento de bloqueos no disponible</string>
+    <string name="feature_apps_status_hosts_no_count">Solo por dominio · recuento no disponible</string>
+    <string name="feature_apps_status_mixed_no_count">Solicitudes HTTP y dominios HTTPS · recuento no disponible</string>
+</resources>
