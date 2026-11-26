@@ -2,6 +2,8 @@
 
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
+English | [简体中文](README.zh-CN.md)
+
 ADBlocker blocks ads and trackers in Android apps with the filter lists
 of browser ad blockers, such as EasyList, uBlock Origin and AdGuard. You
 choose the apps it filters, or let it filter all of your personal apps.
@@ -410,6 +412,16 @@ connection to the filter. When it connects to the site, it uses that
 same app's network identity. The [design walkthrough](docs/how-it-works.md)
 follows one connection from the kernel through the HTTPS checks to the
 [rule engine](https://github.com/brave/adblock-rust).
+
+## Languages
+
+ADBlocker is available in English, Simplified Chinese, Traditional
+Chinese, French, German, Indonesian, Japanese, Korean, Brazilian
+Portuguese, Russian, Spanish, Turkish and Vietnamese. It uses the system
+language; on Android 13 or later you can choose another one for
+ADBlocker under App languages in the system settings. Corrections from
+native speakers are welcome. [Android translations](docs/translations.md)
+lists the terms each language uses and the checks a change must pass.
 
 ## Contributing
 

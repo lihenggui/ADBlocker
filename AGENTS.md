@@ -239,6 +239,8 @@ Run the last line after a change to `abd/src/rules.rs`, `abd/src/trust.rs`,
 
 Describe current behavior in README.md, SECURITY.md and docs/. Keep
 security limits in SECURITY.md and use release notes for changes.
+README.zh-CN.md translates README.md: change both in the same commit.
+Where they differ, README.md applies.
 
 ## Pull requests
 
