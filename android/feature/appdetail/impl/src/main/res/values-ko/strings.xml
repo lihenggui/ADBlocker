@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">뒤로</string>
+    <string name="feature_appdetail_open">%1$s 열기</string>
+    <string name="feature_appdetail_not_installed">이 앱은 더 이상 설치되어 있지 않음</string>
+    <string name="feature_appdetail_filter_this">이 앱 필터링</string>
+    <string name="feature_appdetail_filter_group">이 앱들을 함께 필터링</string>
+    <string name="feature_appdetail_pause_group">이 그룹을 1시간 일시중지</string>
+    <string name="feature_appdetail_shared_members">이 UID를 공유하는 앱</string>
+    <string name="feature_appdetail_off">트래픽이 ADBlocker를 거치지 않음</string>
+    <string name="feature_appdetail_on_full">광고 및 추적기 차단</string>
+    <string name="feature_appdetail_on_hosts">광고 및 추적기 도메인만 차단</string>
+    <string name="feature_appdetail_blocked">차단 건수</string>
+    <string name="feature_appdetail_today">오늘</string>
+    <string name="feature_appdetail_week">7일</string>
+    <string name="feature_appdetail_trouble">문제 해결</string>
+    <string name="feature_appdetail_pause">이 앱을 1시간 일시중지</string>
+    <string name="feature_appdetail_pause_text">페이지나 기능이 작동하지 않을 때 사용하세요</string>
+    <string name="feature_appdetail_resume">이 앱의 필터링 재개</string>
+    <string name="feature_appdetail_paused_until">%1$s까지 일시중지됨</string>
+    <string name="feature_appdetail_requests">요청 보기</string>
+    <string name="feature_appdetail_requests_text">이 앱의 요청만 표시하도록 활동을 엽니다</string>
+    <string name="feature_appdetail_group_requests_text">이 그룹의 요청만 표시하도록 활동을 엽니다</string>
+    <string name="feature_appdetail_pinned">인증서를 거부하는 도메인</string>
+    <string name="feature_appdetail_pinned_none">없음</string>
+    <string name="feature_appdetail_pinned_count">%1$d개 · 도메인 기준으로만 필터링</string>
+    <string name="feature_appdetail_pinned_text">이 앱은 이 도메인들의 인증서를 직접 확인합니다. 도메인의 거부 기록을 지우면 해당 도메인에 다음번 연결할 때 복호화를 다시 시도합니다.</string>
+    <string name="feature_appdetail_forget">기록 지우기</string>
+    <string name="feature_appdetail_forget_all">모든 기록 지우기</string>
+    <string name="feature_appdetail_forgotten">기록을 지웠습니다. 다음 연결에서 복호화를 다시 시도합니다.</string>
+    <string name="feature_appdetail_paused">앱을 1시간 일시중지함</string>
+    <string name="feature_appdetail_group_paused">그룹을 1시간 일시중지함</string>
+    <string name="feature_appdetail_undo">실행취소</string>
+    <string name="feature_appdetail_failed">작업에 실패했습니다. 설정에서 필터링 서비스를 확인하세요.</string>
+    <string name="feature_appdetail_level_url_filtering_off">설정에서 URL 필터링이 꺼져 있습니다. 도메인 전체 단위로만 차단합니다.</string>
+    <string name="feature_appdetail_level_unknown">현재 필터링 서비스에서 이 앱의 트래픽을 복호화할 수 없어 HTTPS 연결을 도메인 기준으로만 필터링합니다.</string>
+    <string name="feature_appdetail_level_needs_certificate">HTTPS의 URL을 필터링하려면 인증서를 설정하세요. 앱이 사용자 인증서를 신뢰해야 합니다.</string>
+    <string name="feature_appdetail_set_up_https">HTTPS 필터링 설정</string>
+    <string name="feature_appdetail_exclusions_pending">제외 목록이 준비될 때까지 HTTPS 연결을 도메인 기준으로 필터링합니다.</string>
+    <string name="feature_appdetail_work_certificate">이 앱이 직장 프로필의 인증서를 신뢰할 때까지 HTTPS 연결은 암호화된 상태로 유지됩니다.</string>
+    <string name="feature_appdetail_work_quiet">이 앱을 사용하려면 직장 프로필을 사용 설정하세요.</string>
+    <string name="feature_appdetail_work_unavailable">직장 프로필에서는 이 앱을 사용할 수 없습니다.</string>
+    <string name="feature_appdetail_shared_uid">이 앱은 다른 앱과 Android UID를 공유합니다. root 모드에서는 이 앱만 개별적으로 필터링할 수 없습니다.</string>
+    <string name="feature_appdetail_mixed">HTTP 요청 및 HTTPS 도메인 필터링</string>
+    <string name="feature_appdetail_include">필터링에 포함</string>
+    <string name="feature_appdetail_counts_checking">차단 건수 확인 중…</string>
+    <string name="feature_appdetail_counts_unavailable">차단 건수를 확인할 수 없음</string>
+    <string name="feature_appdetail_pinned_checking">확인 중…</string>
+    <string name="feature_appdetail_pinned_unavailable">도메인을 읽을 수 없음</string>
+</resources>

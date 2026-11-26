@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">앱 검색</string>
+    <string name="feature_apps_settings">설정</string>
+    <string name="feature_apps_filtered">필터링 %1$d개</string>
+    <string name="feature_apps_all">전체 %1$d개</string>
+    <string name="feature_apps_section_filtered">필터링 중</string>
+    <string name="feature_apps_section_others">기타 앱</string>
+    <string name="feature_apps_empty_filtered">필터링 중인 앱 없음</string>
+    <string name="feature_apps_empty_filtered_text">앱을 선택하고 스위치를 켜서 필터링을 시작하세요.</string>
+    <string name="feature_apps_browse_apps">앱 찾아보기</string>
+    <string name="feature_apps_status_filtered">오늘 %1$s건 차단</string>
+    <string name="feature_apps_status_hosts">도메인만 · 오늘 %1$s건 차단</string>
+    <string name="feature_apps_status_paused">일시중지됨 · %1$s 후 재개</string>
+    <string name="feature_apps_status_off">필터링 안 함</string>
+    <string name="feature_apps_now_filtering">%1$s 필터링 중</string>
+    <string name="feature_apps_stopped_filtering">%1$s 필터링 중지됨</string>
+    <string name="feature_apps_undo">실행취소</string>
+    <string name="feature_apps_failed">작업에 실패했습니다. 설정에서 필터링 서비스를 확인하세요.</string>
+    <string name="feature_apps_select">앱 선택</string>
+    <string name="feature_apps_select_text">필터링 모드 및 차단 건수 보기</string>
+    <string name="feature_apps_status_work_quiet">직장 프로필 일시중지됨</string>
+    <string name="feature_apps_status_work_unavailable">직장 프로필에서 사용할 수 없음</string>
+    <string name="feature_apps_work_inventory_unavailable">일부 직장 앱을 불러오지 못했습니다.</string>
+    <string name="feature_apps_work_inventory_retry">다시 시도</string>
+    <string name="feature_apps_selection_removed">%1$s 선택 해제됨</string>
+    <string name="feature_apps_status_mixed">HTTP 요청 및 HTTPS 도메인 · 오늘 %1$s건 차단</string>
+    <string name="feature_apps_exclude">제외</string>
+    <string name="feature_apps_include">포함</string>
+    <string name="feature_apps_excluded">제외됨</string>
+    <string name="feature_apps_included">%1$s 포함됨</string>
+    <string name="feature_apps_excluded_message">%1$s 제외됨</string>
+    <string name="feature_apps_status_filtered_no_count">차단 건수를 확인할 수 없음</string>
+    <string name="feature_apps_status_hosts_no_count">도메인만 · 건수를 확인할 수 없음</string>
+    <string name="feature_apps_status_mixed_no_count">HTTP 요청 및 HTTPS 도메인 · 건수를 확인할 수 없음</string>
+</resources>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">앱 찾기</string>
+    <string name="feature_onboarding_back">뒤로</string>
+    <string name="feature_onboarding_step">%2$d단계 중 %1$d단계</string>
+    <string name="feature_onboarding_welcome_text">브라우저 광고 차단기의 필터 목록으로 선택한 앱의 네트워크 요청을 필터링합니다.</string>
+    <string name="feature_onboarding_start">시작</string>
+    <string name="feature_onboarding_fact_private">데이터는 기기 외부로 전송되지 않습니다. 앱은 VPN 모드에서만 선택한 앱의 연결 대상과 필터 목록 소스에 연결합니다.</string>
+    <string name="feature_onboarding_fact_methods">root 모드 또는 VPN 모드에서 작동합니다.</string>
+    <string name="feature_onboarding_fact_chosen">선택한 앱만 필터링합니다. 다른 앱의 연결은 읽지 않습니다.</string>
+    <string name="feature_onboarding_check_title">기기 확인</string>
+    <string name="feature_onboarding_check_text">이 기기에서 ADBlocker를 실행할 수 있는지 확인합니다.</string>
+    <string name="feature_onboarding_checking">확인 중</string>
+    <string name="feature_onboarding_ok">정상</string>
+    <string name="feature_onboarding_check_root">root 액세스 권한</string>
+    <string name="feature_onboarding_check_android">Android 버전</string>
+    <string name="feature_onboarding_check_kernel">커널 기능</string>
+    <string name="feature_onboarding_check_arch">프로세서</string>
+    <string name="feature_onboarding_check_root_failed">권한이 없습니다. root 관리자(KernelSU, Magisk 또는 APatch)에서 ADBlocker에 root 액세스 권한을 부여하세요.</string>
+    <string name="feature_onboarding_check_android_failed">Android 12 이상 필요</string>
+    <string name="feature_onboarding_check_kernel_failed">필수 필터링 기능을 사용할 수 없음</string>
+    <string name="feature_onboarding_check_arch_failed">arm64 및 x86_64만 지원</string>
+    <string name="feature_onboarding_check_again">다시 확인</string>
+    <string name="feature_onboarding_continue">계속</string>
+    <string name="feature_onboarding_cert_title">URL 필터링</string>
+    <string name="feature_onboarding_cert_text">지원되는 필터링 대상 앱의 요청에 URL 규칙이 적용됩니다. HTTPS 요청도 포함됩니다. 도메인 전체 단위로만 차단하려면 설정에서 URL 필터링을 끄세요.</string>
+    <string name="feature_onboarding_cert_key">비공개 키는 이 기기에서 생성되고 보관됩니다. root만 읽을 수 있으며 root 모드를 제거하면 삭제됩니다.</string>
+    <string name="feature_onboarding_cert_notice">먼저 시스템이 신뢰하는 인증서를 기준으로 각 서버를 검증합니다. 검증에 실패한 서버에 대해서는 아무것도 서명하지 않습니다.</string>
+    <string name="feature_onboarding_cert_browsers">필터링되는 브라우저는 인증서 투명성 등 일부 인증서 검사를 건너뜁니다.</string>
+    <string name="feature_onboarding_cert_ack">이해했습니다</string>
+    <string name="feature_onboarding_apps_title">필터링할 앱 선택</string>
+    <string name="feature_onboarding_apps_text">필터링할 앱을 선택하세요. 나중에도 앱을 추가할 수 있습니다.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="other">계속(%1$d개 선택됨)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">필터 목록</string>
+    <string name="feature_onboarding_lists_text">시스템의 지역 설정에 따라 지역별 목록이 선택됩니다. 선택을 변경할 수 있습니다.</string>
+    <string name="feature_onboarding_installing_title">설정 중</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="other">앱 %1$d개 필터링 중</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">선택한 앱을 필터링하고 있습니다. 앱이 작동하지 않으면 개요 화면에서 필터링을 일시중지하세요.</string>
+    <string name="feature_onboarding_failed_title">설정 실패</string>
+    <string name="feature_onboarding_failed_text">root 모드를 설정하지 못했습니다. 앱의 네트워크 액세스에는 영향이 없습니다.</string>
+    <string name="feature_onboarding_restart_to_update">모듈 업데이트를 완료하려면 기기를 다시 시작한 후 ADBlocker를 다시 여세요.</string>
+    <string name="feature_onboarding_try_again">다시 시도</string>
+    <string name="feature_onboarding_finish">완료</string>
+    <string name="feature_onboarding_check_after_root">root 액세스 권한 부여 후 확인</string>
+    <string name="feature_onboarding_apps_none">필터링할 앱 없음</string>
+    <string name="feature_onboarding_apps_none_text">네트워크를 사용할 수 있는 설치된 앱이 여기에 표시됩니다.</string>
+    <string name="feature_onboarding_all_apps_withheld">시스템이 ADBlocker에 설치된 앱 목록을 읽을 권한을 부여하지 않았습니다. 허용하기 전까지 대부분의 앱은 필터링되지 않습니다.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · 허용됨</string>
+    <string name="feature_onboarding_check_root_granted_plain">허용됨</string>
+    <string name="feature_onboarding_check_kernel_ok">필수 필터링 기능 지원</string>
+    <string name="feature_onboarding_check_kernel_unverified">필터링 시작 시 확인</string>
+    <string name="feature_onboarding_lists_hint">필터에서 더 많은 목록을 이용할 수 있습니다.</string>
+    <string name="feature_onboarding_step_module">root 모드 설정</string>
+    <string name="feature_onboarding_step_apps">선택한 앱 추가</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="other">목록 %1$d개 다운로드</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">필터링 시작</string>
+    <string name="feature_onboarding_install_progress">설정 진행 상황</string>
+    <string name="feature_onboarding_check_no_root_text">root 액세스 권한이 감지되지 않았습니다. VPN 모드로 필터링하거나, 권한을 부여한 후 root 모드를 사용할 수 있습니다.</string>
+    <string name="feature_onboarding_check_unsupported_text">이 기기는 root 모드를 지원하지 않습니다. VPN 모드로 필터링할 수 있습니다.</string>
+    <string name="feature_onboarding_check_root_not_detected">감지되지 않음</string>
+    <string name="feature_onboarding_check_root_again">root 다시 확인</string>
+    <string name="feature_onboarding_method">필터링 방식</string>
+    <string name="feature_onboarding_method_vpn">VPN 모드</string>
+    <string name="feature_onboarding_method_vpn_text">root가 필요하지 않습니다. 선택한 앱을 도메인 기준으로 필터링하며 시스템 VPN 슬롯을 사용합니다.</string>
+    <string name="feature_onboarding_method_root">root 모드</string>
+    <string name="feature_onboarding_method_root_no_root">암호화된 사이트를 URL 기준으로 필터링합니다. root 액세스 권한이 필요합니다.</string>
+    <string name="feature_onboarding_method_root_unsupported">암호화된 사이트를 URL 기준으로 필터링합니다. 이 기기에서는 지원되지 않습니다.</string>
+    <string name="feature_onboarding_vpn_title">VPN 모드</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker가 이 기기에 VPN을 설정합니다. 선택한 앱의 연결만 이 VPN을 거칩니다.</string>
+    <string name="feature_onboarding_vpn_apps">선택한 앱은 로컬 VPN을 통해 연결합니다. 다른 앱에는 영향이 없습니다.</string>
+    <string name="feature_onboarding_vpn_domains">각 연결의 대상 도메인을 기준으로 광고 및 추적기 도메인을 차단합니다. 연결은 복호화하지 않습니다.</string>
+    <string name="feature_onboarding_vpn_one">Android에서는 한 번에 하나의 VPN만 사용할 수 있습니다. 필터링을 시작하면 다른 VPN 앱의 연결이 해제됩니다.</string>
+    <string name="feature_onboarding_vpn_local">VPN은 원격 서버에 연결하지 않습니다. 데이터는 기기에 남습니다.</string>
+    <string name="feature_onboarding_vpn_hint">나중에 설정에서 암호화된 사이트의 URL 필터링을 설정할 수 있습니다.</string>
+    <string name="feature_onboarding_filter_later_title">나중에 앱 필터링</string>
+    <string name="feature_onboarding_filter_later_text">필터링을 시작할 준비가 되면 앱 화면에서 앱을 추가하세요.</string>
+    <string name="feature_onboarding_save_setup">설정 저장</string>
+    <string name="feature_onboarding_start_text">필터링하려면 먼저 시스템 권한 2개가 필요합니다.</string>
+    <string name="feature_onboarding_grant_notifications">알림</string>
+    <string name="feature_onboarding_grant_notifications_text">필터링 중에 표시되며 일시중지할 수 있음</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">시스템 대화상자에서 확인</string>
+    <string name="feature_onboarding_grant_lists_text">처음에는 네트워크 연결이 필요함</string>
+    <string name="feature_onboarding_vpn_refused">VPN 사용이 허용되지 않았습니다. VPN 없이는 필터링을 시작할 수 없습니다.</string>
+    <string name="feature_onboarding_starting_title">시작 중</string>
+    <string name="feature_onboarding_start_failed_title">필터링이 시작되지 않음</string>
+    <string name="feature_onboarding_start_failed_text">VPN을 시작하지 못했습니다. 앱의 네트워크 액세스에는 영향이 없습니다.</string>
+    <string name="feature_onboarding_done_text_vpn">언제든지 알림에서 필터링을 일시중지할 수 있습니다.</string>
+    <string name="feature_onboarding_notifications_allowed">알림 허용됨</string>
+    <string name="feature_onboarding_notifications_off">알림 허용 안 됨</string>
+    <string name="feature_onboarding_notifications_off_text">설정에서 허용 가능</string>
+    <string name="feature_onboarding_vpn_connected">VPN 연결됨</string>
+    <string name="feature_onboarding_vpn_connected_text">선택한 앱만 VPN 사용</string>
+    <string name="feature_onboarding_lists_downloaded">목록 다운로드 완료</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="other">목록 %1$d개</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="other">규칙 %1$s개</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">목록이 다운로드되지 않음</string>
+    <string name="feature_onboarding_lists_failed_text">백그라운드에서 다시 시도</string>
+    <string name="feature_onboarding_done_https">브라우저에서 암호화된 사이트를 URL 기준으로 필터링하려면 설정에서 복호화를 설정하세요.</string>
+</resources>
