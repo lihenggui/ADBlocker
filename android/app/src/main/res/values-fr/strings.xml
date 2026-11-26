@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">Filtre le trafic des applications sélectionnées, y compris le trafic HTTPS, avec les listes de filtres des bloqueurs de publicités pour navigateur.</string>
+    <string name="nav_overview">Aperçu</string>
+    <string name="nav_apps">Applications</string>
+    <string name="nav_filters">Filtres</string>
+    <string name="nav_activity">Activité</string>
+    <string name="pane_drag_handle">Poignée de redimensionnement des volets</string>
+    <string name="pane_current_split">Répartition actuelle des volets : %1$s</string>
+    <string name="pane_change_split">Modifier la répartition des volets à %1$s</string>
+    <string name="tile_label">Blocage des publicités</string>
+    <string name="tile_filtering">Activé</string>
+    <string name="tile_paused">En pause</string>
+    <string name="tile_stopped">Arrêté</string>
+</resources>

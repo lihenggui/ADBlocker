@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_overview_settings">Paramètres</string>
+    <string name="feature_overview_filtering">Filtrage actif</string>
+    <string name="feature_overview_paused">En pause</string>
+    <string name="feature_overview_stopped">Service de filtrage arrêté</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s application</item>
+        <item quantity="many">%1$s applications</item>
+        <item quantity="other">%1$s applications</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s règle</item>
+        <item quantity="many">%1$s règles</item>
+        <item quantity="other">%1$s règles</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Reprise dans %1$s</string>
+    <string name="feature_overview_paused_detail">Jusqu\'à la reprise</string>
+    <string name="feature_overview_stopped_detail">Les applications se connectent sans filtrage</string>
+    <string name="feature_overview_resume">Reprendre</string>
+    <string name="feature_overview_start">Démarrer</string>
+    <string name="feature_overview_pause_hour">Pause de 1 h</string>
+    <string name="feature_overview_more_durations">Autres durées de pause</string>
+    <string name="feature_overview_expanded">Développé</string>
+    <string name="feature_overview_collapsed">Réduit</string>
+    <string name="feature_overview_until_resumed">Jusqu\'à la reprise</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d heure</item>
+        <item quantity="many">%1$d heures</item>
+        <item quantity="other">%1$d heures</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="many">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Blocages du jour</string>
+    <string name="feature_overview_blocked_breakdown">%1$s requêtes · %2$s connexions</string>
+    <string name="feature_overview_week_description">Blocages sur les 7 derniers jours : %1$s</string>
+    <string name="feature_overview_today">Aujourd\'hui</string>
+    <string name="feature_overview_top_apps">Les plus bloquées</string>
+    <string name="feature_overview_status">État</string>
+    <string name="feature_overview_lists">Listes de filtres</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">%1$d activée · mise à jour : %2$s</item>
+        <item quantity="many">%1$d activées · mise à jour : %2$s</item>
+        <item quantity="other">%1$d activées · mise à jour : %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">%1$d activée · pas encore téléchargée</item>
+        <item quantity="many">%1$d activées · pas encore téléchargées</item>
+        <item quantity="other">%1$d activées · pas encore téléchargées</item>
+    </plurals>
+    <string name="feature_overview_service">Service de filtrage</string>
+    <string name="feature_overview_service_running">Actif</string>
+    <string name="feature_overview_service_running_since">Actif depuis %1$s</string>
+    <string name="feature_overview_service_stopped">Arrêté</string>
+    <string name="feature_overview_updating">Mise à jour du mode root…</string>
+    <string name="feature_overview_restart_to_update">Redémarrez l\'appareil pour terminer la mise à jour du module.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">En pause pendant %1$d heure. Les applications se connectent sans filtrage.</item>
+        <item quantity="many">En pause pendant %1$d heures. Les applications se connectent sans filtrage.</item>
+        <item quantity="other">En pause pendant %1$d heures. Les applications se connectent sans filtrage.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">En pause pendant %1$d min. Les applications se connectent sans filtrage.</item>
+        <item quantity="many">En pause pendant %1$d min. Les applications se connectent sans filtrage.</item>
+        <item quantity="other">En pause pendant %1$d min. Les applications se connectent sans filtrage.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">En pause jusqu\'à la reprise. Les applications se connectent sans filtrage.</string>
+    <string name="feature_overview_undo">Annuler</string>
+    <string name="feature_overview_module_disabled">Le module ADBlocker est désactivé ou en attente de retrait dans le gestionnaire root. Modifiez ce réglage dans le gestionnaire.</string>
+    <string name="feature_overview_module_disabled_in">Le module ADBlocker est désactivé ou en attente de retrait dans %1$s. Modifiez ce réglage dans ce gestionnaire.</string>
+    <string name="feature_overview_service_timeout">Le service de filtrage n\'a pas répondu à temps.</string>
+    <string name="feature_overview_root_pending">Le passage au mode root n\'est pas terminé. Réessayez dans les paramètres.</string>
+    <string name="feature_overview_action_failed">L\'action a échoué. Vérifiez le service de filtrage dans les paramètres.</string>
+    <string name="feature_overview_turned_off">Désactivé</string>
+    <string name="feature_overview_turned_off_detail">Le filtrage s\'est désactivé le %1$s après deux démarrages consécutifs inachevés. Les applications se connectent sans filtrage.</string>
+    <string name="feature_overview_turn_on_again">Réactiver</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Connexion en cours</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Déconnecté</string>
+    <string name="feature_overview_vpn_off_detail">Les applications sélectionnées se connectent sans filtrage.</string>
+    <string name="feature_overview_vpn_revoked_detail">Le VPN a été désactivé par une autre application VPN ou dans les paramètres système. Les applications sélectionnées se connectent sans filtrage.</string>
+    <string name="feature_overview_vpn_failed_detail">Le filtrage s\'est arrêté de manière inattendue. Les applications sélectionnées se connectent sans filtrage.</string>
+    <string name="feature_overview_vpn_lockdown_detail">L\'option « Bloquer les connexions sans VPN » est activée. Les applications sélectionnées ne peuvent pas se connecter tant que le VPN n\'est pas reconnecté.</string>
+    <string name="feature_overview_reconnect">Reconnecter</string>
+    <string name="feature_overview_vpn_refused">Le VPN n\'a pas été autorisé. Les applications sélectionnées se connectent sans filtrage.</string>
+    <string name="feature_overview_method">Méthode de filtrage</string>
+    <string name="feature_overview_method_vpn_on">VPN · Connecté</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Connexion en cours</string>
+    <string name="feature_overview_method_vpn_off">VPN · Déconnecté</string>
+    <string name="feature_overview_https">Sites chiffrés</string>
+    <string name="feature_overview_https_not_set_up">Par domaine uniquement · Configurable pour les navigateurs</string>
+    <string name="feature_overview_https_off">Par domaine uniquement · Déchiffrement désactivé</string>
+    <string name="feature_overview_https_none">Par domaine uniquement</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">%1$d application avec déchiffrement</item>
+        <item quantity="many">%1$d applications avec déchiffrement</item>
+        <item quantity="other">%1$d applications avec déchiffrement</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">L\'option « Bloquer les connexions sans VPN » est activée</string>
+    <string name="feature_overview_lockdown_text">Tant que le filtrage est arrêté, les applications sélectionnées ne peuvent pas se connecter.</string>
+    <string name="feature_overview_notice_ok">OK</string>
+    <string name="feature_overview_root_title">Accès root détecté</string>
+    <string name="feature_overview_root_text">Le mode root filtre les sites chiffrés par URL sans utiliser le VPN. Les applications sélectionnées, les listes et les règles sont conservées.</string>
+    <string name="feature_overview_root_dismiss">Plus tard</string>
+    <string name="feature_overview_root_switch">Passer en mode root</string>
+    <string name="feature_overview_battery_title">Android a arrêté le VPN</string>
+    <string name="feature_overview_battery_text">Le filtrage s\'est arrêté en arrière-plan. Pour qu\'il reste actif, autorisez ADBlocker à fonctionner sans restrictions liées à la batterie.</string>
+    <string name="feature_overview_battery_action">Autoriser en arrière-plan</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="one">%1$d liste pas encore téléchargée</item>
+        <item quantity="many">%1$d listes pas encore téléchargées</item>
+        <item quantity="other">%1$d listes pas encore téléchargées</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="one">Échec du téléchargement de %1$d liste</item>
+        <item quantity="many">Échec du téléchargement de %1$d listes</item>
+        <item quantity="other">Échec du téléchargement de %1$d listes</item>
+    </plurals>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_missing_pending" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Le filtrage avec cette liste commence dès qu\'elle est téléchargée.</item>
+        <item quantity="many">Le filtrage avec ces listes commence dès qu\'elles sont téléchargées.</item>
+        <item quantity="other">Le filtrage avec ces listes commence dès qu\'elles sont téléchargées.</item>
+    </plurals>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_missing_failed" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Le filtrage avec cette liste commence dès qu\'elle est téléchargée.</item>
+        <item quantity="many">Le filtrage avec ces listes commence dès qu\'elles sont téléchargées.</item>
+        <item quantity="other">Le filtrage avec ces listes commence dès qu\'elles sont téléchargées.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Télécharger</string>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_previous_copy" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Le filtrage continue avec la copie précédente.</item>
+        <item quantity="many">Le filtrage continue avec les copies précédentes.</item>
+        <item quantity="other">Le filtrage continue avec les copies précédentes.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Ouvrir les listes</string>
+    <string name="feature_overview_lists_download_failed">Échec du téléchargement</string>
+    <string name="feature_overview_app_list_withheld_title">La plupart des applications ne sont pas filtrées</string>
+    <string name="feature_overview_app_list_withheld_text">Le système n\'a pas autorisé ADBlocker à lire la liste des applications installées. Elles sont filtrées une fois cet accès autorisé.</string>
+</resources>

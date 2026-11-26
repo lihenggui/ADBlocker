@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Activité</string>
+    <string name="feature_activity_settings">Paramètres</string>
+    <string name="feature_activity_start_recording">Enregistrer</string>
+    <string name="feature_activity_stop_recording">Arrêter</string>
+    <string name="feature_activity_starting">Démarrage de l\'enregistrement…</string>
+    <string name="feature_activity_recording">Enregistrement des requêtes</string>
+    <string name="feature_activity_recorded">Enregistrement arrêté</string>
+    <string name="feature_activity_interrupted">Enregistrement interrompu</string>
+    <string name="feature_activity_no_recording">Aucun enregistrement</string>
+    <string name="feature_activity_recording_intro">Enregistrez les requêtes des applications filtrées. Vous pouvez changer d\'application pendant l\'enregistrement. Les 500 dernières requêtes restent en mémoire.</string>
+    <string name="feature_activity_no_matches">Aucune requête ne correspond à ces filtres</string>
+    <string name="feature_activity_empty_result">Aucune requête enregistrée</string>
+    <string name="feature_activity_app_requests_hint">Lancez un enregistrement dans Activité pour afficher les requêtes ici.</string>
+    <string name="feature_activity_notification_channel">Enregistrement de l\'activité</string>
+    <string name="feature_activity_notification_title">ADBlocker enregistre l\'activité</string>
+    <string name="feature_activity_all">Toutes</string>
+    <string name="feature_activity_blocked">Bloquées</string>
+    <string name="feature_activity_allowed">Autorisées</string>
+    <string name="feature_activity_encrypted">Non déchiffrées</string>
+    <string name="feature_activity_all_apps">Toutes les applications</string>
+    <string name="feature_activity_dropped">(%1$d omises)</string>
+    <string name="feature_activity_empty">En attente de requêtes</string>
+    <string name="feature_activity_empty_idle">Aucun filtrage en cours</string>
+    <string name="feature_activity_verdict_blocked">Requête bloquée</string>
+    <string name="feature_activity_verdict_host_blocked">Domaine bloqué</string>
+    <string name="feature_activity_verdict_allowed">Autorisée</string>
+    <string name="feature_activity_verdict_passed">Non déchiffrée</string>
+    <string name="feature_activity_kind_script">Script</string>
+    <string name="feature_activity_kind_image">Image</string>
+    <string name="feature_activity_kind_document">Page</string>
+    <string name="feature_activity_kind_stylesheet">Feuille de style</string>
+    <string name="feature_activity_kind_font">Police</string>
+    <string name="feature_activity_kind_media">Média</string>
+    <string name="feature_activity_app">Application</string>
+    <string name="feature_activity_kind">Type</string>
+    <string name="feature_activity_page">Page</string>
+    <string name="feature_activity_rule">Règle applicable (GET)</string>
+    <string name="feature_activity_rule_unavailable">Indisponible</string>
+    <string name="feature_activity_why">Motif</string>
+    <string name="feature_activity_my_rules">Mes règles</string>
+    <string name="feature_activity_reason_pinned">L\'application n\'accepte pas le certificat ADBlocker pour ce domaine. Le filtrage se fait donc uniquement par domaine.</string>
+    <string name="feature_activity_reason_hosts_only">Cette connexion a été filtrée par domaine. Le filtrage des URL était désactivé ou l\'inspection HTTPS était indisponible.</string>
+    <string name="feature_activity_reason_excluded">Le domaine figure sur une liste d\'exclusion HTTPS, par exemple celle des banques.</string>
+    <string name="feature_activity_reason_trusted">Ce site est un site de confiance.</string>
+    <string name="feature_activity_reason_sensitive">Le serveur possède un certificat à validation étendue. La connexion n\'est donc pas déchiffrée.</string>
+    <string name="feature_activity_reason_no_name">La connexion n\'indique aucun domaine.</string>
+    <string name="feature_activity_reason_untrusted">Cette application ne fait pas encore confiance à ADBlocker.</string>
+    <string name="feature_activity_reason_unverified">Le serveur n\'a pas pu être vérifié. L\'application le vérifie donc elle-même.</string>
+    <string name="feature_activity_reason_other">Transmise à l\'application sans être lue.</string>
+    <string name="feature_activity_trust_site">Faire confiance à %1$s</string>
+    <string name="feature_activity_block_host">Bloquer ce domaine</string>
+    <string name="feature_activity_block_in_app">Bloquer dans %1$s</string>
+    <string name="feature_activity_block_in_all_apps">Bloquer dans toutes les applications</string>
+    <string name="feature_activity_forget">Retenter le déchiffrement</string>
+    <string name="feature_activity_copy">Copier</string>
+    <string name="feature_activity_trusted">%1$s ajouté aux sites de confiance</string>
+    <string name="feature_activity_blocked_host_everywhere">%1$s bloqué dans toutes les applications</string>
+    <string name="feature_activity_blocked_host_in_app">%1$s bloqué dans %2$s</string>
+    <string name="feature_activity_forgotten">Nouvelle tentative de déchiffrement à la prochaine connexion</string>
+    <string name="feature_activity_failed">L\'action a échoué. Vérifiez le service de filtrage dans les paramètres.</string>
+    <string name="feature_activity_select">Sélectionnez une requête</string>
+    <string name="feature_activity_select_text">Vérifiez les règles qui s\'appliquent à l\'URL, faites confiance au site ou bloquez-le</string>
+    <string name="feature_activity_reason_host_blocked">Le domaine entier est bloqué. La connexion a donc été refusée.</string>
+    <string name="feature_activity_app_requests">Requêtes</string>
+    <string name="feature_activity_open_activity">Ouvrir dans Activité</string>
+    <string name="feature_activity_reason_exclusions_pending">Les exclusions HTTPS ne sont pas prêtes</string>
+    <string name="feature_activity_apps_unavailable">Impossible de charger les noms des applications ou les options de filtrage</string>
+    <string name="feature_activity_status_unavailable">État du filtrage indisponible</string>
+</resources>

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Réessayer</string>
+    <string name="core_ui_failure_no_root">Pas d\'accès root</string>
+    <string name="core_ui_failure_no_root_text">Autorisez l\'accès root pour ADBlocker dans le gestionnaire root, puis réessayez.</string>
+    <string name="core_ui_failure_module_missing">Mode root non configuré</string>
+    <string name="core_ui_failure_module_missing_text">Configurez le mode root dans les paramètres.</string>
+    <string name="core_ui_failure_update_needed">Mise à jour du mode root requise</string>
+    <string name="core_ui_failure_update_needed_text">Mettez-le à jour dans les paramètres.</string>
+    <string name="core_ui_failure_failed">Échec du chargement</string>
+    <string name="core_ui_failure_failed_text">Le service de filtrage n\'a pas répondu. Vérifiez son état dans les paramètres.</string>
+    <string name="core_ui_failure_timed_out">Délai dépassé</string>
+    <string name="core_ui_failure_timed_out_text">Le service de filtrage n\'a pas répondu à temps. Réessayez. Si le problème persiste, redémarrez le service de filtrage dans les paramètres.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="many">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="one">%1$d heure</item>
+        <item quantity="many">%1$d heures</item>
+        <item quantity="other">%1$d heures</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="one">%1$d jour</item>
+        <item quantity="many">%1$d jours</item>
+        <item quantity="other">%1$d jours</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">Mode VPN indisponible</string>
+    <string name="core_ui_failure_engine_missing_text">Cette version ne comprend pas le moteur de filtrage sans root.</string>
+    <string name="core_ui_work_app_label">%1$s · Professionnel</string>
+    <string name="core_ui_shared_uid">UID Android partagé, filtrage individuel impossible</string>
+    <string name="core_ui_shared_app_label">%1$s · Applications à UID partagé</string>
+    <string name="core_ui_shared_app_members">Applications filtrées ensemble · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Filtrage en mode root indisponible</string>
+    <string name="core_ui_remove_app_selection">Désélectionner</string>
+    <string name="core_ui_personal_eligibility_unavailable">Impossible de vérifier quelles applications personnelles peuvent être filtrées.</string>
+    <string name="core_ui_app_list_withheld">Applications installées non visibles</string>
+    <string name="core_ui_app_list_withheld_text">Le système n\'a pas autorisé ADBlocker à lire la liste des applications installées. Autorisez cet accès pour choisir les applications à filtrer.</string>
+    <string name="core_ui_app_list_allow">Autoriser</string>
+    <string name="core_ui_app_list_check_again">Revérifier</string>
+    <string name="core_ui_filtering_scope">Périmètre du filtrage</string>
+    <string name="core_ui_scope_chosen">Applications sélectionnées</string>
+    <string name="core_ui_scope_all">Toutes les applications</string>
+    <string name="core_ui_scope_all_text">Filtre les applications personnelles, y compris les nouvelles installations. Excluez des applications depuis la page Applications. La sélection des applications du profil professionnel se fait toujours individuellement.</string>
+    <string name="core_ui_category_ads">Publicités</string>
+    <string name="core_ui_category_privacy">Confidentialité</string>
+    <string name="core_ui_category_security">Sécurité</string>
+    <string name="core_ui_category_regional">Régionales</string>
+    <string name="core_ui_category_annoyances">Éléments gênants</string>
+    <string name="core_ui_vpn_transfer_incomplete">Certains paramètres du mode root n\'ont pas pu être transférés.</string>
+    <string name="core_ui_vpn_transfer_apps">Les paramètres de filtrage des applications du mode root n\'ont pas pu être transférés.</string>
+    <string name="core_ui_vpn_transfer_lists">Certains paramètres des listes de filtres du mode root n\'ont pas pu être transférés.</string>
+    <string name="core_ui_vpn_transfer_rules">Les règles personnalisées du mode root n\'ont pas pu être transférées.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Certains sites de confiance du mode root n\'ont pas pu être transférés.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Les paramètres de filtrage des URL du mode root n\'ont pas pu être transférés.</string>
+</resources>

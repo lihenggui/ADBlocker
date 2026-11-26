@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Rechercher une application</string>
+    <string name="feature_apps_settings">Paramètres</string>
+    <string name="feature_apps_filtered">Filtrées %1$d</string>
+    <string name="feature_apps_all">Toutes %1$d</string>
+    <string name="feature_apps_section_filtered">Filtrées</string>
+    <string name="feature_apps_section_others">Autres applications</string>
+    <string name="feature_apps_empty_filtered">Aucune application filtrée</string>
+    <string name="feature_apps_empty_filtered_text">Choisissez une application et activez son interrupteur pour lancer le filtrage.</string>
+    <string name="feature_apps_browse_apps">Voir les applications</string>
+    <string name="feature_apps_status_filtered">%1$s bloqués aujourd\'hui</string>
+    <string name="feature_apps_status_hosts">Par domaine uniquement · %1$s bloqués aujourd\'hui</string>
+    <string name="feature_apps_status_paused">En pause · reprise dans %1$s</string>
+    <string name="feature_apps_status_off">Non filtrée</string>
+    <string name="feature_apps_now_filtering">Filtrage de %1$s</string>
+    <string name="feature_apps_stopped_filtering">Filtrage de %1$s arrêté</string>
+    <string name="feature_apps_undo">Annuler</string>
+    <string name="feature_apps_failed">L\'action a échoué. Vérifiez le service de filtrage dans les paramètres.</string>
+    <string name="feature_apps_select">Sélectionnez une application</string>
+    <string name="feature_apps_select_text">Consultez son mode de filtrage et le nombre de blocages</string>
+    <string name="feature_apps_status_work_quiet">Profil professionnel en pause</string>
+    <string name="feature_apps_status_work_unavailable">Non disponible dans le profil professionnel</string>
+    <string name="feature_apps_work_inventory_unavailable">Certaines applications du profil professionnel n\'ont pas pu être chargées.</string>
+    <string name="feature_apps_work_inventory_retry">Réessayer</string>
+    <string name="feature_apps_selection_removed">Sélection annulée pour %1$s</string>
+    <string name="feature_apps_status_mixed">Requêtes HTTP et domaines HTTPS · %1$s bloqués aujourd\'hui</string>
+    <string name="feature_apps_exclude">Exclure</string>
+    <string name="feature_apps_include">Inclure</string>
+    <string name="feature_apps_excluded">Exclue</string>
+    <string name="feature_apps_included">Application incluse : %1$s</string>
+    <string name="feature_apps_excluded_message">Application exclue : %1$s</string>
+    <string name="feature_apps_status_filtered_no_count">Nombre de blocages indisponible</string>
+    <string name="feature_apps_status_hosts_no_count">Par domaine uniquement · nombre indisponible</string>
+    <string name="feature_apps_status_mixed_no_count">Requêtes HTTP et domaines HTTPS · nombre indisponible</string>
+</resources>
