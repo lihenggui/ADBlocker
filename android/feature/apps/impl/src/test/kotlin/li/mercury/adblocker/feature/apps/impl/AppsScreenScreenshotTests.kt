@@ -92,6 +92,14 @@ class AppsScreenScreenshotTests {
     }
 
     @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenAllApps_whenShownInChinese_thenMatchesGolden() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "AppsAll") {
+            Apps(state.copy(filter = AppFilter.All))
+        }
+    }
+
+    @Test
     fun givenALongAppName_whenShownOnPhone_thenTheRowEllipsizesAndKeepsTheFullAccessibleName() {
         val label = "Example News and Weather for the Pacific Northwest"
         val entry = DemoData.entry(DemoApp.News)
