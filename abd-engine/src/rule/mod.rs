@@ -20,6 +20,7 @@ use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
+use self::host_pattern::{host_pattern, host_token, hosts_rule, whole_host};
 use self::modifiers::{APP, Kind as ModifierKind, NETWORK, lookup, may_have_owned_options};
 use self::options::{OptionToken, Options, Quoting, literal_parts};
 use self::quoting::unescaped;
@@ -32,6 +33,7 @@ mod comment;
 pub(crate) mod csp;
 mod denyallow;
 pub(crate) mod driver;
+mod host_pattern;
 pub(crate) mod html;
 pub(crate) mod javascript;
 mod modifiers;
@@ -47,6 +49,9 @@ mod response;
 
 pub use comment::{count, is_comment};
 pub(crate) use denyallow::matcher_applies as denyallow_matcher_applies;
+pub(crate) use host_pattern::{
+    ExceptionHost, canonical_host_options, is_bare_host_anchor, whole_pattern,
+};
 pub(crate) use modifiers::kind_bit;
 pub(crate) use page_exception::{Elements, PageException};
 pub use permissions::SourcePermissions;
@@ -121,35 +126,6 @@ enum MatcherInput<'a> {
     Translated(&'a str),
     RedirectOnly(&'a str),
     None,
-}
-
-pub(crate) fn canonical_host_options(line: &str) -> Cow<'_, str> {
-    let Some(options) = Options::read(line, Quoting::AdGuard) else {
-        return Cow::Borrowed(line);
-    };
-    let canonical = |token: OptionToken<'_>| {
-        matches!(token.name(), "domain" | "from" | "to" | "denyallow")
-            && token.value.is_some_and(|value| {
-                !value.contains('/') && value.bytes().any(|byte| byte.is_ascii_uppercase())
-            })
-    };
-    if !options.tokens().any(canonical) {
-        return Cow::Borrowed(line);
-    }
-    let mut normalized = options.pattern.to_owned();
-    let mut separator = '$';
-    for token in options.tokens() {
-        normalized.push(separator);
-        if canonical(token) {
-            normalized.push_str(token.raw_name);
-            normalized.push('=');
-            normalized.push_str(&token.value.unwrap().to_ascii_lowercase());
-        } else {
-            normalized.push_str(token.raw);
-        }
-        separator = ',';
-    }
-    Cow::Owned(normalized)
 }
 
 pub(crate) struct AppRule<'a> {
@@ -618,22 +594,6 @@ fn rewrite_redirect_options(line: &str) -> (Option<String>, bool) {
     (Some(rewritten), bare)
 }
 
-pub(crate) enum ExceptionHost<'a> {
-    Anchored(&'a str),
-    Leading {
-        host: &'a str,
-        has_scheme: bool,
-        absolute: bool,
-    },
-}
-
-/// What a leading or anchored rule pattern says before the path.
-fn host_token(pattern: &str) -> &str {
-    &pattern[..pattern
-        .find(['/', '^', '?', ':', '|', '$'])
-        .unwrap_or(pattern.len())]
-}
-
 impl<'a> AppRule<'a> {
     pub(crate) fn has_denyallow(&self) -> bool {
         self.denyallow.is_some()
@@ -745,52 +705,6 @@ pub(crate) fn badfilter_candidate(line: &str) -> bool {
     literal_parts(line.trim()).is_some_and(|(_, suffix)| {
         options::literal_options(suffix).any(|option| option == "badfilter")
     })
-}
-
-fn registrable(host: &str) -> bool {
-    host.bytes()
-        .all(|b| b.is_ascii_alphanumeric() || b == b'.' || b == b'-')
-        && crate::public_suffix::Name::parse(host).is_some_and(|name| name.root().is_some())
-}
-
-fn hosts_rule(line: &str) -> Option<&str> {
-    if !line.starts_with('0') && !line.starts_with('1') {
-        return None;
-    }
-    let mut fields = line.split_ascii_whitespace();
-    match (fields.next(), fields.next(), fields.next()) {
-        (Some("0.0.0.0" | "127.0.0.1"), Some(host), None) if registrable(host) => Some(host),
-        _ => None,
-    }
-}
-
-fn host_pattern(host: &str) -> Cow<'_, str> {
-    Cow::Owned(format!("||{host}^"))
-}
-
-// Bare anchors draw all their tokens from hostname labels. In adblock-rust,
-// rule counts can still change bucket selection, and request tokenization
-// skips tokens beside '*' and is bounded.
-pub(crate) fn is_bare_host_anchor(line: &str) -> bool {
-    line.strip_prefix("||")
-        .and_then(|host| host.strip_suffix('^'))
-        .is_some_and(crate::host::has_hostname_labels)
-}
-
-/// A host anchor with no request conditions, or an equivalent hosts-file line.
-fn whole_host<'a>(line: &'a str, hosts_file: Option<&'a str>) -> Option<(Cow<'a, str>, &'a str)> {
-    if let Some(rest) = line.strip_prefix("@@").unwrap_or(line).strip_prefix("||") {
-        let rest = rest.strip_suffix("$badfilter").unwrap_or(rest);
-        let host = rest.strip_suffix('^')?;
-        return registrable(host).then_some((Cow::Borrowed(line), host));
-    }
-    let host = hosts_file?;
-    Some((host_pattern(host), host))
-}
-
-pub(crate) fn whole_pattern(line: &str) -> Option<(Cow<'_, str>, &str)> {
-    let line = line.trim();
-    whole_host(line, hosts_rule(line))
 }
 
 #[cfg(test)]
