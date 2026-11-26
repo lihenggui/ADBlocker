@@ -21,6 +21,7 @@
 //! Address rules can decide a connection before it is read. A whole-host
 //! block can refuse it once the name is known, unless an exception names it.
 
+use std::borrow::Cow;
 use std::collections::HashSet;
 use std::net::SocketAddr;
 
@@ -60,6 +61,22 @@ pub(crate) use address_rules::AddressProjections;
 pub(crate) use page_exceptions::valid_page_exception;
 pub use redirects::Redirect;
 pub(crate) use response_rules::validate as validate_response_rule;
+
+struct SeenAnchors<'a>(HashSet<Cow<'a, str>>);
+
+impl<'a> SeenAnchors<'a> {
+    fn with_capacity(capacity: usize) -> Self {
+        Self(HashSet::with_capacity(capacity))
+    }
+
+    fn insert(&mut self, anchor: &str, source: &'a str) -> bool {
+        self.0.insert(if anchor == source {
+            Cow::Borrowed(source)
+        } else {
+            Cow::Owned(anchor.to_owned())
+        })
+    }
+}
 
 pub struct Filters {
     pub generation: Option<u64>,

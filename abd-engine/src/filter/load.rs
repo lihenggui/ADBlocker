@@ -115,7 +115,7 @@ fn add_parameters(list: &mut String, source: &rule::Rule<'_>, disabled: &HashSet
 }
 
 fn compile_requests(
-    matcher: MatcherLists,
+    matcher: MatcherLists<'_>,
     redirects: redirects::RedirectProjections,
 ) -> RequestRules {
     let (full, originals) = matcher.compile();
@@ -207,19 +207,13 @@ impl Filters {
         crate::public_suffix::install();
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
         let disabled = badfilters(lists.iter().map(|(_, text)| text.as_str()));
-        let mut compilation = Compilation {
-            matcher: MatcherLists::new(debug),
-            parameters: FilterSet::new(false),
-            redirects: redirects::RedirectProjections::default(),
-            hosts: HostProjections::new(),
-            pages: PageProjections::default(),
-            apps: AppProjections::default(),
-            addresses: AddressProjections::default(),
-            responses: ResponseProjections::default(),
-            html: HtmlProjections::default(),
-            patterns: Patterns::default(),
-            scripts: Scripts::default(),
+        // Bound the initial allocation while avoiding repeated rehashing on large lists.
+        let anchor_capacity = if debug {
+            0
+        } else {
+            (lists.iter().map(|(_, text)| text.len()).sum::<usize>() / 64).min(192 * 1024)
         };
+        let mut compilation = Compilation::new(debug, anchor_capacity);
         reserve_exceptions(
             &lists,
             &mut compilation.patterns,
@@ -238,7 +232,7 @@ impl Filters {
 }
 
 struct Compilation<'a> {
-    matcher: MatcherLists,
+    matcher: MatcherLists<'a>,
     // Native blocks can suppress parameter removal, even when a replacement lets a request through.
     parameters: FilterSet,
     redirects: redirects::RedirectProjections,
@@ -253,12 +247,44 @@ struct Compilation<'a> {
 }
 
 impl<'a> Compilation<'a> {
+    fn new(debug: bool, anchor_capacity: usize) -> Self {
+        Self {
+            matcher: MatcherLists::with_anchor_capacity(debug, anchor_capacity),
+            parameters: FilterSet::new(false),
+            redirects: redirects::RedirectProjections::default(),
+            hosts: HostProjections::new(debug, anchor_capacity),
+            pages: PageProjections::default(),
+            apps: AppProjections::default(),
+            addresses: AddressProjections::default(),
+            responses: ResponseProjections::default(),
+            html: HtmlProjections::default(),
+            patterns: Patterns::default(),
+            scripts: Scripts::default(),
+        }
+    }
+
     fn add_list(
         &mut self,
         text: &'a str,
         permissions: SourcePermissions,
         disabled: &HashSet<u64>,
     ) -> usize {
+        let (count, normalized, parameters) = self.project_list(text, permissions, disabled);
+        self.hosts.finish_list();
+        self.matcher.finish_list(normalized, permissions.matcher());
+        if !parameters.is_empty() {
+            self.parameters
+                .add_filter_list(parameters, permissions.matcher());
+        }
+        count
+    }
+
+    fn project_list(
+        &mut self,
+        text: &'a str,
+        permissions: SourcePermissions,
+        disabled: &HashSet<u64>,
+    ) -> (usize, MatcherList, String) {
         let mut sink = CompileSink {
             build: self,
             permissions,
@@ -267,18 +293,7 @@ impl<'a> Compilation<'a> {
             parameters: String::new(),
         };
         let count = drive(text, permissions, None, &mut sink);
-        let CompileSink {
-            normalized,
-            parameters,
-            ..
-        } = sink;
-        self.hosts.finish_list();
-        self.matcher.finish_list(normalized, permissions.matcher());
-        if !parameters.is_empty() {
-            self.parameters
-                .add_filter_list(parameters, permissions.matcher());
-        }
-        count
+        (count, sink.normalized, sink.parameters)
     }
 
     fn finish(
@@ -339,11 +354,12 @@ struct CompileSink<'a, 'build> {
     parameters: String,
 }
 
-impl CompileSink<'_, '_> {
-    fn project_matcher(&mut self, source: &Rule<'_>) {
-        self.build.matcher.add(&mut self.normalized, source);
-        add_parameters(&mut self.parameters, source, self.disabled);
-        self.build.redirects.add_web(source, self.disabled);
+impl<'a> CompileSink<'a, '_> {
+    fn project_matcher(&mut self, source: &Rule<'a>) {
+        if !self.build.matcher.add(&mut self.normalized, source) {
+            add_parameters(&mut self.parameters, source, self.disabled);
+            self.build.redirects.add_web(source, self.disabled);
+        }
     }
 }
 
@@ -410,3 +426,7 @@ impl<'a> Sink<'a> for CompileSink<'a, '_> {
 
     fn directive(&mut self, _: usize, _: &'a str, _: preprocess::DirectiveIssue) {}
 }
+
+#[cfg(test)]
+#[path = "tests/dedup.rs"]
+mod tests;

@@ -99,7 +99,7 @@ fn index_rule(source: &Rule<'_>, number: usize, index: &mut Vec<Entry>) -> bool 
 }
 
 struct DiagnosticSink<'a, 'build> {
-    matcher: &'build MatcherLists,
+    matcher: &'build mut MatcherLists<'a>,
     normalized: &'build mut MatcherList,
     apps: &'build mut AppProjections<'a>,
     patterns: &'build mut Patterns,
@@ -179,7 +179,7 @@ impl Diagnostics {
             let mut normalized = MatcherList::with_capacity(text.len());
             let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
             let mut sink = DiagnosticSink {
-                matcher: &matcher,
+                matcher: &mut matcher,
                 normalized: &mut normalized,
                 apps: &mut apps,
                 patterns: &mut patterns,
