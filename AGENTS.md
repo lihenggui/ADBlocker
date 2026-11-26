@@ -26,8 +26,9 @@ SECURITY.md, and building, checks and releasing in CONTRIBUTING.md.
 - `scripts/`: `build.sh` (full build), `install-on-emulator.sh` (the module
   on an emulator without a root manager), `check-device.sh` (on-device
   check that an app's traffic is filtered, and that the app keeps its
-  network when the daemon is killed) and `check-module-*.sh` (the module
-  scripts against a model of the device, on the host).
+  network when the daemon is killed), `check-module-*.sh` (the module
+  scripts against a model of the device, on the host) and `update-psl.sh`
+  (syncs the bundled Public Suffix List with `Cargo.lock`).
 
 ## Commands
 

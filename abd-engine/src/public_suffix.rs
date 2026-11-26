@@ -275,8 +275,7 @@ mod tests {
         assert_eq!(
             locked,
             Some(super::RULES_OF_PSL),
-            "copy data/rules.txt of the psl in Cargo.lock to resources/psl/rules.txt \
-             and set RULES_OF_PSL to its version",
+            "run scripts/update-psl.sh to sync the bundled list with Cargo.lock",
         );
     }
 

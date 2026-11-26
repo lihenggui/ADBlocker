@@ -20,9 +20,8 @@ preserved with the source.
   as [psl 2.1.259][psl-crate] carries it in `data/rules.txt`, SHA-256
   `47955ddbd523518837878087119ac55d152cb4a570b8fe9b6f79d1da1eb00901`.
   The list is under the [Mozilla Public License 2.0][mpl], whose text is
-  in `licenses/MPL-2.0.txt`. Copy it again from the `psl` that Cargo.lock
-  takes when that changes: a test of `abd-engine/src/public_suffix.rs`
-  fails until then.
+  in `licenses/MPL-2.0.txt`. Run `scripts/update-psl.sh` when the `psl`
+  version in `Cargo.lock` changes.
 - Android dependencies are listed with exact coordinates in
   `android/app/dependencies/`. The corresponding source archive includes
   the license and upstream repository report at
