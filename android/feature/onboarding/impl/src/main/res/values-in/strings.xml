@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">Cari aplikasi</string>
+    <string name="feature_onboarding_back">Kembali</string>
+    <string name="feature_onboarding_step">Langkah %1$d dari %2$d</string>
+    <string name="feature_onboarding_welcome_text">Menyaring permintaan jaringan dari aplikasi pilihan dengan daftar filter pemblokir iklan browser.</string>
+    <string name="feature_onboarding_start">Mulai</string>
+    <string name="feature_onboarding_fact_private">Tidak ada data yang keluar dari perangkat. Aplikasi hanya terhubung dalam mode VPN, ke tujuan koneksi aplikasi pilihan dan sumber daftar filter.</string>
+    <string name="feature_onboarding_fact_methods">Berfungsi dalam mode root atau mode VPN.</string>
+    <string name="feature_onboarding_fact_chosen">Hanya aplikasi pilihan yang disaring. Koneksi aplikasi lain tidak dibaca.</string>
+    <string name="feature_onboarding_check_title">Pemeriksaan perangkat</string>
+    <string name="feature_onboarding_check_text">Memeriksa apakah perangkat ini dapat menjalankan ADBlocker.</string>
+    <string name="feature_onboarding_checking">Memeriksa</string>
+    <string name="feature_onboarding_ok">Oke</string>
+    <string name="feature_onboarding_check_root">Akses root</string>
+    <string name="feature_onboarding_check_android">Versi Android</string>
+    <string name="feature_onboarding_check_kernel">Fitur kernel</string>
+    <string name="feature_onboarding_check_arch">Prosesor</string>
+    <string name="feature_onboarding_check_root_failed">Akses belum diberikan. Berikan akses root kepada ADBlocker di pengelola root (KernelSU, Magisk, atau APatch).</string>
+    <string name="feature_onboarding_check_android_failed">Memerlukan Android 12 atau yang lebih baru</string>
+    <string name="feature_onboarding_check_kernel_failed">Fitur penyaringan yang diperlukan tidak tersedia</string>
+    <string name="feature_onboarding_check_arch_failed">Hanya arm64 dan x86_64 yang didukung</string>
+    <string name="feature_onboarding_check_again">Periksa lagi</string>
+    <string name="feature_onboarding_continue">Lanjutkan</string>
+    <string name="feature_onboarding_cert_title">Penyaringan URL</string>
+    <string name="feature_onboarding_cert_text">Aturan URL berlaku untuk aplikasi yang disaring jika didukung, termasuk di dalam HTTPS. Untuk hanya memblokir domain secara keseluruhan, nonaktifkan penyaringan URL di Setelan.</string>
+    <string name="feature_onboarding_cert_key">Kunci privat dibuat dan disimpan di perangkat ini, hanya dapat dibaca oleh root, dan dihapus saat mode root dihapus.</string>
+    <string name="feature_onboarding_cert_notice">Setiap server diverifikasi terlebih dahulu menggunakan sertifikat tepercaya sistem. Tidak ada yang ditandatangani untuk server yang gagal diverifikasi.</string>
+    <string name="feature_onboarding_cert_browsers">Browser yang disaring tidak menjalankan sebagian pemeriksaan sertifikat, seperti Certificate Transparency.</string>
+    <string name="feature_onboarding_cert_ack">Saya mengerti</string>
+    <string name="feature_onboarding_apps_title">Pilih aplikasi untuk disaring</string>
+    <string name="feature_onboarding_apps_text">Pilih aplikasi yang ingin Anda saring. Anda juga dapat menambahkan aplikasi nanti.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="other">Lanjutkan (%1$d dipilih)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">Daftar filter</string>
+    <string name="feature_onboarding_lists_text">Daftar regional dipilih berdasarkan wilayah sistem. Anda dapat mengubah pilihan.</string>
+    <string name="feature_onboarding_installing_title">Menyiapkan</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="other">Menyaring %1$d aplikasi</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">Aplikasi pilihan kini disaring. Jika aplikasi berhenti berfungsi, jeda penyaringan di halaman Ringkasan.</string>
+    <string name="feature_onboarding_failed_title">Penyiapan gagal</string>
+    <string name="feature_onboarding_failed_text">Mode root tidak dapat disiapkan. Akses jaringan aplikasi tidak terpengaruh.</string>
+    <string name="feature_onboarding_restart_to_update">Mulai ulang perangkat untuk menyelesaikan pembaruan modul, lalu buka kembali ADBlocker.</string>
+    <string name="feature_onboarding_try_again">Coba lagi</string>
+    <string name="feature_onboarding_finish">Selesai</string>
+    <string name="feature_onboarding_check_after_root">Diperiksa setelah akses root diberikan</string>
+    <string name="feature_onboarding_apps_none">Tidak ada aplikasi untuk disaring</string>
+    <string name="feature_onboarding_apps_none_text">Aplikasi terinstal yang dapat menggunakan jaringan muncul di sini.</string>
+    <string name="feature_onboarding_all_apps_withheld">Sistem belum mengizinkan ADBlocker membaca daftar aplikasi terinstal. Sebagian besar aplikasi tidak disaring sampai izin diberikan.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · diberikan</string>
+    <string name="feature_onboarding_check_root_granted_plain">Diberikan</string>
+    <string name="feature_onboarding_check_kernel_ok">Fitur penyaringan yang diperlukan didukung</string>
+    <string name="feature_onboarding_check_kernel_unverified">Diperiksa saat penyaringan dimulai</string>
+    <string name="feature_onboarding_lists_hint">Daftar lain tersedia di Filter.</string>
+    <string name="feature_onboarding_step_module">Siapkan mode root</string>
+    <string name="feature_onboarding_step_apps">Tambahkan aplikasi pilihan</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="other">Unduh %1$d daftar</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">Mulai penyaringan</string>
+    <string name="feature_onboarding_install_progress">Progres penyiapan</string>
+    <string name="feature_onboarding_check_no_root_text">Akses root tidak terdeteksi. Penyaringan dapat menggunakan mode VPN, atau mode root setelah akses root diberikan.</string>
+    <string name="feature_onboarding_check_unsupported_text">Mode root tidak didukung di perangkat ini. Penyaringan dapat menggunakan mode VPN.</string>
+    <string name="feature_onboarding_check_root_not_detected">Tidak terdeteksi</string>
+    <string name="feature_onboarding_check_root_again">Periksa ulang akses root</string>
+    <string name="feature_onboarding_method">Metode penyaringan</string>
+    <string name="feature_onboarding_method_vpn">Mode VPN</string>
+    <string name="feature_onboarding_method_vpn_text">Tidak memerlukan root. Menyaring aplikasi pilihan berdasarkan domain dan memakai slot VPN sistem.</string>
+    <string name="feature_onboarding_method_root">Mode root</string>
+    <string name="feature_onboarding_method_root_no_root">Menyaring situs terenkripsi berdasarkan URL. Memerlukan akses root.</string>
+    <string name="feature_onboarding_method_root_unsupported">Menyaring situs terenkripsi berdasarkan URL. Tidak didukung di perangkat ini.</string>
+    <string name="feature_onboarding_vpn_title">Mode VPN</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker menyiapkan VPN di perangkat ini. Hanya koneksi aplikasi pilihan yang melewatinya.</string>
+    <string name="feature_onboarding_vpn_apps">Aplikasi pilihan terhubung melalui VPN lokal. Aplikasi lain tidak terpengaruh.</string>
+    <string name="feature_onboarding_vpn_domains">Domain iklan dan pelacak diblokir berdasarkan domain tujuan setiap koneksi. Koneksi tidak didekripsi.</string>
+    <string name="feature_onboarding_vpn_one">Android hanya mengizinkan satu VPN pada satu waktu. Koneksi aplikasi VPN lain terputus saat penyaringan dimulai.</string>
+    <string name="feature_onboarding_vpn_local">VPN tidak terhubung ke server jarak jauh. Data tetap berada di perangkat.</string>
+    <string name="feature_onboarding_vpn_hint">Anda dapat menyiapkan penyaringan URL untuk situs terenkripsi nanti di Setelan.</string>
+    <string name="feature_onboarding_filter_later_title">Saring aplikasi nanti</string>
+    <string name="feature_onboarding_filter_later_text">Tambahkan aplikasi dari halaman Aplikasi saat Anda siap mulai menyaring.</string>
+    <string name="feature_onboarding_save_setup">Simpan setelan</string>
+    <string name="feature_onboarding_start_text">Penyaringan memerlukan dua izin sistem terlebih dahulu.</string>
+    <string name="feature_onboarding_grant_notifications">Notifikasi</string>
+    <string name="feature_onboarding_grant_notifications_text">Ditampilkan selama penyaringan, dengan opsi untuk menjedanya</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">Dikonfirmasi melalui dialog sistem</string>
+    <string name="feature_onboarding_grant_lists_text">Memerlukan koneksi jaringan saat pertama kali digunakan</string>
+    <string name="feature_onboarding_vpn_refused">VPN tidak diizinkan. Penyaringan tidak dapat dimulai tanpanya.</string>
+    <string name="feature_onboarding_starting_title">Memulai</string>
+    <string name="feature_onboarding_start_failed_title">Penyaringan tidak dimulai</string>
+    <string name="feature_onboarding_start_failed_text">VPN tidak dapat dimulai. Akses jaringan aplikasi tidak terpengaruh.</string>
+    <string name="feature_onboarding_done_text_vpn">Penyaringan dapat dijeda kapan saja dari notifikasi.</string>
+    <string name="feature_onboarding_notifications_allowed">Notifikasi diizinkan</string>
+    <string name="feature_onboarding_notifications_off">Notifikasi tidak diizinkan</string>
+    <string name="feature_onboarding_notifications_off_text">Dapat diizinkan di Setelan</string>
+    <string name="feature_onboarding_vpn_connected">VPN terhubung</string>
+    <string name="feature_onboarding_vpn_connected_text">Hanya aplikasi pilihan yang menggunakan VPN</string>
+    <string name="feature_onboarding_lists_downloaded">Daftar diunduh</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="other">%1$d daftar</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="other">%1$s aturan</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">Daftar tidak diunduh</string>
+    <string name="feature_onboarding_lists_failed_text">Dicoba lagi di latar belakang</string>
+    <string name="feature_onboarding_done_https">Untuk menyaring situs terenkripsi berdasarkan URL di browser, siapkan dekripsi di Setelan.</string>
+</resources>

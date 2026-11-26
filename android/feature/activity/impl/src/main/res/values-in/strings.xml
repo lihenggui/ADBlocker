@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Aktivitas</string>
+    <string name="feature_activity_settings">Setelan</string>
+    <string name="feature_activity_start_recording">Mulai rekam</string>
+    <string name="feature_activity_stop_recording">Hentikan rekaman</string>
+    <string name="feature_activity_starting">Memulai perekaman…</string>
+    <string name="feature_activity_recording">Merekam permintaan</string>
+    <string name="feature_activity_recorded">Perekaman berhenti</string>
+    <string name="feature_activity_interrupted">Perekaman terputus</string>
+    <string name="feature_activity_no_recording">Belum ada rekaman</string>
+    <string name="feature_activity_recording_intro">Rekam permintaan dari aplikasi yang disaring. Anda dapat berpindah aplikasi saat merekam. Hingga 500 permintaan terbaru tetap tersimpan di memori.</string>
+    <string name="feature_activity_no_matches">Tidak ada permintaan yang cocok dengan filter ini</string>
+    <string name="feature_activity_empty_result">Tidak ada permintaan yang direkam</string>
+    <string name="feature_activity_app_requests_hint">Mulai perekaman di Aktivitas untuk melihat permintaan di sini.</string>
+    <string name="feature_activity_notification_channel">Perekaman aktivitas</string>
+    <string name="feature_activity_notification_title">ADBlocker sedang merekam aktivitas</string>
+    <string name="feature_activity_all">Semua</string>
+    <string name="feature_activity_blocked">Diblokir</string>
+    <string name="feature_activity_allowed">Diizinkan</string>
+    <string name="feature_activity_encrypted">Tidak didekripsi</string>
+    <string name="feature_activity_all_apps">Semua aplikasi</string>
+    <string name="feature_activity_dropped">(%1$d dilewati)</string>
+    <string name="feature_activity_empty">Menunggu permintaan</string>
+    <string name="feature_activity_empty_idle">Tidak ada yang sedang disaring</string>
+    <string name="feature_activity_verdict_blocked">Permintaan diblokir</string>
+    <string name="feature_activity_verdict_host_blocked">Domain diblokir</string>
+    <string name="feature_activity_verdict_allowed">Diizinkan</string>
+    <string name="feature_activity_verdict_passed">Tidak didekripsi</string>
+    <string name="feature_activity_kind_script">Skrip</string>
+    <string name="feature_activity_kind_image">Gambar</string>
+    <string name="feature_activity_kind_document">Halaman</string>
+    <string name="feature_activity_kind_stylesheet">Gaya</string>
+    <string name="feature_activity_kind_font">Fon</string>
+    <string name="feature_activity_kind_media">Media</string>
+    <string name="feature_activity_app">Aplikasi</string>
+    <string name="feature_activity_kind">Jenis</string>
+    <string name="feature_activity_page">Halaman</string>
+    <string name="feature_activity_rule">Kecocokan aturan saat ini (GET)</string>
+    <string name="feature_activity_rule_unavailable">Tidak tersedia</string>
+    <string name="feature_activity_why">Alasan</string>
+    <string name="feature_activity_my_rules">Aturan saya</string>
+    <string name="feature_activity_reason_pinned">Aplikasi tidak menerima sertifikat ADBlocker untuk domain ini, sehingga koneksinya hanya disaring berdasarkan domain.</string>
+    <string name="feature_activity_reason_hosts_only">Koneksi ini disaring berdasarkan domain. Penyaringan URL nonaktif atau pemeriksaan HTTPS tidak tersedia.</string>
+    <string name="feature_activity_reason_excluded">Domain ini ada dalam daftar pengecualian HTTPS, misalnya daftar situs bank.</string>
+    <string name="feature_activity_reason_trusted">Situs ini tepercaya.</string>
+    <string name="feature_activity_reason_sensitive">Server memiliki sertifikat Extended Validation, sehingga koneksi tidak didekripsi.</string>
+    <string name="feature_activity_reason_no_name">Koneksi tidak menyebutkan domain.</string>
+    <string name="feature_activity_reason_untrusted">Aplikasi ini belum memercayai ADBlocker.</string>
+    <string name="feature_activity_reason_unverified">Server tidak dapat diverifikasi, sehingga aplikasi memeriksanya sendiri.</string>
+    <string name="feature_activity_reason_other">Diteruskan ke aplikasi tanpa dibaca.</string>
+    <string name="feature_activity_trust_site">Percayai %1$s</string>
+    <string name="feature_activity_block_host">Blokir domain ini</string>
+    <string name="feature_activity_block_in_app">Blokir di %1$s</string>
+    <string name="feature_activity_block_in_all_apps">Blokir di semua aplikasi</string>
+    <string name="feature_activity_forget">Coba dekripsi lagi</string>
+    <string name="feature_activity_copy">Salin</string>
+    <string name="feature_activity_trusted">%1$s ditambahkan ke situs tepercaya</string>
+    <string name="feature_activity_blocked_host_everywhere">%1$s diblokir di semua aplikasi</string>
+    <string name="feature_activity_blocked_host_in_app">%1$s diblokir di %2$s</string>
+    <string name="feature_activity_forgotten">Dekripsi dicoba lagi pada koneksi berikutnya</string>
+    <string name="feature_activity_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
+    <string name="feature_activity_select">Pilih permintaan</string>
+    <string name="feature_activity_select_text">Periksa URL dengan aturan saat ini, atau percayai atau blokir situsnya</string>
+    <string name="feature_activity_reason_host_blocked">Seluruh domain diblokir, sehingga koneksi ditolak.</string>
+    <string name="feature_activity_app_requests">Permintaan</string>
+    <string name="feature_activity_open_activity">Buka di Aktivitas</string>
+    <string name="feature_activity_reason_exclusions_pending">Pengecualian HTTPS belum siap</string>
+    <string name="feature_activity_apps_unavailable">Tidak dapat memuat nama aplikasi atau opsi filter</string>
+    <string name="feature_activity_status_unavailable">Status penyaringan tidak tersedia</string>
+</resources>

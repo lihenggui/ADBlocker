@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">Setelan</string>
+    <string name="feature_overview_filtering">Menyaring</string>
+    <string name="feature_overview_paused">Dijeda</string>
+    <string name="feature_overview_stopped">Layanan penyaringan tidak berjalan</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="other">%1$s aplikasi</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="other">%1$s aturan</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Dilanjutkan dalam %1$s</string>
+    <string name="feature_overview_paused_detail">Hingga dilanjutkan</string>
+    <string name="feature_overview_stopped_detail">Aplikasi terhubung tanpa penyaringan</string>
+    <string name="feature_overview_resume">Lanjutkan</string>
+    <string name="feature_overview_start">Mulai</string>
+    <string name="feature_overview_pause_hour">Jeda 1 jam</string>
+    <string name="feature_overview_more_durations">Durasi jeda lainnya</string>
+    <string name="feature_overview_expanded">Diperluas</string>
+    <string name="feature_overview_collapsed">Diciutkan</string>
+    <string name="feature_overview_until_resumed">Hingga dilanjutkan</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="other">%1$d jam</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="other">%1$d menit</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Diblokir hari ini</string>
+    <string name="feature_overview_blocked_breakdown">%1$s permintaan · %2$s koneksi</string>
+    <string name="feature_overview_week_description">Diblokir dalam 7 hari terakhir: %1$s</string>
+    <string name="feature_overview_today">Hari ini</string>
+    <string name="feature_overview_top_apps">Terbanyak diblokir</string>
+    <string name="feature_overview_status">Status</string>
+    <string name="feature_overview_lists">Daftar filter</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="other">%1$d aktif · diperbarui %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="other">%1$d aktif · belum diunduh</item>
+    </plurals>
+    <string name="feature_overview_service">Layanan penyaringan</string>
+    <string name="feature_overview_service_running">Berjalan</string>
+    <string name="feature_overview_service_running_since">Berjalan selama %1$s</string>
+    <string name="feature_overview_service_stopped">Tidak berjalan</string>
+    <string name="feature_overview_updating">Memperbarui mode root…</string>
+    <string name="feature_overview_restart_to_update">Mulai ulang perangkat untuk menyelesaikan pembaruan modul.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="other">Dijeda selama %1$d jam. Aplikasi terhubung tanpa penyaringan.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="other">Dijeda selama %1$d menit. Aplikasi terhubung tanpa penyaringan.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Dijeda hingga dilanjutkan. Aplikasi terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_undo">Urungkan</string>
+    <string name="feature_overview_module_disabled">Modul ADBlocker dinonaktifkan atau dijadwalkan untuk dihapus di pengelola root. Ubah setelannya di sana.</string>
+    <string name="feature_overview_module_disabled_in">Modul ADBlocker dinonaktifkan atau dijadwalkan untuk dihapus di %1$s. Ubah setelannya di sana.</string>
+    <string name="feature_overview_service_timeout">Layanan penyaringan tidak merespons tepat waktu.</string>
+    <string name="feature_overview_root_pending">Peralihan ke mode root belum selesai. Coba lagi di Setelan.</string>
+    <string name="feature_overview_action_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
+    <string name="feature_overview_turned_off">Dinonaktifkan</string>
+    <string name="feature_overview_turned_off_detail">Penyaringan nonaktif secara otomatis pada %1$s setelah dua kali proses mulai berturut-turut tidak selesai. Aplikasi terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_turn_on_again">Aktifkan lagi</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Menghubungkan</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Terputus</string>
+    <string name="feature_overview_vpn_off_detail">Aplikasi pilihan terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_vpn_revoked_detail">VPN dinonaktifkan oleh aplikasi VPN lain atau melalui setelan sistem. Aplikasi pilihan terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_vpn_failed_detail">Penyaringan berhenti secara tiba-tiba. Aplikasi pilihan terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_vpn_lockdown_detail">“Memblokir koneksi tanpa VPN” aktif. Aplikasi pilihan tidak dapat terhubung hingga VPN tersambung kembali.</string>
+    <string name="feature_overview_reconnect">Sambung lagi</string>
+    <string name="feature_overview_vpn_refused">VPN tidak diizinkan. Aplikasi pilihan terhubung tanpa penyaringan.</string>
+    <string name="feature_overview_method">Metode penyaringan</string>
+    <string name="feature_overview_method_vpn_on">VPN · Terhubung</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Menghubungkan</string>
+    <string name="feature_overview_method_vpn_off">VPN · Terputus</string>
+    <string name="feature_overview_https">Situs terenkripsi</string>
+    <string name="feature_overview_https_not_set_up">Hanya domain · Dapat disiapkan untuk browser</string>
+    <string name="feature_overview_https_off">Hanya domain · Dekripsi nonaktif</string>
+    <string name="feature_overview_https_none">Hanya domain</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="other">Lalu lintas %1$d aplikasi didekripsi</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">“Memblokir koneksi tanpa VPN” aktif</string>
+    <string name="feature_overview_lockdown_text">Selama penyaringan berhenti, aplikasi pilihan tidak dapat terhubung.</string>
+    <string name="feature_overview_notice_ok">Oke</string>
+    <string name="feature_overview_root_title">Akses root terdeteksi</string>
+    <string name="feature_overview_root_text">Mode root menyaring situs terenkripsi berdasarkan URL tanpa menggunakan VPN. Pilihan aplikasi, daftar, dan aturan tetap disimpan.</string>
+    <string name="feature_overview_root_dismiss">Nanti saja</string>
+    <string name="feature_overview_root_switch">Beralih ke mode root</string>
+    <string name="feature_overview_battery_title">Android menghentikan VPN</string>
+    <string name="feature_overview_battery_text">Penyaringan berhenti di latar belakang. Izinkan ADBlocker berjalan tanpa pembatasan baterai agar penyaringan tetap aktif.</string>
+    <string name="feature_overview_battery_action">Izinkan di latar belakang</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="other">%1$d daftar belum diunduh</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="other">%1$d daftar gagal diunduh</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="other">Daftar mulai menyaring setelah diunduh.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="other">Daftar mulai menyaring setelah diunduh.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Unduh sekarang</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="other">Penyaringan berlanjut dengan salinan sebelumnya.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Buka daftar</string>
+    <string name="feature_overview_lists_download_failed">Unduhan gagal</string>
+    <string name="feature_overview_app_list_withheld_title">Sebagian besar aplikasi tidak disaring</string>
+    <string name="feature_overview_app_list_withheld_text">Sistem belum mengizinkan ADBlocker membaca daftar aplikasi terinstal. Aplikasi akan disaring setelah izin diberikan.</string>
+</resources>

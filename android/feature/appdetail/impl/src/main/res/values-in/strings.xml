@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Kembali</string>
+    <string name="feature_appdetail_open">Buka %1$s</string>
+    <string name="feature_appdetail_not_installed">Aplikasi ini sudah tidak terinstal</string>
+    <string name="feature_appdetail_filter_this">Saring aplikasi ini</string>
+    <string name="feature_appdetail_filter_group">Saring aplikasi ini bersama-sama</string>
+    <string name="feature_appdetail_pause_group">Jeda grup ini 1 jam</string>
+    <string name="feature_appdetail_shared_members">Aplikasi yang berbagi UID ini</string>
+    <string name="feature_appdetail_off">Lalu lintas tidak melewati ADBlocker</string>
+    <string name="feature_appdetail_on_full">Memblokir iklan dan pelacak</string>
+    <string name="feature_appdetail_on_hosts">Hanya memblokir domain iklan dan pelacak</string>
+    <string name="feature_appdetail_blocked">Diblokir</string>
+    <string name="feature_appdetail_today">Hari ini</string>
+    <string name="feature_appdetail_week">7 hari</string>
+    <string name="feature_appdetail_trouble">Pemecahan masalah</string>
+    <string name="feature_appdetail_pause">Jeda aplikasi ini 1 jam</string>
+    <string name="feature_appdetail_pause_text">Gunakan jika halaman atau fitur tidak berfungsi</string>
+    <string name="feature_appdetail_resume">Lanjutkan penyaringan aplikasi</string>
+    <string name="feature_appdetail_paused_until">Dijeda hingga %1$s</string>
+    <string name="feature_appdetail_requests">Lihat permintaan</string>
+    <string name="feature_appdetail_requests_text">Membuka Aktivitas untuk aplikasi ini</string>
+    <string name="feature_appdetail_group_requests_text">Membuka Aktivitas untuk grup ini</string>
+    <string name="feature_appdetail_pinned">Domain yang menolak sertifikat</string>
+    <string name="feature_appdetail_pinned_none">Tidak ada</string>
+    <string name="feature_appdetail_pinned_count">%1$d · disaring berdasarkan domain saja</string>
+    <string name="feature_appdetail_pinned_text">Aplikasi ini memeriksa sendiri sertifikat domain tersebut. Setelah domain dilupakan, dekripsi dicoba lagi pada koneksi berikutnya ke domain itu.</string>
+    <string name="feature_appdetail_forget">Lupakan</string>
+    <string name="feature_appdetail_forget_all">Lupakan semua</string>
+    <string name="feature_appdetail_forgotten">Dilupakan. Dekripsi dicoba lagi pada koneksi berikutnya.</string>
+    <string name="feature_appdetail_paused">Aplikasi dijeda selama 1 jam</string>
+    <string name="feature_appdetail_group_paused">Grup dijeda selama 1 jam</string>
+    <string name="feature_appdetail_undo">Urungkan</string>
+    <string name="feature_appdetail_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
+    <string name="feature_appdetail_level_url_filtering_off">Penyaringan URL dinonaktifkan di Setelan. Hanya domain secara keseluruhan yang diblokir.</string>
+    <string name="feature_appdetail_level_unknown">Saat ini, layanan penyaringan tidak dapat mendekripsi lalu lintas aplikasi ini, sehingga koneksi HTTPS hanya disaring berdasarkan domain.</string>
+    <string name="feature_appdetail_level_needs_certificate">Untuk menyaring URL di dalam HTTPS, siapkan sertifikat. Aplikasi harus memercayai sertifikat pengguna.</string>
+    <string name="feature_appdetail_set_up_https">Siapkan penyaringan HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">Koneksi HTTPS disaring berdasarkan domain hingga daftar pengecualian siap.</string>
+    <string name="feature_appdetail_work_certificate">Koneksi HTTPS tetap terenkripsi hingga aplikasi ini memercayai sertifikat di profil kerjanya.</string>
+    <string name="feature_appdetail_work_quiet">Aktifkan profil kerja untuk menggunakan aplikasi ini.</string>
+    <string name="feature_appdetail_work_unavailable">Aplikasi ini tidak tersedia di profil kerja.</string>
+    <string name="feature_appdetail_shared_uid">Aplikasi ini berbagi UID Android dengan aplikasi lain. Mode root tidak dapat menyaringnya secara terpisah.</string>
+    <string name="feature_appdetail_mixed">Menyaring permintaan HTTP dan domain HTTPS</string>
+    <string name="feature_appdetail_include">Sertakan dalam penyaringan</string>
+    <string name="feature_appdetail_counts_checking">Memeriksa jumlah pemblokiran…</string>
+    <string name="feature_appdetail_counts_unavailable">Jumlah pemblokiran tidak tersedia</string>
+    <string name="feature_appdetail_pinned_checking">Memeriksa…</string>
+    <string name="feature_appdetail_pinned_unavailable">Tidak dapat membaca domain</string>
+</resources>

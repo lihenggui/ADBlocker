@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">Penyaringan HTTPS</string>
+    <string name="feature_https_back">Kembali</string>
+    <string name="feature_https_step">Langkah %1$d dari %2$d</string>
+    <string name="feature_https_later">Nanti</string>
+    <string name="feature_https_continue">Lanjutkan</string>
+    <string name="feature_https_previous">Kembali</string>
+    <string name="feature_https_impact_title">Dampak keamanan</string>
+    <string name="feature_https_impact_text">Penyaringan permintaan di dalam HTTPS memerlukan sertifikat ADBlocker dalam daftar sertifikat pengguna sistem.</string>
+    <string name="feature_https_impact_key">Sertifikat dibuat di perangkat ini. Kunci privatnya tetap berada di penyimpanan pribadi aplikasi dan dihapus saat aplikasi diuninstal.</string>
+    <string name="feature_https_impact_apps">Hanya lalu lintas aplikasi yang memercayai sertifikat pengguna yang dapat didekripsi, terutama beberapa browser. Aplikasi lain tetap disaring berdasarkan domain.</string>
+    <string name="feature_https_impact_notice">Setelah sertifikat diinstal, sistem terus menampilkan notifikasi “Jaringan mungkin dipantau”.</string>
+    <string name="feature_https_impact_remove">Sertifikat dapat dihapus kapan saja di setelan sistem. Setelan › HTTPS membuka setelan tersebut.</string>
+    <string name="feature_https_install_title">Instal sertifikat</string>
+    <string name="feature_https_install_text">Android tidak mengizinkan aplikasi menginstal sertifikat. Sertifikat diinstal melalui setelan sistem.</string>
+    <string name="feature_https_install_save">Simpan sertifikat</string>
+    <string name="feature_https_install_save_text">Menyimpan ADBlocker.crt di perangkat</string>
+    <string name="feature_https_install_saved">Disimpan sebagai ADBlocker.crt</string>
+    <string name="feature_https_install_open">Buka setelan sistem</string>
+    <string name="feature_https_install_open_text">Keamanan &amp; privasi › Keamanan &amp; privasi lain › Enkripsi &amp; kredensial › Instal sertifikat › Sertifikat CA</string>
+    <string name="feature_https_install_choose">Pilih ADBlocker.crt dan konfirmasi</string>
+    <string name="feature_https_install_choose_text">Nama menu berbeda-beda menurut produsen</string>
+    <string name="feature_https_install_not_found">Sertifikat belum ada dalam daftar sertifikat pengguna.</string>
+    <string name="feature_https_save">Simpan sertifikat</string>
+    <string name="feature_https_open_security">Buka setelan keamanan</string>
+    <string name="feature_https_save_failed">Sertifikat tidak dapat disimpan</string>
+    <string name="feature_https_apps_title">Sertifikat terinstal</string>
+    <string name="feature_https_apps_text">Aturan URL berlaku untuk semua aplikasi yang disaring jika didukung. Lalu lintas aplikasi yang menolak sertifikat tetap terenkripsi.</string>
+    <string name="feature_https_turn_on">Lanjutkan</string>
+    <string name="feature_https_failed">Tindakan gagal</string>
+    <string name="feature_https_done_title">Penyaringan URL aktif</string>
+    <string name="feature_https_result_full">Penyaringan penuh</string>
+    <string name="feature_https_result_hosts">Hanya domain</string>
+    <string name="feature_https_done_hint">Ubah penyaringan URL di Setelan.</string>
+    <string name="feature_https_finish">Selesai</string>
+    <string name="feature_https_work_title">HTTPS profil kerja</string>
+    <string name="feature_https_work_instructions">Simpan sertifikat publik dan minta administrator profil kerja menginstalnya di profil tersebut, atau gunakan setelan sertifikat profil itu jika diizinkan oleh kebijakan organisasi. Penyaringan HTTPS berlaku untuk aplikasi yang memercayai sertifikat profil kerja.</string>
+    <string name="feature_https_work_save">Simpan sertifikat</string>
+    <string name="feature_https_work_saved">Sertifikat disimpan</string>
+    <string name="feature_https_result_certificate">Hanya domain · sertifikat tidak ada</string>
+    <string name="feature_https_result_exclusions">Hanya domain · pengecualian HTTPS sedang dimuat</string>
+    <string name="feature_https_results_unavailable">Tidak dapat membaca hasil penyaringan aplikasi</string>
+</resources>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Cari aplikasi</string>
+    <string name="feature_apps_settings">Setelan</string>
+    <string name="feature_apps_filtered">Disaring %1$d</string>
+    <string name="feature_apps_all">Semua %1$d</string>
+    <string name="feature_apps_section_filtered">Disaring</string>
+    <string name="feature_apps_section_others">Aplikasi lain</string>
+    <string name="feature_apps_empty_filtered">Belum ada aplikasi yang disaring</string>
+    <string name="feature_apps_empty_filtered_text">Pilih aplikasi dan aktifkan tombolnya untuk mulai menyaring.</string>
+    <string name="feature_apps_browse_apps">Lihat aplikasi</string>
+    <string name="feature_apps_status_filtered">%1$s diblokir hari ini</string>
+    <string name="feature_apps_status_hosts">Hanya domain · %1$s diblokir hari ini</string>
+    <string name="feature_apps_status_paused">Dijeda · dilanjutkan dalam %1$s</string>
+    <string name="feature_apps_status_off">Tidak disaring</string>
+    <string name="feature_apps_now_filtering">Menyaring %1$s</string>
+    <string name="feature_apps_stopped_filtering">Berhenti menyaring %1$s</string>
+    <string name="feature_apps_undo">Urungkan</string>
+    <string name="feature_apps_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
+    <string name="feature_apps_select">Pilih aplikasi</string>
+    <string name="feature_apps_select_text">Lihat mode penyaringan dan jumlah pemblokiran</string>
+    <string name="feature_apps_status_work_quiet">Profil kerja dijeda</string>
+    <string name="feature_apps_status_work_unavailable">Tidak tersedia di profil kerja</string>
+    <string name="feature_apps_work_inventory_unavailable">Beberapa aplikasi kerja tidak dapat dimuat.</string>
+    <string name="feature_apps_work_inventory_retry">Coba lagi</string>
+    <string name="feature_apps_selection_removed">Pilihan untuk %1$s dihapus</string>
+    <string name="feature_apps_status_mixed">Permintaan HTTP dan domain HTTPS · %1$s diblokir hari ini</string>
+    <string name="feature_apps_exclude">Kecualikan</string>
+    <string name="feature_apps_include">Sertakan</string>
+    <string name="feature_apps_excluded">Dikecualikan</string>
+    <string name="feature_apps_included">%1$s disertakan</string>
+    <string name="feature_apps_excluded_message">%1$s dikecualikan</string>
+    <string name="feature_apps_status_filtered_no_count">Jumlah pemblokiran tidak tersedia</string>
+    <string name="feature_apps_status_hosts_no_count">Hanya domain · jumlah tidak tersedia</string>
+    <string name="feature_apps_status_mixed_no_count">Permintaan HTTP dan domain HTTPS · jumlah tidak tersedia</string>
+</resources>

@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Coba lagi</string>
+    <string name="core_ui_failure_no_root">Tidak ada akses root</string>
+    <string name="core_ui_failure_no_root_text">Berikan akses root kepada ADBlocker di pengelola root, lalu coba lagi.</string>
+    <string name="core_ui_failure_module_missing">Mode root belum disiapkan</string>
+    <string name="core_ui_failure_module_missing_text">Siapkan mode root di Setelan.</string>
+    <string name="core_ui_failure_update_needed">Mode root perlu diperbarui</string>
+    <string name="core_ui_failure_update_needed_text">Perbarui di Setelan.</string>
+    <string name="core_ui_failure_failed">Gagal memuat</string>
+    <string name="core_ui_failure_failed_text">Layanan penyaringan tidak merespons. Periksa statusnya di Setelan.</string>
+    <string name="core_ui_failure_timed_out">Waktu habis</string>
+    <string name="core_ui_failure_timed_out_text">Layanan penyaringan tidak merespons tepat waktu. Coba lagi. Jika masalah berlanjut, mulai ulang layanan penyaringan di Setelan.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="other">%1$d menit</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="other">%1$d jam</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="other">%1$d hari</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">Mode VPN tidak tersedia</string>
+    <string name="core_ui_failure_engine_missing_text">Versi aplikasi ini tidak menyertakan mesin untuk menyaring tanpa root.</string>
+    <string name="core_ui_work_app_label">%1$s · Kerja</string>
+    <string name="core_ui_shared_uid">Berbagi UID Android, tidak dapat disaring satu per satu</string>
+    <string name="core_ui_shared_app_label">%1$s · Grup aplikasi</string>
+    <string name="core_ui_shared_app_members">Aplikasi disaring bersama · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Penyaringan dengan root tidak tersedia</string>
+    <string name="core_ui_remove_app_selection">Hapus pilihan</string>
+    <string name="core_ui_personal_eligibility_unavailable">Tidak dapat memeriksa aplikasi pribadi yang bisa disaring.</string>
+    <string name="core_ui_app_list_withheld">Aplikasi terinstal tidak dapat ditampilkan</string>
+    <string name="core_ui_app_list_withheld_text">Sistem belum mengizinkan ADBlocker membaca daftar aplikasi terinstal. Berikan izin untuk memilih aplikasi yang akan disaring.</string>
+    <string name="core_ui_app_list_allow">Izinkan</string>
+    <string name="core_ui_app_list_check_again">Periksa lagi</string>
+    <string name="core_ui_filtering_scope">Cakupan penyaringan</string>
+    <string name="core_ui_scope_chosen">Aplikasi pilihan</string>
+    <string name="core_ui_scope_all">Semua aplikasi</string>
+    <string name="core_ui_scope_all_text">Menyaring aplikasi pribadi, termasuk yang baru diinstal. Kecualikan aplikasi dari halaman Aplikasi. Aplikasi kerja tetap dipilih satu per satu.</string>
+    <string name="core_ui_category_ads">Iklan</string>
+    <string name="core_ui_category_privacy">Privasi</string>
+    <string name="core_ui_category_security">Keamanan</string>
+    <string name="core_ui_category_regional">Wilayah</string>
+    <string name="core_ui_category_annoyances">Gangguan</string>
+    <string name="core_ui_vpn_transfer_incomplete">Beberapa setelan mode root tidak dapat dipindahkan.</string>
+    <string name="core_ui_vpn_transfer_apps">Setelan penyaringan aplikasi dari mode root tidak dapat dipindahkan.</string>
+    <string name="core_ui_vpn_transfer_lists">Beberapa setelan daftar filter dari mode root tidak dapat dipindahkan.</string>
+    <string name="core_ui_vpn_transfer_rules">Aturan kustom dari mode root tidak dapat dipindahkan.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Beberapa situs tepercaya dari mode root tidak dapat dipindahkan.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Setelan penyaringan URL dari mode root tidak dapat dipindahkan.</string>
+</resources>
