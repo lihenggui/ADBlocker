@@ -24,6 +24,7 @@ composeRules = "0.6.8"
 dependencyGuard = "0.5.0"
 hiddenApiBypass = "6.2"
 hilt = "2.60.1"
+icu4j = "79.1"
 kotlin = "2.4.21"
 kotlinxCoroutines = "1.11.0"
 kotlinxSerializationJson = "1.13.0"
@@ -81,6 +82,7 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 hiddenapibypass = { group = "org.lsposed.hiddenapibypass", name = "hiddenapibypass", version.ref = "hiddenApiBypass" }
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-compiler = { group = "com.google.dagger", name = "hilt-android-compiler", version.ref = "hilt" }
+icu4j = { group = "com.ibm.icu", name = "icu4j", version.ref = "icu4j" }
 kotlin-metadata = { group = "org.jetbrains.kotlin", name = "kotlin-metadata-jvm", version.ref = "kotlin" }
 kotlin-test-junit = { group = "org.jetbrains.kotlin", name = "kotlin-test-junit", version.ref = "kotlin" }
 kotlinx-coroutines-android = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-android", version.ref = "kotlinxCoroutines" }

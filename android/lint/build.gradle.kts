@@ -34,9 +34,22 @@ tasks.jar {
     manifest.attributes["Lint-Registry-v2"] = "li.mercury.adblocker.lint.ADBlockerIssueRegistry"
 }
 
+val moduleDirectories = rootProject.subprojects.map { it.projectDir.relativeTo(rootDir).invariantSeparatorsPath }.sorted()
+val stringResources = rootProject.fileTree(rootDir) {
+    include(moduleDirectories.map { "$it/src/main/res/values*/strings.xml" })
+}
+val releaseLocales = providers.gradleProperty("appLocales")
+tasks.test {
+    inputs.files(stringResources).withPathSensitivity(PathSensitivity.RELATIVE)
+    systemProperty("translations.root", rootDir.path)
+    systemProperty("translations.modules", moduleDirectories.joinToString(","))
+    systemProperty("translations.locales", releaseLocales.get())
+}
+
 dependencies {
     compileOnly(libs.lint.api)
     testImplementation(libs.lint.api)
     testImplementation(libs.lint.tests)
     testImplementation(libs.kotlin.test.junit)
+    testImplementation(libs.icu4j)
 }
