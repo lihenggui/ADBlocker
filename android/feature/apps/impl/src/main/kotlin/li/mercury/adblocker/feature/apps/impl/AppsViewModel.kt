@@ -46,6 +46,7 @@ import li.mercury.adblocker.core.model.LoadFailure
 import li.mercury.adblocker.core.model.ReadState
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
+import li.mercury.adblocker.core.ui.appLabelArgument
 import java.text.Collator
 import javax.inject.Inject
 
@@ -175,8 +176,9 @@ class AppsViewModel @Inject constructor(
             try {
                 suspendRunCatching("apps toggle") {
                     apps.setFiltered(packageName, filtered)
+                    val label = appLabelArgument(entry.app.label, entry.app.packageName)
                     if (!filtered && before.unavailableReason != null) {
-                        messages.show(UiMessage(R.string.feature_apps_selection_removed, listOf(entry.app.label)))
+                        messages.show(UiMessage(R.string.feature_apps_selection_removed, listOf(label)))
                     } else if (undoable) {
                         val text = when {
                             before.inAllAppsScope && filtered -> R.string.feature_apps_included
@@ -185,7 +187,7 @@ class AppsViewModel @Inject constructor(
                             else -> R.string.feature_apps_stopped_filtering
                         }
                         messages.show(
-                            UiMessage(text, listOf(entry.app.label), R.string.feature_apps_undo) {
+                            UiMessage(text, listOf(label), R.string.feature_apps_undo) {
                                 setFiltered(before, !filtered, undoable = false)
                             },
                         )

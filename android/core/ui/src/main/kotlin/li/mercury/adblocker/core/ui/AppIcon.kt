@@ -71,7 +71,9 @@ fun AppIcon(app: InstalledApp?, name: String, modifier: Modifier = Modifier, siz
 }
 
 @Composable
-fun profileAppLabel(label: String, work: Boolean, sharedGroup: Boolean = false): String {
-    val name = if (sharedGroup) stringResource(R.string.core_ui_shared_app_label, label) else label
+fun profileAppLabel(label: String, packageName: String, work: Boolean, sharedGroup: Boolean = false): String {
+    if (!work && !sharedGroup) return label
+    val argument = appLabelArgument(label, packageName)
+    val name = if (sharedGroup) stringResource(R.string.core_ui_shared_app_label, argument) else argument
     return if (work) stringResource(R.string.core_ui_work_app_label, name) else name
 }

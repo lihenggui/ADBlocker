@@ -100,7 +100,7 @@ class RequestViewModelTest {
         assertTrue(viewModel.uiState.value.done)
         val message = viewModel.pendingMessages.value.single().message
         assertEquals(R.string.feature_activity_blocked_host_in_app, message.text)
-        assertEquals(listOf<Any>("ads.example", "News"), message.args)
+        assertEquals(listOf<Any>("\u2066ads.example\u2069", "News"), message.args)
     }
 
     @Test
@@ -115,7 +115,7 @@ class RequestViewModelTest {
         runCurrent()
 
         assertEquals(listOf<Pair<String, String?>>("ads.example" to "com.example.news"), blocked)
-        assertEquals(listOf<Any>("ads.example", "com.example.news"), viewModel.pendingMessages.value.single().message.args)
+        assertEquals(listOf<Any>("\u2066ads.example\u2069", "\u2066com.example.news\u2069"), viewModel.pendingMessages.value.single().message.args)
     }
 
     @Test

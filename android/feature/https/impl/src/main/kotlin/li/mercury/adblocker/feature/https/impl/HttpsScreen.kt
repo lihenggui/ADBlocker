@@ -317,7 +317,7 @@ private fun ResultRows(apps: List<AppEntry>) {
         SegmentedItem(
             index = index,
             count = apps.size,
-            headline = profileAppLabel(entry.app.label, work = false, entry.app.isSharedGroup),
+            headline = profileAppLabel(entry.app.label, entry.app.packageName, work = false, entry.app.isSharedGroup),
             supporting = { Text(stringResource(level)) },
             leading = { ResultIcon(full) },
         )

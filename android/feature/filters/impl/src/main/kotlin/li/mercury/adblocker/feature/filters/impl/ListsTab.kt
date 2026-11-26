@@ -78,6 +78,7 @@ import li.mercury.adblocker.core.ui.animatedRow
 import li.mercury.adblocker.core.ui.categoryIcon
 import li.mercury.adblocker.core.ui.categoryName
 import li.mercury.adblocker.core.ui.formatCount
+import li.mercury.adblocker.core.ui.isolateLtr
 import li.mercury.adblocker.core.ui.pageMargin
 import li.mercury.adblocker.core.ui.relativeTime
 import li.mercury.adblocker.core.ui.segmentedColors
@@ -307,7 +308,7 @@ internal fun ListInfoSheet(list: FilterList, onRemove: () -> Unit, onDismiss: ()
             list.rules?.let { Text(stringResource(R.string.feature_filters_list_rules, formatCount(it)), style = MaterialTheme.typography.bodyLarge) }
             list.updated?.let { Text(stringResource(R.string.feature_filters_last_updated, relativeTime(it)), style = MaterialTheme.typography.bodyLarge) }
             list.error?.let {
-                Text(stringResource(R.string.feature_filters_list_last_error, it), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
+                Text(stringResource(R.string.feature_filters_list_last_error, isolateLtr(it)), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.error)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(onClick = onRemove) { Text(stringResource(R.string.feature_filters_remove_list)) }

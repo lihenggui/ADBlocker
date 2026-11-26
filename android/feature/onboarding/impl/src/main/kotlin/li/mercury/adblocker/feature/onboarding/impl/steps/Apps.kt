@@ -54,6 +54,7 @@ import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedToggleItem
 import li.mercury.adblocker.core.ui.StepAction
 import li.mercury.adblocker.core.ui.StepPage
+import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.message
 import li.mercury.adblocker.core.ui.profileAppLabel
 import li.mercury.adblocker.feature.onboarding.impl.OnboardingUiState
@@ -181,7 +182,7 @@ private fun AppChoiceList(
             val picked = app.appKey in picks
             val enabled = app.canEnableFiltering
             val unavailable = app.unavailableReason
-            val label = profileAppLabel(app.label, app.profileSerial != null, app.isSharedGroup)
+            val label = profileAppLabel(app.label, app.packageName, app.profileSerial != null, app.isSharedGroup)
             // The choice is made now and applied when installing.
             SegmentedToggleItem(
                 index = index,
@@ -196,7 +197,7 @@ private fun AppChoiceList(
                         Column {
                             unavailable?.let { Text(stringResource(it.message())) }
                             if (app.sharedMembers.isNotEmpty()) {
-                                Text(stringResource(UiR.string.core_ui_shared_app_members, app.sharedMembers.joinToString { it.label }))
+                                Text(stringResource(UiR.string.core_ui_shared_app_members, app.sharedMembers.joinToString { appLabelArgument(it.label, it.packageName) }))
                             }
                         }
                     }

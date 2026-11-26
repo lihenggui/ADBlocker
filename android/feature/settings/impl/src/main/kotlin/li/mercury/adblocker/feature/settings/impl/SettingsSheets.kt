@@ -64,8 +64,8 @@ internal fun PinnedSheet(pinned: List<PinnedHost>, labels: Map<String, String>, 
             for ((appKey, hosts) in pinned.groupBy(PinnedHost::appKey)) {
                 val app = hosts.first()
                 val label = when {
-                    app.packageName.startsWith('@') -> profileAppLabel(app.packageName.removePrefix("@"), app.profileSerial != null, sharedGroup = true)
-                    app.profileSerial != null -> profileAppLabel(app.packageName, work = true)
+                    app.packageName.startsWith('@') -> profileAppLabel(app.packageName.removePrefix("@"), app.packageName, app.profileSerial != null, sharedGroup = true)
+                    app.profileSerial != null -> profileAppLabel(app.packageName, app.packageName, work = true)
                     else -> labels[app.packageName] ?: app.packageName
                 }
                 SectionHeader(label, trailing = hosts.size.toString())

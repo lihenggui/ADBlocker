@@ -78,6 +78,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -281,7 +282,7 @@ private fun Editor(state: RuleEditorUiState) {
             }
             BasicTextField(
                 state = state.text,
-                textStyle = textStyle,
+                textStyle = textStyle.copy(textDirection = TextDirection.Ltr, textAlign = TextAlign.Left),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 outputTransformation = remember(colors) {
                     OutputTransformation {

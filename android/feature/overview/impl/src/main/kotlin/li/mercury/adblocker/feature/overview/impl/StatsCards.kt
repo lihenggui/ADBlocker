@@ -144,7 +144,7 @@ internal fun TopApps(apps: List<Pair<AppEntry, Long>>, onOpenApp: (String) -> Un
         SegmentedItem(
             index = index,
             count = apps.size,
-            headline = profileAppLabel(entry.app.label, entry.app.profileSerial != null, entry.app.isSharedGroup),
+            headline = profileAppLabel(entry.app.label, entry.app.packageName, entry.app.profileSerial != null, entry.app.isSharedGroup),
             leading = { AppIcon(entry.app, entry.app.label) },
             supporting = {
                 Box(

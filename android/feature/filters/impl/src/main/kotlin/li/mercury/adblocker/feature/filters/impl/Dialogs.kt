@@ -54,6 +54,8 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import li.mercury.adblocker.core.data.FilterCatalog
@@ -87,7 +89,7 @@ internal fun TextInputSheet(
                 onValueChange = { value = it },
                 label = { Text(label) },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, textDirection = TextDirection.Ltr, textAlign = TextAlign.Left),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Uri, imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
             )
@@ -121,7 +123,7 @@ internal fun TestUrlSheet(result: RuleCheckResult?, onCheck: (String, String, St
     var url by rememberSaveable { mutableStateOf("") }
     var page by rememberSaveable { mutableStateOf("") }
     var kind by rememberSaveable { mutableStateOf("script") }
-    val mono = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace)
+    val mono = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace, textDirection = TextDirection.Ltr, textAlign = TextAlign.Left)
     AdaptiveSheet(onDismiss = onDismiss, title = stringResource(R.string.feature_filters_test_url)) {
         Column(Modifier.padding(horizontal = 24.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(stringResource(R.string.feature_filters_test_url_text), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)

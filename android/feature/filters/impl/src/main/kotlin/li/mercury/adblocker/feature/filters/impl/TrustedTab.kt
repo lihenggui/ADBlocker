@@ -40,6 +40,7 @@ import li.mercury.adblocker.core.ui.SectionHeader
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.animatedRow
+import li.mercury.adblocker.core.ui.isolateLtr
 import li.mercury.adblocker.core.ui.pageMargin
 import li.mercury.adblocker.core.ui.segmentedItems
 
@@ -87,7 +88,7 @@ private fun TrustedRow(host: String, index: Int, count: Int, onRemove: (String) 
         leading = { Icon(AdbIcons.Public, contentDescription = null, Modifier.size(20.dp)) },
         trailing = {
             IconButton(onClick = { onRemove(host) }) {
-                Icon(AdbIcons.Delete, contentDescription = stringResource(R.string.feature_filters_remove_trusted, host))
+                Icon(AdbIcons.Delete, contentDescription = stringResource(R.string.feature_filters_remove_trusted, isolateLtr(host)))
             }
         },
     )
