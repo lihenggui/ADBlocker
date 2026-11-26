@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">搜尋應用程式</string>
+    <string name="feature_apps_settings">設定</string>
+    <string name="feature_apps_filtered">已過濾 %1$d</string>
+    <string name="feature_apps_all">全部 %1$d</string>
+    <string name="feature_apps_section_filtered">已納入過濾</string>
+    <string name="feature_apps_section_others">其他應用程式</string>
+    <string name="feature_apps_empty_filtered">沒有已納入過濾的應用程式</string>
+    <string name="feature_apps_empty_filtered_text">選取應用程式並開啟其開關，即可開始過濾。</string>
+    <string name="feature_apps_browse_apps">瀏覽應用程式</string>
+    <string name="feature_apps_status_filtered">今天已封鎖 %1$s 次</string>
+    <string name="feature_apps_status_hosts">僅依網域過濾 · 今天已封鎖 %1$s 次</string>
+    <string name="feature_apps_status_paused">已暫停 · %1$s後繼續</string>
+    <string name="feature_apps_status_off">未過濾</string>
+    <string name="feature_apps_now_filtering">正在過濾 %1$s</string>
+    <string name="feature_apps_stopped_filtering">已停止過濾 %1$s</string>
+    <string name="feature_apps_undo">復原</string>
+    <string name="feature_apps_failed">操作失敗。請在「設定」中檢查過濾服務。</string>
+    <string name="feature_apps_select">選取應用程式</string>
+    <string name="feature_apps_select_text">查看過濾方式和封鎖次數</string>
+    <string name="feature_apps_status_work_quiet">工作資料夾已暫停</string>
+    <string name="feature_apps_status_work_unavailable">無法在工作資料夾中使用</string>
+    <string name="feature_apps_work_inventory_unavailable">無法載入部分工作資料夾中的應用程式。</string>
+    <string name="feature_apps_work_inventory_retry">重試</string>
+    <string name="feature_apps_selection_removed">已取消選取 %1$s</string>
+    <string name="feature_apps_status_mixed">HTTP 請求和 HTTPS 網域 · 今天已封鎖 %1$s 次</string>
+    <string name="feature_apps_exclude">排除</string>
+    <string name="feature_apps_include">納入</string>
+    <string name="feature_apps_excluded">已排除</string>
+    <string name="feature_apps_included">已納入 %1$s</string>
+    <string name="feature_apps_excluded_message">已排除 %1$s</string>
+    <string name="feature_apps_status_filtered_no_count">無法取得封鎖次數</string>
+    <string name="feature_apps_status_hosts_no_count">僅依網域過濾 · 無法取得封鎖次數</string>
+    <string name="feature_apps_status_mixed_no_count">HTTP 請求和 HTTPS 網域 · 無法取得封鎖次數</string>
+</resources>

@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">返回</string>
+    <string name="feature_appdetail_open">開啟 %1$s</string>
+    <string name="feature_appdetail_not_installed">這個應用程式已解除安裝</string>
+    <string name="feature_appdetail_filter_this">過濾這個應用程式</string>
+    <string name="feature_appdetail_filter_group">一併過濾這些應用程式</string>
+    <string name="feature_appdetail_pause_group">暫停過濾這組應用程式 1 小時</string>
+    <string name="feature_appdetail_shared_members">共用此 UID 的應用程式</string>
+    <string name="feature_appdetail_off">流量不會經過 ADBlocker</string>
+    <string name="feature_appdetail_on_full">封鎖廣告和追蹤器</string>
+    <string name="feature_appdetail_on_hosts">僅封鎖廣告和追蹤器的網域</string>
+    <string name="feature_appdetail_blocked">已封鎖</string>
+    <string name="feature_appdetail_today">今天</string>
+    <string name="feature_appdetail_week">近 7 天</string>
+    <string name="feature_appdetail_trouble">疑難排解</string>
+    <string name="feature_appdetail_pause">暫停過濾此應用程式 1 小時</string>
+    <string name="feature_appdetail_pause_text">網頁或功能無法正常運作時使用</string>
+    <string name="feature_appdetail_resume">繼續過濾此應用程式</string>
+    <string name="feature_appdetail_paused_until">已暫停，將於 %1$s 繼續</string>
+    <string name="feature_appdetail_requests">查看請求</string>
+    <string name="feature_appdetail_requests_text">開啟「活動」並只顯示此應用程式的請求</string>
+    <string name="feature_appdetail_group_requests_text">開啟「活動」並只顯示這組應用程式的請求</string>
+    <string name="feature_appdetail_pinned">拒絕憑證的網域</string>
+    <string name="feature_appdetail_pinned_none">無</string>
+    <string name="feature_appdetail_pinned_count">%1$d 個 · 僅依網域過濾</string>
+    <string name="feature_appdetail_pinned_text">這個應用程式會自行檢查這些網域的憑證。清除某個網域的拒絕記錄後，下次連線到該網域時會再嘗試解密。</string>
+    <string name="feature_appdetail_forget">清除記錄</string>
+    <string name="feature_appdetail_forget_all">清除所有記錄</string>
+    <string name="feature_appdetail_forgotten">已清除記錄。下次連線時會再嘗試解密。</string>
+    <string name="feature_appdetail_paused">已暫停過濾此應用程式 1 小時</string>
+    <string name="feature_appdetail_group_paused">已暫停過濾這組應用程式 1 小時</string>
+    <string name="feature_appdetail_undo">復原</string>
+    <string name="feature_appdetail_failed">操作失敗。請在「設定」中檢查過濾服務。</string>
+    <string name="feature_appdetail_level_url_filtering_off">「設定」中的依網址過濾已關閉。目前只會封鎖整個網域。</string>
+    <string name="feature_appdetail_level_unknown">過濾服務目前無法解密此應用程式的流量，因此只會依網域過濾 HTTPS 連線。</string>
+    <string name="feature_appdetail_level_needs_certificate">若要依網址過濾 HTTPS 流量，請先設定憑證。應用程式必須信任使用者憑證。</string>
+    <string name="feature_appdetail_set_up_https">設定 HTTPS 過濾</string>
+    <string name="feature_appdetail_exclusions_pending">在排除清單就緒前，HTTPS 連線只會依網域過濾。</string>
+    <string name="feature_appdetail_work_certificate">在這個應用程式信任其工作資料夾中的憑證前，HTTPS 連線會維持加密。</string>
+    <string name="feature_appdetail_work_quiet">開啟工作資料夾即可使用這個應用程式。</string>
+    <string name="feature_appdetail_work_unavailable">這個應用程式無法在工作資料夾中使用。</string>
+    <string name="feature_appdetail_shared_uid">這個應用程式與其他應用程式共用 Android UID。root 模式無法個別過濾它。</string>
+    <string name="feature_appdetail_mixed">過濾 HTTP 請求和 HTTPS 網域</string>
+    <string name="feature_appdetail_include">納入過濾</string>
+    <string name="feature_appdetail_counts_checking">正在檢查封鎖次數…</string>
+    <string name="feature_appdetail_counts_unavailable">無法取得封鎖次數</string>
+    <string name="feature_appdetail_pinned_checking">正在檢查…</string>
+    <string name="feature_appdetail_pinned_unavailable">無法讀取網域</string>
+</resources>

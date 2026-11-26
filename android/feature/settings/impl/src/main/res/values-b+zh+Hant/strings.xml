@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">設定</string>
+    <string name="feature_settings_back">返回</string>
+    <string name="feature_settings_appearance">外觀</string>
+    <string name="feature_settings_theme">主題</string>
+    <string name="feature_settings_theme_system">跟隨系統</string>
+    <string name="feature_settings_theme_light">淺色</string>
+    <string name="feature_settings_theme_dark">深色</string>
+    <string name="feature_settings_dynamic_color">桌布配色</string>
+    <string name="feature_settings_dynamic_color_text">使用桌布的顏色</string>
+    <string name="feature_settings_updates">過濾清單更新</string>
+    <string name="feature_settings_update_interval">自動更新</string>
+    <string name="feature_settings_interval_daily">每天</string>
+    <string name="feature_settings_interval_three_days">每 3 天</string>
+    <string name="feature_settings_interval_weekly">每週</string>
+    <string name="feature_settings_interval_never">永不</string>
+    <string name="feature_settings_wifi_only">僅透過 Wi-Fi 更新</string>
+    <string name="feature_settings_wifi_only_text">不透過行動數據下載過濾清單</string>
+    <string name="feature_settings_app_list">應用程式清單</string>
+    <string name="feature_settings_system_apps">顯示系統應用程式</string>
+    <string name="feature_settings_system_apps_text">預設隱藏</string>
+    <string name="feature_settings_service">過濾服務</string>
+    <string name="feature_settings_scope_checking">正在檢查過濾範圍…</string>
+    <string name="feature_settings_scope_unavailable">無法取得過濾範圍</string>
+    <string name="feature_settings_status_unknown">狀態不明</string>
+    <string name="feature_settings_status_running">執行中</string>
+    <string name="feature_settings_status_paused">已暫停</string>
+    <string name="feature_settings_status_stopped">未執行</string>
+    <string name="feature_settings_status_turned_off">已關閉</string>
+    <string name="feature_settings_turned_off_text">連續兩次未能完成啟動</string>
+    <string name="feature_settings_started">啟動於 %1$s</string>
+    <string name="feature_settings_restart">重新啟動過濾服務</string>
+    <string name="feature_settings_restart_text">重新啟動期間，應用程式仍可連線，但流量不會經過過濾</string>
+    <string name="feature_settings_turn_on_again">重新開啟</string>
+    <string name="feature_settings_module_install">設定 root 模式</string>
+    <string name="feature_settings_module_reinstall">更新 root 模式</string>
+    <string name="feature_settings_module_unavailable">無法取得 root 模式狀態</string>
+    <string name="feature_settings_module_check_again">無法取得 root 模式狀態 · 再次檢查</string>
+    <string name="feature_settings_root_not_set_up_text">尚未設定 · 應用程式仍可連線，但流量不會經過過濾</string>
+    <string name="feature_settings_root_setting_up">正在設定 root 模式…</string>
+    <string name="feature_settings_root_setup_failed">設定失敗 · 再試一次</string>
+    <string name="feature_settings_root_update_text">已安裝的版本與此應用程式的版本不同</string>
+    <string name="feature_settings_root_updating">正在更新 root 模式…</string>
+    <string name="feature_settings_root_update_failed">更新失敗 · 再試一次</string>
+    <string name="feature_settings_root_updated">root 模式已更新</string>
+    <string name="feature_settings_root_missing_text">在 root 管理工具中授予 ADBlocker root 權限 · 再次檢查</string>
+    <string name="feature_settings_root_remove">移除 root 模式</string>
+    <string name="feature_settings_root_remove_text">停止過濾並刪除 root 模式的資料</string>
+    <string name="feature_settings_root_removing">正在移除 root 模式…</string>
+    <string name="feature_settings_root_remove_failed">未移除 · 再試一次</string>
+    <string name="feature_settings_root_remove_title">要移除 root 模式嗎？</string>
+    <string name="feature_settings_root_remove_explain">過濾會停止，應用程式仍可連線，但流量不會經過過濾。root 模式的憑證授權單位會刪除，選定的應用程式、過濾清單、規則、信任的網站和統計資料也會一併刪除。主題等應用程式設定會保留。之後可以在這裡重新設定 root 模式。</string>
+    <string name="feature_settings_root_remove_confirm">移除</string>
+    <string name="feature_settings_root_removed">root 模式已移除</string>
+    <string name="feature_settings_root_flashed">已安裝為模組</string>
+    <string name="feature_settings_root_flashed_in">已在 %1$s 中安裝為模組</string>
+    <string name="feature_settings_root_flashed_text">如要移除 root 模式，請在該工具中移除模組，再重新啟動裝置</string>
+    <string name="feature_settings_root_flashed_manager_text">如要移除 root 模式，請在 root 管理工具中移除模組，再重新啟動裝置</string>
+    <string name="feature_settings_root_flashed_pending_text">下次重新啟動後生效</string>
+    <string name="feature_settings_root_restart_to_update">重新啟動裝置以完成更新</string>
+    <string name="feature_settings_root_marked_removal">已在 root 管理工具中標記為待移除 · 重新啟動裝置即可移除</string>
+    <string name="feature_settings_pinned">拒絕憑證的網域</string>
+    <string name="feature_settings_pinned_checking">正在檢查網域…</string>
+    <string name="feature_settings_pinned_unavailable">無法取得網域清單</string>
+    <string name="feature_settings_pinned_none">無</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="other">%1$d 個應用程式</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="other">%1$d 個網域</item>
+    </plurals>
+    <string name="feature_settings_data">資料</string>
+    <string name="feature_settings_export_logs">匯出記錄</string>
+    <string name="feature_settings_export_logs_text">記錄只包含執行的作業及其結果，不會記下應用程式的連線目的地</string>
+    <string name="feature_settings_about">關於</string>
+    <string name="feature_settings_app_version">版本 %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">原始碼</string>
+    <string name="feature_settings_source_text">應用程式和過濾清單的授權</string>
+    <string name="feature_settings_restarted">過濾服務已重新啟動</string>
+    <string name="feature_settings_service_timeout">過濾服務未能及時回應。</string>
+    <string name="feature_settings_module_disabled">ADBlocker 模組已在 root 管理工具中停用或標記為待移除。請前往該工具變更設定。</string>
+    <string name="feature_settings_module_disabled_in">ADBlocker 模組已在 %1$s 中停用或標記為待移除。請前往該工具變更設定。</string>
+    <string name="feature_settings_module_installed">root 模式執行中</string>
+    <string name="feature_settings_pinned_forgotten">已清除記錄。下次連線時會再嘗試解密。</string>
+    <string name="feature_settings_logs_exported_partial">已匯出應用程式記錄。無法完整讀取 root 模式的記錄。</string>
+    <string name="feature_settings_logs_exported">記錄已匯出</string>
+    <string name="feature_settings_failed">操作失敗</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">依網址過濾</string>
+    <string name="feature_settings_url_filtering_text">若支援網址規則，便會套用到每個已納入過濾的應用程式。關閉後只會封鎖整個網域。</string>
+    <string name="feature_settings_url_filtering_unknown">需要最新版本的過濾服務，且服務必須正在執行</string>
+    <string name="feature_settings_url_filtering_on">已開啟依網址過濾</string>
+    <string name="feature_settings_url_filtering_off">已關閉依網址過濾</string>
+    <string name="feature_settings_cancel">取消</string>
+    <string name="feature_settings_cosmetic">隱藏網頁元素</string>
+    <string name="feature_settings_cosmetic_text">修改已解密的網頁，隱藏過濾規則所指定的元素，例如空白的廣告框。</string>
+    <string name="feature_settings_cosmetic_security">對安全性的影響</string>
+    <string name="feature_settings_pinned_text">這些應用程式會自行檢查這些網域的憑證，因此連線只會依網域過濾。清除某個網域的拒絕記錄後，下次連線到該網域時會再嘗試解密。</string>
+    <string name="feature_settings_forget">清除記錄</string>
+    <string name="feature_settings_forget_all">清除所有記錄</string>
+    <string name="feature_settings_forget_all_title">要清除所有網域的拒絕記錄嗎？</string>
+    <string name="feature_settings_forget_all_text">這些網域各自於下次連線時都會再嘗試解密。</string>
+    <string name="feature_settings_method">過濾方式</string>
+    <string name="feature_settings_method_vpn">VPN 模式</string>
+    <string name="feature_settings_method_vpn_text">使用中 · 不需 root 權限</string>
+    <string name="feature_settings_method_vpn_available">不需 root 權限 · 依網域過濾</string>
+    <string name="feature_settings_method_root">root 模式</string>
+    <string name="feature_settings_method_root_not_set_up">尚未設定 · 可依網址過濾 HTTPS 流量</string>
+    <string name="feature_settings_method_root_restart_first">請先重新啟動裝置，以完成模組更新</string>
+    <string name="feature_settings_method_root_checking">正在檢查 root 權限</string>
+    <string name="feature_settings_method_root_available">已取得 root 權限 · 可依網址過濾 HTTPS 流量</string>
+    <string name="feature_settings_method_root_missing">未偵測到 root 權限 · 再次檢查</string>
+    <string name="feature_settings_root_missing">未偵測到 root 權限</string>
+    <string name="feature_settings_switch_root_title">要切換至 root 模式嗎？</string>
+    <string name="feature_settings_switch_root_text">ADBlocker 會設定 root 模式，之後由 root 模式接手 VPN 的工作。在 root 模式開始執行前，VPN 會保持連線。應用程式、過濾清單、規則和信任的網站都會移轉。</string>
+    <string name="feature_settings_switch_root">切換</string>
+    <string name="feature_settings_switched_to_root">已切換至 root 模式</string>
+    <string name="feature_settings_switched_to_vpn">已切換至 VPN 模式</string>
+    <string name="feature_settings_switch_root_pending">未完成切換至 root 模式。</string>
+    <string name="feature_settings_switch_root_retry">切換未完成 · 再試一次</string>
+    <string name="feature_settings_cancel_root_switch">取消切換至 root 模式</string>
+    <string name="feature_settings_cancel_root_pending">等待取消</string>
+    <string name="feature_settings_retry_root_cancel">重新嘗試取消</string>
+    <string name="feature_settings_always_on">永久連線 VPN</string>
+    <string name="feature_settings_always_on_text">Android 會在開機時及 ADBlocker 意外停止後啟動 ADBlocker</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">已開啟</string>
+    <string name="feature_settings_state_off">已關閉</string>
+    <string name="feature_settings_lockdown">封鎖沒有 VPN 的連線</string>
+    <string name="feature_settings_lockdown_on">已開啟 · 過濾停止期間，選定的應用程式無法連線</string>
+    <string name="feature_settings_lockdown_off">開啟後，過濾停止期間，選定的應用程式無法連線。只能在系統設定中調整。</string>
+    <string name="feature_settings_notifications">通知</string>
+    <string name="feature_settings_notifications_on">已允許 · 可從通知暫停過濾</string>
+    <string name="feature_settings_notifications_off">未允許 · 過濾仍可運作</string>
+    <string name="feature_settings_https_setup">設定 HTTPS 過濾</string>
+    <string name="feature_settings_https_not_set_up">尚未設定 · 應用程式必須信任使用者憑證</string>
+    <string name="feature_settings_https_installed">憑證已安裝 · 管理依網址過濾</string>
+    <string name="feature_settings_url_filtering_needs_certificate">若要依網址過濾 HTTPS 流量，請先安裝憑證。</string>
+    <string name="feature_settings_remove_certificate">移除憑證</string>
+    <string name="feature_settings_remove_certificate_text">關閉解密並開啟系統設定</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker 會先關閉 HTTPS 解密，接著即可在 Android 設定中移除憑證。</string>
+    <string name="feature_settings_remove_certificate_path">安全性與隱私權 › 其他安全性和隱私權設定 › 加密和憑證 › 信任的憑證 › 使用者 › ADBlocker user CA › 解除安裝</string>
+    <string name="feature_settings_remove_certificate_vary">選單名稱因裝置製造商而異。</string>
+    <string name="feature_settings_remove_certificate_open">關閉並開啟設定</string>
+</resources>

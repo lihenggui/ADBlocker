@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">過濾</string>
+    <string name="feature_filters_settings">設定</string>
+    <string name="feature_filters_tab_lists">訂閱</string>
+    <string name="feature_filters_tab_rules">我的規則</string>
+    <string name="feature_filters_tab_trusted">信任的網站</string>
+    <string name="feature_filters_add_list">新增過濾清單</string>
+    <string name="feature_filters_add_list_text">輸入採用 EasyList 或 uBlock Origin 語法的過濾清單網址。僅支援 HTTPS 網址。</string>
+    <string name="feature_filters_add_list_label">過濾清單網址</string>
+    <string name="feature_filters_add">新增</string>
+    <string name="feature_filters_cancel">取消</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="other">已下載的規則 · %1$d 份過濾清單</item>
+    </plurals>
+    <string name="feature_filters_update_now">立即更新</string>
+    <string name="feature_filters_updating">正在更新</string>
+    <string name="feature_filters_update_progress">更新進度</string>
+    <string name="feature_filters_last_updated">更新於 %1$s</string>
+    <string name="feature_filters_never_updated">尚未下載</string>
+    <string name="feature_filters_subscribed_header">已訂閱</string>
+    <string name="feature_filters_available">可訂閱 · %1$s</string>
+    <string name="feature_filters_subscribe">訂閱 %1$s</string>
+    <string name="feature_filters_list_fetching">正在下載並檢查</string>
+    <string name="feature_filters_list_failed">更新失敗</string>
+    <string name="feature_filters_list_done">%1$s 條規則 · 剛剛更新</string>
+    <string name="feature_filters_list_off">已關閉</string>
+    <string name="feature_filters_list_error">上次更新失敗</string>
+    <string name="feature_filters_list_pending">等待下載</string>
+    <string name="feature_filters_list_detail">%1$s 條規則 · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s 條規則</string>
+    <string name="feature_filters_list_last_error">上次錯誤：%1$s</string>
+    <string name="feature_filters_remove_list">取消訂閱</string>
+    <string name="feature_filters_cosmetic_note">這個類別的過濾清單主要用來隱藏網頁元素。在「設定」中關閉「隱藏網頁元素」，即可停用這些規則。</string>
+    <string name="feature_filters_my_rules">我的規則</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="other">%1$d 條規則</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="other">%1$d 條規則 · %2$d 條未套用</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">無法檢查規則</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">編輯</string>
+    <string name="feature_filters_tools">工具</string>
+    <string name="feature_filters_block_domain">封鎖網域</string>
+    <string name="feature_filters_block_domain_supporting">新增類似 ||example.com^ 的規則</string>
+    <string name="feature_filters_block_domain_text">在所有已納入過濾的應用程式中，封鎖該網域及其子網域。</string>
+    <string name="feature_filters_domain_label">網域</string>
+    <string name="feature_filters_block">封鎖</string>
+    <string name="feature_filters_test_url">測試網址</string>
+    <string name="feature_filters_test_url_supporting">顯示會封鎖此網址的規則</string>
+    <string name="feature_filters_import">匯入規則</string>
+    <string name="feature_filters_import_supporting">採用 uBlock Origin 或 AdGuard 語法</string>
+    <string name="feature_filters_export">匯出規則</string>
+    <string name="feature_filters_export_supporting">匯出為 .txt 檔案</string>
+    <string name="feature_filters_syntax_note">在「設定」中關閉「隱藏網頁元素」，即可停用隱藏網頁元素的規則 (##)。</string>
+    <string name="feature_filters_trusted_text">連往這些網站的連線不會被解密或封鎖。適用於網路銀行、內部網路和付款頁面。</string>
+    <string name="feature_filters_add_trusted">新增網站</string>
+    <string name="feature_filters_remove_trusted">移除 %1$s</string>
+    <string name="feature_filters_url_label">網址</string>
+    <string name="feature_filters_page_label">來源網頁（選填）</string>
+    <string name="feature_filters_check">檢查</string>
+    <string name="feature_filters_would_block">會封鎖</string>
+    <string name="feature_filters_would_allow">不會封鎖</string>
+    <string name="feature_filters_source_mine">我的規則</string>
+    <string name="feature_filters_kind_script">指令碼</string>
+    <string name="feature_filters_kind_image">圖片</string>
+    <string name="feature_filters_kind_document">網頁</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">其他</string>
+    <string name="feature_filters_issue_invalid">無法將這一行讀取為規則。</string>
+    <string name="feature_filters_issue_invalid_option">這一行含有無效的選項 %1$s。</string>
+    <string name="feature_filters_issue_unsupported">此版本不會套用這種格式的規則。</string>
+    <string name="feature_filters_issue_unsupported_named">此版本不會套用 %1$s。</string>
+    <string name="feature_filters_issue_inapplicable">這條規則在此處沒有可作用的對象。</string>
+    <string name="feature_filters_issue_inapplicable_named">選項 %1$s 在此處沒有可作用的對象。</string>
+    <string name="feature_filters_issue_malformed_directive">條件指令格式錯誤。</string>
+    <string name="feature_filters_issue_unsupported_include">此版本不會載入透過指令納入的過濾清單。</string>
+    <string name="feature_filters_issue_line">第 %1$d 行</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="other">另有 %1$d 個問題。</item>
+    </plurals>
+    <string name="feature_filters_back">返回</string>
+    <string name="feature_filters_save">儲存並套用</string>
+    <string name="feature_filters_undo">復原</string>
+    <string name="feature_filters_redo">重做</string>
+    <string name="feature_filters_discard_title">要捨棄變更嗎？</string>
+    <string name="feature_filters_discard_text">規則的變更尚未儲存。</string>
+    <string name="feature_filters_discard_failed">無法刪除草稿。請再次捨棄。</string>
+    <string name="feature_filters_discard">捨棄</string>
+    <string name="feature_filters_keep_editing">繼續編輯</string>
+    <string name="feature_filters_rules_saved">規則已儲存並套用</string>
+    <string name="feature_filters_earlier_rules_saved">先前的變更已套用，新的編輯尚未儲存。</string>
+    <string name="feature_filters_draft_failed">無法保留規則草稿供稍後編輯</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="other">已更新 %1$d 份過濾清單</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="other">已更新 %1$d 份過濾清單，另有 %2$d 份更新失敗</item>
+    </plurals>
+    <string name="feature_filters_update_failed">過濾清單更新失敗</string>
+    <string name="feature_filters_subscribed">已訂閱。正在下載過濾清單。</string>
+    <string name="feature_filters_removed">已取消訂閱</string>
+    <string name="feature_filters_https_only">僅支援 HTTPS 網址</string>
+    <string name="feature_filters_not_a_domain">網域無效</string>
+    <string name="feature_filters_blocked_domain">已封鎖 %1$s</string>
+    <string name="feature_filters_trusted">已將 %1$s 加入信任的網站</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="other">已匯入 %1$d 條規則</item>
+    </plurals>
+    <string name="feature_filters_exported">規則已匯出</string>
+    <string name="feature_filters_failed">操作失敗。請在「設定」中檢查過濾服務。</string>
+    <string name="feature_filters_issue_separator">：</string>
+    <string name="feature_filters_search">搜尋過濾清單和規則</string>
+    <string name="feature_filters_search_hint">搜尋過濾清單和規則</string>
+    <string name="feature_filters_search_none">沒有結果</string>
+    <string name="feature_filters_search_available">可訂閱的過濾清單</string>
+    <string name="feature_filters_list_on">已開啟</string>
+    <string name="feature_filters_block_preview">將新增 %1$s</string>
+    <string name="feature_filters_list_added">%1$s 條規則 · 剛剛更新，新增 %2$s 條</string>
+    <string name="feature_filters_test_url_text">使用目前的過濾清單和規則檢查請求。</string>
+    <string name="feature_filters_syntax">規則語法</string>
+    <string name="feature_filters_syntax_text">每行一條規則，採用 EasyList、uBlock Origin 或 AdGuard 語法。</string>
+    <string name="feature_filters_syntax_host">封鎖網域及其子網域。</string>
+    <string name="feature_filters_syntax_option">$ 後的選項會限制規則的適用範圍。此例只封鎖來自其他網站的請求。</string>
+    <string name="feature_filters_syntax_app">$app= 將規則限制在指定的應用程式。</string>
+    <string name="feature_filters_syntax_path">封鎖符合條件的網址。* 可比對任何文字，$image 則讓規則只適用於圖片。</string>
+    <string name="feature_filters_syntax_exception">@@ 允許原本會被其他規則封鎖的請求。</string>
+    <string name="feature_filters_syntax_cosmetic">隱藏網頁元素。在「設定」中關閉「隱藏網頁元素」，即可停用這條規則。</string>
+    <string name="feature_filters_syntax_comment">以 ! 開頭的行是註解。</string>
+    <string name="feature_filters_import_too_large">檔案大小超過規則的 16 MB 上限</string>
+    <string name="feature_filters_schedule">%1$s更新</string>
+    <string name="feature_filters_schedule_wifi">%1$s透過 Wi-Fi 更新</string>
+    <string name="feature_filters_schedule_never">不自動更新</string>
+    <string name="feature_filters_every_day">每天</string>
+    <string name="feature_filters_every_three_days">每 3 天</string>
+    <string name="feature_filters_every_week">每週</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="other">已更新 %1$d 份過濾清單，新增 %2$s 條規則</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">HTTPS 排除清單尚未就緒。目前只會依網域過濾。</string>
+    <string name="feature_filters_exclusions_failed">部分 HTTPS 排除清單無法更新。仍會使用已儲存的版本。</string>
+</resources>

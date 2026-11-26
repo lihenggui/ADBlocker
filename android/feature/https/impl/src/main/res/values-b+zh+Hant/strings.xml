@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">HTTPS 過濾</string>
+    <string name="feature_https_back">返回</string>
+    <string name="feature_https_step">步驟 %1$d，共 %2$d 步</string>
+    <string name="feature_https_later">稍後</string>
+    <string name="feature_https_continue">繼續</string>
+    <string name="feature_https_previous">上一步</string>
+    <string name="feature_https_impact_title">對安全性的影響</string>
+    <string name="feature_https_impact_text">若要過濾 HTTPS 連線中的請求，系統的使用者憑證中必須有 ADBlocker 憑證。</string>
+    <string name="feature_https_impact_key">這張憑證在此裝置上建立。私密金鑰會保留在應用程式的私人儲存空間中，解除安裝應用程式時就會刪除。</string>
+    <string name="feature_https_impact_apps">只有信任使用者憑證的應用程式，其 HTTPS 流量才能解密。這類應用程式主要是部分瀏覽器。其他應用程式仍會依網域過濾。</string>
+    <string name="feature_https_impact_notice">安裝後，系統會持續顯示「網路可能會受到監控」通知。</string>
+    <string name="feature_https_impact_remove">隨時都可在系統設定中移除憑證。可從「設定 › HTTPS」前往。</string>
+    <string name="feature_https_install_title">安裝憑證</string>
+    <string name="feature_https_install_text">Android 不允許應用程式安裝憑證。請在系統設定中安裝。</string>
+    <string name="feature_https_install_save">儲存憑證</string>
+    <string name="feature_https_install_save_text">將 ADBlocker.crt 儲存到這部裝置</string>
+    <string name="feature_https_install_saved">已儲存為 ADBlocker.crt</string>
+    <string name="feature_https_install_open">開啟系統設定</string>
+    <string name="feature_https_install_open_text">安全性與隱私權 › 其他安全性和隱私權設定 › 加密和憑證 › 安裝憑證 › CA 憑證</string>
+    <string name="feature_https_install_choose">選取 ADBlocker.crt 並確認</string>
+    <string name="feature_https_install_choose_text">選單名稱因裝置製造商而異</string>
+    <string name="feature_https_install_not_found">使用者憑證中尚未出現這張憑證。</string>
+    <string name="feature_https_save">儲存憑證</string>
+    <string name="feature_https_open_security">開啟安全性設定</string>
+    <string name="feature_https_save_failed">無法儲存憑證</string>
+    <string name="feature_https_apps_title">憑證已安裝</string>
+    <string name="feature_https_apps_text">網址規則適用於所有支援這類規則且已納入過濾的應用程式。拒絕憑證的應用程式，其 HTTPS 流量會維持加密。</string>
+    <string name="feature_https_turn_on">繼續</string>
+    <string name="feature_https_failed">操作失敗</string>
+    <string name="feature_https_done_title">已開啟依網址過濾</string>
+    <string name="feature_https_result_full">完整過濾</string>
+    <string name="feature_https_result_hosts">僅依網域過濾</string>
+    <string name="feature_https_done_hint">可在「設定」中變更依網址過濾的設定。</string>
+    <string name="feature_https_finish">完成</string>
+    <string name="feature_https_work_title">工作資料夾的 HTTPS</string>
+    <string name="feature_https_work_instructions">請儲存公開憑證，並請工作資料夾管理員在該資料夾內安裝。如果機構政策允許，也可在該資料夾的憑證設定中安裝。HTTPS 過濾適用於信任工作資料夾憑證的應用程式。</string>
+    <string name="feature_https_work_save">儲存憑證</string>
+    <string name="feature_https_work_saved">憑證已儲存</string>
+    <string name="feature_https_result_certificate">僅依網域過濾 · 未安裝憑證</string>
+    <string name="feature_https_result_exclusions">僅依網域過濾 · 正在載入 HTTPS 排除清單</string>
+    <string name="feature_https_results_unavailable">無法讀取應用程式的過濾結果</string>
+</resources>

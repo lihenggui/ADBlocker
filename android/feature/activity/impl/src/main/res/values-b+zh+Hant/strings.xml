@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">活動</string>
+    <string name="feature_activity_settings">設定</string>
+    <string name="feature_activity_start_recording">開始記錄</string>
+    <string name="feature_activity_stop_recording">停止記錄</string>
+    <string name="feature_activity_starting">正在開始記錄…</string>
+    <string name="feature_activity_recording">正在記錄請求</string>
+    <string name="feature_activity_recorded">已停止記錄</string>
+    <string name="feature_activity_interrupted">記錄已中斷</string>
+    <string name="feature_activity_no_recording">尚無記錄</string>
+    <string name="feature_activity_recording_intro">記錄已納入過濾的應用程式所送出的請求。記錄期間可以切換應用程式。最近 500 筆請求會保留在記憶體中。</string>
+    <string name="feature_activity_no_matches">沒有符合這些篩選條件的請求</string>
+    <string name="feature_activity_empty_result">未記錄到任何請求</string>
+    <string name="feature_activity_app_requests_hint">在「活動」中開始記錄，即可在這裡查看請求。</string>
+    <string name="feature_activity_notification_channel">活動記錄</string>
+    <string name="feature_activity_notification_title">ADBlocker 正在記錄活動</string>
+    <string name="feature_activity_all">全部</string>
+    <string name="feature_activity_blocked">已封鎖</string>
+    <string name="feature_activity_allowed">已允許</string>
+    <string name="feature_activity_encrypted">未解密</string>
+    <string name="feature_activity_all_apps">所有應用程式</string>
+    <string name="feature_activity_dropped">（已略過 %1$d 筆）</string>
+    <string name="feature_activity_empty">正在等待請求</string>
+    <string name="feature_activity_empty_idle">目前沒有流量正在過濾</string>
+    <string name="feature_activity_verdict_blocked">已封鎖請求</string>
+    <string name="feature_activity_verdict_host_blocked">已封鎖網域</string>
+    <string name="feature_activity_verdict_allowed">已允許</string>
+    <string name="feature_activity_verdict_passed">未解密</string>
+    <string name="feature_activity_kind_script">指令碼</string>
+    <string name="feature_activity_kind_image">圖片</string>
+    <string name="feature_activity_kind_document">網頁</string>
+    <string name="feature_activity_kind_stylesheet">樣式表</string>
+    <string name="feature_activity_kind_font">字型</string>
+    <string name="feature_activity_kind_media">媒體</string>
+    <string name="feature_activity_app">應用程式</string>
+    <string name="feature_activity_kind">類型</string>
+    <string name="feature_activity_page">網頁</string>
+    <string name="feature_activity_rule">目前比對到的規則 (GET)</string>
+    <string name="feature_activity_rule_unavailable">無法取得</string>
+    <string name="feature_activity_why">原因</string>
+    <string name="feature_activity_my_rules">我的規則</string>
+    <string name="feature_activity_reason_pinned">這個應用程式不接受此網域的 ADBlocker 憑證，因此只會依網域過濾。</string>
+    <string name="feature_activity_reason_hosts_only">這筆連線是依網域過濾的。當時依網址過濾已關閉，或無法檢查 HTTPS 流量。</string>
+    <string name="feature_activity_reason_excluded">此網域列在某份 HTTPS 排除清單中，例如銀行清單。</string>
+    <string name="feature_activity_reason_trusted">此網站已設為信任。</string>
+    <string name="feature_activity_reason_sensitive">伺服器使用延伸驗證憑證，因此不會解密此連線。</string>
+    <string name="feature_activity_reason_no_name">此連線未指定網域。</string>
+    <string name="feature_activity_reason_untrusted">這個應用程式尚未信任 ADBlocker。</string>
+    <string name="feature_activity_reason_unverified">無法驗證伺服器，因此由應用程式自行檢查。</string>
+    <string name="feature_activity_reason_other">未讀取內容，直接交由應用程式處理。</string>
+    <string name="feature_activity_trust_site">信任 %1$s</string>
+    <string name="feature_activity_block_host">封鎖此網域</string>
+    <string name="feature_activity_block_in_app">在 %1$s 中封鎖</string>
+    <string name="feature_activity_block_in_all_apps">在所有應用程式中封鎖</string>
+    <string name="feature_activity_forget">重試解密</string>
+    <string name="feature_activity_copy">複製</string>
+    <string name="feature_activity_trusted">已將 %1$s 加入信任的網站</string>
+    <string name="feature_activity_blocked_host_everywhere">已在所有應用程式中封鎖 %1$s</string>
+    <string name="feature_activity_blocked_host_in_app">已在 %2$s 中封鎖 %1$s</string>
+    <string name="feature_activity_forgotten">下次連線時會再嘗試解密</string>
+    <string name="feature_activity_failed">操作失敗。請在「設定」中檢查過濾服務。</string>
+    <string name="feature_activity_select">選取請求</string>
+    <string name="feature_activity_select_text">依目前的規則檢查網址，或信任或封鎖該網站</string>
+    <string name="feature_activity_reason_host_blocked">整個網域已遭封鎖，因此拒絕了這筆連線。</string>
+    <string name="feature_activity_app_requests">請求</string>
+    <string name="feature_activity_open_activity">在「活動」中開啟</string>
+    <string name="feature_activity_reason_exclusions_pending">HTTPS 排除清單尚未就緒</string>
+    <string name="feature_activity_apps_unavailable">無法載入應用程式名稱或篩選選項</string>
+    <string name="feature_activity_status_unavailable">無法取得過濾狀態</string>
+</resources>

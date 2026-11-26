@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">尋找應用程式</string>
+    <string name="feature_onboarding_back">返回</string>
+    <string name="feature_onboarding_step">步驟 %1$d，共 %2$d 步</string>
+    <string name="feature_onboarding_welcome_text">使用瀏覽器廣告封鎖工具的過濾清單，過濾來自選定的應用程式的網路請求。</string>
+    <string name="feature_onboarding_start">開始</string>
+    <string name="feature_onboarding_fact_private">沒有資料會傳出裝置。ADBlocker 只會在 VPN 模式下連線，且僅連往選定的應用程式指定的目的地，以及過濾清單的來源。</string>
+    <string name="feature_onboarding_fact_methods">可使用 root 模式或 VPN 模式。</string>
+    <string name="feature_onboarding_fact_chosen">只會過濾選定的應用程式。其他應用程式的連線不會被讀取。</string>
+    <string name="feature_onboarding_check_title">裝置檢查</string>
+    <string name="feature_onboarding_check_text">確認這部裝置能否執行 ADBlocker。</string>
+    <string name="feature_onboarding_checking">正在檢查</string>
+    <string name="feature_onboarding_ok">確定</string>
+    <string name="feature_onboarding_check_root">root 權限</string>
+    <string name="feature_onboarding_check_android">Android 版本</string>
+    <string name="feature_onboarding_check_kernel">核心功能</string>
+    <string name="feature_onboarding_check_arch">處理器</string>
+    <string name="feature_onboarding_check_root_failed">尚未授權。請在 root 管理工具 (KernelSU、Magisk 或 APatch) 中授予 ADBlocker root 權限。</string>
+    <string name="feature_onboarding_check_android_failed">需要 Android 12 以上版本</string>
+    <string name="feature_onboarding_check_kernel_failed">缺少過濾所需的功能</string>
+    <string name="feature_onboarding_check_arch_failed">僅支援 arm64 和 x86_64</string>
+    <string name="feature_onboarding_check_again">再次檢查</string>
+    <string name="feature_onboarding_continue">繼續</string>
+    <string name="feature_onboarding_cert_title">依網址過濾</string>
+    <string name="feature_onboarding_cert_text">網址規則會在支援的情況下套用到已納入過濾的應用程式，包括 HTTPS 流量。若只想封鎖整個網域，請在「設定」中關閉「依網址過濾」。</string>
+    <string name="feature_onboarding_cert_key">私密金鑰會在這部裝置上建立並保留於裝置內，只有 root 能讀取。移除 root 模式時會刪除金鑰。</string>
+    <string name="feature_onboarding_cert_notice">會先使用系統信任的憑證驗證每個伺服器。若伺服器未通過驗證，就不會為它簽發任何憑證。</string>
+    <string name="feature_onboarding_cert_browsers">已納入過濾的瀏覽器會略過部分憑證檢查，例如憑證透明度檢查。</string>
+    <string name="feature_onboarding_cert_ack">我瞭解</string>
+    <string name="feature_onboarding_apps_title">選擇要過濾的應用程式</string>
+    <string name="feature_onboarding_apps_text">選取要過濾的應用程式。之後也可以再新增。</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="other">繼續（已選取 %1$d 個）</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">過濾清單</string>
+    <string name="feature_onboarding_lists_text">會根據系統地區選取地區專用的過濾清單。可變更選取的項目。</string>
+    <string name="feature_onboarding_installing_title">正在設定</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="other">正在過濾 %1$d 個應用程式</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">已開始過濾選定的應用程式。如果有應用程式無法正常運作，可在「總覽」頁面暫停過濾。</string>
+    <string name="feature_onboarding_failed_title">設定失敗</string>
+    <string name="feature_onboarding_failed_text">無法設定 root 模式。應用程式的網路連線不受影響。</string>
+    <string name="feature_onboarding_restart_to_update">請重新啟動裝置以完成模組更新，再開啟 ADBlocker。</string>
+    <string name="feature_onboarding_try_again">再試一次</string>
+    <string name="feature_onboarding_finish">完成</string>
+    <string name="feature_onboarding_check_after_root">取得 root 權限後檢查</string>
+    <string name="feature_onboarding_apps_none">沒有可過濾的應用程式</string>
+    <string name="feature_onboarding_apps_none_text">這裡會顯示已安裝且可使用網路的應用程式。</string>
+    <string name="feature_onboarding_all_apps_withheld">系統尚未允許 ADBlocker 讀取已安裝的應用程式清單。取得權限前，大多數應用程式的流量都不會經過過濾。</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · 已授權</string>
+    <string name="feature_onboarding_check_root_granted_plain">已授權</string>
+    <string name="feature_onboarding_check_kernel_ok">支援過濾所需的功能</string>
+    <string name="feature_onboarding_check_kernel_unverified">開始過濾時檢查</string>
+    <string name="feature_onboarding_lists_hint">「過濾」頁面提供更多過濾清單。</string>
+    <string name="feature_onboarding_step_module">設定 root 模式</string>
+    <string name="feature_onboarding_step_apps">加入選定的應用程式</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="other">下載 %1$d 份過濾清單</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">開始過濾</string>
+    <string name="feature_onboarding_install_progress">設定進度</string>
+    <string name="feature_onboarding_check_no_root_text">未偵測到 root 權限。可以使用 VPN 模式過濾，或在取得 root 權限後使用 root 模式。</string>
+    <string name="feature_onboarding_check_unsupported_text">這部裝置不支援 root 模式。可以使用 VPN 模式過濾。</string>
+    <string name="feature_onboarding_check_root_not_detected">未偵測到</string>
+    <string name="feature_onboarding_check_root_again">再次檢查 root 權限</string>
+    <string name="feature_onboarding_method">過濾方式</string>
+    <string name="feature_onboarding_method_vpn">VPN 模式</string>
+    <string name="feature_onboarding_method_vpn_text">不需 root 權限。會占用系統的 VPN 連線，並依網域過濾選定的應用程式。</string>
+    <string name="feature_onboarding_method_root">root 模式</string>
+    <string name="feature_onboarding_method_root_no_root">可依網址過濾加密網站。需要 root 權限。</string>
+    <string name="feature_onboarding_method_root_unsupported">可依網址過濾加密網站。此裝置不支援。</string>
+    <string name="feature_onboarding_vpn_title">VPN 模式</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker 會在這部裝置上建立 VPN。只有選定的應用程式會透過這個 VPN 連線。</string>
+    <string name="feature_onboarding_vpn_apps">選定的應用程式會透過本機 VPN 連線。其他應用程式不受影響。</string>
+    <string name="feature_onboarding_vpn_domains">會依各筆連線的目的網域封鎖廣告和追蹤器的網域。連線不會被解密。</string>
+    <string name="feature_onboarding_vpn_one">Android 同一時間只允許一個 VPN。開始過濾時，其他 VPN 應用程式會中斷連線。</string>
+    <string name="feature_onboarding_vpn_local">VPN 不會連線到任何遠端伺服器。資料會留在裝置上。</string>
+    <string name="feature_onboarding_vpn_hint">之後可以在「設定」中設定依網址過濾加密網站。</string>
+    <string name="feature_onboarding_filter_later_title">稍後再過濾應用程式</string>
+    <string name="feature_onboarding_filter_later_text">準備好開始過濾時，可在「應用程式」頁面新增要過濾的項目。</string>
+    <string name="feature_onboarding_save_setup">儲存設定</string>
+    <string name="feature_onboarding_start_text">開始過濾前，需要取得兩項系統權限。</string>
+    <string name="feature_onboarding_grant_notifications">通知</string>
+    <string name="feature_onboarding_grant_notifications_text">過濾時會顯示通知，可從通知暫停過濾</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">在系統對話方塊中確認</string>
+    <string name="feature_onboarding_grant_lists_text">首次下載時需要網路連線</string>
+    <string name="feature_onboarding_vpn_refused">尚未允許建立 VPN。須允許 VPN 才能開始過濾。</string>
+    <string name="feature_onboarding_starting_title">正在啟動</string>
+    <string name="feature_onboarding_start_failed_title">未能開始過濾</string>
+    <string name="feature_onboarding_start_failed_text">無法啟動 VPN。應用程式的網路連線不受影響。</string>
+    <string name="feature_onboarding_done_text_vpn">隨時可從通知暫停過濾。</string>
+    <string name="feature_onboarding_notifications_allowed">已允許通知</string>
+    <string name="feature_onboarding_notifications_off">未允許通知</string>
+    <string name="feature_onboarding_notifications_off_text">可在「設定」中允許通知</string>
+    <string name="feature_onboarding_vpn_connected">VPN 已連線</string>
+    <string name="feature_onboarding_vpn_connected_text">只有選定的應用程式會使用 VPN</string>
+    <string name="feature_onboarding_lists_downloaded">過濾清單已下載</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="other">%1$d 份過濾清單</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="other">%1$s 條規則</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">過濾清單未下載</string>
+    <string name="feature_onboarding_lists_failed_text">會在背景重試</string>
+    <string name="feature_onboarding_done_https">若要在瀏覽器中依網址過濾加密網站，請在「設定」中設定解密。</string>
+</resources>
