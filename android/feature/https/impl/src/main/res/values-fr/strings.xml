@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">Filtrage HTTPS</string>
+    <string name="feature_https_back">Retour</string>
+    <string name="feature_https_step">Étape %1$d sur %2$d</string>
+    <string name="feature_https_later">Plus tard</string>
+    <string name="feature_https_continue">Continuer</string>
+    <string name="feature_https_previous">Retour</string>
+    <string name="feature_https_impact_title">Impact sur la sécurité</string>
+    <string name="feature_https_impact_text">Pour filtrer les requêtes dans le trafic HTTPS, le certificat ADBlocker doit figurer parmi les certificats utilisateur du système.</string>
+    <string name="feature_https_impact_key">Le certificat est créé sur cet appareil. Sa clé privée reste dans l\'espace de stockage privé de l\'application et est supprimée lors de la désinstallation de celle-ci.</string>
+    <string name="feature_https_impact_apps">Seul le trafic des applications qui font confiance aux certificats utilisateur peut être déchiffré. Il s\'agit surtout de certains navigateurs. Le filtrage des autres applications se fait toujours par domaine.</string>
+    <string name="feature_https_impact_notice">Une fois le certificat installé, le système continue d\'afficher le message « Il est possible que le réseau soit surveillé ».</string>
+    <string name="feature_https_impact_remove">Vous pouvez retirer le certificat à tout moment dans les paramètres système. Le chemin Paramètres › HTTPS vous y mène.</string>
+    <string name="feature_https_install_title">Installer le certificat</string>
+    <string name="feature_https_install_text">Android n\'autorise pas les applications à installer des certificats. L\'installation se fait dans les paramètres système.</string>
+    <string name="feature_https_install_save">Enregistrer le certificat</string>
+    <string name="feature_https_install_save_text">Enregistre ADBlocker.crt sur l\'appareil</string>
+    <string name="feature_https_install_saved">Enregistré sous le nom ADBlocker.crt</string>
+    <string name="feature_https_install_open">Ouvrir les paramètres système</string>
+    <string name="feature_https_install_open_text">Sécurité et confidentialité › Sécurité et confidentialité renforcées › Chiffrement et identifiants › Installer un certificat › Certificat CA</string>
+    <string name="feature_https_install_choose">Sélectionnez ADBlocker.crt et confirmez</string>
+    <string name="feature_https_install_choose_text">Les noms des menus varient selon le fabricant</string>
+    <string name="feature_https_install_not_found">Le certificat ne figure pas encore parmi les certificats utilisateur.</string>
+    <string name="feature_https_save">Enregistrer le certificat</string>
+    <string name="feature_https_open_security">Ouvrir les paramètres de sécurité</string>
+    <string name="feature_https_save_failed">Le certificat n\'a pas pu être enregistré</string>
+    <string name="feature_https_apps_title">Certificat installé</string>
+    <string name="feature_https_apps_text">Les règles d\'URL s\'appliquent à toutes les applications filtrées lorsque c\'est possible. Le trafic des applications qui refusent le certificat reste chiffré.</string>
+    <string name="feature_https_turn_on">Continuer</string>
+    <string name="feature_https_failed">L\'action a échoué</string>
+    <string name="feature_https_done_title">Le filtrage des URL est activé</string>
+    <string name="feature_https_result_full">Filtrage complet</string>
+    <string name="feature_https_result_hosts">Par domaine uniquement</string>
+    <string name="feature_https_done_hint">Modifiez le filtrage des URL dans les paramètres.</string>
+    <string name="feature_https_finish">Terminer</string>
+    <string name="feature_https_work_title">HTTPS du profil professionnel</string>
+    <string name="feature_https_work_instructions">Enregistrez le certificat public et demandez à l\'administrateur du profil professionnel de l\'installer dans ce profil, ou utilisez les paramètres de certificats du profil si les règles de votre organisation le permettent. Le filtrage HTTPS s\'applique aux applications qui font confiance aux certificats du profil professionnel.</string>
+    <string name="feature_https_work_save">Enregistrer le certificat</string>
+    <string name="feature_https_work_saved">Certificat enregistré</string>
+    <string name="feature_https_result_certificate">Par domaine uniquement · certificat manquant</string>
+    <string name="feature_https_result_exclusions">Par domaine uniquement · chargement des exclusions HTTPS</string>
+    <string name="feature_https_results_unavailable">Impossible de lire les résultats du filtrage par application</string>
+</resources>

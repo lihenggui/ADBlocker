@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Retour</string>
+    <string name="feature_appdetail_open">Ouvrir %1$s</string>
+    <string name="feature_appdetail_not_installed">Cette application n\'est plus installée</string>
+    <string name="feature_appdetail_filter_this">Filtrer cette application</string>
+    <string name="feature_appdetail_filter_group">Filtrer ces applications ensemble</string>
+    <string name="feature_appdetail_pause_group">Pause du groupe (1 h)</string>
+    <string name="feature_appdetail_shared_members">Applications partageant cet UID</string>
+    <string name="feature_appdetail_off">Le trafic ne passe pas par ADBlocker</string>
+    <string name="feature_appdetail_on_full">Bloque les publicités et les traqueurs</string>
+    <string name="feature_appdetail_on_hosts">Bloque uniquement les domaines de publicité et de suivi</string>
+    <string name="feature_appdetail_blocked">Bloqués</string>
+    <string name="feature_appdetail_today">Aujourd\'hui</string>
+    <string name="feature_appdetail_week">7 jours</string>
+    <string name="feature_appdetail_trouble">Dépannage</string>
+    <string name="feature_appdetail_pause">Pause de 1 h</string>
+    <string name="feature_appdetail_pause_text">À utiliser lorsqu\'une page ou une fonctionnalité ne fonctionne pas</string>
+    <string name="feature_appdetail_resume">Reprendre le filtrage</string>
+    <string name="feature_appdetail_paused_until">En pause jusqu\'à %1$s</string>
+    <string name="feature_appdetail_requests">Voir les requêtes</string>
+    <string name="feature_appdetail_requests_text">Ouvre la page Activité avec les requêtes de cette application</string>
+    <string name="feature_appdetail_group_requests_text">Ouvre la page Activité avec les requêtes de ce groupe</string>
+    <string name="feature_appdetail_pinned">Domaines qui refusent le certificat</string>
+    <string name="feature_appdetail_pinned_none">Aucun</string>
+    <string name="feature_appdetail_pinned_count">%1$d · filtrés par domaine uniquement</string>
+    <string name="feature_appdetail_pinned_text">Cette application vérifie elle-même les certificats de ces domaines. Une fois un domaine oublié, le déchiffrement est retenté à sa prochaine connexion.</string>
+    <string name="feature_appdetail_forget">Oublier</string>
+    <string name="feature_appdetail_forget_all">Tout oublier</string>
+    <string name="feature_appdetail_forgotten">Domaine oublié. Nouvelle tentative de déchiffrement à la prochaine connexion.</string>
+    <string name="feature_appdetail_paused">Application en pause pendant 1 h</string>
+    <string name="feature_appdetail_group_paused">Groupe en pause pendant 1 h</string>
+    <string name="feature_appdetail_undo">Annuler</string>
+    <string name="feature_appdetail_failed">L\'action a échoué. Vérifiez le service de filtrage dans les paramètres.</string>
+    <string name="feature_appdetail_level_url_filtering_off">Le filtrage des URL est désactivé dans les paramètres. Seuls des domaines entiers sont bloqués.</string>
+    <string name="feature_appdetail_level_unknown">Le service de filtrage ne peut pas déchiffrer le trafic de cette application pour le moment. Les connexions HTTPS sont donc filtrées uniquement par domaine.</string>
+    <string name="feature_appdetail_level_needs_certificate">Pour filtrer les URL dans le trafic HTTPS, configurez le certificat. L\'application doit faire confiance aux certificats utilisateur.</string>
+    <string name="feature_appdetail_set_up_https">Configurer le filtrage HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">Les connexions HTTPS sont filtrées par domaine tant que les listes d\'exclusion ne sont pas prêtes.</string>
+    <string name="feature_appdetail_work_certificate">Les connexions HTTPS restent chiffrées tant que cette application ne fait pas confiance au certificat dans son profil professionnel.</string>
+    <string name="feature_appdetail_work_quiet">Activez le profil professionnel pour utiliser cette application.</string>
+    <string name="feature_appdetail_work_unavailable">Cette application n\'est pas disponible dans le profil professionnel.</string>
+    <string name="feature_appdetail_shared_uid">Cette application partage un UID Android avec une autre application. Le mode root ne peut pas la filtrer individuellement.</string>
+    <string name="feature_appdetail_mixed">Filtre les requêtes HTTP et les domaines HTTPS</string>
+    <string name="feature_appdetail_include">Inclure dans le filtrage</string>
+    <string name="feature_appdetail_counts_checking">Vérification du nombre de blocages…</string>
+    <string name="feature_appdetail_counts_unavailable">Nombre de blocages indisponible</string>
+    <string name="feature_appdetail_pinned_checking">Vérification…</string>
+    <string name="feature_appdetail_pinned_unavailable">Impossible de lire les domaines</string>
+</resources>
