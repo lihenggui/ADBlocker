@@ -68,6 +68,16 @@ private fun Lint.configure(structureOnly: Boolean, checkProjectDependencies: Boo
     if (structureOnly) {
         checkOnly += structureIssues
     }
+    error += listOf(
+        "StringFormatMatches",
+        "StringFormatInvalid",
+        "StringFormatCount",
+        "MissingQuantity",
+        "UnusedQuantity",
+        "ImpliedQuantity",
+        "MissingTranslation",
+        "ExtraTranslation",
+    )
     // Dependabot proposes newer versions.
     disable += "GradleDependency"
 }
