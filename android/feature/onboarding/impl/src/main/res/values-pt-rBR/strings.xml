@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">Pesquisar app</string>
+    <string name="feature_onboarding_back">Voltar</string>
+    <string name="feature_onboarding_step">Etapa %1$d de %2$d</string>
+    <string name="feature_onboarding_welcome_text">Filtra as solicitações de rede dos apps selecionados com listas de filtros de bloqueadores de anúncios para navegadores.</string>
+    <string name="feature_onboarding_start">Iniciar</string>
+    <string name="feature_onboarding_fact_private">Nenhum dado sai do dispositivo. O app só se conecta no modo VPN, aos destinos dos apps selecionados e às fontes das listas.</string>
+    <string name="feature_onboarding_fact_methods">Funciona no modo root ou no modo VPN.</string>
+    <string name="feature_onboarding_fact_chosen">Só os apps selecionados são filtrados. As conexões dos outros apps não são lidas.</string>
+    <string name="feature_onboarding_check_title">Verificação do dispositivo</string>
+    <string name="feature_onboarding_check_text">Verifica se este dispositivo pode executar o ADBlocker.</string>
+    <string name="feature_onboarding_checking">Verificando</string>
+    <string name="feature_onboarding_ok">OK</string>
+    <string name="feature_onboarding_check_root">Acesso root</string>
+    <string name="feature_onboarding_check_android">Versão do Android</string>
+    <string name="feature_onboarding_check_kernel">Recursos do kernel</string>
+    <string name="feature_onboarding_check_arch">Processador</string>
+    <string name="feature_onboarding_check_root_failed">Acesso negado. Conceda acesso root ao ADBlocker no gerenciador de root (KernelSU, Magisk ou APatch).</string>
+    <string name="feature_onboarding_check_android_failed">Requer Android 12 ou mais recente</string>
+    <string name="feature_onboarding_check_kernel_failed">Os recursos necessários para a filtragem estão indisponíveis</string>
+    <string name="feature_onboarding_check_arch_failed">Só arm64 e x86_64 são compatíveis</string>
+    <string name="feature_onboarding_check_again">Verificar de novo</string>
+    <string name="feature_onboarding_continue">Continuar</string>
+    <string name="feature_onboarding_cert_title">Filtragem de URL</string>
+    <string name="feature_onboarding_cert_text">As regras de URL se aplicam aos apps filtrados quando há suporte, inclusive em conexões HTTPS. Para bloquear só domínios inteiros, desative a filtragem de URL em Configurações.</string>
+    <string name="feature_onboarding_cert_key">A chave privada é criada e mantida neste dispositivo. Só root pode lê-la, e ela é apagada quando o modo root é removido.</string>
+    <string name="feature_onboarding_cert_notice">Cada servidor é verificado primeiro com os certificados confiáveis do sistema. Nada é assinado para servidores que não passam nessa verificação.</string>
+    <string name="feature_onboarding_cert_browsers">Os navegadores filtrados ignoram algumas verificações de certificados, como a Transparência de certificados.</string>
+    <string name="feature_onboarding_cert_ack">Entendi</string>
+    <string name="feature_onboarding_apps_title">Selecione apps para filtrar</string>
+    <string name="feature_onboarding_apps_text">Selecione os apps que você quer filtrar. Também é possível adicionar apps depois.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="one">Continuar (seleção: %1$d)</item>
+        <item quantity="many">Continuar (seleção: %1$d)</item>
+        <item quantity="other">Continuar (seleção: %1$d)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">Listas de filtros</string>
+    <string name="feature_onboarding_lists_text">As listas regionais são selecionadas de acordo com a região do sistema. Você pode alterar a seleção.</string>
+    <string name="feature_onboarding_installing_title">Configurando</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="one">Filtrando %1$d app</item>
+        <item quantity="many">Filtrando %1$d apps</item>
+        <item quantity="other">Filtrando %1$d apps</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">Os apps selecionados agora são filtrados. Se um app parar de funcionar, pause a filtragem em Visão geral.</string>
+    <string name="feature_onboarding_failed_title">Falha na configuração</string>
+    <string name="feature_onboarding_failed_text">Não foi possível configurar o modo root. O acesso dos apps à rede não é afetado.</string>
+    <string name="feature_onboarding_restart_to_update">Reinicie o dispositivo para concluir a atualização do módulo e abra o ADBlocker de novo.</string>
+    <string name="feature_onboarding_try_again">Tentar de novo</string>
+    <string name="feature_onboarding_finish">Concluir</string>
+    <string name="feature_onboarding_check_after_root">Verificado após a concessão de acesso root</string>
+    <string name="feature_onboarding_apps_none">Nenhum app para filtrar</string>
+    <string name="feature_onboarding_apps_none_text">Os apps instalados que podem usar a rede aparecem aqui.</string>
+    <string name="feature_onboarding_all_apps_withheld">O sistema não permitiu que o ADBlocker lesse a lista de apps instalados. Até que o acesso seja permitido, a maioria dos apps não é filtrada.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · acesso concedido</string>
+    <string name="feature_onboarding_check_root_granted_plain">Concedido</string>
+    <string name="feature_onboarding_check_kernel_ok">Recursos necessários para a filtragem disponíveis</string>
+    <string name="feature_onboarding_check_kernel_unverified">Verificado quando a filtragem começa</string>
+    <string name="feature_onboarding_lists_hint">Há mais listas disponíveis em Filtros.</string>
+    <string name="feature_onboarding_step_module">Configurar modo root</string>
+    <string name="feature_onboarding_step_apps">Adicionar apps selecionados</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="one">Baixar %1$d lista</item>
+        <item quantity="many">Baixar %1$d listas</item>
+        <item quantity="other">Baixar %1$d listas</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">Iniciar filtragem</string>
+    <string name="feature_onboarding_install_progress">Progresso da configuração</string>
+    <string name="feature_onboarding_check_no_root_text">Acesso root não detectado. A filtragem pode usar o modo VPN ou o modo root depois que o acesso root for concedido.</string>
+    <string name="feature_onboarding_check_unsupported_text">O modo root não é compatível com este dispositivo. A filtragem pode usar o modo VPN.</string>
+    <string name="feature_onboarding_check_root_not_detected">Não detectado</string>
+    <string name="feature_onboarding_check_root_again">Verificar acesso root</string>
+    <string name="feature_onboarding_method">Método de filtragem</string>
+    <string name="feature_onboarding_method_vpn">Modo VPN</string>
+    <string name="feature_onboarding_method_vpn_text">Dispensa acesso root. Filtra os apps selecionados por domínio e ocupa o lugar reservado à VPN no sistema.</string>
+    <string name="feature_onboarding_method_root">Modo root</string>
+    <string name="feature_onboarding_method_root_no_root">Filtra sites criptografados por URL. Requer acesso root.</string>
+    <string name="feature_onboarding_method_root_unsupported">Filtra sites criptografados por URL. Indisponível neste dispositivo.</string>
+    <string name="feature_onboarding_vpn_title">Modo VPN</string>
+    <string name="feature_onboarding_vpn_text">O ADBlocker configura uma VPN neste dispositivo. Só as conexões dos apps selecionados passam por ela.</string>
+    <string name="feature_onboarding_vpn_apps">Os apps selecionados se conectam pela VPN local. Os outros apps não são afetados.</string>
+    <string name="feature_onboarding_vpn_domains">Os domínios de anúncios e rastreadores são bloqueados conforme o domínio de destino de cada conexão. As conexões não são descriptografadas.</string>
+    <string name="feature_onboarding_vpn_one">O Android permite uma VPN por vez. Outro app de VPN é desconectado quando a filtragem começa.</string>
+    <string name="feature_onboarding_vpn_local">A VPN não se conecta a nenhum servidor remoto. Os dados ficam no dispositivo.</string>
+    <string name="feature_onboarding_vpn_hint">Você pode configurar a filtragem de URL para sites criptografados mais tarde em Configurações.</string>
+    <string name="feature_onboarding_filter_later_title">Filtrar apps depois</string>
+    <string name="feature_onboarding_filter_later_text">Adicione um app na página Apps quando quiser começar a filtrar.</string>
+    <string name="feature_onboarding_save_setup">Salvar configuração</string>
+    <string name="feature_onboarding_start_text">A filtragem precisa de duas permissões do sistema para começar.</string>
+    <string name="feature_onboarding_grant_notifications">Notificações</string>
+    <string name="feature_onboarding_grant_notifications_text">Exibidas durante a filtragem, com uma opção para pausá-la</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">Confirmado em uma caixa de diálogo do sistema</string>
+    <string name="feature_onboarding_grant_lists_text">Precisa de conexão de rede na primeira vez</string>
+    <string name="feature_onboarding_vpn_refused">O uso da VPN não foi permitido. A filtragem não pode começar sem ela.</string>
+    <string name="feature_onboarding_starting_title">Iniciando</string>
+    <string name="feature_onboarding_start_failed_title">A filtragem não foi iniciada</string>
+    <string name="feature_onboarding_start_failed_text">Não foi possível iniciar a VPN. O acesso dos apps à rede não é afetado.</string>
+    <string name="feature_onboarding_done_text_vpn">É possível pausar a filtragem a qualquer momento pela notificação.</string>
+    <string name="feature_onboarding_notifications_allowed">Notificações permitidas</string>
+    <string name="feature_onboarding_notifications_off">Notificações não permitidas</string>
+    <string name="feature_onboarding_notifications_off_text">Você pode permitir em Configurações</string>
+    <string name="feature_onboarding_vpn_connected">VPN conectada</string>
+    <string name="feature_onboarding_vpn_connected_text">Só os apps selecionados usam a VPN</string>
+    <string name="feature_onboarding_lists_downloaded">Listas baixadas</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="one">%1$d lista</item>
+        <item quantity="many">%1$d listas</item>
+        <item quantity="other">%1$d listas</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="one">%1$s regra</item>
+        <item quantity="many">%1$s regras</item>
+        <item quantity="other">%1$s regras</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">Listas não baixadas</string>
+    <string name="feature_onboarding_lists_failed_text">Nova tentativa em segundo plano</string>
+    <string name="feature_onboarding_done_https">Para filtrar sites criptografados por URL nos navegadores, configure a descriptografia em Configurações.</string>
+</resources>

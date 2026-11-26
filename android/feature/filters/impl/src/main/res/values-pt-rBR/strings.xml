@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">Filtros</string>
+    <string name="feature_filters_settings">Configurações</string>
+    <string name="feature_filters_tab_lists">Listas</string>
+    <string name="feature_filters_tab_rules">Minhas regras</string>
+    <string name="feature_filters_tab_trusted">Sites confiáveis</string>
+    <string name="feature_filters_add_list">Adicionar lista</string>
+    <string name="feature_filters_add_list_text">URL de uma lista de filtros na sintaxe do EasyList ou do uBlock Origin. Só URLs HTTPS são aceitas.</string>
+    <string name="feature_filters_add_list_label">URL da lista</string>
+    <string name="feature_filters_add">Adicionar</string>
+    <string name="feature_filters_cancel">Cancelar</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="one">regras baixadas · %1$d lista</item>
+        <item quantity="many">regras baixadas · %1$d listas</item>
+        <item quantity="other">regras baixadas · %1$d listas</item>
+    </plurals>
+    <string name="feature_filters_update_now">Atualizar agora</string>
+    <string name="feature_filters_updating">Atualizando</string>
+    <string name="feature_filters_update_progress">Progresso da atualização</string>
+    <string name="feature_filters_last_updated">Atualização: %1$s</string>
+    <string name="feature_filters_never_updated">Download pendente</string>
+    <string name="feature_filters_subscribed_header">Assinaturas</string>
+    <string name="feature_filters_available">Disponíveis · %1$s</string>
+    <string name="feature_filters_subscribe">Assinar %1$s</string>
+    <string name="feature_filters_list_fetching">Baixando e verificando</string>
+    <string name="feature_filters_list_failed">Falha na atualização</string>
+    <string name="feature_filters_list_done">%1$s regras · atualizada agora</string>
+    <string name="feature_filters_list_off">Desativada</string>
+    <string name="feature_filters_list_error">Última atualização falhou</string>
+    <string name="feature_filters_list_pending">Aguardando download</string>
+    <string name="feature_filters_list_detail">%1$s regras · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s regras</string>
+    <string name="feature_filters_list_last_error">Último erro: %1$s</string>
+    <string name="feature_filters_remove_list">Cancelar assinatura</string>
+    <string name="feature_filters_cosmetic_note">As listas desta categoria servem principalmente para ocultar elementos da página. Para desativar essas regras, desative \"Ocultar elementos da página\" em Configurações.</string>
+    <string name="feature_filters_my_rules">Minhas regras</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="one">%1$d regra</item>
+        <item quantity="many">%1$d regras</item>
+        <item quantity="other">%1$d regras</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="one">%1$d regra · não aplicadas: %2$d</item>
+        <item quantity="many">%1$d regras · não aplicadas: %2$d</item>
+        <item quantity="other">%1$d regras · não aplicadas: %2$d</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">Verificação de regras indisponível</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">Editar</string>
+    <string name="feature_filters_tools">Ferramentas</string>
+    <string name="feature_filters_block_domain">Bloquear domínio</string>
+    <string name="feature_filters_block_domain_supporting">Adiciona uma regra como ||example.com^</string>
+    <string name="feature_filters_block_domain_text">Bloqueia o domínio e os subdomínios dele em todos os apps filtrados.</string>
+    <string name="feature_filters_domain_label">Domínio</string>
+    <string name="feature_filters_block">Bloquear</string>
+    <string name="feature_filters_test_url">Testar URL</string>
+    <string name="feature_filters_test_url_supporting">Mostra qual regra bloquearia a URL</string>
+    <string name="feature_filters_import">Importar regras</string>
+    <string name="feature_filters_import_supporting">Na sintaxe do uBlock Origin ou do AdGuard</string>
+    <string name="feature_filters_export">Exportar regras</string>
+    <string name="feature_filters_export_supporting">Em um arquivo .txt</string>
+    <string name="feature_filters_syntax_note">Desative \"Ocultar elementos da página\" em Configurações para desativar as regras que ocultam elementos (##).</string>
+    <string name="feature_filters_trusted_text">As conexões com esses sites não são descriptografadas nem bloqueadas. Indicado para serviços bancários on-line, intranets e páginas de pagamento.</string>
+    <string name="feature_filters_add_trusted">Adicionar site</string>
+    <string name="feature_filters_remove_trusted">Remover %1$s</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">Página de origem (opcional)</string>
+    <string name="feature_filters_check">Verificar</string>
+    <string name="feature_filters_would_block">Seria bloqueada</string>
+    <string name="feature_filters_would_allow">Não seria bloqueada</string>
+    <string name="feature_filters_source_mine">Minhas regras</string>
+    <string name="feature_filters_kind_script">Script</string>
+    <string name="feature_filters_kind_image">Imagem</string>
+    <string name="feature_filters_kind_document">Página</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">Outro</string>
+    <string name="feature_filters_issue_invalid">não é possível ler esta linha como uma regra.</string>
+    <string name="feature_filters_issue_invalid_option">esta linha tem uma opção inválida: %1$s.</string>
+    <string name="feature_filters_issue_unsupported">esta versão não aplica regras neste formato.</string>
+    <string name="feature_filters_issue_unsupported_named">esta versão não aplica %1$s.</string>
+    <string name="feature_filters_issue_inapplicable">esta regra não tem efeito aqui.</string>
+    <string name="feature_filters_issue_inapplicable_named">a opção %1$s não tem efeito aqui.</string>
+    <string name="feature_filters_issue_malformed_directive">a diretiva condicional está malformada.</string>
+    <string name="feature_filters_issue_unsupported_include">esta versão não carrega listas incluídas.</string>
+    <string name="feature_filters_issue_line">Linha %1$d</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="one">Mais %1$d.</item>
+        <item quantity="many">Mais %1$d.</item>
+        <item quantity="other">Mais %1$d.</item>
+    </plurals>
+    <string name="feature_filters_back">Voltar</string>
+    <string name="feature_filters_save">Salvar e aplicar</string>
+    <string name="feature_filters_undo">Desfazer</string>
+    <string name="feature_filters_redo">Refazer</string>
+    <string name="feature_filters_discard_title">Descartar alterações?</string>
+    <string name="feature_filters_discard_text">As alterações nas regras ainda não foram salvas.</string>
+    <string name="feature_filters_discard_failed">Não foi possível apagar o rascunho. Tente descartá-lo de novo.</string>
+    <string name="feature_filters_discard">Descartar</string>
+    <string name="feature_filters_keep_editing">Continuar editando</string>
+    <string name="feature_filters_rules_saved">Regras salvas e aplicadas</string>
+    <string name="feature_filters_earlier_rules_saved">As alterações anteriores foram aplicadas. As novas ainda não foram salvas.</string>
+    <string name="feature_filters_draft_failed">Não foi possível manter o rascunho das regras para depois</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="one">%1$d lista atualizada</item>
+        <item quantity="many">%1$d listas atualizadas</item>
+        <item quantity="other">%1$d listas atualizadas</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="one">Listas atualizadas: %1$d · falhas: %2$d</item>
+        <item quantity="many">Listas atualizadas: %1$d · falhas: %2$d</item>
+        <item quantity="other">Listas atualizadas: %1$d · falhas: %2$d</item>
+    </plurals>
+    <string name="feature_filters_update_failed">Falha na atualização das listas</string>
+    <string name="feature_filters_subscribed">Lista assinada. Baixando.</string>
+    <string name="feature_filters_removed">Assinatura cancelada</string>
+    <string name="feature_filters_https_only">Só URLs HTTPS são aceitas</string>
+    <string name="feature_filters_not_a_domain">Domínio inválido</string>
+    <string name="feature_filters_blocked_domain">%1$s bloqueado</string>
+    <string name="feature_filters_trusted">%1$s adicionado aos sites confiáveis</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="one">%1$d regra importada</item>
+        <item quantity="many">%1$d regras importadas</item>
+        <item quantity="other">%1$d regras importadas</item>
+    </plurals>
+    <string name="feature_filters_exported">Regras exportadas</string>
+    <string name="feature_filters_failed">Falha na ação. Confira o serviço de filtragem em Configurações.</string>
+    <string name="feature_filters_issue_separator">": "</string>
+    <string name="feature_filters_search">Pesquisar listas e regras</string>
+    <string name="feature_filters_search_hint">Pesquisar listas e regras</string>
+    <string name="feature_filters_search_none">Nenhum resultado</string>
+    <string name="feature_filters_search_available">Listas disponíveis</string>
+    <string name="feature_filters_list_on">Ativada</string>
+    <string name="feature_filters_block_preview">Adiciona %1$s</string>
+    <string name="feature_filters_list_added">%1$s regras · atualizada agora, %2$s novas</string>
+    <string name="feature_filters_test_url_text">Verifica uma solicitação com as listas e as regras atuais.</string>
+    <string name="feature_filters_syntax">Sintaxe das regras</string>
+    <string name="feature_filters_syntax_text">Uma regra por linha, na sintaxe do EasyList, do uBlock Origin ou do AdGuard.</string>
+    <string name="feature_filters_syntax_host">Bloqueia um domínio e os subdomínios dele.</string>
+    <string name="feature_filters_syntax_option">As opções após $ restringem a regra. Neste exemplo, só solicitações de outros sites são bloqueadas.</string>
+    <string name="feature_filters_syntax_app">$app= limita a regra ao app indicado.</string>
+    <string name="feature_filters_syntax_path">Bloqueia URLs correspondentes. * corresponde a qualquer texto, e $image limita a regra a imagens.</string>
+    <string name="feature_filters_syntax_exception">@@ permite solicitações que outras regras bloqueariam.</string>
+    <string name="feature_filters_syntax_cosmetic">Oculta elementos da página. Para desativar esta regra, desative \"Ocultar elementos da página\" em Configurações.</string>
+    <string name="feature_filters_syntax_comment">As linhas que começam com ! são comentários.</string>
+    <string name="feature_filters_import_too_large">O arquivo excede o limite de 16 MB para regras</string>
+    <string name="feature_filters_schedule">atualiza %1$s</string>
+    <string name="feature_filters_schedule_wifi">atualiza %1$s via Wi-Fi</string>
+    <string name="feature_filters_schedule_never">sem atualizações automáticas</string>
+    <string name="feature_filters_every_day">todos os dias</string>
+    <string name="feature_filters_every_three_days">a cada 3 dias</string>
+    <string name="feature_filters_every_week">toda semana</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="one">%1$d lista atualizada · novas regras: %2$s</item>
+        <item quantity="many">%1$d listas atualizadas · novas regras: %2$s</item>
+        <item quantity="other">%1$d listas atualizadas · novas regras: %2$s</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">As exclusões de HTTPS ainda não estão prontas. Só os domínios são filtrados.</string>
+    <string name="feature_filters_exclusions_failed">Não foi possível atualizar algumas listas de exclusões de HTTPS. As cópias salvas continuam em uso.</string>
+</resources>
