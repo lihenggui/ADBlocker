@@ -1,0 +1,19 @@
+<p>ADBlocker memblokir iklan dan pelacak di aplikasi Android menggunakan daftar filter untuk pemblokir iklan browser (misalnya EasyList, uBlock Origin, dan AdGuard). Anda dapat memilih aplikasi yang disaring atau menyaring semua aplikasi pribadi. ADBlocker mengunduh daftar filter langganan Anda dan tidak mengirim data telemetri.</p>
+
+<p>Ada dua cara penyaringan.</p>
+<ul>
+<li><b>Mode root</b> (akses root, misalnya melalui KernelSU, Magisk, atau APatch, dan Android 12 atau yang lebih baru dengan kernel GKI). ADBlocker menyiapkan mode ini dengan akses root tanpa memulai ulang perangkat. Slot VPN Android tetap tersedia untuk VPN lain, dan setiap koneksi tetap dikaitkan dengan aplikasi yang memulainya.</li>
+<li><b>Mode VPN</b> (tanpa root, Android 10 atau yang lebih baru). Lalu lintas aplikasi yang disaring melewati VPN lokal ADBlocker.</li>
+</ul>
+
+<p>Saat penyaringan URL aktif, ADBlocker menerapkan aturan URL dan sumber daya di dalam koneksi HTTPS melalui otoritas sertifikat lokal yang kuncinya tetap berada di perangkat. Dalam mode root, ADBlocker menyediakan sertifikat otoritas tersebut untuk aplikasi pribadi yang disaring. Dalam mode VPN, Anda memasang sendiri sertifikat itu, dan hanya aplikasi yang memercayai sertifikat pengguna yang menerimanya. Sebelum sertifikat dipasang, serta untuk aplikasi yang menolaknya, HTTPS tetap terenkripsi dan hanya aturan domain yang berlaku. Anda dapat menonaktifkan penyaringan URL agar penyaringan hanya dilakukan berdasarkan domain.</p>
+
+<p>Fitur</p>
+<ul>
+<li>Pilihan per aplikasi atau penyaringan semua aplikasi pribadi dengan pengecualian. Akses root memungkinkan penyaringan aplikasi profil kerja</li>
+<li>Langganan daftar filter EasyList, uBlock Origin, dan AdGuard, aturan kustom, serta situs tepercaya</li>
+<li>Perekaman permintaan dari satu aplikasi untuk melihat cara aturan menangani tiap permintaan</li>
+<li>Jeda penyaringan untuk satu aplikasi atau semua aplikasi, serta kartu di Setelan Cepat</li>
+</ul>
+
+<p>Mode root menyertakan modul LSPosed/Vector yang hanya digunakan jika aplikasi memeriksa sendiri sertifikat. Hanya perangkat ARM dan x86 64-bit yang didukung.</p>

@@ -1,0 +1,19 @@
+<p>ADBlocker bloque les publicités et les traceurs dans les applications Android à l’aide de listes de filtres pour les bloqueurs de publicités de navigateur (par exemple EasyList, uBlock Origin et AdGuard). Vous pouvez choisir les applications à filtrer ou laisser le filtrage s’appliquer à toutes vos applications personnelles. ADBlocker télécharge les listes de filtres auxquelles vous êtes abonné et n’envoie aucune donnée de télémétrie.</p>
+
+<p>Deux modes de filtrage sont disponibles.</p>
+<ul>
+<li><b>Mode root</b> (accès root, par exemple avec KernelSU, Magisk ou APatch, et Android 12 ou version ultérieure avec un noyau GKI). ADBlocker configure ce mode avec l’accès root, sans redémarrage. L’emplacement VPN d’Android reste libre pour un autre VPN et chaque connexion reste attribuée à l’application qui l’a établie.</li>
+<li><b>Mode VPN</b> (sans root, Android 10 ou version ultérieure). Le trafic des applications filtrées passe par le VPN local d’ADBlocker.</li>
+</ul>
+
+<p>Lorsque le filtrage des URL est activé, ADBlocker applique des règles d’URL et de ressources au sein des connexions HTTPS via une autorité de certification locale dont la clé reste sur l’appareil. En mode root, ADBlocker met le certificat de cette autorité à la disposition des applications personnelles filtrées. En mode VPN, vous installez vous-même le certificat et seules les applications qui font confiance aux certificats utilisateur l’acceptent. Avant son installation et pour toute application qui le refuse, le trafic HTTPS reste chiffré et seules les règles de domaine s’appliquent. Vous pouvez désactiver le filtrage des URL pour filtrer uniquement par domaine.</p>
+
+<p>Fonctionnalités</p>
+<ul>
+<li>Sélection par application ou filtrage de toutes les applications personnelles avec des exclusions. Avec l’accès root, les applications du profil professionnel peuvent aussi être filtrées</li>
+<li>Abonnements aux listes de filtres d’EasyList, uBlock Origin et AdGuard, règles personnalisées et sites de confiance</li>
+<li>Enregistrement des requêtes d’une application pour voir comment les règles traitent chacune d’elles</li>
+<li>Mise en pause du filtrage pour une application ou pour toutes, et un bloc dans les Réglages rapides</li>
+</ul>
+
+<p>Le mode root inclut un module LSPosed/Vector, utilisé uniquement lorsqu’une application vérifie elle-même les certificats. Seuls les appareils 64 bits d’architecture ARM ou x86 sont pris en charge.</p>

@@ -1,0 +1,1 @@
+Chặn quảng cáo, trình theo dõi trong ứng dụng bằng danh sách lọc, có/không root

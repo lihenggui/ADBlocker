@@ -1,0 +1,19 @@
+<p>ADBlocker 使用浏览器广告拦截工具的过滤列表（如 EasyList、uBlock Origin 和 AdGuard），拦截 Android 应用中的广告和跟踪器。你可以选择要过滤的应用，也可以过滤所有个人应用。ADBlocker 会下载你订阅的过滤列表，不发送遥测数据。</p>
+
+<p>有两种过滤方式。</p>
+<ul>
+<li><b>root 模式</b>（需要 root 权限和使用 GKI 内核的 Android 12 或更高版本，root 权限可通过 KernelSU、Magisk 或 APatch 等方式获取）。ADBlocker 使用 root 权限完成设置，无需重启。Android 的 VPN 名额仍可供其他 VPN 使用，每条连接仍归属于发起它的应用。</li>
+<li><b>VPN 模式</b>（无需 root，需要 Android 10 或更高版本）。过滤范围内的应用流量经过 ADBlocker 的本地 VPN。</li>
+</ul>
+
+<p>开启按网址过滤后，ADBlocker 通过本地证书颁发机构在 HTTPS 流量中应用网址和资源规则。该机构的密钥保留在设备上。在 root 模式下，ADBlocker 向过滤范围内的个人应用提供该机构的证书。在 VPN 模式下，需要自行安装该证书，只有信任用户证书的应用才会接受它。安装前，HTTPS 保持加密，仅应用域名规则。拒绝该证书的应用也是如此。可以关闭按网址过滤，只按域名过滤。</p>
+
+<p>功能</p>
+<ul>
+<li>逐个选择要过滤的应用，或过滤所有个人应用并设置排除项。有 root 权限时可过滤工作资料中的应用</li>
+<li>订阅 EasyList、uBlock Origin 和 AdGuard 的过滤列表，可添加自定义规则和信任的网站</li>
+<li>记录某个应用的请求，查看规则如何处理每条请求</li>
+<li>暂停单个应用或所有应用的过滤，并提供快捷设置功能块</li>
+</ul>
+
+<p>root 模式包含 LSPosed/Vector 模块，仅在应用自行检查证书时使用。仅支持 64 位 ARM 和 x86 设备。</p>
