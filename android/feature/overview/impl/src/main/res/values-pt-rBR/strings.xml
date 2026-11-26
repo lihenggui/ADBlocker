@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_overview_settings">Configurações</string>
+    <string name="feature_overview_filtering">Filtrando</string>
+    <string name="feature_overview_paused">Pausado</string>
+    <string name="feature_overview_stopped">Serviço de filtragem inativo</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s app</item>
+        <item quantity="many">%1$s apps</item>
+        <item quantity="other">%1$s apps</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s regra</item>
+        <item quantity="many">%1$s regras</item>
+        <item quantity="other">%1$s regras</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Retoma em %1$s</string>
+    <string name="feature_overview_paused_detail">Até retomar</string>
+    <string name="feature_overview_stopped_detail">Os apps se conectam sem filtragem</string>
+    <string name="feature_overview_resume">Retomar</string>
+    <string name="feature_overview_start">Iniciar</string>
+    <string name="feature_overview_pause_hour">Pausar por 1 h</string>
+    <string name="feature_overview_more_durations">Mais tempos de pausa</string>
+    <string name="feature_overview_expanded">Expandida</string>
+    <string name="feature_overview_collapsed">Recolhida</string>
+    <string name="feature_overview_until_resumed">Até retomar</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Bloqueios de hoje</string>
+    <string name="feature_overview_blocked_breakdown">%1$s solicitações · %2$s conexões</string>
+    <string name="feature_overview_week_description">Bloqueios nos últimos 7 dias: %1$s</string>
+    <string name="feature_overview_today">Hoje</string>
+    <string name="feature_overview_top_apps">Mais bloqueios</string>
+    <string name="feature_overview_status">Status</string>
+    <string name="feature_overview_lists">Listas de filtros</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">Listas ativadas: %1$d · atualização: %2$s</item>
+        <item quantity="many">Listas ativadas: %1$d · atualização: %2$s</item>
+        <item quantity="other">Listas ativadas: %1$d · atualização: %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">Listas ativadas: %1$d · download pendente</item>
+        <item quantity="many">Listas ativadas: %1$d · download pendente</item>
+        <item quantity="other">Listas ativadas: %1$d · download pendente</item>
+    </plurals>
+    <string name="feature_overview_service">Serviço de filtragem</string>
+    <string name="feature_overview_service_running">Em execução</string>
+    <string name="feature_overview_service_running_since">Em execução há %1$s</string>
+    <string name="feature_overview_service_stopped">Inativo</string>
+    <string name="feature_overview_updating">Atualizando o modo root…</string>
+    <string name="feature_overview_restart_to_update">Reinicie o dispositivo para concluir a atualização do módulo.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">Pausado por %1$d hora. Os apps se conectam sem filtragem.</item>
+        <item quantity="many">Pausado por %1$d horas. Os apps se conectam sem filtragem.</item>
+        <item quantity="other">Pausado por %1$d horas. Os apps se conectam sem filtragem.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">Pausado por %1$d minuto. Os apps se conectam sem filtragem.</item>
+        <item quantity="many">Pausado por %1$d minutos. Os apps se conectam sem filtragem.</item>
+        <item quantity="other">Pausado por %1$d minutos. Os apps se conectam sem filtragem.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Pausado até retomar manualmente. Os apps se conectam sem filtragem.</string>
+    <string name="feature_overview_undo">Desfazer</string>
+    <string name="feature_overview_module_disabled">O módulo do ADBlocker está desativado ou marcado para remoção no gerenciador de root. Altere a configuração lá.</string>
+    <string name="feature_overview_module_disabled_in">O módulo do ADBlocker está desativado ou marcado para remoção em %1$s. Altere a configuração lá.</string>
+    <string name="feature_overview_service_timeout">O serviço de filtragem não respondeu a tempo.</string>
+    <string name="feature_overview_root_pending">A mudança para o modo root não foi concluída. Tente de novo em Configurações.</string>
+    <string name="feature_overview_action_failed">Falha na ação. Confira o serviço de filtragem em Configurações.</string>
+    <string name="feature_overview_turned_off">Desativado</string>
+    <string name="feature_overview_turned_off_detail">A filtragem foi desativada automaticamente em %1$s após duas inicializações seguidas não serem concluídas. Os apps se conectam sem filtragem.</string>
+    <string name="feature_overview_turn_on_again">Reativar</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Conectando</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Desconectado</string>
+    <string name="feature_overview_vpn_off_detail">Os apps selecionados se conectam sem filtragem.</string>
+    <string name="feature_overview_vpn_revoked_detail">A VPN foi desativada por outro app de VPN ou nas configurações do sistema. Os apps selecionados se conectam sem filtragem.</string>
+    <string name="feature_overview_vpn_failed_detail">A filtragem foi interrompida inesperadamente. Os apps selecionados se conectam sem filtragem.</string>
+    <string name="feature_overview_vpn_lockdown_detail">A opção \"Bloquear conexões sem VPN\" está ativada. Os apps selecionados não conseguem se conectar até que a VPN seja reconectada.</string>
+    <string name="feature_overview_reconnect">Reconectar</string>
+    <string name="feature_overview_vpn_refused">O uso da VPN não foi permitido. Os apps selecionados se conectam sem filtragem.</string>
+    <string name="feature_overview_method">Método de filtragem</string>
+    <string name="feature_overview_method_vpn_on">VPN · conectada</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · conectando</string>
+    <string name="feature_overview_method_vpn_off">VPN · desconectada</string>
+    <string name="feature_overview_https">Sites criptografados</string>
+    <string name="feature_overview_https_not_set_up">Só por domínio · configurável para navegadores</string>
+    <string name="feature_overview_https_off">Só por domínio · descriptografia desativada</string>
+    <string name="feature_overview_https_none">Só por domínio</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">%1$d app com descriptografia</item>
+        <item quantity="many">%1$d apps com descriptografia</item>
+        <item quantity="other">%1$d apps com descriptografia</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">\"Bloquear conexões sem VPN\" ativado</string>
+    <string name="feature_overview_lockdown_text">Enquanto a filtragem estiver parada, os apps selecionados não conseguem se conectar.</string>
+    <string name="feature_overview_notice_ok">OK</string>
+    <string name="feature_overview_root_title">Acesso root detectado</string>
+    <string name="feature_overview_root_text">O modo root filtra sites criptografados por URL sem usar a VPN. Os apps selecionados, as listas e as regras são mantidos.</string>
+    <string name="feature_overview_root_dismiss">Agora não</string>
+    <string name="feature_overview_root_switch">Mudar para o modo root</string>
+    <string name="feature_overview_battery_title">O Android interrompeu a VPN</string>
+    <string name="feature_overview_battery_text">A filtragem parou em segundo plano. Permita que o ADBlocker funcione sem restrições de bateria para ajudar a manter a filtragem ativa.</string>
+    <string name="feature_overview_battery_action">Permitir em segundo plano</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="one">%1$d lista ainda não baixada</item>
+        <item quantity="many">%1$d listas ainda não baixadas</item>
+        <item quantity="other">%1$d listas ainda não baixadas</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="one">Falha ao baixar %1$d lista</item>
+        <item quantity="many">Falha ao baixar %1$d listas</item>
+        <item quantity="other">Falha ao baixar %1$d listas</item>
+    </plurals>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_missing_pending" tools:ignore="ImpliedQuantity">
+        <item quantity="one">A lista passa a filtrar assim que for baixada.</item>
+        <item quantity="many">As listas passam a filtrar assim que forem baixadas.</item>
+        <item quantity="other">As listas passam a filtrar assim que forem baixadas.</item>
+    </plurals>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_missing_failed" tools:ignore="ImpliedQuantity">
+        <item quantity="one">A lista passa a filtrar assim que for baixada.</item>
+        <item quantity="many">As listas passam a filtrar assim que forem baixadas.</item>
+        <item quantity="other">As listas passam a filtrar assim que forem baixadas.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Baixar agora</string>
+    <!-- Shown only for one or more lists, so `one` is reached only by 1. -->
+    <plurals name="feature_overview_lists_previous_copy" tools:ignore="ImpliedQuantity">
+        <item quantity="one">A filtragem continua com a cópia anterior.</item>
+        <item quantity="many">A filtragem continua com as cópias anteriores.</item>
+        <item quantity="other">A filtragem continua com as cópias anteriores.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Abrir listas</string>
+    <string name="feature_overview_lists_download_failed">Falha no download</string>
+    <string name="feature_overview_app_list_withheld_title">A maioria dos apps está sem filtragem</string>
+    <string name="feature_overview_app_list_withheld_text">O sistema não permitiu que o ADBlocker lesse a lista de apps instalados. Esses apps serão filtrados assim que o acesso for permitido.</string>
+</resources>

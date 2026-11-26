@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Voltar</string>
+    <string name="feature_appdetail_open">Abrir %1$s</string>
+    <string name="feature_appdetail_not_installed">Este app não está mais instalado</string>
+    <string name="feature_appdetail_filter_this">Filtrar este app</string>
+    <string name="feature_appdetail_filter_group">Filtrar estes apps em conjunto</string>
+    <string name="feature_appdetail_pause_group">Pausar grupo por 1 h</string>
+    <string name="feature_appdetail_shared_members">Apps com este UID</string>
+    <string name="feature_appdetail_off">O tráfego não passa pelo ADBlocker</string>
+    <string name="feature_appdetail_on_full">Bloqueia anúncios e rastreadores</string>
+    <string name="feature_appdetail_on_hosts">Bloqueia só domínios de anúncios e rastreadores</string>
+    <string name="feature_appdetail_blocked">Bloqueios</string>
+    <string name="feature_appdetail_today">Hoje</string>
+    <string name="feature_appdetail_week">7 dias</string>
+    <string name="feature_appdetail_trouble">Solução de problemas</string>
+    <string name="feature_appdetail_pause">Pausar app por 1 h</string>
+    <string name="feature_appdetail_pause_text">Use se uma página ou função não funcionar</string>
+    <string name="feature_appdetail_resume">Retomar filtragem do app</string>
+    <string name="feature_appdetail_paused_until">Pausado até %1$s</string>
+    <string name="feature_appdetail_requests">Ver solicitações</string>
+    <string name="feature_appdetail_requests_text">Abre Atividade com o filtro deste app</string>
+    <string name="feature_appdetail_group_requests_text">Abre Atividade com o filtro deste grupo</string>
+    <string name="feature_appdetail_pinned">Domínios que rejeitam o certificado</string>
+    <string name="feature_appdetail_pinned_none">Nenhum</string>
+    <string name="feature_appdetail_pinned_count">%1$d · filtragem só por domínio</string>
+    <string name="feature_appdetail_pinned_text">Este app verifica por conta própria os certificados desses domínios. Ao esquecer um domínio, o ADBlocker tenta descriptografar o tráfego dele de novo na próxima conexão.</string>
+    <string name="feature_appdetail_forget">Esquecer</string>
+    <string name="feature_appdetail_forget_all">Esquecer todos</string>
+    <string name="feature_appdetail_forgotten">Domínio esquecido. O ADBlocker tenta descriptografar de novo na próxima conexão.</string>
+    <string name="feature_appdetail_paused">App pausado por 1 hora</string>
+    <string name="feature_appdetail_group_paused">Grupo pausado por 1 hora</string>
+    <string name="feature_appdetail_undo">Desfazer</string>
+    <string name="feature_appdetail_failed">Falha na ação. Confira o serviço de filtragem em Configurações.</string>
+    <string name="feature_appdetail_level_url_filtering_off">A filtragem de URL está desativada em Configurações. Só domínios inteiros são bloqueados.</string>
+    <string name="feature_appdetail_level_unknown">No momento, o serviço de filtragem não consegue descriptografar o tráfego deste app. Por isso, as conexões HTTPS são filtradas só por domínio.</string>
+    <string name="feature_appdetail_level_needs_certificate">Para filtrar URLs em conexões HTTPS, configure o certificado. O app precisa confiar nos certificados do usuário.</string>
+    <string name="feature_appdetail_set_up_https">Configurar filtragem de HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">As conexões HTTPS são filtradas por domínio até que as listas de exclusões estejam prontas.</string>
+    <string name="feature_appdetail_work_certificate">As conexões HTTPS continuam criptografadas até que este app confie no certificado do perfil de trabalho.</string>
+    <string name="feature_appdetail_work_quiet">Ative o perfil de trabalho para usar este app.</string>
+    <string name="feature_appdetail_work_unavailable">Este app está indisponível no perfil de trabalho.</string>
+    <string name="feature_appdetail_shared_uid">Este app compartilha um UID do Android com outro app. O modo root não pode filtrá-lo individualmente.</string>
+    <string name="feature_appdetail_mixed">Filtra solicitações HTTP e domínios HTTPS</string>
+    <string name="feature_appdetail_include">Incluir na filtragem</string>
+    <string name="feature_appdetail_counts_checking">Contando bloqueios…</string>
+    <string name="feature_appdetail_counts_unavailable">Contagens de bloqueios indisponíveis</string>
+    <string name="feature_appdetail_pinned_checking">Verificando…</string>
+    <string name="feature_appdetail_pinned_unavailable">Não foi possível ler os domínios</string>
+</resources>

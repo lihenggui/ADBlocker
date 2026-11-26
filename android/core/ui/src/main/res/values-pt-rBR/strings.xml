@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Tentar de novo</string>
+    <string name="core_ui_failure_no_root">Sem acesso root</string>
+    <string name="core_ui_failure_no_root_text">Conceda acesso root ao ADBlocker no gerenciador de root e tente de novo.</string>
+    <string name="core_ui_failure_module_missing">Modo root não configurado</string>
+    <string name="core_ui_failure_module_missing_text">Configure o modo root em Configurações.</string>
+    <string name="core_ui_failure_update_needed">O modo root precisa ser atualizado</string>
+    <string name="core_ui_failure_update_needed_text">Atualize em Configurações.</string>
+    <string name="core_ui_failure_failed">Falha ao carregar</string>
+    <string name="core_ui_failure_failed_text">O serviço de filtragem não respondeu. Confira o status em Configurações.</string>
+    <string name="core_ui_failure_timed_out">Tempo limite excedido</string>
+    <string name="core_ui_failure_timed_out_text">O serviço de filtragem não respondeu a tempo. Tente de novo. Se isso continuar, reinicie o serviço de filtragem em Configurações.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="one">%1$d dia</item>
+        <item quantity="many">%1$d dias</item>
+        <item quantity="other">%1$d dias</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">Modo VPN indisponível</string>
+    <string name="core_ui_failure_engine_missing_text">Esta versão não inclui o mecanismo de filtragem sem root.</string>
+    <string name="core_ui_work_app_label">%1$s · Trabalho</string>
+    <string name="core_ui_shared_uid">UID compartilhado no Android, sem filtragem individual</string>
+    <string name="core_ui_shared_app_label">%1$s · UID compartilhado</string>
+    <string name="core_ui_shared_app_members">Apps filtrados em conjunto · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Filtragem com root indisponível</string>
+    <string name="core_ui_remove_app_selection">Remover seleção</string>
+    <string name="core_ui_personal_eligibility_unavailable">Não foi possível verificar quais apps pessoais podem ser filtrados.</string>
+    <string name="core_ui_app_list_withheld">Sem acesso aos apps instalados</string>
+    <string name="core_ui_app_list_withheld_text">O sistema não permitiu que o ADBlocker lesse a lista de apps instalados. Permita o acesso para escolher quais apps filtrar.</string>
+    <string name="core_ui_app_list_allow">Permitir</string>
+    <string name="core_ui_app_list_check_again">Verificar de novo</string>
+    <string name="core_ui_filtering_scope">Escopo da filtragem</string>
+    <string name="core_ui_scope_chosen">Apps selecionados</string>
+    <string name="core_ui_scope_all">Todos os apps</string>
+    <string name="core_ui_scope_all_text">Filtra apps pessoais, inclusive os recém-instalados. Exclua apps na página Apps. A seleção de apps de trabalho continua sendo individual.</string>
+    <string name="core_ui_category_ads">Anúncios</string>
+    <string name="core_ui_category_privacy">Privacidade</string>
+    <string name="core_ui_category_security">Segurança</string>
+    <string name="core_ui_category_regional">Por região</string>
+    <string name="core_ui_category_annoyances">Incômodos</string>
+    <string name="core_ui_vpn_transfer_incomplete">Não foi possível transferir algumas configurações do modo root.</string>
+    <string name="core_ui_vpn_transfer_apps">Não foi possível transferir as configurações de filtragem de apps do modo root.</string>
+    <string name="core_ui_vpn_transfer_lists">Não foi possível transferir algumas configurações das listas de filtros do modo root.</string>
+    <string name="core_ui_vpn_transfer_rules">Não foi possível transferir as regras personalizadas do modo root.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Não foi possível transferir alguns sites confiáveis do modo root.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Não foi possível transferir as configurações de filtragem de URL do modo root.</string>
+</resources>
