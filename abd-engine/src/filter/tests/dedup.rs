@@ -202,7 +202,12 @@ fn a_duplicated_exception_still_guards_a_whole_host_block() {
     assert!(!filters.blocks_domain("sub.ads.example"));
 
     // Both occurrences count towards the guard budget, so early checks fall back.
-    let limited = build(&lists, false, exception.len());
+    let needed = 2 * exception.len();
+    let exact = build(&lists, false, needed);
+    assert!(!exact.guards_incomplete);
+    assert!(exact.blocks_host("ads.example"));
+    assert!(!exact.blocks_host("sub.ads.example"));
+    let limited = build(&lists, false, needed - 1);
     assert!(limited.guards_incomplete);
     assert!(!limited.blocks_host("ads.example"));
     assert!(limited.blocks_domain("ads.example"));

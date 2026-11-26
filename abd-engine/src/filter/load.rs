@@ -22,11 +22,11 @@ use adblock::filters::network::NetworkFilter;
 use adblock::lists::FilterSet;
 use anyhow::Result;
 
-use super::host_rules::{AppHostBlocks, HostProjections};
-use super::html_rules::HtmlProjections;
+use super::host_rules::{AppHostBlocks, HostProjections, HostRules};
+use super::html_rules::{HtmlProjections, HtmlSpecs};
 use super::matcher::{MatcherList, MatcherLists};
-use super::page_exceptions::PageProjections;
-use super::response_rules::ResponseProjections;
+use super::page_exceptions::{PageProjections, PageSpecs};
+use super::response_rules::{ResponseProjections, ResponseSpecs};
 use super::{
     AddressProjections, AppProjections, AppRules, Filters, ListFiles, Patterns, RequestRules,
     app_rules, redirects,
@@ -205,30 +205,39 @@ impl Filters {
         guard_budget: usize,
     ) -> Result<Self> {
         crate::public_suffix::install();
-        let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
-        let disabled = badfilters(lists.iter().map(|(_, text)| text.as_str()));
-        // Bound the initial allocation while avoiding repeated rehashing on large lists.
-        let anchor_capacity = if debug {
-            0
-        } else {
-            (lists.iter().map(|(_, text)| text.len()).sum::<usize>() / 64).min(192 * 1024)
-        };
-        let mut compilation = Compilation::new(debug, anchor_capacity);
-        reserve_exceptions(
-            &lists,
-            &mut compilation.patterns,
-            &mut compilation.addresses,
-            &mut compilation.scripts,
-        );
-        let rules = lists
-            .iter()
-            .map(|(path, text)| {
-                compilation.add_list(text, SourcePermissions::for_path(path), &disabled)
-            })
-            .sum();
-        let texts = lists.iter().map(|(_, text)| text.as_str());
-        Ok(compilation.finish(texts, generation, rules, debug, guard_budget))
+        Ok(prepare(entries, debug, guard_budget)?.compile(generation))
     }
+}
+
+fn prepare<'a>(
+    entries: impl Iterator<Item = std::io::Result<(&'a Path, String)>>,
+    debug: bool,
+    guard_budget: usize,
+) -> Result<PreparedCompilation> {
+    let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
+    let texts = || lists.iter().map(|(_, text)| text.as_str());
+    let disabled = badfilters(texts());
+    // Bound the initial allocation while avoiding repeated rehashing on large lists.
+    let anchor_capacity = if debug {
+        0
+    } else {
+        (texts().map(str::len).sum::<usize>() / 64).min(192 * 1024)
+    };
+    let mut compilation = Compilation::new(debug, anchor_capacity);
+    reserve_exceptions(
+        &lists,
+        &mut compilation.patterns,
+        &mut compilation.addresses,
+        &mut compilation.scripts,
+    );
+    let rules = lists
+        .iter()
+        .map(|(path, text)| {
+            compilation.add_list(text, SourcePermissions::for_path(path), &disabled)
+        })
+        .sum();
+    drop(disabled);
+    Ok(compilation.prepare(texts(), rules, debug, guard_budget))
 }
 
 struct Compilation<'a> {
@@ -296,14 +305,13 @@ impl<'a> Compilation<'a> {
         (count, sink.normalized, sink.parameters)
     }
 
-    fn finish(
+    fn prepare(
         self,
         texts: impl Iterator<Item = &'a str>,
-        generation: Option<u64>,
         rules: usize,
         debug: bool,
         guard_budget: usize,
-    ) -> Filters {
+    ) -> PreparedCompilation {
         let Self {
             matcher,
             parameters,
@@ -314,34 +322,90 @@ impl<'a> Compilation<'a> {
             addresses,
             responses,
             html,
-            mut patterns,
+            patterns,
             scripts,
         } = self;
         let (apps, app_blocks) = compile_apps(apps, debug, &mut redirects);
-        let host_rules = hosts.finish(&app_blocks, guard_budget);
+        let hosts = hosts.finish(&app_blocks, guard_budget);
+        drop(app_blocks);
+        PreparedCompilation {
+            matcher: matcher.finish_projection(),
+            parameters,
+            redirects,
+            hosts,
+            pages: pages.prepare(texts),
+            apps,
+            addresses,
+            responses: responses.prepare(),
+            html: html.prepare(),
+            patterns,
+            scripts: scripts.finish(),
+            rules,
+        }
+    }
+}
+
+/// Owns the matcher inputs and projections so the source texts can be freed
+/// before the request matcher reaches its peak allocation.
+struct PreparedCompilation {
+    matcher: MatcherLists<'static>,
+    parameters: FilterSet,
+    redirects: redirects::RedirectProjections,
+    hosts: HostRules,
+    pages: PageSpecs,
+    apps: Option<AppRules>,
+    addresses: AddressProjections,
+    responses: ResponseSpecs,
+    html: HtmlSpecs,
+    patterns: Patterns,
+    scripts: ScriptTable,
+    rules: usize,
+}
+
+impl PreparedCompilation {
+    fn compile(self, generation: Option<u64>) -> Filters {
+        let Self {
+            matcher,
+            parameters,
+            redirects,
+            hosts,
+            pages,
+            apps,
+            addresses,
+            responses,
+            html,
+            mut patterns,
+            scripts,
+            rules,
+        } = self;
         let mut requests = compile_requests(matcher, redirects);
-        let (scripts, responses) = (scripts.finish(), responses.compile(&mut patterns));
         use_resources(&mut requests, &scripts);
+        let responses = responses.compile(&mut patterns);
         patterns.report_dropped();
+        let (html, omissions) = html.compile();
+        let page_exceptions = pages.compile();
+        let addresses = addresses.finish();
+        // Report the bounded projections in their established order.
+        omissions.report();
         Filters {
             generation,
             requests,
             parameters: Engine::new_with_filter_set(parameters),
             scripts,
-            page_exceptions: pages.compile(texts),
-            hosts: Engine::new_with_filter_set(host_rules.whole),
-            host_guards: Engine::new_with_filter_set(host_rules.guards),
-            page_host_guards: host_rules.page_guards.map(Engine::new_with_filter_set),
-            app_host_guards: host_rules.app_guards.map(Engine::new_with_filter_set),
-            app_page_host_guards: host_rules.app_page_guards.map(Engine::new_with_filter_set),
-            guards_incomplete: host_rules.guards_incomplete,
+            page_exceptions,
+            hosts: Engine::new_with_filter_set(hosts.whole),
+            host_guards: Engine::new_with_filter_set(hosts.guards),
+            page_host_guards: hosts.page_guards.map(Engine::new_with_filter_set),
+            app_host_guards: hosts.app_guards.map(Engine::new_with_filter_set),
+            app_page_host_guards: hosts.app_page_guards.map(Engine::new_with_filter_set),
+            guards_incomplete: hosts.guards_incomplete,
             apps,
             patterns,
-            addresses: addresses.finish(),
+            addresses,
             responses,
-            html: html.finish(),
+            html,
             rules,
-            host_rules: host_rules.count,
+            host_rules: hosts.count,
         }
     }
 }

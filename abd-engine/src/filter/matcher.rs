@@ -139,6 +139,16 @@ impl<'a> MatcherLists<'a> {
         );
     }
 
+    /// Once the lists are projected, the matcher needs only its inputs and source map.
+    pub(super) fn finish_projection(self) -> MatcherLists<'static> {
+        MatcherLists {
+            set: self.set,
+            debug: self.debug,
+            originals: self.originals,
+            anchors: SeenAnchors::with_capacity(0),
+        }
+    }
+
     pub(crate) fn compile(self) -> (Engine, OriginalLines) {
         drop(self.anchors);
         // The optimizer can combine rules and erase their source locations.

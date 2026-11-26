@@ -45,6 +45,11 @@ pub(super) struct PageProjections {
     script: String,
 }
 
+pub(super) struct PageSpecs {
+    projected: PageProjections,
+    generic: Option<String>,
+}
+
 fn projection(source: &Rule<'_>, page: &PageException<'_>) -> Option<String> {
     let projected = page.project(source.literal_options());
     let source = rule::read(&projected);
@@ -94,21 +99,30 @@ impl PageProjections {
         }
     }
 
-    pub(super) fn compile<'a>(self, lists: impl Iterator<Item = &'a str>) -> PageExceptions {
-        let Self {
+    pub(super) fn prepare<'a>(self, lists: impl Iterator<Item = &'a str>) -> PageSpecs {
+        let generic = (!self.specific.is_empty()).then(|| generic_rules(lists));
+        PageSpecs {
+            projected: self,
+            generic,
+        }
+    }
+}
+
+impl PageSpecs {
+    pub(super) fn compile(self) -> PageExceptions {
+        let PageProjections {
             all,
             content,
             urlblock,
             element,
             specific,
             script,
-        } = self;
-        let specific = (!specific.is_empty()).then(|| {
+        } = self.projected;
+        let specific = self.generic.map(|generic| {
             let options = ParseOptions {
                 rule_types: RuleTypes::CosmeticOnly,
                 ..ParseOptions::default()
             };
-            let generic = generic_rules(lists);
             (
                 compile(specific, ParseOptions::default()),
                 compile(generic, options),

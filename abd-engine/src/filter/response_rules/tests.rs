@@ -42,7 +42,7 @@ impl ResponseRules {
                 kept.add(source.line, response);
             }
         }
-        kept.compile_with_budget(budget, patterns)
+        kept.prepare().compile_with_budget(budget, patterns)
     }
 }
 

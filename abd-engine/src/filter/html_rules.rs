@@ -31,6 +31,30 @@ pub(super) struct HtmlProjections<'a> {
     dropped: usize,
 }
 
+pub(super) struct HtmlSpecs {
+    rules: Vec<Spec>,
+    dropped: usize,
+}
+
+pub(super) enum HtmlOmissions {
+    Rules(usize),
+    ExceptionLimit,
+}
+
+impl HtmlOmissions {
+    pub(super) fn report(self) {
+        match self {
+            Self::Rules(0) => (),
+            Self::Rules(dropped) => {
+                eprintln!("lists: omitted {dropped} HTML rules at the generation limit");
+            }
+            Self::ExceptionLimit => {
+                eprintln!("lists: omitted HTML filtering at the exception generation limit");
+            }
+        }
+    }
+}
+
 impl<'a> HtmlProjections<'a> {
     pub(super) fn add(&mut self, text: &'a str, rule: Rule) {
         // Retain exemptions before removals if the generation fills up.
@@ -41,27 +65,32 @@ impl<'a> HtmlProjections<'a> {
         }
     }
 
-    pub(super) fn finish(self) -> HtmlRules {
+    pub(super) fn prepare(self) -> HtmlSpecs {
+        HtmlSpecs {
+            rules: self.rules.into_values().collect(),
+            dropped: self.dropped,
+        }
+    }
+}
+
+impl HtmlSpecs {
+    pub(super) fn compile(self) -> (HtmlRules, HtmlOmissions) {
         let mut index = HtmlRules::default();
         let mut budget = Budget::default();
         let mut dropped = self.dropped;
-        for spec in self.rules.into_values() {
+        for spec in self.rules {
             // Compile only retained specs so rejected rules cannot accumulate regex heap.
             let compiled = spec.compile().expect("validated HTML rule compiles");
             if budget.keep(&compiled).is_err() {
                 if spec.exception {
-                    eprintln!("lists: omitted HTML filtering at the exception generation limit");
-                    return HtmlRules::default();
+                    return (HtmlRules::default(), HtmlOmissions::ExceptionLimit);
                 }
                 dropped += 1;
                 continue;
             }
             index.add(Rule { spec, compiled });
         }
-        if dropped != 0 {
-            eprintln!("lists: omitted {dropped} HTML rules at the generation limit");
-        }
-        index
+        (index, HtmlOmissions::Rules(dropped))
     }
 }
 
@@ -413,7 +442,7 @@ fn html_exceptions_displace_removals_at_the_table_limit() {
         };
         rules.add(line, rule);
     }
-    let kept = rules.finish();
+    let (kept, _) = rules.prepare().compile();
     assert_eq!(kept.rules.len(), MAX_HTML_RULES);
     let body = bytes::Bytes::from_static(b"<div id=0000>keep</div><div id=0001>remove</div>");
     assert_eq!(
@@ -437,7 +466,7 @@ fn reviewed_html_expressions_are_charged_to_the_generation_budget() {
         };
         rules.add(line, rule);
     }
-    let kept = rules.finish();
+    let (kept, _) = rules.prepare().compile();
     let charged: usize = kept.rules.iter().map(|(_, rule)| rule.regex_cost().1).sum();
     assert!(
         charged > 0 && charged <= MAX_HTML_REGEX_BYTES,
@@ -462,7 +491,7 @@ fn reviewed_html_expressions_are_charged_to_the_generation_budget() {
         };
         rules.add(line, rule);
     }
-    let kept = rules.finish();
+    let (kept, _) = rules.prepare().compile();
     let charged: usize = kept.rules.iter().map(|(_, rule)| rule.regex_cost().1).sum();
     assert!(kept.rules.len() < MAX_HTML_REGEXES, "{charged} bytes");
     assert!(charged <= MAX_HTML_REGEX_BYTES, "{charged} bytes");
