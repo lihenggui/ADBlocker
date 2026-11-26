@@ -41,7 +41,7 @@ import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.ui.R as UiR
 
 /** What a notice's buttons do. */
-internal class NoticeActions(
+internal data class NoticeActions(
     val dismiss: (OverviewNotice) -> Unit,
     val switchToRoot: () -> Unit,
     val batteryExemption: () -> Unit,

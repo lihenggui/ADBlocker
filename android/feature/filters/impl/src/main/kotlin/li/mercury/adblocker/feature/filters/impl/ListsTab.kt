@@ -50,6 +50,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalConfiguration
@@ -58,11 +59,13 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import li.mercury.adblocker.core.data.CatalogEntry
 import li.mercury.adblocker.core.data.FilterCatalog
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.model.FilterList
+import li.mercury.adblocker.core.model.ListCategory
 import li.mercury.adblocker.core.model.ListUpdateState
 import li.mercury.adblocker.core.model.UpdateInterval
 import li.mercury.adblocker.core.ui.AdaptiveSheet
@@ -92,6 +95,8 @@ internal fun ListsTab(
 ) {
     val margin = pageMargin(LocalCompactWindow.current)
     val motion = MaterialTheme.motionScheme
+    val entries = state.catalog
+    val groups = remember(entries) { entries.groupBy { it.category } }
     LazyColumn(state = listState, contentPadding = PaddingValues(start = margin, end = margin, top = 12.dp, bottom = 96.dp), modifier = Modifier.fillMaxSize()) {
         item(key = "summary") { Box(Modifier.animatedRow(this, motion)) { Summary(state, actions.update) } }
         item(key = "subscribed") {
@@ -109,7 +114,7 @@ internal fun ListsTab(
                 modifier = Modifier.animatedRow(this, motion),
             )
         }
-        catalog(state.catalog, motion, actions.subscribeEntry)
+        catalog(groups, motion, actions.subscribeEntry)
     }
 }
 
@@ -130,6 +135,7 @@ private fun Summary(state: FiltersUiState, onUpdate: () -> Unit) {
                     formatCount(state.totalRules),
                     style = countStyle.copy(fontFeatureSettings = "tnum"),
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     autoSize = TextAutoSize.StepBased(maxFontSize = countStyle.fontSize),
                 )
                 Text(
@@ -226,7 +232,7 @@ private fun ListRow(
             shapes = ListItemDefaults.segmentedShapes(index, count),
             colors = segmentedColors(),
             leadingContent = { Icon(categoryIcon(entry?.category), contentDescription = null, Modifier.size(20.dp)) },
-            supportingContent = { Text(status, color = statusColor, maxLines = 1) },
+            supportingContent = { Text(status, color = statusColor, maxLines = 1, overflow = TextOverflow.Ellipsis) },
             trailingContent = {
                 Switch(
                     checked = list.enabled,
@@ -239,14 +245,14 @@ private fun ListRow(
                     modifier = Modifier.semantics { contentDescription = title },
                 )
             },
-            content = { Text(title, maxLines = 1) },
+            content = { Text(title, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         )
     }
 }
 
 /** The lists that can be added, by category, a row an item: a list subscribed to leaves its group as the others close up. */
-private fun LazyListScope.catalog(entries: List<CatalogEntry>, motion: MotionScheme, onSubscribe: (CatalogEntry) -> Unit) {
-    for ((category, group) in entries.groupBy { it.category }) {
+private fun LazyListScope.catalog(groups: Map<ListCategory, List<CatalogEntry>>, motion: MotionScheme, onSubscribe: (CatalogEntry) -> Unit) {
+    for ((category, group) in groups) {
         item(key = "cat-$category") {
             SectionHeader(stringResource(R.string.feature_filters_available, stringResource(categoryName(category))), Modifier.animatedRow(this, motion))
         }
@@ -284,7 +290,7 @@ private fun CatalogRow(entry: CatalogEntry, index: Int, count: Int, onSubscribe:
         onCheckedChange = { if (it) onSubscribe(entry) },
         supporting = {
             val description = entry.descriptions[locale.toLanguageTag()] ?: entry.descriptions[locale.language] ?: entry.descriptions["en"]
-            Text(description ?: stringResource(categoryName(entry.category)), maxLines = 2)
+            Text(description ?: stringResource(categoryName(entry.category)), maxLines = 2, overflow = TextOverflow.Ellipsis)
         },
         leading = { Icon(categoryIcon(entry.category), contentDescription = null, Modifier.size(20.dp)) },
         trailing = { Switch(checked = false, onCheckedChange = null, modifier = Modifier.semantics { contentDescription = label }) },

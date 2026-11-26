@@ -58,6 +58,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberSearchBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -66,6 +67,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
@@ -138,7 +140,6 @@ internal fun AppsScreen(
     val searchState = rememberSearchBarState()
     val query = rememberTextFieldState()
     val margin = pageMargin(LocalCompactWindow.current)
-    val motion = MaterialTheme.motionScheme
     Scaffold(
         modifier = modifier,
         topBar = {
@@ -159,30 +160,43 @@ internal fun AppsScreen(
         FadeThrough(state, { ContentKind.of(it.loading, it.failure, empty = it.listWithheld) }, Modifier.padding(padding).fillMaxSize(), Alignment.Center, "apps") { state ->
             when {
                 state.loading -> LoadingIndicator()
-
                 state.failure != null -> FailureView(state.failure, onRetry)
-
                 state.listWithheld -> AppListWithheld(onAllowAppList, onRetry)
-
-                else -> LazyColumn(
-                    contentPadding = PaddingValues(start = margin, end = margin, bottom = 24.dp),
-                    modifier = Modifier.fillMaxSize().wrapContentWidth().widthIn(max = MaxContentWidth),
-                ) {
-                    item(key = "chips") { Chips(state, onFilter, Modifier.animatedRow(this, motion)) }
-                    if (state.personalEligibilityUnavailable) {
-                        item(key = "personal-eligibility-unavailable") {
-                            InventoryNotice(UiR.string.core_ui_personal_eligibility_unavailable, onRetry, Modifier.animatedRow(this, motion))
-                        }
-                    }
-                    if (state.workInventoryUnavailable) {
-                        item(key = "work-inventory-unavailable") {
-                            InventoryNotice(R.string.feature_apps_work_inventory_unavailable, onRetry, Modifier.animatedRow(this, motion))
-                        }
-                    }
-                    appList(state, selectedPackage, onToggle, onOpenApp, onBrowseApps = { onFilter(AppFilter.All) })
-                }
+                else -> AppsList(state, margin, selectedPackage, onFilter, onRetry, onToggle, onOpenApp)
             }
         }
+    }
+}
+
+@Composable
+private fun AppsList(
+    state: AppsUiState,
+    margin: Dp,
+    selectedPackage: String?,
+    onFilter: (AppFilter) -> Unit,
+    onRetry: () -> Unit,
+    onToggle: (AppEntry, Boolean) -> Unit,
+    onOpenApp: (String) -> Unit,
+) {
+    val motion = MaterialTheme.motionScheme
+    val shown = if (state.filter == AppFilter.All) state.entries else remember(state.entries, state.touched) { state.shown }
+    val groups = if (state.filter == AppFilter.All) remember(shown) { shown.partition { it.isFiltered } } else null
+    LazyColumn(
+        contentPadding = PaddingValues(start = margin, end = margin, bottom = 24.dp),
+        modifier = Modifier.fillMaxSize().wrapContentWidth().widthIn(max = MaxContentWidth),
+    ) {
+        item(key = "chips") { Chips(state, onFilter, Modifier.animatedRow(this, motion)) }
+        if (state.personalEligibilityUnavailable) {
+            item(key = "personal-eligibility-unavailable") {
+                InventoryNotice(UiR.string.core_ui_personal_eligibility_unavailable, onRetry, Modifier.animatedRow(this, motion))
+            }
+        }
+        if (state.workInventoryUnavailable) {
+            item(key = "work-inventory-unavailable") {
+                InventoryNotice(R.string.feature_apps_work_inventory_unavailable, onRetry, Modifier.animatedRow(this, motion))
+            }
+        }
+        appList(state, shown, groups, selectedPackage, onToggle, onOpenApp, onBrowseApps = { onFilter(AppFilter.All) })
     }
 }
 
@@ -239,14 +253,15 @@ private fun Chips(state: AppsUiState, onFilter: (AppFilter) -> Unit, modifier: M
 
 private fun LazyListScope.appList(
     state: AppsUiState,
+    shown: List<AppEntry>,
+    groups: Pair<List<AppEntry>, List<AppEntry>>?,
     selectedPackage: String?,
     onToggle: (AppEntry, Boolean) -> Unit,
     onOpenApp: (String) -> Unit,
     onBrowseApps: () -> Unit,
 ) {
-    val shown = state.shown
-    if (state.filter == AppFilter.All) {
-        val (on, off) = shown.partition { it.isFiltered }
+    if (groups != null) {
+        val (on, off) = groups
         group("filtered", R.string.feature_apps_section_filtered, on, state, selectedPackage, onToggle, onOpenApp)
         group("others", R.string.feature_apps_section_others, off, state, selectedPackage, onToggle, onOpenApp)
     } else if (shown.isEmpty()) {
@@ -365,7 +380,7 @@ internal fun AppRow(
                     )
                 }
             },
-            content = { Text(label, maxLines = 1) },
+            content = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
         )
     }
 }

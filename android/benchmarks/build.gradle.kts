@@ -28,4 +28,5 @@ android {
 
 dependencies {
     implementation(libs.androidx.benchmark.macro)
+    implementation(libs.androidx.test.runner)
 }

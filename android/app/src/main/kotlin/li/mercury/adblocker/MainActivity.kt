@@ -16,13 +16,16 @@
 
 package li.mercury.adblocker
 
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -58,6 +61,13 @@ class MainActivity : ComponentActivity() {
                 ThemeMode.Light -> false
                 ThemeMode.Dark -> true
             }
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(Color.TRANSPARENT, Color.TRANSPARENT) { dark },
+                    navigationBarStyle = SystemBarStyle.auto(LIGHT_NAVIGATION_SCRIM, DARK_NAVIGATION_SCRIM) { dark },
+                )
+                onDispose {}
+            }
             ADBlockerTheme(darkTheme = dark, useDynamicColor = settings.useDynamicColor) {
                 // Onboarding is not a destination: there is nothing to go back
                 // to from it, and nothing to return to it for. Leaving it is
@@ -76,5 +86,11 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    private companion object {
+        // Match the scrims used by Activity's default edge-to-edge styles.
+        val LIGHT_NAVIGATION_SCRIM = Color.argb(230, 255, 255, 255)
+        val DARK_NAVIGATION_SCRIM = Color.argb(128, 27, 27, 27)
     }
 }

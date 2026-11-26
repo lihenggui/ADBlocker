@@ -42,4 +42,12 @@ class FormatTest {
     fun relativeTime_isInTheLocalesWords_withChineseDigitsSpacedAsTheAppsCopy() {
         assertEquals("5 小时前", relativeTime(now.minusSeconds(5 * 3_600), now, Locale.SIMPLIFIED_CHINESE))
     }
+
+    @Test
+    fun givenAlternatingLocales_whenFormattingRelativeTime_thenEachUsesItsOwnFormatter() {
+        val earlier = now.minusSeconds(5 * 3_600)
+        assertEquals("5 hr. ago", relativeTime(earlier, now, Locale.US))
+        assertEquals("5 小时前", relativeTime(earlier, now, Locale.SIMPLIFIED_CHINESE))
+        assertEquals("5 hr. ago", relativeTime(earlier, now, Locale.US))
+    }
 }

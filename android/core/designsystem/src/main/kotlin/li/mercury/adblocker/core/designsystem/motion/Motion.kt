@@ -34,7 +34,9 @@ import androidx.compose.material3.MotionScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.IntOffset
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 
 /*
@@ -64,26 +66,25 @@ private const val TOP_LEVEL_IN_MS = 210
 private const val LATERAL_MS = 300
 
 /** The transitions between screens, with the slide distance in pixels for the current density. */
-class ScreenTransitions internal constructor(private val distance: Int) {
+class ScreenTransitions internal constructor(distance: Int, isRtl: Boolean) {
     /** Going forward: the new screen slides in from the end while fading in; the old one leaves the other way. */
     val forward: ContentTransform
-        get() = (
-            slideInHorizontally(tween(ENTER_MS, easing = EmphasizedDecelerateEasing)) { distance } +
-                fadeIn(tween(ENTER_MS, easing = EmphasizedDecelerateEasing))
-            ) togetherWith (
-            slideOutHorizontally(tween(EXIT_MS, easing = EmphasizedAccelerateEasing)) { -distance } +
-                fadeOut(tween(EXIT_MS, easing = EmphasizedAccelerateEasing))
-            )
+        get() = slide(forwardOffset)
 
     /** Going back: the mirror of [forward]. */
     val backward: ContentTransform
-        get() = (
-            slideInHorizontally(tween(ENTER_MS, easing = EmphasizedDecelerateEasing)) { -distance } +
-                fadeIn(tween(ENTER_MS, easing = EmphasizedDecelerateEasing))
-            ) togetherWith (
-            slideOutHorizontally(tween(EXIT_MS, easing = EmphasizedAccelerateEasing)) { distance } +
-                fadeOut(tween(EXIT_MS, easing = EmphasizedAccelerateEasing))
-            )
+        get() = slide(backwardOffset)
+
+    private val forwardOffset = enterOffset(distance, forward = true, isRtl)
+    private val backwardOffset = enterOffset(distance, forward = false, isRtl)
+
+    private fun slide(offset: Int): ContentTransform = (
+        slideInHorizontally(tween(ENTER_MS, easing = EmphasizedDecelerateEasing)) { offset } +
+            fadeIn(tween(ENTER_MS, easing = EmphasizedDecelerateEasing))
+        ) togetherWith (
+        slideOutHorizontally(tween(EXIT_MS, easing = EmphasizedAccelerateEasing)) { -offset } +
+            fadeOut(tween(EXIT_MS, easing = EmphasizedAccelerateEasing))
+        )
 
     /** Between top-level destinations: the old one fades out quickly, then the new one fades in, without sliding. */
     val topLevel: ContentTransform
@@ -91,16 +92,19 @@ class ScreenTransitions internal constructor(private val distance: Int) {
             fadeOut(tween(TOP_LEVEL_OUT_MS, easing = EmphasizedAccelerateEasing))
 }
 
-/** The screen transitions at this density. */
+/** The screen transitions at this density and layout direction. */
 @Composable
 fun rememberScreenTransitions(): ScreenTransitions {
     val density = LocalDensity.current
-    return remember(density) { ScreenTransitions(with(density) { ScreenSlideDistance.roundToPx() }) }
+    val isRtl = LocalLayoutDirection.current == LayoutDirection.Rtl
+    return remember(density, isRtl) { ScreenTransitions(with(density) { ScreenSlideDistance.roundToPx() }, isRtl) }
 }
 
 /** Peers, such as tabs: old and new slide together, the full width, without fading. */
-fun lateralTransform(forward: Boolean): ContentTransform = slideInHorizontally(tween(LATERAL_MS, easing = EmphasizedEasing)) { if (forward) it else -it } togetherWith
-    slideOutHorizontally(tween(LATERAL_MS, easing = EmphasizedEasing)) { if (forward) -it else it }
+fun lateralTransform(forward: Boolean, isRtl: Boolean): ContentTransform = slideInHorizontally(tween(LATERAL_MS, easing = EmphasizedEasing)) { enterOffset(it, forward, isRtl) } togetherWith
+    slideOutHorizontally(tween(LATERAL_MS, easing = EmphasizedEasing)) { -enterOffset(it, forward, isRtl) }
+
+internal fun enterOffset(distance: Int, forward: Boolean, isRtl: Boolean): Int = if (forward != isRtl) distance else -distance
 
 /** How long what leaves a swap takes to fade before what replaces it starts to appear. */
 const val SWAP_DELAY_MS = 100

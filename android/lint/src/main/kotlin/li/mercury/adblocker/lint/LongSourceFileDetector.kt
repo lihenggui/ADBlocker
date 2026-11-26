@@ -27,8 +27,8 @@ import com.android.tools.lint.detector.api.Scope
 import com.android.tools.lint.detector.api.Severity
 import com.android.tools.lint.detector.api.SourceCodeScanner
 import com.intellij.psi.util.PsiTreeUtil
+import org.jetbrains.kotlin.psi.KtAnnotationEntry
 import org.jetbrains.kotlin.psi.KtFile
-import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.uast.UAnnotation
 import org.jetbrains.uast.UFile
 import org.jetbrains.uast.toUElementOfType
@@ -49,10 +49,8 @@ class LongSourceFileDetector :
                 val lines = document.getLineNumber(document.textLength - 1) + 1
                 if (lines <= MAX_COMPOSE_LINES) return
 
-                val hasComposable = PsiTreeUtil.findChildrenOfType(file, KtNamedFunction::class.java).any { function ->
-                    function.annotationEntries.any {
-                        it.toUElementOfType<UAnnotation>()?.qualifiedName == "androidx.compose.runtime.Composable"
-                    }
+                val hasComposable = PsiTreeUtil.findChildrenOfType(file, KtAnnotationEntry::class.java).any {
+                    it.toUElementOfType<UAnnotation>()?.qualifiedName == "androidx.compose.runtime.Composable"
                 }
                 val issue = if (hasComposable) COMPOSE_ISSUE else SOURCE_ISSUE
                 val limit = if (hasComposable) MAX_COMPOSE_LINES else MAX_SOURCE_LINES
@@ -71,7 +69,7 @@ class LongSourceFileDetector :
         val COMPOSE_ISSUE = Issue.create(
             id = "LongComposeFile",
             briefDescription = "Compose file exceeds $MAX_COMPOSE_LINES lines",
-            explanation = "Split files with composable functions by responsibility so their UI components are easier to find and change.",
+            explanation = "Split files with composable declarations by responsibility so their UI components are easier to find and change.",
             category = Category.CORRECTNESS,
             priority = 5,
             severity = Severity.ERROR,

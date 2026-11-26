@@ -41,9 +41,24 @@ import java.time.Instant
 import java.util.Locale
 import kotlin.math.abs
 
+private val countFormat = ThreadLocal<LocaleFormatter<NumberFormat>>()
+private val relativeFormat = ThreadLocal<LocaleFormatter<RelativeDateTimeFormatter>>()
+
+private data class LocaleFormatter<T>(val locale: Locale, val formatter: T)
+
+// A single locale per thread bounds the cache and keeps mutable formatters thread-confined.
+private inline fun <T> ThreadLocal<LocaleFormatter<T>>.forLocale(locale: Locale, create: () -> T): T {
+    val cached = get()
+    if (cached?.locale == locale) return cached.formatter
+    return create().also { set(LocaleFormatter(locale, it)) }
+}
+
 /** A count with the locale's grouping, in tabular figures where it is shown. */
 @Composable
-fun formatCount(n: Long): String = NumberFormat.getIntegerInstance(LocalConfiguration.current.locales[0]).format(n)
+fun formatCount(n: Long): String {
+    val locale = LocalConfiguration.current.locales[0]
+    return countFormat.forLocale(locale) { NumberFormat.getIntegerInstance(locale) }.format(n)
+}
 
 @Composable
 fun formatCount(n: Int): String = formatCount(n.toLong())
@@ -59,12 +74,14 @@ fun relativeTime(time: Instant): String = relativeTime(time, LocalClock.current.
  * app shows it; the framework's DateUtils capitalizes it for the start.
  */
 fun relativeTime(time: Instant, now: Instant, locale: Locale = Locale.getDefault()): String {
-    val formatter = RelativeDateTimeFormatter.getInstance(
-        ULocale.forLocale(locale),
-        null,
-        RelativeDateTimeFormatter.Style.SHORT,
-        DisplayContext.CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,
-    )
+    val formatter = relativeFormat.forLocale(locale) {
+        RelativeDateTimeFormatter.getInstance(
+            ULocale.forLocale(locale),
+            null,
+            RelativeDateTimeFormatter.Style.SHORT,
+            DisplayContext.CAPITALIZATION_FOR_MIDDLE_OF_SENTENCE,
+        )
+    }
     val seconds = Duration.between(time, now).seconds
     val direction = if (seconds >= 0) Direction.LAST else Direction.NEXT
     val elapsed = abs(seconds)
@@ -80,13 +97,16 @@ fun relativeTime(time: Instant, now: Instant, locale: Locale = Locale.getDefault
     return if (locale.language == "zh") spacedHan(text) else text
 }
 
+private val digitBeforeHan = Regex("(\\d)(\\p{IsHan})")
+private val hanBeforeDigit = Regex("(\\p{IsHan})(\\d)")
+
 /**
  * A space between digits and Chinese characters, as the app's Chinese copy
  * writes "2 小时前"; ICU writes "2小时前".
  */
 private fun spacedHan(text: String): String = text
-    .replace(Regex("(\\d)(\\p{IsHan})"), "$1 $2")
-    .replace(Regex("(\\p{IsHan})(\\d)"), "$1 $2")
+    .replace(digitBeforeHan, "$1 $2")
+    .replace(hanBeforeDigit, "$1 $2")
 
 /**
  * The time left until [time] from [now], rounded up to the minute: "15

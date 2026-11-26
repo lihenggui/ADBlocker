@@ -56,4 +56,32 @@ class SiteOfTest {
         assertNull(siteOf("localhost"))
         assertNull(siteOf("invalid..com"))
     }
+
+    @Test
+    fun givenSuffixRules_whenFindingASite_thenWildcardExceptionsAndInternationalLabelsAreRespected() {
+        assertNull(siteOf("subdomain.ck"))
+        assertEquals("site.subdomain.ck", siteOf("www.site.subdomain.ck"))
+        assertEquals("www.ck", siteOf("cdn.www.ck"))
+        assertNull(siteOf("xn--55qx5d.cn"))
+        assertEquals("site.xn--55qx5d.cn", siteOf("www.site.xn--55qx5d.cn"))
+    }
+
+    @Test
+    fun givenNumericAddresses_whenFindingASite_thenTheEntireAddressIsKept() {
+        for (host in listOf("0.0.0.0", "::", "::ffff:192.0.2.1", "fe80::1%eth0", "1:2:3:4:5:6:7:8")) {
+            assertEquals(host, siteOf(host), host)
+        }
+        assertEquals("2001:db8::1", siteOf("2001:DB8::1"))
+    }
+
+    @Test
+    fun givenMalformedNamesAndAddresses_whenFindingASite_thenTheyAreRejected() {
+        for (host in listOf(
+            "192.0.2.01", "256.0.0.1", "0x7f.0.0.1", "::ffff:192.0.2.1%eth0",
+            ":1:2:3:4:5:6:7", "1:2:3:4:5:6:7:8::", "2001:::1", "2001::db8::1", "[::1]",
+            "www.-bad.com", "www.bad-.com", "www.numeric.1a", "${"x".repeat(64)}.com",
+        )) {
+            assertNull(siteOf(host), host)
+        }
+    }
 }

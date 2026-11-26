@@ -52,7 +52,7 @@ import li.mercury.adblocker.core.ui.SegmentedItem
 import li.mercury.adblocker.core.ui.openSecuritySettings
 
 /** What the settings of the VPN method do. */
-class VpnActions(
+data class VpnActions(
     val onCheckRoot: () -> Unit = {},
     val onSwitchToRoot: () -> Unit = {},
     val onCancelRootSwitch: () -> Unit = {},

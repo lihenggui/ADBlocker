@@ -175,13 +175,9 @@ internal fun ADBlockerShell(
     val listOnStack = navigationState.currentSubStack.any { it in LIST_PANE_KEYS }
     val besideList by rememberUpdatedState(!singlePane && listOnStack)
     val extraLarge by rememberUpdatedState(sizeClass.isWidthAtLeastBreakpoint(WindowSizeClass.WIDTH_DP_EXTRA_LARGE_LOWER_BOUND))
-    val provider = shellEntryProvider(
-        entryProvider(builder = entries),
-        { snackbarOwner },
-        { besideList },
-        { extraLarge },
-        sidePane,
-    )
+    val provider = remember(entries, sidePane, navigationState, singlePane) {
+        shellEntryProvider(entryProvider(builder = entries), { snackbarOwner }, { besideList }, { extraLarge }, sidePane)
+    }
 
     val sceneState = rememberSceneState(
         entries = navigationState.toEntries(provider),
@@ -191,21 +187,16 @@ internal fun ADBlockerShell(
     val navigationEventState = rememberNavigationEventState(sceneState)
     NavigationBackHandler(sceneState, navigationEventState, onBackCompleted = navigator::goBack)
 
-    val suiteType = navigationSuiteType(adaptiveInfo)
-    val progress = (navigationEventState.transitionState as? InProgress)?.latestEvent?.progress
-    val previousStack = sceneState.currentScene.previousEntries
-    val previousKeys = if (progress != null) {
-        // SceneState describes the retained prefix of the decorated back stack.
-        navigationState.topLevelStack.flatMap { navigationState.subStacks.getValue(it) }.take(previousStack.size)
-    } else {
-        emptyList()
-    }
-    val selectedRoot = previousKeys.lastOrNull { it in navigationState.topLevelKeys } ?: navigationState.currentTopLevelKey
-
     val snackbarHostState = remember { SnackbarHostState() }
     val messageScope = rememberCoroutineScope()
-    val navigationItems: @Composable () -> Unit = { ShellNavigationItems(selectedRoot, progress, navigator, suiteType) }
-    val content: @Composable () -> Unit = {
+    ShellWithBackProgress(
+        navigationState,
+        navigator,
+        navigationEventState,
+        sceneState.currentScene.previousEntries.size,
+        navigationSuiteType(adaptiveInfo),
+        modifier,
+    ) {
         ShellContent(besideList, sizeClass, singlePane, snackbarHostState, messageScope) {
             ShellNavDisplay(
                 sceneState = sceneState,
@@ -215,7 +206,47 @@ internal fun ADBlockerShell(
             )
         }
     }
-    ShellScaffold(navigationState, previousKeys.lastOrNull(), progress, suiteType, navigationItems, modifier, content)
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun ShellWithBackProgress(
+    navigationState: NavigationState,
+    navigator: Navigator,
+    navigationEventState: NavigationEventState<SceneInfo<NavKey>>,
+    previousSize: Int,
+    suiteType: NavigationSuiteType,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    // The gesture updates the scaffold without rebuilding the decorated entries.
+    val progress = (navigationEventState.transitionState as? InProgress)?.latestEvent?.progress
+    val previous by remember(navigationState, previousSize) {
+        derivedStateOf {
+            // SceneState describes the retained prefix of the decorated back stack.
+            var remaining = previousSize
+            navigationState.topLevelStack.firstNotNullOfOrNull { root ->
+                val stack = navigationState.subStacks.getValue(root)
+                if (remaining in 1..stack.size) {
+                    root to stack[remaining - 1]
+                } else {
+                    remaining -= stack.size
+                    null
+                }
+            }
+        }
+    }
+    val target = if (progress != null) previous else null
+    val selectedRoot = target?.first ?: navigationState.currentTopLevelKey
+    ShellScaffold(
+        navigationState,
+        target?.second,
+        progress,
+        suiteType,
+        navigationItems = { ShellNavigationItems(selectedRoot, progress, navigator, suiteType) },
+        modifier = modifier,
+        content = content,
+    )
 }
 
 @Composable
