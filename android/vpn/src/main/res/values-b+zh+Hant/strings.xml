@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">正在過濾</string>
+    <string name="vpn_channel_stopped">過濾已停止</string>
+
+    <string name="vpn_starting">正在啟動過濾</string>
+    <plurals name="vpn_filtering">
+        <item quantity="other">正在過濾 %d 個應用程式</item>
+    </plurals>
+    <string name="vpn_no_apps">尚未選取應用程式</string>
+    <string name="vpn_paused_until">已暫停，將於 %s 繼續</string>
+    <string name="vpn_paused">已暫停</string>
+    <string name="vpn_action_pause_hour">暫停 1 小時</string>
+    <string name="vpn_action_resume">繼續</string>
+    <string name="vpn_action_open">開啟</string>
+
+    <string name="vpn_revoked_title">過濾已停止</string>
+    <string name="vpn_revoked_text">VPN 已由其他 VPN 應用程式關閉，或已在系統設定中關閉。選定的應用程式仍可連線，但流量不會經過過濾。</string>
+    <string name="vpn_status_unavailable">無法取得過濾狀態</string>
+</resources>

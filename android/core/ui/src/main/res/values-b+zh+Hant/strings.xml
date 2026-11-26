@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">再試一次</string>
+    <string name="core_ui_failure_no_root">沒有 root 權限</string>
+    <string name="core_ui_failure_no_root_text">在 root 管理工具中授予 ADBlocker root 權限，再試一次。</string>
+    <string name="core_ui_failure_module_missing">尚未設定 root 模式</string>
+    <string name="core_ui_failure_module_missing_text">請在「設定」中設定 root 模式。</string>
+    <string name="core_ui_failure_update_needed">root 模式需要更新</string>
+    <string name="core_ui_failure_update_needed_text">請在「設定」中更新。</string>
+    <string name="core_ui_failure_failed">載入失敗</string>
+    <string name="core_ui_failure_failed_text">過濾服務未回應。請在「設定」中查看服務狀態。</string>
+    <string name="core_ui_failure_timed_out">等待逾時</string>
+    <string name="core_ui_failure_timed_out_text">過濾服務未能及時回應。請再試一次。如果問題持續發生，請在「設定」中重新啟動過濾服務。</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="other">%1$d 分鐘</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="other">%1$d 小時</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="other">%1$d 天</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">無法使用 VPN 模式</string>
+    <string name="core_ui_failure_engine_missing_text">這個版本未包含不需 root 權限的過濾引擎。</string>
+    <string name="core_ui_work_app_label">%1$s · 工作</string>
+    <string name="core_ui_shared_uid">共用 Android UID，無法個別過濾</string>
+    <string name="core_ui_shared_app_label">%1$s · 共用 UID 的應用程式</string>
+    <string name="core_ui_shared_app_members">一併過濾的應用程式 · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">無法使用 root 模式過濾</string>
+    <string name="core_ui_remove_app_selection">取消選取</string>
+    <string name="core_ui_personal_eligibility_unavailable">無法確認哪些個人應用程式可以過濾。</string>
+    <string name="core_ui_app_list_withheld">無法查看已安裝的應用程式</string>
+    <string name="core_ui_app_list_withheld_text">系統尚未允許 ADBlocker 讀取已安裝的應用程式清單。請授予權限，以便選擇要過濾的應用程式。</string>
+    <string name="core_ui_app_list_allow">允許</string>
+    <string name="core_ui_app_list_check_again">再次檢查</string>
+    <string name="core_ui_filtering_scope">過濾範圍</string>
+    <string name="core_ui_scope_chosen">選定的應用程式</string>
+    <string name="core_ui_scope_all">所有應用程式</string>
+    <string name="core_ui_scope_all_text">過濾個人應用程式，包括新安裝的項目。可在「應用程式」頁面排除個別項目。工作資料夾的應用程式仍須個別選取。</string>
+    <string name="core_ui_category_ads">廣告</string>
+    <string name="core_ui_category_privacy">隱私權</string>
+    <string name="core_ui_category_security">安全性</string>
+    <string name="core_ui_category_regional">地區與語言</string>
+    <string name="core_ui_category_annoyances">干擾項目</string>
+    <string name="core_ui_vpn_transfer_incomplete">部分 root 模式設定無法移轉。</string>
+    <string name="core_ui_vpn_transfer_apps">root 模式的應用程式過濾設定無法移轉。</string>
+    <string name="core_ui_vpn_transfer_lists">部分 root 模式的過濾清單設定無法移轉。</string>
+    <string name="core_ui_vpn_transfer_rules">root 模式的自訂規則無法移轉。</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">部分 root 模式的信任網站無法移轉。</string>
+    <string name="core_ui_vpn_transfer_url_filtering">root 模式的依網址過濾設定無法移轉。</string>
+</resources>
