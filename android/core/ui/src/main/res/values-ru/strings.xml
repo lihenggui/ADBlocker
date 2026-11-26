@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">Повторить</string>
+    <string name="core_ui_failure_no_root">Нет root-доступа</string>
+    <string name="core_ui_failure_no_root_text">Предоставьте ADBlocker root-доступ в менеджере root и повторите попытку.</string>
+    <string name="core_ui_failure_module_missing">Режим root не настроен</string>
+    <string name="core_ui_failure_module_missing_text">Настройте режим root в настройках.</string>
+    <string name="core_ui_failure_update_needed">Нужно обновить режим root</string>
+    <string name="core_ui_failure_update_needed_text">Обновите его в настройках.</string>
+    <string name="core_ui_failure_failed">Не удалось загрузить</string>
+    <string name="core_ui_failure_failed_text">Служба фильтрации не ответила. Проверьте ее состояние в настройках.</string>
+    <string name="core_ui_failure_timed_out">Время ожидания истекло</string>
+    <string name="core_ui_failure_timed_out_text">Служба фильтрации не ответила вовремя. Повторите попытку. Если это повторится, перезапустите службу в настройках.</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="one">%1$d минута</item>
+        <item quantity="few">%1$d минуты</item>
+        <item quantity="many">%1$d минут</item>
+        <item quantity="other">%1$d минуты</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="one">%1$d час</item>
+        <item quantity="few">%1$d часа</item>
+        <item quantity="many">%1$d часов</item>
+        <item quantity="other">%1$d часа</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="one">%1$d день</item>
+        <item quantity="few">%1$d дня</item>
+        <item quantity="many">%1$d дней</item>
+        <item quantity="other">%1$d дня</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">Режим VPN недоступен</string>
+    <string name="core_ui_failure_engine_missing_text">В этой сборке нет механизма фильтрации без root.</string>
+    <string name="core_ui_work_app_label">%1$s · Рабочий профиль</string>
+    <string name="core_ui_shared_uid">Общий UID Android · отдельная фильтрация недоступна</string>
+    <string name="core_ui_shared_app_label">%1$s · Приложения с общим UID</string>
+    <string name="core_ui_shared_app_members">Фильтруются вместе · %1$s</string>
+    <string name="core_ui_app_filtering_unavailable">Фильтрация в режиме root недоступна</string>
+    <string name="core_ui_remove_app_selection">Снять выбор</string>
+    <string name="core_ui_personal_eligibility_unavailable">Не удалось проверить, какие личные приложения можно фильтровать.</string>
+    <string name="core_ui_app_list_withheld">Список приложений недоступен</string>
+    <string name="core_ui_app_list_withheld_text">Система не разрешила ADBlocker читать список установленных приложений. Разрешите доступ, чтобы выбрать приложения для фильтрации.</string>
+    <string name="core_ui_app_list_allow">Разрешить</string>
+    <string name="core_ui_app_list_check_again">Проверить снова</string>
+    <string name="core_ui_filtering_scope">Область фильтрации</string>
+    <string name="core_ui_scope_chosen">Выбранные приложения</string>
+    <string name="core_ui_scope_all">Все приложения</string>
+    <string name="core_ui_scope_all_text">Фильтруются личные приложения, в том числе новые. Исключить приложения можно на странице «Приложения». Рабочие приложения по-прежнему нужно выбирать по отдельности.</string>
+    <string name="core_ui_category_ads">Реклама</string>
+    <string name="core_ui_category_privacy">Конфиденциальность</string>
+    <string name="core_ui_category_security">Безопасность</string>
+    <string name="core_ui_category_regional">Региональные</string>
+    <string name="core_ui_category_annoyances">Раздражители</string>
+    <string name="core_ui_vpn_transfer_incomplete">Не удалось перенести часть настроек режима root.</string>
+    <string name="core_ui_vpn_transfer_apps">Не удалось перенести настройки фильтрации приложений из режима root.</string>
+    <string name="core_ui_vpn_transfer_lists">Не удалось перенести часть настроек списков фильтров из режима root.</string>
+    <string name="core_ui_vpn_transfer_rules">Не удалось перенести пользовательские правила из режима root.</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">Не удалось перенести некоторые доверенные сайты из режима root.</string>
+    <string name="core_ui_vpn_transfer_url_filtering">Не удалось перенести настройки фильтрации по URL из режима root.</string>
+</resources>

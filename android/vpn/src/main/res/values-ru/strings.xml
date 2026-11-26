@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">Фильтрация</string>
+    <string name="vpn_channel_stopped">Фильтрация остановлена</string>
+
+    <string name="vpn_starting">Запуск фильтрации</string>
+    <plurals name="vpn_filtering">
+        <item quantity="one">Фильтруется %d приложение</item>
+        <item quantity="few">Фильтруются %d приложения</item>
+        <item quantity="many">Фильтруется %d приложений</item>
+        <item quantity="other">Фильтруется %d приложения</item>
+    </plurals>
+    <string name="vpn_no_apps">Приложения не выбраны</string>
+    <string name="vpn_paused_until">На паузе до %s</string>
+    <string name="vpn_paused">На паузе</string>
+    <string name="vpn_action_pause_hour">Пауза на час</string>
+    <string name="vpn_action_resume">Возобновить</string>
+    <string name="vpn_action_open">Открыть</string>
+
+    <string name="vpn_revoked_title">Фильтрация остановлена</string>
+    <string name="vpn_revoked_text">VPN отключена другим VPN-приложением или в системных настройках. Выбранные приложения подключаются к сети без фильтрации.</string>
+    <string name="vpn_status_unavailable">Статус фильтрации недоступен</string>
+</resources>

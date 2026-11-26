@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">Фильтрация HTTPS</string>
+    <string name="feature_https_back">Назад</string>
+    <string name="feature_https_step">Шаг %1$d из %2$d</string>
+    <string name="feature_https_later">Позже</string>
+    <string name="feature_https_continue">Далее</string>
+    <string name="feature_https_previous">Назад</string>
+    <string name="feature_https_impact_title">Влияние на безопасность</string>
+    <string name="feature_https_impact_text">Для фильтрации запросов внутри HTTPS-соединений сертификат ADBlocker должен быть в списке пользовательских сертификатов системы.</string>
+    <string name="feature_https_impact_key">Сертификат создается на этом устройстве. Его закрытый ключ хранится в закрытом хранилище приложения и удаляется при удалении приложения.</string>
+    <string name="feature_https_impact_apps">Можно расшифровывать трафик только тех приложений, которые доверяют пользовательским сертификатам. Это в основном некоторые браузеры. Остальные приложения по-прежнему фильтруются по домену.</string>
+    <string name="feature_https_impact_notice">После установки система будет постоянно показывать уведомление «Сеть может отслеживаться».</string>
+    <string name="feature_https_impact_remove">Сертификат можно удалить в системных настройках в любое время. Открыть их можно из раздела Настройки › HTTPS.</string>
+    <string name="feature_https_install_title">Установите сертификат</string>
+    <string name="feature_https_install_text">Android не разрешает приложениям устанавливать сертификаты. Сертификат устанавливается в системных настройках.</string>
+    <string name="feature_https_install_save">Сохраните сертификат</string>
+    <string name="feature_https_install_save_text">Сохраняет ADBlocker.crt на устройстве</string>
+    <string name="feature_https_install_saved">Сохранено как ADBlocker.crt</string>
+    <string name="feature_https_install_open">Откройте системные настройки</string>
+    <string name="feature_https_install_open_text">Защита и конфиденциальность › Дополнительные настройки › Шифрование и учетные данные › Установка сертификатов › Сертификат центра сертификации</string>
+    <string name="feature_https_install_choose">Выберите ADBlocker.crt и подтвердите</string>
+    <string name="feature_https_install_choose_text">Названия пунктов меню зависят от производителя</string>
+    <string name="feature_https_install_not_found">Сертификата пока нет в списке пользовательских сертификатов.</string>
+    <string name="feature_https_save">Сохранить сертификат</string>
+    <string name="feature_https_open_security">Открыть настройки защиты</string>
+    <string name="feature_https_save_failed">Не удалось сохранить сертификат</string>
+    <string name="feature_https_apps_title">Сертификат установлен</string>
+    <string name="feature_https_apps_text">Правила для URL применяются ко всем фильтруемым приложениям, где это поддерживается. Соединения приложений, которые отклоняют сертификат, остаются зашифрованными.</string>
+    <string name="feature_https_turn_on">Далее</string>
+    <string name="feature_https_failed">Не удалось выполнить действие</string>
+    <string name="feature_https_done_title">Фильтрация по URL включена</string>
+    <string name="feature_https_result_full">Полная фильтрация</string>
+    <string name="feature_https_result_hosts">Только домены</string>
+    <string name="feature_https_done_hint">Параметры фильтрации по URL можно изменить в настройках.</string>
+    <string name="feature_https_finish">Готово</string>
+    <string name="feature_https_work_title">HTTPS в рабочем профиле</string>
+    <string name="feature_https_work_instructions">Сохраните открытый сертификат и попросите администратора рабочего профиля установить его в этом профиле или воспользуйтесь настройками сертификатов профиля, если это разрешено правилами организации. Фильтрация HTTPS применяется к приложениям, которые доверяют сертификатам рабочего профиля.</string>
+    <string name="feature_https_work_save">Сохранить сертификат</string>
+    <string name="feature_https_work_saved">Сертификат сохранен</string>
+    <string name="feature_https_result_certificate">Только домены · нет сертификата</string>
+    <string name="feature_https_result_exclusions">Только домены · загружаются исключения HTTPS</string>
+    <string name="feature_https_results_unavailable">Не удалось получить результаты фильтрации приложений</string>
+</resources>

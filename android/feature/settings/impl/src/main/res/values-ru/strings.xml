@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Настройки</string>
+    <string name="feature_settings_back">Назад</string>
+    <string name="feature_settings_appearance">Оформление</string>
+    <string name="feature_settings_theme">Тема</string>
+    <string name="feature_settings_theme_system">Системная</string>
+    <string name="feature_settings_theme_light">Светлая</string>
+    <string name="feature_settings_theme_dark">Темная</string>
+    <string name="feature_settings_dynamic_color">Цвета обоев</string>
+    <string name="feature_settings_dynamic_color_text">Используются цвета обоев</string>
+    <string name="feature_settings_updates">Обновление списков</string>
+    <string name="feature_settings_update_interval">Обновлять автоматически</string>
+    <string name="feature_settings_interval_daily">Каждый день</string>
+    <string name="feature_settings_interval_three_days">Каждые 3 дня</string>
+    <string name="feature_settings_interval_weekly">Каждую неделю</string>
+    <string name="feature_settings_interval_never">Никогда</string>
+    <string name="feature_settings_wifi_only">Обновлять только по Wi-Fi</string>
+    <string name="feature_settings_wifi_only_text">Списки не загружаются через мобильный интернет</string>
+    <string name="feature_settings_app_list">Список приложений</string>
+    <string name="feature_settings_system_apps">Показывать системные приложения</string>
+    <string name="feature_settings_system_apps_text">Скрыты по умолчанию</string>
+    <string name="feature_settings_service">Служба фильтрации</string>
+    <string name="feature_settings_scope_checking">Проверка области фильтрации…</string>
+    <string name="feature_settings_scope_unavailable">Область фильтрации недоступна</string>
+    <string name="feature_settings_status_unknown">Статус неизвестен</string>
+    <string name="feature_settings_status_running">Работает</string>
+    <string name="feature_settings_status_paused">На паузе</string>
+    <string name="feature_settings_status_stopped">Не запущена</string>
+    <string name="feature_settings_status_turned_off">Отключена</string>
+    <string name="feature_settings_turned_off_text">Два запуска подряд не завершились</string>
+    <string name="feature_settings_started">запущена %1$s</string>
+    <string name="feature_settings_restart">Перезапустить службу фильтрации</string>
+    <string name="feature_settings_restart_text">Во время перезапуска приложения подключаются без фильтрации</string>
+    <string name="feature_settings_turn_on_again">Включить снова</string>
+    <string name="feature_settings_module_install">Настроить режим root</string>
+    <string name="feature_settings_module_reinstall">Обновить режим root</string>
+    <string name="feature_settings_module_unavailable">Статус режима root недоступен</string>
+    <string name="feature_settings_module_check_again">Статус режима root недоступен · Проверьте снова</string>
+    <string name="feature_settings_root_not_set_up_text">Не настроен · Приложения подключаются без фильтрации</string>
+    <string name="feature_settings_root_setting_up">Настройка режима root…</string>
+    <string name="feature_settings_root_setup_failed">Не удалось настроить · Повторите попытку</string>
+    <string name="feature_settings_root_update_text">Установленная версия отличается от версии приложения</string>
+    <string name="feature_settings_root_updating">Обновление режима root…</string>
+    <string name="feature_settings_root_update_failed">Не удалось обновить · Повторите попытку</string>
+    <string name="feature_settings_root_updated">Режим root обновлен</string>
+    <string name="feature_settings_root_missing_text">Предоставьте ADBlocker root-доступ в менеджере root и проверьте снова</string>
+    <string name="feature_settings_root_remove">Удалить режим root</string>
+    <string name="feature_settings_root_remove_text">Останавливает фильтрацию и удаляет данные режима root</string>
+    <string name="feature_settings_root_removing">Удаление режима root…</string>
+    <string name="feature_settings_root_remove_failed">Не удалось удалить · Повторите попытку</string>
+    <string name="feature_settings_root_remove_title">Удалить режим root?</string>
+    <string name="feature_settings_root_remove_explain">Фильтрация остановится, и приложения будут подключаться без фильтрации. Будут удалены центр сертификации режима root, список выбранных приложений, списки фильтров, правила, доверенные сайты и статистика этого режима. Настройки приложения, например тема, сохранятся. Здесь можно снова настроить режим root.</string>
+    <string name="feature_settings_root_remove_confirm">Удалить</string>
+    <string name="feature_settings_root_removed">Режим root удален</string>
+    <string name="feature_settings_root_flashed">Установлен как модуль</string>
+    <string name="feature_settings_root_flashed_in">Установлен как модуль в %1$s</string>
+    <string name="feature_settings_root_flashed_text">Чтобы удалить режим root, удалите там модуль и перезагрузите устройство</string>
+    <string name="feature_settings_root_flashed_manager_text">Чтобы удалить режим root, удалите модуль в менеджере root и перезагрузите устройство</string>
+    <string name="feature_settings_root_flashed_pending_text">Вступит в силу после перезагрузки</string>
+    <string name="feature_settings_root_restart_to_update">Перезагрузите устройство, чтобы завершить обновление</string>
+    <string name="feature_settings_root_marked_removal">Помечен для удаления в менеджере root · Перезагрузите устройство</string>
+    <string name="feature_settings_pinned">Домены, отклоняющие сертификат</string>
+    <string name="feature_settings_pinned_checking">Проверка доменов…</string>
+    <string name="feature_settings_pinned_unavailable">Список доменов недоступен</string>
+    <string name="feature_settings_pinned_none">Нет</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="one">%1$d приложение</item>
+        <item quantity="few">%1$d приложения</item>
+        <item quantity="many">%1$d приложений</item>
+        <item quantity="other">%1$d приложения</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="one">%1$d домен</item>
+        <item quantity="few">%1$d домена</item>
+        <item quantity="many">%1$d доменов</item>
+        <item quantity="other">%1$d домена</item>
+    </plurals>
+    <string name="feature_settings_data">Данные</string>
+    <string name="feature_settings_export_logs">Экспорт журналов</string>
+    <string name="feature_settings_export_logs_text">В журналах отмечается, какие операции выполнены и с каким результатом. Адреса подключений приложений туда не попадают.</string>
+    <string name="feature_settings_about">О приложении</string>
+    <string name="feature_settings_app_version">Версия %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Исходный код</string>
+    <string name="feature_settings_source_text">Лицензии приложения и списков фильтров</string>
+    <string name="feature_settings_restarted">Служба фильтрации перезапущена</string>
+    <string name="feature_settings_service_timeout">Служба фильтрации не ответила вовремя.</string>
+    <string name="feature_settings_module_disabled">Модуль ADBlocker отключен или помечен для удаления в менеджере root. Измените его состояние там.</string>
+    <string name="feature_settings_module_disabled_in">Модуль ADBlocker отключен или помечен для удаления в %1$s. Измените его состояние там.</string>
+    <string name="feature_settings_module_installed">Режим root работает</string>
+    <string name="feature_settings_pinned_forgotten">Домен забыт. При следующем подключении будет предпринята новая попытка расшифровки.</string>
+    <string name="feature_settings_logs_exported_partial">Журналы приложения экспортированы. Журнал режима root не удалось прочитать целиком.</string>
+    <string name="feature_settings_logs_exported">Журналы экспортированы</string>
+    <string name="feature_settings_failed">Не удалось выполнить действие</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">Фильтрация по URL</string>
+    <string name="feature_settings_url_filtering_text">Применяет правила для URL ко всем фильтруемым приложениям, где это поддерживается. Если параметр выключен, блокируются домены целиком.</string>
+    <string name="feature_settings_url_filtering_unknown">Нужна работающая служба фильтрации последней версии</string>
+    <string name="feature_settings_url_filtering_on">Фильтрация по URL включена</string>
+    <string name="feature_settings_url_filtering_off">Фильтрация по URL отключена</string>
+    <string name="feature_settings_cancel">Отмена</string>
+    <string name="feature_settings_cosmetic">Скрывать элементы страниц</string>
+    <string name="feature_settings_cosmetic_text">Изменяет расшифрованные страницы, чтобы скрыть указанные в правилах фильтрации элементы, например пустые рекламные блоки.</string>
+    <string name="feature_settings_cosmetic_security">Влияние на безопасность</string>
+    <string name="feature_settings_pinned_text">Эти приложения сами проверяют сертификаты этих доменов, поэтому соединения фильтруются только по домену. Если забыть домен, при следующем подключении к нему будет предпринята новая попытка расшифровки.</string>
+    <string name="feature_settings_forget">Забыть</string>
+    <string name="feature_settings_forget_all">Забыть все</string>
+    <string name="feature_settings_forget_all_title">Забыть все домены?</string>
+    <string name="feature_settings_forget_all_text">При следующем подключении к каждому из этих доменов будет предпринята новая попытка расшифровки.</string>
+    <string name="feature_settings_method">Способ фильтрации</string>
+    <string name="feature_settings_method_vpn">Режим VPN</string>
+    <string name="feature_settings_method_vpn_text">Используется · root не требуется</string>
+    <string name="feature_settings_method_vpn_available">root не требуется · Фильтрует по доменам</string>
+    <string name="feature_settings_method_root">Режим root</string>
+    <string name="feature_settings_method_root_not_set_up">Не настроен · Фильтрует по URL внутри HTTPS</string>
+    <string name="feature_settings_method_root_restart_first">Сначала перезагрузите устройство, чтобы завершить обновление модуля</string>
+    <string name="feature_settings_method_root_checking">Проверка root-доступа</string>
+    <string name="feature_settings_method_root_available">Есть root-доступ · Фильтрует по URL внутри HTTPS</string>
+    <string name="feature_settings_method_root_missing">root-доступ не обнаружен · Проверьте снова</string>
+    <string name="feature_settings_root_missing">root-доступ не обнаружен</string>
+    <string name="feature_settings_switch_root_title">Перейти в режим root?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker настраивает режим root, который берет на себя фильтрацию вместо VPN. VPN остается подключенной до запуска режима root. Приложения, списки, правила и доверенные сайты переносятся.</string>
+    <string name="feature_settings_switch_root">Перейти</string>
+    <string name="feature_settings_switched_to_root">Включен режим root</string>
+    <string name="feature_settings_switched_to_vpn">Включен режим VPN</string>
+    <string name="feature_settings_switch_root_pending">Переход в режим root не завершен.</string>
+    <string name="feature_settings_switch_root_retry">Переход не завершен · Повторите попытку</string>
+    <string name="feature_settings_cancel_root_switch">Отменить переход в режим root</string>
+    <string name="feature_settings_cancel_root_pending">Ожидание отмены</string>
+    <string name="feature_settings_retry_root_cancel">Повторить отмену</string>
+    <string name="feature_settings_always_on">Постоянная VPN</string>
+    <string name="feature_settings_always_on_text">Android запускает ADBlocker при загрузке устройства и после неожиданной остановки</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">Включено</string>
+    <string name="feature_settings_state_off">Выключено</string>
+    <string name="feature_settings_lockdown">Блокировать соединения без VPN</string>
+    <string name="feature_settings_lockdown_on">Включено · Выбранные приложения не могут подключиться к сети, пока фильтрация остановлена</string>
+    <string name="feature_settings_lockdown_off">Если параметр включен, выбранные приложения не могут подключиться к сети, пока фильтрация остановлена. Параметр можно изменить только в системных настройках.</string>
+    <string name="feature_settings_notifications">Уведомления</string>
+    <string name="feature_settings_notifications_on">Разрешены · Фильтрацию можно приостановить из уведомления</string>
+    <string name="feature_settings_notifications_off">Не разрешены · Фильтрация работает без уведомлений</string>
+    <string name="feature_settings_https_setup">Настроить фильтрацию HTTPS</string>
+    <string name="feature_settings_https_not_set_up">Не настроено · Нужны приложения, которые доверяют пользовательским сертификатам</string>
+    <string name="feature_settings_https_installed">Сертификат установлен · Настроить фильтрацию по URL</string>
+    <string name="feature_settings_url_filtering_needs_certificate">Установите сертификат, чтобы фильтровать URL в HTTPS-соединениях.</string>
+    <string name="feature_settings_remove_certificate">Удалить сертификат</string>
+    <string name="feature_settings_remove_certificate_text">Отключает расшифровку и открывает системные настройки</string>
+    <string name="feature_settings_remove_certificate_explain">Сначала ADBlocker отключает расшифровку HTTPS. Затем вы можете удалить сертификат в настройках Android.</string>
+    <string name="feature_settings_remove_certificate_path">Защита и конфиденциальность › Дополнительные настройки › Шифрование и учетные данные › Надежные сертификаты › Пользователь › ADBlocker user CA › Удалить</string>
+    <string name="feature_settings_remove_certificate_vary">Названия пунктов меню зависят от производителя.</string>
+    <string name="feature_settings_remove_certificate_open">Отключить и открыть настройки</string>
+</resources>

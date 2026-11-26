@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <string name="feature_overview_settings">Настройки</string>
+    <string name="feature_overview_filtering">Фильтрация</string>
+    <string name="feature_overview_paused">На паузе</string>
+    <string name="feature_overview_stopped">Служба фильтрации не запущена</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="one">%1$s приложение</item>
+        <item quantity="few">%1$s приложения</item>
+        <item quantity="many">%1$s приложений</item>
+        <item quantity="other">%1$s приложения</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="one">%1$s правило</item>
+        <item quantity="few">%1$s правила</item>
+        <item quantity="many">%1$s правил</item>
+        <item quantity="other">%1$s правила</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Возобновится через %1$s</string>
+    <string name="feature_overview_paused_detail">До возобновления</string>
+    <string name="feature_overview_stopped_detail">Приложения подключаются без фильтрации</string>
+    <string name="feature_overview_resume">Возобновить</string>
+    <string name="feature_overview_start">Запустить</string>
+    <string name="feature_overview_pause_hour">Пауза на час</string>
+    <string name="feature_overview_more_durations">Другие варианты паузы</string>
+    <string name="feature_overview_expanded">Развернуто</string>
+    <string name="feature_overview_collapsed">Свернуто</string>
+    <string name="feature_overview_until_resumed">До возобновления</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="one">%1$d час</item>
+        <item quantity="few">%1$d часа</item>
+        <item quantity="many">%1$d часов</item>
+        <item quantity="other">%1$d часа</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="one">%1$d минута</item>
+        <item quantity="few">%1$d минуты</item>
+        <item quantity="many">%1$d минут</item>
+        <item quantity="other">%1$d минуты</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Заблокировано за сегодня</string>
+    <string name="feature_overview_blocked_breakdown">Запросов: %1$s · соединений: %2$s</string>
+    <string name="feature_overview_week_description">Заблокировано за последние 7 дней: %1$s</string>
+    <string name="feature_overview_today">Сегодня</string>
+    <string name="feature_overview_top_apps">Больше всего блокировок</string>
+    <string name="feature_overview_status">Статус</string>
+    <string name="feature_overview_lists">Списки фильтров</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="one">Включено: %1$d · обновлено %2$s</item>
+        <item quantity="few">Включено: %1$d · обновлено %2$s</item>
+        <item quantity="many">Включено: %1$d · обновлено %2$s</item>
+        <item quantity="other">Включено: %1$d · обновлено %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="one">Включено: %1$d · загрузки еще не было</item>
+        <item quantity="few">Включено: %1$d · загрузки еще не было</item>
+        <item quantity="many">Включено: %1$d · загрузки еще не было</item>
+        <item quantity="other">Включено: %1$d · загрузки еще не было</item>
+    </plurals>
+    <string name="feature_overview_service">Служба фильтрации</string>
+    <string name="feature_overview_service_running">Работает</string>
+    <string name="feature_overview_service_running_since">Работает %1$s</string>
+    <string name="feature_overview_service_stopped">Не запущена</string>
+    <string name="feature_overview_updating">Обновление режима root…</string>
+    <string name="feature_overview_restart_to_update">Перезагрузите устройство, чтобы завершить обновление модуля.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="one">Пауза на %1$d час. Приложения подключаются без фильтрации.</item>
+        <item quantity="few">Пауза на %1$d часа. Приложения подключаются без фильтрации.</item>
+        <item quantity="many">Пауза на %1$d часов. Приложения подключаются без фильтрации.</item>
+        <item quantity="other">Пауза на %1$d часа. Приложения подключаются без фильтрации.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="one">Пауза на %1$d минуту. Приложения подключаются без фильтрации.</item>
+        <item quantity="few">Пауза на %1$d минуты. Приложения подключаются без фильтрации.</item>
+        <item quantity="many">Пауза на %1$d минут. Приложения подключаются без фильтрации.</item>
+        <item quantity="other">Пауза на %1$d минуты. Приложения подключаются без фильтрации.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Пауза до возобновления. Приложения подключаются без фильтрации.</string>
+    <string name="feature_overview_undo">Отменить</string>
+    <string name="feature_overview_module_disabled">Модуль ADBlocker отключен или помечен для удаления в менеджере root. Измените его состояние там.</string>
+    <string name="feature_overview_module_disabled_in">Модуль ADBlocker отключен или помечен для удаления в %1$s. Измените его состояние там.</string>
+    <string name="feature_overview_service_timeout">Служба фильтрации не ответила вовремя.</string>
+    <string name="feature_overview_root_pending">Переход в режим root не завершен. Повторите попытку в настройках.</string>
+    <string name="feature_overview_action_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
+    <string name="feature_overview_turned_off">Отключено</string>
+    <string name="feature_overview_turned_off_detail">Фильтрация автоматически отключилась %1$s, после того как два запуска подряд не завершились. Приложения подключаются без фильтрации.</string>
+    <string name="feature_overview_turn_on_again">Включить снова</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Подключение</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Отключено</string>
+    <string name="feature_overview_vpn_off_detail">Выбранные приложения подключаются к сети без фильтрации.</string>
+    <string name="feature_overview_vpn_revoked_detail">VPN отключена другим VPN-приложением или в системных настройках. Выбранные приложения подключаются к сети без фильтрации.</string>
+    <string name="feature_overview_vpn_failed_detail">Фильтрация неожиданно остановилась. Выбранные приложения подключаются к сети без фильтрации.</string>
+    <string name="feature_overview_vpn_lockdown_detail">Включен параметр «Блокировать соединения без VPN». Выбранные приложения не смогут подключиться к сети, пока VPN не подключится снова.</string>
+    <string name="feature_overview_reconnect">Подключить снова</string>
+    <string name="feature_overview_vpn_refused">Использование VPN не разрешено. Выбранные приложения подключаются к сети без фильтрации.</string>
+    <string name="feature_overview_method">Способ фильтрации</string>
+    <string name="feature_overview_method_vpn_on">VPN · Подключена</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Подключение</string>
+    <string name="feature_overview_method_vpn_off">VPN · Отключена</string>
+    <string name="feature_overview_https">Зашифрованные сайты</string>
+    <string name="feature_overview_https_not_set_up">Только домены · можно настроить для браузеров</string>
+    <string name="feature_overview_https_off">Только домены · расшифровка отключена</string>
+    <string name="feature_overview_https_none">Только домены</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="one">Расшифровывается трафик %1$d приложения</item>
+        <item quantity="few">Расшифровывается трафик %1$d приложений</item>
+        <item quantity="many">Расшифровывается трафик %1$d приложений</item>
+        <item quantity="other">Расшифровывается трафик %1$d приложения</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">Включен параметр «Блокировать соединения без VPN»</string>
+    <string name="feature_overview_lockdown_text">Пока фильтрация остановлена, выбранные приложения не могут подключиться к сети.</string>
+    <string name="feature_overview_notice_ok">ОК</string>
+    <string name="feature_overview_root_title">Обнаружен root-доступ</string>
+    <string name="feature_overview_root_text">Режим root фильтрует зашифрованные сайты по URL без VPN. Выбранные приложения, списки и правила сохраняются.</string>
+    <string name="feature_overview_root_dismiss">Не сейчас</string>
+    <string name="feature_overview_root_switch">Перейти в режим root</string>
+    <string name="feature_overview_battery_title">Система Android остановила VPN</string>
+    <string name="feature_overview_battery_text">Фильтрация остановилась в фоновом режиме. Разрешите ADBlocker работать без ограничений расхода заряда, чтобы фильтрация не прерывалась.</string>
+    <string name="feature_overview_battery_action">Разрешить фоновую работу</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="one">Еще не загружен %1$d список</item>
+        <item quantity="few">Еще не загружены %1$d списка</item>
+        <item quantity="many">Еще не загружено %1$d списков</item>
+        <item quantity="other">Еще не загружено %1$d списка</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="one">Не удалось загрузить %1$d список</item>
+        <item quantity="few">Не удалось загрузить %1$d списка</item>
+        <item quantity="many">Не удалось загрузить %1$d списков</item>
+        <item quantity="other">Не удалось загрузить %1$d списка</item>
+    </plurals>
+    <!-- `one` also covers 21, 31, ..., so every form uses wording that fits any number. -->
+    <plurals name="feature_overview_lists_missing_pending" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Фильтрация начнется после загрузки.</item>
+        <item quantity="few">Фильтрация начнется после загрузки.</item>
+        <item quantity="many">Фильтрация начнется после загрузки.</item>
+        <item quantity="other">Фильтрация начнется после загрузки.</item>
+    </plurals>
+    <!-- `one` also covers 21, 31, ..., so every form uses wording that fits any number. -->
+    <plurals name="feature_overview_lists_missing_failed" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Фильтрация начнется после загрузки.</item>
+        <item quantity="few">Фильтрация начнется после загрузки.</item>
+        <item quantity="many">Фильтрация начнется после загрузки.</item>
+        <item quantity="other">Фильтрация начнется после загрузки.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Загрузить</string>
+    <!-- `one` also covers 21, 31, ..., so every form uses wording that fits any number. -->
+    <plurals name="feature_overview_lists_previous_copy" tools:ignore="ImpliedQuantity">
+        <item quantity="one">Фильтрация продолжается по ранее загруженным правилам.</item>
+        <item quantity="few">Фильтрация продолжается по ранее загруженным правилам.</item>
+        <item quantity="many">Фильтрация продолжается по ранее загруженным правилам.</item>
+        <item quantity="other">Фильтрация продолжается по ранее загруженным правилам.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Открыть списки</string>
+    <string name="feature_overview_lists_download_failed">Не удалось загрузить</string>
+    <string name="feature_overview_app_list_withheld_title">Большинство приложений не фильтруется</string>
+    <string name="feature_overview_app_list_withheld_text">Система не разрешила ADBlocker читать список установленных приложений. Фильтрация этих приложений начнется после получения доступа.</string>
+</resources>

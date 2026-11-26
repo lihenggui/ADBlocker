@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Назад</string>
+    <string name="feature_appdetail_open">Открыть %1$s</string>
+    <string name="feature_appdetail_not_installed">Это приложение больше не установлено</string>
+    <string name="feature_appdetail_filter_this">Фильтровать приложение</string>
+    <string name="feature_appdetail_filter_group">Фильтровать приложения вместе</string>
+    <string name="feature_appdetail_pause_group">Приостановить группу на час</string>
+    <string name="feature_appdetail_shared_members">Приложения с общим UID</string>
+    <string name="feature_appdetail_off">Трафик не проходит через ADBlocker</string>
+    <string name="feature_appdetail_on_full">Блокирует рекламу и трекеры</string>
+    <string name="feature_appdetail_on_hosts">Блокирует только домены рекламы и трекеров</string>
+    <string name="feature_appdetail_blocked">Заблокировано</string>
+    <string name="feature_appdetail_today">Сегодня</string>
+    <string name="feature_appdetail_week">7 дней</string>
+    <string name="feature_appdetail_trouble">Устранение неполадок</string>
+    <string name="feature_appdetail_pause">Приостановить на час</string>
+    <string name="feature_appdetail_pause_text">Используйте, если страница или функция не работает</string>
+    <string name="feature_appdetail_resume">Возобновить фильтрацию</string>
+    <string name="feature_appdetail_paused_until">На паузе до %1$s</string>
+    <string name="feature_appdetail_requests">Посмотреть запросы</string>
+    <string name="feature_appdetail_requests_text">Открывает раздел «Активность» с запросами этого приложения</string>
+    <string name="feature_appdetail_group_requests_text">Открывает раздел «Активность» с запросами этой группы</string>
+    <string name="feature_appdetail_pinned">Домены, отклоняющие сертификат</string>
+    <string name="feature_appdetail_pinned_none">Нет</string>
+    <string name="feature_appdetail_pinned_count">%1$d · фильтруются только по домену</string>
+    <string name="feature_appdetail_pinned_text">Приложение само проверяет сертификаты этих доменов. Если забыть домен, при следующем подключении к нему будет предпринята новая попытка расшифровки.</string>
+    <string name="feature_appdetail_forget">Забыть</string>
+    <string name="feature_appdetail_forget_all">Забыть все</string>
+    <string name="feature_appdetail_forgotten">Домен забыт. При следующем подключении будет предпринята новая попытка расшифровки.</string>
+    <string name="feature_appdetail_paused">Фильтрация приложения приостановлена на час</string>
+    <string name="feature_appdetail_group_paused">Фильтрация группы приостановлена на час</string>
+    <string name="feature_appdetail_undo">Отменить</string>
+    <string name="feature_appdetail_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
+    <string name="feature_appdetail_level_url_filtering_off">Фильтрация по URL отключена в настройках. Блокируются только домены целиком.</string>
+    <string name="feature_appdetail_level_unknown">Сейчас служба фильтрации не может расшифровать трафик этого приложения, поэтому HTTPS-соединения фильтруются только по домену.</string>
+    <string name="feature_appdetail_level_needs_certificate">Чтобы фильтровать URL в HTTPS-соединениях, настройте сертификат. Приложение должно доверять пользовательским сертификатам.</string>
+    <string name="feature_appdetail_set_up_https">Настроить фильтрацию HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">HTTPS-соединения фильтруются по домену, пока списки исключений не готовы.</string>
+    <string name="feature_appdetail_work_certificate">HTTPS-соединения остаются зашифрованными, пока приложение не будет доверять сертификату в своем рабочем профиле.</string>
+    <string name="feature_appdetail_work_quiet">Чтобы использовать приложение, включите рабочий профиль.</string>
+    <string name="feature_appdetail_work_unavailable">Это приложение недоступно в рабочем профиле.</string>
+    <string name="feature_appdetail_shared_uid">У этого приложения общий UID Android с другим приложением. Режим root не может фильтровать его отдельно.</string>
+    <string name="feature_appdetail_mixed">Фильтрует HTTP-запросы и домены HTTPS</string>
+    <string name="feature_appdetail_include">Включить в фильтрацию</string>
+    <string name="feature_appdetail_counts_checking">Проверка числа блокировок…</string>
+    <string name="feature_appdetail_counts_unavailable">Число блокировок недоступно</string>
+    <string name="feature_appdetail_pinned_checking">Проверка…</string>
+    <string name="feature_appdetail_pinned_unavailable">Не удалось прочитать список доменов</string>
+</resources>
