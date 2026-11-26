@@ -16,6 +16,7 @@
 
 package li.mercury.adblocker.core.ui
 
+import android.content.Context
 import android.icu.text.DateFormat
 import android.icu.text.DisplayContext
 import android.icu.text.RelativeDateTimeFormatter
@@ -38,8 +39,10 @@ import java.text.NumberFormat
 import java.time.Clock
 import java.time.Duration
 import java.time.Instant
+import java.util.Date
 import java.util.Locale
 import kotlin.math.abs
+import android.text.format.DateFormat as AndroidDateFormat
 
 private val countFormat = ThreadLocal<LocaleFormatter<NumberFormat>>()
 private val relativeFormat = ThreadLocal<LocaleFormatter<RelativeDateTimeFormatter>>()
@@ -62,6 +65,15 @@ fun formatCount(n: Long): String {
 
 @Composable
 fun formatCount(n: Int): String = formatCount(n.toLong())
+
+/** A local clock time with the app's locale and the user's clock preference. */
+fun formatClockTime(context: Context, time: Instant, includeSeconds: Boolean = false): String {
+    val locale = context.resources.configuration.locales[0]
+    val hours = if (AndroidDateFormat.is24HourFormat(context)) "H" else "h"
+    val skeleton = hours + if (includeSeconds) "ms" else "m"
+    // Read the current zone when creating the formatter so it follows travel.
+    return DateFormat.getInstanceForSkeleton(skeleton, locale).format(Date.from(time))
+}
 
 val LocalClock = staticCompositionLocalOf { Clock.systemUTC() }
 

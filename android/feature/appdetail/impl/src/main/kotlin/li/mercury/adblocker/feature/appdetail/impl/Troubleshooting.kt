@@ -28,6 +28,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -39,9 +40,7 @@ import li.mercury.adblocker.core.ui.ExpandChevron
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.SegmentedGroup
 import li.mercury.adblocker.core.ui.SegmentedItem
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
+import li.mercury.adblocker.core.ui.formatClockTime
 
 /** What to do when the app misbehaves while filtered, from the quickest fix to the most precise. */
 @Composable
@@ -70,7 +69,7 @@ internal fun Trouble(
                 supporting = {
                     Text(
                         if (pausedUntil != null) {
-                            stringResource(R.string.feature_appdetail_paused_until, DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT).withZone(ZoneId.systemDefault()).format(pausedUntil))
+                            stringResource(R.string.feature_appdetail_paused_until, formatClockTime(LocalContext.current, pausedUntil))
                         } else {
                             stringResource(R.string.feature_appdetail_pause_text)
                         },

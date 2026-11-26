@@ -53,6 +53,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
@@ -68,9 +69,8 @@ import li.mercury.adblocker.core.ui.AppIcon
 import li.mercury.adblocker.core.ui.AppSnackbarHost
 import li.mercury.adblocker.core.ui.LocalShowsDetailBesideList
 import li.mercury.adblocker.core.ui.MessageEffect
+import li.mercury.adblocker.core.ui.formatClockTime
 import li.mercury.adblocker.core.ui.profileAppLabel
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 /**
  * One request: in a modal bottom sheet over the list on phones, in the
@@ -161,7 +161,7 @@ private fun RequestVerdict(request: RequestEvent) {
         }
         Spacer(Modifier.weight(1f))
         Text(
-            time.format(request.time.atZone(ZoneId.systemDefault())),
+            formatClockTime(LocalContext.current, request.time, includeSeconds = true),
             style = MaterialTheme.typography.labelMedium.copy(fontFamily = FontFamily.Monospace, fontFeatureSettings = "tnum"),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -273,9 +273,6 @@ private fun Fact(label: String, value: @Composable () -> Unit) {
         }
     }
 }
-
-// The zone is read at each use: the device can move to another while the app runs.
-private val time = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 private fun reasonText(reason: PassReason) = when (reason) {
     PassReason.Pinned -> R.string.feature_activity_reason_pinned
