@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">설정</string>
+    <string name="feature_overview_filtering">필터링 중</string>
+    <string name="feature_overview_paused">일시중지됨</string>
+    <string name="feature_overview_stopped">필터링 서비스 실행 중 아님</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="other">앱 %1$s개</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="other">규칙 %1$s개</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">%1$s 후 재개</string>
+    <string name="feature_overview_paused_detail">재개할 때까지</string>
+    <string name="feature_overview_stopped_detail">앱이 필터링 없이 연결됩니다</string>
+    <string name="feature_overview_resume">재개</string>
+    <string name="feature_overview_start">시작</string>
+    <string name="feature_overview_pause_hour">1시간 일시중지</string>
+    <string name="feature_overview_more_durations">일시중지 시간 더보기</string>
+    <string name="feature_overview_expanded">펼쳐짐</string>
+    <string name="feature_overview_collapsed">접힘</string>
+    <string name="feature_overview_until_resumed">재개할 때까지</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="other">%1$d시간</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="other">%1$d분</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">오늘 차단</string>
+    <string name="feature_overview_blocked_breakdown">요청 %1$s건 · 연결 %2$s건</string>
+    <string name="feature_overview_week_description">최근 7일간 차단 건수: %1$s</string>
+    <string name="feature_overview_today">오늘</string>
+    <string name="feature_overview_top_apps">차단 상위 앱</string>
+    <string name="feature_overview_status">상태</string>
+    <string name="feature_overview_lists">필터 목록</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="other">%1$d개 사용 중 · %2$s 업데이트</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="other">%1$d개 사용 중 · 아직 다운로드되지 않음</item>
+    </plurals>
+    <string name="feature_overview_service">필터링 서비스</string>
+    <string name="feature_overview_service_running">실행 중</string>
+    <string name="feature_overview_service_running_since">%1$s 동안 실행 중</string>
+    <string name="feature_overview_service_stopped">실행 중 아님</string>
+    <string name="feature_overview_updating">root 모드 업데이트 중…</string>
+    <string name="feature_overview_restart_to_update">모듈 업데이트를 완료하려면 기기를 다시 시작하세요.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="other">%1$d시간 일시중지했습니다. 앱이 필터링 없이 연결됩니다.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="other">%1$d분 일시중지했습니다. 앱이 필터링 없이 연결됩니다.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">재개할 때까지 일시중지했습니다. 앱이 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_undo">실행취소</string>
+    <string name="feature_overview_module_disabled">root 관리자에서 ADBlocker 모듈이 꺼져 있거나 제거가 예약되어 있습니다. root 관리자에서 변경하세요.</string>
+    <string name="feature_overview_module_disabled_in">%1$s에서 ADBlocker 모듈이 꺼져 있거나 제거가 예약되어 있습니다. 해당 관리자에서 변경하세요.</string>
+    <string name="feature_overview_service_timeout">필터링 서비스가 제때 응답하지 않았습니다.</string>
+    <string name="feature_overview_root_pending">root 모드로 전환을 완료하지 못했습니다. 설정에서 다시 시도하세요.</string>
+    <string name="feature_overview_action_failed">작업에 실패했습니다. 설정에서 필터링 서비스를 확인하세요.</string>
+    <string name="feature_overview_turned_off">꺼짐</string>
+    <string name="feature_overview_turned_off_detail">시작을 두 번 연속 완료하지 못해 %1$s에 필터링이 자동으로 꺼졌습니다. 앱이 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_turn_on_again">다시 켜기</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">연결 중</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">연결 해제됨</string>
+    <string name="feature_overview_vpn_off_detail">선택한 앱은 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_vpn_revoked_detail">다른 VPN 앱이나 시스템 설정에서 VPN이 꺼졌습니다. 선택한 앱은 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_vpn_failed_detail">필터링이 예기치 않게 중지되었습니다. 선택한 앱은 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_vpn_lockdown_detail">‘VPN 없는 연결 차단’이 켜져 있습니다. VPN이 다시 연결될 때까지 선택한 앱은 연결할 수 없습니다.</string>
+    <string name="feature_overview_reconnect">다시 연결</string>
+    <string name="feature_overview_vpn_refused">VPN 사용이 허용되지 않았습니다. 선택한 앱은 필터링 없이 연결됩니다.</string>
+    <string name="feature_overview_method">필터링 방식</string>
+    <string name="feature_overview_method_vpn_on">VPN · 연결됨</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · 연결 중</string>
+    <string name="feature_overview_method_vpn_off">VPN · 연결 해제됨</string>
+    <string name="feature_overview_https">암호화된 사이트</string>
+    <string name="feature_overview_https_not_set_up">도메인만 · 브라우저에서 설정 가능</string>
+    <string name="feature_overview_https_off">도메인만 · 복호화 꺼짐</string>
+    <string name="feature_overview_https_none">도메인만</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="other">앱 %1$d개의 트래픽 복호화</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">‘VPN 없는 연결 차단’ 켜짐</string>
+    <string name="feature_overview_lockdown_text">필터링이 중지된 동안 선택한 앱은 연결할 수 없습니다.</string>
+    <string name="feature_overview_notice_ok">확인</string>
+    <string name="feature_overview_root_title">root 액세스 권한 감지됨</string>
+    <string name="feature_overview_root_text">root 모드는 VPN을 사용하지 않고 암호화된 사이트를 URL 기준으로 필터링합니다. 선택한 앱과 목록, 규칙은 유지됩니다.</string>
+    <string name="feature_overview_root_dismiss">나중에</string>
+    <string name="feature_overview_root_switch">root 모드로 전환</string>
+    <string name="feature_overview_battery_title">Android가 VPN을 중지함</string>
+    <string name="feature_overview_battery_text">백그라운드에서 필터링이 중지되었습니다. 필터링이 계속 작동하도록 ADBlocker가 배터리 제한 없이 실행되게 허용하세요.</string>
+    <string name="feature_overview_battery_action">백그라운드 사용 허용</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="other">목록 %1$d개 아직 다운로드되지 않음</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="other">목록 %1$d개 다운로드 실패</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="other">다운로드되면 필터링에 사용됩니다.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="other">다운로드되면 필터링에 사용됩니다.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">지금 다운로드</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="other">이전 사본으로 필터링을 계속합니다.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">목록 열기</string>
+    <string name="feature_overview_lists_download_failed">다운로드 실패</string>
+    <string name="feature_overview_app_list_withheld_title">대부분의 앱이 필터링되지 않음</string>
+    <string name="feature_overview_app_list_withheld_text">시스템이 ADBlocker에 설치된 앱 목록을 읽을 권한을 부여하지 않았습니다. 허용하면 앱이 필터링됩니다.</string>
+</resources>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">브라우저 광고 차단기의 필터 목록을 사용해 선택한 앱의 트래픽을 필터링합니다. HTTPS 트래픽도 포함됩니다.</string>
+    <string name="nav_overview">개요</string>
+    <string name="nav_apps">앱</string>
+    <string name="nav_filters">필터</string>
+    <string name="nav_activity">활동</string>
+    <string name="pane_drag_handle">창 크기 조절 핸들</string>
+    <string name="pane_current_split">현재 창 비율 %1$s</string>
+    <string name="pane_change_split">창 비율을 %1$s로 변경</string>
+    <string name="tile_label">광고 차단</string>
+    <string name="tile_filtering">켜짐</string>
+    <string name="tile_paused">일시중지됨</string>
+    <string name="tile_stopped">실행 중 아님</string>
+</resources>
