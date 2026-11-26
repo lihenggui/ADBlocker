@@ -41,25 +41,32 @@
     </plurals>
     <string name="core_ui_failure_engine_missing">VPN mode unavailable</string>
     <string name="core_ui_failure_engine_missing_text">This build does not include the engine for filtering without root.</string>
+    <!-- %1$s is an app label or package name in a work profile. -->
     <string name="core_ui_work_app_label">%1$s · Work</string>
     <string name="core_ui_shared_uid">Shared Android UID, can’t filter individually</string>
+    <!-- %1$s is the label or shared UID name of an app group. -->
     <string name="core_ui_shared_app_label">%1$s · Shared apps</string>
+    <!-- %1$s is a comma-separated list of app labels or package names. -->
     <string name="core_ui_shared_app_members">Apps filtered together · %1$s</string>
     <string name="core_ui_app_filtering_unavailable">Root filtering unavailable</string>
     <string name="core_ui_remove_app_selection">Remove selection</string>
     <string name="core_ui_personal_eligibility_unavailable">Couldn’t check which personal apps can be filtered.</string>
     <string name="core_ui_app_list_withheld">Can’t see installed apps</string>
     <string name="core_ui_app_list_withheld_text">The system hasn’t allowed ADBlocker to read the list of installed apps. Allow it to choose which apps to filter.</string>
+    <!-- Button to grant access to the list of installed apps. -->
     <string name="core_ui_app_list_allow">Allow</string>
     <string name="core_ui_app_list_check_again">Check again</string>
     <string name="core_ui_filtering_scope">Filtering scope</string>
     <string name="core_ui_scope_chosen">Chosen apps</string>
     <string name="core_ui_scope_all">All apps</string>
+    <!-- Security: The automatic scope covers personal apps. Work apps are selected individually. -->
     <string name="core_ui_scope_all_text">Filters personal apps, including new installs. Exclude apps from the Apps page. Work apps still use individual selection.</string>
     <string name="core_ui_category_ads">Ads</string>
     <string name="core_ui_category_privacy">Privacy</string>
     <string name="core_ui_category_security">Security</string>
+    <!-- Category for lists aimed at a region or language. -->
     <string name="core_ui_category_regional">Regional</string>
+    <!-- Category for lists that target distractions such as cookie notices. -->
     <string name="core_ui_category_annoyances">Annoyances</string>
     <string name="core_ui_vpn_transfer_incomplete">Some root mode settings could not be carried over.</string>
     <string name="core_ui_vpn_transfer_apps">The root mode app filtering settings could not be carried over.</string>

@@ -29,11 +29,16 @@
     <string name="feature_activity_app_requests_hint">Start a recording in Activity to see requests here.</string>
     <string name="feature_activity_notification_channel">Activity recording</string>
     <string name="feature_activity_notification_title">ADBlocker is recording activity</string>
+    <!-- Request filter showing all verdicts. -->
     <string name="feature_activity_all">All</string>
+    <!-- Request filter showing blocked requests and domains. -->
     <string name="feature_activity_blocked">Blocked</string>
+    <!-- Request filter showing requests that were let through. -->
     <string name="feature_activity_allowed">Allowed</string>
+    <!-- Request filter showing HTTPS connections passed without decryption. -->
     <string name="feature_activity_encrypted">Not decrypted</string>
     <string name="feature_activity_all_apps">All apps</string>
+    <!-- %1$d is the number of requests omitted from the recording. -->
     <string name="feature_activity_dropped">(skipped %1$d)</string>
     <string name="feature_activity_empty">Waiting for requests</string>
     <string name="feature_activity_empty_idle">Nothing is being filtered</string>
@@ -43,34 +48,50 @@
     <string name="feature_activity_verdict_passed">Not decrypted</string>
     <string name="feature_activity_kind_script">Script</string>
     <string name="feature_activity_kind_image">Image</string>
+    <!-- Type of request that loads a web page itself. -->
     <string name="feature_activity_kind_document">Page</string>
+    <!-- Type of request that fetches a CSS stylesheet. -->
     <string name="feature_activity_kind_stylesheet">Style</string>
     <string name="feature_activity_kind_font">Font</string>
     <string name="feature_activity_kind_media">Media</string>
     <string name="feature_activity_app">App</string>
     <string name="feature_activity_kind">Type</string>
+    <!-- Label for the page that initiated the request. -->
     <string name="feature_activity_page">Page</string>
     <string name="feature_activity_rule">Current rule match (GET)</string>
     <string name="feature_activity_rule_unavailable">Unavailable</string>
     <string name="feature_activity_why">Reason</string>
     <string name="feature_activity_my_rules">My rules</string>
+    <!-- Security: The app refuses the local certificate for this domain. -->
     <string name="feature_activity_reason_pinned">The app does not accept the ADBlocker certificate for this domain, so it is filtered by domain only.</string>
+    <!-- Security: Explains why this connection was filtered without decryption. -->
     <string name="feature_activity_reason_hosts_only">This connection was filtered by domain. URL filtering was off or HTTPS inspection was unavailable.</string>
+    <!-- Security: HTTPS exclusions protect listed domains from decryption. -->
     <string name="feature_activity_reason_excluded">The domain is on an HTTPS exclusion list, such as the list of banks.</string>
+    <!-- Security: A trusted site bypasses blocking and decryption. -->
     <string name="feature_activity_reason_trusted">This site is trusted.</string>
+    <!-- Security: Extended Validation servers are left encrypted. -->
     <string name="feature_activity_reason_sensitive">The server has an Extended Validation certificate, so the connection is not decrypted.</string>
     <string name="feature_activity_reason_no_name">The connection does not specify a domain.</string>
+    <!-- Security: Trust refers to the app accepting the ADBlocker certificate. -->
     <string name="feature_activity_reason_untrusted">This app does not trust ADBlocker yet.</string>
+    <!-- Security: ADBlocker leaves certificate verification to the app in this case. -->
     <string name="feature_activity_reason_unverified">The server could not be verified, so the app checks it itself.</string>
     <string name="feature_activity_reason_other">Passed to the app unread.</string>
+    <!-- Security: %1$s is a site that will bypass blocking and decryption. -->
     <string name="feature_activity_trust_site">Trust %1$s</string>
     <string name="feature_activity_block_host">Block this domain</string>
+    <!-- %1$s is the originating app's label or package name. -->
     <string name="feature_activity_block_in_app">Block in %1$s</string>
     <string name="feature_activity_block_in_all_apps">Block in all apps</string>
     <string name="feature_activity_forget">Retry decryption</string>
+    <!-- Copies the recorded URL, or the host for a domain-only event. -->
     <string name="feature_activity_copy">Copy</string>
+    <!-- %1$s is the site added to the trusted list. -->
     <string name="feature_activity_trusted">Added %1$s to trusted sites</string>
+    <!-- %1$s is the blocked host name. -->
     <string name="feature_activity_blocked_host_everywhere">Blocked %1$s in all apps</string>
+    <!-- %1$s is the host name and %2$s is the app label or package name. -->
     <string name="feature_activity_blocked_host_in_app">Blocked %1$s in %2$s</string>
     <string name="feature_activity_forgotten">Decryption is retried at the next connection</string>
     <string name="feature_activity_failed">Action failed. Check the filtering service in Settings.</string>
@@ -79,6 +100,7 @@
     <string name="feature_activity_reason_host_blocked">The whole domain is blocked, so the connection was refused.</string>
     <string name="feature_activity_app_requests">Requests</string>
     <string name="feature_activity_open_activity">Open in Activity</string>
+    <!-- Security: HTTPS stays encrypted while the exclusion policy loads. -->
     <string name="feature_activity_reason_exclusions_pending">HTTPS exclusions are not ready</string>
     <string name="feature_activity_apps_unavailable">Couldn’t load app names or filter options</string>
     <string name="feature_activity_status_unavailable">Filtering status unavailable</string>

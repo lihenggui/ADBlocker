@@ -52,6 +52,8 @@ The app's screenshot tests compare with the images checked in next to
 them; after a change to the interface, `./gradlew recordRoborazziDebug`
 records them again. More in [android/AGENTS.md](android/AGENTS.md).
 
+For locale qualifiers, translation checks, and terminology, see [Android translations](docs/translations.md).
+
 The code structure limits are 800 physical lines per production source file,
 500 for a file with Compose functions, and 80 per function. A physical
 function span includes blank lines and comments between the declaration and

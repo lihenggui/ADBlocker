@@ -29,11 +29,14 @@
     <string name="vpn_paused_until">Paused until %s</string>
     <string name="vpn_paused">Paused</string>
     <string name="vpn_action_pause_hour">Pause 1 hour</string>
+    <!-- Notification action that resumes filtering. -->
     <string name="vpn_action_resume">Resume</string>
+    <!-- Notification action that opens ADBlocker. -->
     <string name="vpn_action_open">Open</string>
 
     <!-- Posted once when another VPN app takes over. -->
     <string name="vpn_revoked_title">Filtering stopped</string>
+    <!-- Security: Losing the local VPN stops filtering for the selected apps. -->
     <string name="vpn_revoked_text">The VPN was turned off by another VPN app or in the system settings. The chosen apps connect without filtering.</string>
     <string name="vpn_status_unavailable">Filtering status unavailable</string>
 </resources>

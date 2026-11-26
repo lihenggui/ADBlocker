@@ -19,9 +19,12 @@
     <string name="feature_onboarding_step">Step %1$d of %2$d</string>
     <string name="feature_onboarding_welcome_title" translatable="false">ADBlocker</string>
     <string name="feature_onboarding_welcome_text">Filters the network requests of chosen apps with the filter lists of browser ad blockers.</string>
+    <!-- Starts the setup wizard. -->
     <string name="feature_onboarding_start">Start</string>
+    <!-- Security: Distinguish local filtering from network traffic sent to app destinations or list sources. -->
     <string name="feature_onboarding_fact_private">No data leaves the device. The app connects only in VPN mode, to the chosen apps’ destinations and the list sources.</string>
     <string name="feature_onboarding_fact_methods">Works in root mode or VPN mode.</string>
+    <!-- Security: Describes what traffic is inspected when using chosen apps. -->
     <string name="feature_onboarding_fact_chosen">Only chosen apps are filtered. Connections of other apps are not read.</string>
     <string name="feature_onboarding_check_title">Device check</string>
     <string name="feature_onboarding_check_text">Checks whether this device can run ADBlocker.</string>
@@ -38,13 +41,19 @@
     <string name="feature_onboarding_check_again">Check again</string>
     <string name="feature_onboarding_continue">Continue</string>
     <string name="feature_onboarding_cert_title">URL filtering</string>
+    <!-- Security: Explains the scope of URL filtering and how to disable it. -->
     <string name="feature_onboarding_cert_text">URL rules apply to the filtered apps where supported, including inside HTTPS. To block whole domains only, turn off URL filtering in Settings.</string>
+    <!-- Security: The root mode private key is readable only by root and removed with root mode. -->
     <string name="feature_onboarding_cert_key">The private key is created and kept on this device, readable only by root, and deleted when root mode is removed.</string>
+    <!-- Security: Upstream certificate verification happens before local signing. -->
     <string name="feature_onboarding_cert_notice">Each server is verified against the system’s trusted certificates first. Nothing is signed for a server that fails.</string>
+    <!-- Security: Warns about browser certificate checks that filtering changes. -->
     <string name="feature_onboarding_cert_browsers">Filtered browsers skip some certificate checks, such as Certificate Transparency.</string>
+    <!-- Acknowledges the security information about root mode URL filtering. -->
     <string name="feature_onboarding_cert_ack">I understand</string>
     <string name="feature_onboarding_apps_title">Choose apps to filter</string>
     <string name="feature_onboarding_apps_text">Choose the apps you want to filter. You can also add apps later.</string>
+    <!-- %1$d is the number of apps selected in setup. -->
     <plurals name="feature_onboarding_apps_continue">
         <item quantity="one">Continue (%1$d selected)</item>
         <item quantity="other">Continue (%1$d selected)</item>
@@ -66,7 +75,9 @@
     <string name="feature_onboarding_apps_none">No apps to filter</string>
     <string name="feature_onboarding_apps_none_text">Installed apps that can use the network appear here.</string>
     <string name="feature_onboarding_all_apps_withheld">The system hasn’t allowed ADBlocker to read the list of installed apps. Until it is allowed, most apps aren’t filtered.</string>
+    <!-- %1$s is the name of the root manager that granted access. -->
     <string name="feature_onboarding_check_root_granted">%1$s · granted</string>
+    <!-- Root permission is granted and the manager's name is unavailable. -->
     <string name="feature_onboarding_check_root_granted_plain">Granted</string>
     <string name="feature_onboarding_check_kernel_ok">Required filtering features supported</string>
     <string name="feature_onboarding_check_kernel_unverified">Checked when filtering starts</string>
@@ -85,15 +96,21 @@
     <string name="feature_onboarding_check_root_again">Check root again</string>
     <string name="feature_onboarding_method">Filtering method</string>
     <string name="feature_onboarding_method_vpn">VPN mode</string>
+    <!-- Security: VPN mode uses the system VPN slot. -->
     <string name="feature_onboarding_method_vpn_text">No root needed. Filters the chosen apps by domain, and takes the system’s VPN.</string>
     <string name="feature_onboarding_method_root">Root mode</string>
     <string name="feature_onboarding_method_root_no_root">Filters encrypted sites by URL. Requires root access.</string>
     <string name="feature_onboarding_method_root_unsupported">Filters encrypted sites by URL. Not supported on this device.</string>
     <string name="feature_onboarding_vpn_title">VPN mode</string>
+    <!-- Security: Explains which traffic uses the local VPN. -->
     <string name="feature_onboarding_vpn_text">ADBlocker sets up a VPN on this device. Only the connections of the chosen apps go through it.</string>
+    <!-- Security: Explains the VPN's chosen-app scope. -->
     <string name="feature_onboarding_vpn_apps">The chosen apps connect through the local VPN. Other apps are not affected.</string>
+    <!-- Security: Describes initial domain filtering without decryption. -->
     <string name="feature_onboarding_vpn_domains">Ad and tracker domains are blocked by the domain each connection goes to. Connections are not decrypted.</string>
+    <!-- Security: Starting the local VPN disconnects any other VPN. -->
     <string name="feature_onboarding_vpn_one">Android allows one VPN at a time. Another VPN app disconnects when filtering starts.</string>
+    <!-- Security: The app uses a local VPN without a remote VPN endpoint. -->
     <string name="feature_onboarding_vpn_local">The VPN connects to no remote server. Data stays on the device.</string>
     <string name="feature_onboarding_vpn_hint">You can set up URL filtering for encrypted sites later in Settings.</string>
     <string name="feature_onboarding_filter_later_title">Filter apps later</string>
@@ -103,17 +120,21 @@
     <string name="feature_onboarding_grant_notifications">Notifications</string>
     <string name="feature_onboarding_grant_notifications_text">Shown while filtering, with an action to pause it</string>
     <string name="feature_onboarding_grant_vpn">VPN</string>
+    <!-- Describes the OS consent dialog to start the local VPN. -->
     <string name="feature_onboarding_grant_vpn_text">Confirmed in a system dialog</string>
     <string name="feature_onboarding_grant_lists_text">Needs a network connection the first time</string>
+    <!-- Security: Android VPN consent is required before filtering can start. -->
     <string name="feature_onboarding_vpn_refused">The VPN was not allowed. Filtering cannot start without it.</string>
     <string name="feature_onboarding_starting_title">Starting</string>
     <string name="feature_onboarding_start_failed_title">Filtering did not start</string>
+    <!-- Security: A failed VPN start leaves apps able to connect. -->
     <string name="feature_onboarding_start_failed_text">The VPN could not be started. Network access of apps is not affected.</string>
     <string name="feature_onboarding_done_text_vpn">Filtering can be paused from the notification at any time.</string>
     <string name="feature_onboarding_notifications_allowed">Notifications allowed</string>
     <string name="feature_onboarding_notifications_off">Notifications not allowed</string>
     <string name="feature_onboarding_notifications_off_text">Can be allowed in Settings</string>
     <string name="feature_onboarding_vpn_connected">VPN connected</string>
+    <!-- Security: Explains which apps are routed through the operating VPN. -->
     <string name="feature_onboarding_vpn_connected_text">Only the chosen apps use the VPN</string>
     <string name="feature_onboarding_lists_downloaded">Lists downloaded</string>
     <plurals name="feature_onboarding_lists_count">

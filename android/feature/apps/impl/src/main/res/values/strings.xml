@@ -16,18 +16,26 @@
 <resources>
     <string name="feature_apps_search">Search apps</string>
     <string name="feature_apps_settings">Settings</string>
+    <!-- %1$d is the number of filtered apps in this tab. -->
     <string name="feature_apps_filtered">Filtered %1$d</string>
+    <!-- %1$d is the total app count in this tab. -->
     <string name="feature_apps_all">All %1$d</string>
+    <!-- Heading for apps whose traffic is filtered. -->
     <string name="feature_apps_section_filtered">Filtered</string>
     <string name="feature_apps_section_others">Other apps</string>
     <string name="feature_apps_empty_filtered">No filtered apps</string>
     <string name="feature_apps_empty_filtered_text">Choose an app and turn on its switch to start filtering.</string>
     <string name="feature_apps_browse_apps">Browse apps</string>
+    <!-- %1$s is the formatted count of blocked requests and connections. -->
     <string name="feature_apps_status_filtered">%1$s blocked today</string>
+    <!-- %1$s is the formatted count of blocks for domain-only filtering. -->
     <string name="feature_apps_status_hosts">Domain only · %1$s blocked today</string>
+    <!-- %1$s is a duration until filtering resumes. -->
     <string name="feature_apps_status_paused">Paused · resumes in %1$s</string>
     <string name="feature_apps_status_off">Not filtered</string>
+    <!-- %1$s is the newly filtered app's label or package name. -->
     <string name="feature_apps_now_filtering">Filtering %1$s</string>
+    <!-- %1$s is the app whose traffic is no longer filtered. -->
     <string name="feature_apps_stopped_filtering">Stopped filtering %1$s</string>
     <string name="feature_apps_undo">Undo</string>
     <string name="feature_apps_failed">Action failed. Check the filtering service in Settings.</string>
@@ -37,12 +45,18 @@
     <string name="feature_apps_status_work_unavailable">Unavailable in the work profile</string>
     <string name="feature_apps_work_inventory_unavailable">Some work apps couldn’t be loaded.</string>
     <string name="feature_apps_work_inventory_retry">Retry</string>
+    <!-- %1$s is an unavailable app removed from the selection. -->
     <string name="feature_apps_selection_removed">Removed selection for %1$s</string>
+    <!-- %1$s is the formatted count of all blocks for this app. -->
     <string name="feature_apps_status_mixed">HTTP requests and HTTPS domains · %1$s blocked today</string>
+    <!-- Action to bypass filtering for this app in All apps mode. -->
     <string name="feature_apps_exclude">Exclude</string>
+    <!-- Action to restore filtering for an excluded app in All apps mode. -->
     <string name="feature_apps_include">Include</string>
     <string name="feature_apps_excluded">Excluded</string>
+    <!-- %1$s is the app that was restored to filtering. -->
     <string name="feature_apps_included">%1$s included</string>
+    <!-- %1$s is the app that was excluded from filtering. -->
     <string name="feature_apps_excluded_message">%1$s excluded</string>
     <string name="feature_apps_status_filtered_no_count">Block count unavailable</string>
     <string name="feature_apps_status_hosts_no_count">Domain only · count unavailable</string>
