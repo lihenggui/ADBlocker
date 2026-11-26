@@ -105,11 +105,10 @@ import li.mercury.adblocker.core.ui.Reveal
 import li.mercury.adblocker.core.ui.RevealNotNull
 import li.mercury.adblocker.core.ui.animatedRow
 import li.mercury.adblocker.core.ui.failureText
+import li.mercury.adblocker.core.ui.formatClockTime
 import li.mercury.adblocker.core.ui.pageMargin
 import li.mercury.adblocker.core.ui.profileAppLabel
 import li.mercury.adblocker.core.ui.segmentedColors
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 
 @Composable
 fun ActivityScreen(
@@ -439,16 +438,13 @@ internal fun RequestRow(
                     )
                 }
             },
-            trailingContent = { Text(clock.format(event.time.atZone(ZoneId.systemDefault())), style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")) },
+            trailingContent = { Text(formatClockTime(LocalContext.current, event.time, includeSeconds = true), style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum")) },
             content = {
                 Text(event.host, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace))
             },
         )
     }
 }
-
-// The zone is read at each use: the device can move to another while the app runs.
-private val clock = DateTimeFormatter.ofPattern("HH:mm:ss")
 
 @Composable
 internal fun verdictLook(verdict: Verdict) = when (verdict) {
