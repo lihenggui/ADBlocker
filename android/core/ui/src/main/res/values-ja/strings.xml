@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="core_ui_retry">再試行</string>
+    <string name="core_ui_failure_no_root">root 権限なし</string>
+    <string name="core_ui_failure_no_root_text">root 管理アプリで ADBlocker に root 権限を付与してから、もう一度お試しください。</string>
+    <string name="core_ui_failure_module_missing">root モードは未設定</string>
+    <string name="core_ui_failure_module_missing_text">「設定」で root モードを設定してください。</string>
+    <string name="core_ui_failure_update_needed">root モードの更新が必要</string>
+    <string name="core_ui_failure_update_needed_text">「設定」で更新してください。</string>
+    <string name="core_ui_failure_failed">読み込めませんでした</string>
+    <string name="core_ui_failure_failed_text">フィルタリングサービスが応答しませんでした。「設定」で状態を確認してください。</string>
+    <string name="core_ui_failure_timed_out">タイムアウト</string>
+    <string name="core_ui_failure_timed_out_text">フィルタリングサービスが時間内に応答しませんでした。もう一度お試しください。繰り返し発生する場合は、「設定」でフィルタリングサービスを再起動してください。</string>
+    <plurals name="core_ui_minutes">
+        <item quantity="other">%1$d 分</item>
+    </plurals>
+    <plurals name="core_ui_hours">
+        <item quantity="other">%1$d 時間</item>
+    </plurals>
+    <string name="core_ui_hours_minutes">%1$s %2$s</string>
+    <plurals name="core_ui_days">
+        <item quantity="other">%1$d 日</item>
+    </plurals>
+    <string name="core_ui_failure_engine_missing">VPN モードを利用できません</string>
+    <string name="core_ui_failure_engine_missing_text">このビルドには、root なしでフィルタリングするためのエンジンが含まれていません。</string>
+    <string name="core_ui_work_app_label">%1$s（仕事用）</string>
+    <string name="core_ui_shared_uid">Android UID を共有しているため、個別にフィルタリングできません</string>
+    <string name="core_ui_shared_app_label">%1$s（共有アプリ）</string>
+    <string name="core_ui_shared_app_members">まとめてフィルタリングするアプリ（%1$s）</string>
+    <string name="core_ui_app_filtering_unavailable">root モードでフィルタリングできません</string>
+    <string name="core_ui_remove_app_selection">選択を解除</string>
+    <string name="core_ui_personal_eligibility_unavailable">フィルタリングできる個人用アプリを確認できませんでした。</string>
+    <string name="core_ui_app_list_withheld">インストール済みアプリを表示できません</string>
+    <string name="core_ui_app_list_withheld_text">システムが ADBlocker にインストール済みアプリの一覧の読み取りを許可していません。フィルタリングするアプリを選ぶには、読み取りを許可してください。</string>
+    <string name="core_ui_app_list_allow">許可</string>
+    <string name="core_ui_app_list_check_again">再確認</string>
+    <string name="core_ui_filtering_scope">フィルタリングの対象</string>
+    <string name="core_ui_scope_chosen">選択したアプリ</string>
+    <string name="core_ui_scope_all">すべてのアプリ</string>
+    <string name="core_ui_scope_all_text">新しくインストールしたアプリも含め、個人用アプリをフィルタリングします。「アプリ」画面でアプリを除外できます。仕事用アプリは引き続き個別に選択します。</string>
+    <string name="core_ui_category_ads">広告</string>
+    <string name="core_ui_category_privacy">プライバシー</string>
+    <string name="core_ui_category_security">セキュリティ</string>
+    <string name="core_ui_category_regional">地域・言語</string>
+    <string name="core_ui_category_annoyances">迷惑要素</string>
+    <string name="core_ui_vpn_transfer_incomplete">root モードの一部の設定を引き継げませんでした。</string>
+    <string name="core_ui_vpn_transfer_apps">root モードのアプリのフィルタリング設定を引き継げませんでした。</string>
+    <string name="core_ui_vpn_transfer_lists">root モードのフィルタリストの設定を一部引き継げませんでした。</string>
+    <string name="core_ui_vpn_transfer_rules">root モードのカスタムルールを引き継げませんでした。</string>
+    <string name="core_ui_vpn_transfer_trusted_sites">root モードの信頼済みサイトを一部引き継げませんでした。</string>
+    <string name="core_ui_vpn_transfer_url_filtering">root モードの URL フィルタリング設定を引き継げませんでした。</string>
+</resources>

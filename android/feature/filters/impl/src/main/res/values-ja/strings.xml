@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">フィルタ</string>
+    <string name="feature_filters_settings">設定</string>
+    <string name="feature_filters_tab_lists">リスト</string>
+    <string name="feature_filters_tab_rules">マイルール</string>
+    <string name="feature_filters_tab_trusted">信頼済みサイト</string>
+    <string name="feature_filters_add_list">リストを追加</string>
+    <string name="feature_filters_add_list_text">EasyList または uBlock Origin 形式のフィルタリストの URL。HTTPS の URL のみ使用できます。</string>
+    <string name="feature_filters_add_list_label">リストの URL</string>
+    <string name="feature_filters_add">追加</string>
+    <string name="feature_filters_cancel">キャンセル</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="other">ダウンロード済みのルール（%1$d 個のリスト）</item>
+    </plurals>
+    <string name="feature_filters_update_now">今すぐ更新</string>
+    <string name="feature_filters_updating">更新中</string>
+    <string name="feature_filters_update_progress">更新の進行状況</string>
+    <string name="feature_filters_last_updated">更新: %1$s</string>
+    <string name="feature_filters_never_updated">未ダウンロード</string>
+    <string name="feature_filters_subscribed_header">購読中</string>
+    <string name="feature_filters_available">利用可能（%1$s）</string>
+    <string name="feature_filters_subscribe">%1$s を購読</string>
+    <string name="feature_filters_list_fetching">ダウンロードして確認中</string>
+    <string name="feature_filters_list_failed">更新に失敗</string>
+    <string name="feature_filters_list_done">ルール %1$s 件（更新したばかり）</string>
+    <string name="feature_filters_list_off">オフ</string>
+    <string name="feature_filters_list_error">前回の更新に失敗</string>
+    <string name="feature_filters_list_pending">ダウンロード待ち</string>
+    <string name="feature_filters_list_detail">ルール %1$s 件（更新: %2$s）</string>
+    <string name="feature_filters_list_rules">ルール %1$s 件</string>
+    <string name="feature_filters_list_last_error">前回のエラー: %1$s</string>
+    <string name="feature_filters_remove_list">購読を解除</string>
+    <string name="feature_filters_cosmetic_note">このカテゴリのリストは、主にページ要素を非表示にします。これらのルールを無効にするには、「設定」で「ページ要素を非表示」をオフにしてください。</string>
+    <string name="feature_filters_my_rules">マイルール</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="other">ルール %1$d 件</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="other">ルール %1$d 件（未適用 %2$d 件）</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">ルールを確認できません</string>
+    <string name="feature_filters_rules_count_with_status">%1$s（%2$s）</string>
+    <string name="feature_filters_edit">編集</string>
+    <string name="feature_filters_tools">ツール</string>
+    <string name="feature_filters_block_domain">ドメインをブロック</string>
+    <string name="feature_filters_block_domain_supporting">||example.com^ のようなルールを追加します</string>
+    <string name="feature_filters_block_domain_text">フィルタリング対象のすべてのアプリで、ドメインとそのサブドメインをブロックします。</string>
+    <string name="feature_filters_domain_label">ドメイン</string>
+    <string name="feature_filters_block">ブロック</string>
+    <string name="feature_filters_test_url">URL をテスト</string>
+    <string name="feature_filters_test_url_supporting">ブロックに該当するルールを表示します</string>
+    <string name="feature_filters_import">ルールをインポート</string>
+    <string name="feature_filters_import_supporting">uBlock Origin または AdGuard 形式</string>
+    <string name="feature_filters_export">ルールをエクスポート</string>
+    <string name="feature_filters_export_supporting">.txt ファイルとして保存</string>
+    <string name="feature_filters_syntax_note">要素を非表示にするルール（##）を無効にするには、「設定」で「ページ要素を非表示」をオフにします。</string>
+    <string name="feature_filters_trusted_text">これらのサイトへの接続は復号もブロックもされません。オンラインバンキング、イントラネット、決済ページでの使用を想定しています。</string>
+    <string name="feature_filters_add_trusted">サイトを追加</string>
+    <string name="feature_filters_remove_trusted">%1$s を削除</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">参照元ページ（省略可）</string>
+    <string name="feature_filters_check">確認</string>
+    <string name="feature_filters_would_block">ブロックされます</string>
+    <string name="feature_filters_would_allow">ブロックされません</string>
+    <string name="feature_filters_source_mine">マイルール</string>
+    <string name="feature_filters_kind_script">スクリプト</string>
+    <string name="feature_filters_kind_image">画像</string>
+    <string name="feature_filters_kind_document">ページ</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">その他</string>
+    <string name="feature_filters_issue_invalid">この行をルールとして読み取れません。</string>
+    <string name="feature_filters_issue_invalid_option">この行のオプション %1$s は無効です。</string>
+    <string name="feature_filters_issue_unsupported">このバージョンでは、この形式のルールは適用されません。</string>
+    <string name="feature_filters_issue_unsupported_named">このバージョンでは、%1$s は適用されません。</string>
+    <string name="feature_filters_issue_inapplicable">ここでは、このルールの適用対象がありません。</string>
+    <string name="feature_filters_issue_inapplicable_named">ここでは、オプション %1$s の適用対象がありません。</string>
+    <string name="feature_filters_issue_malformed_directive">条件ディレクティブの形式が正しくありません。</string>
+    <string name="feature_filters_issue_unsupported_include">このバージョンでは、読み込み先として指定されたリストを読み込みません。</string>
+    <string name="feature_filters_issue_line">%1$d 行目</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="other">ほか %1$d 件</item>
+    </plurals>
+    <string name="feature_filters_back">戻る</string>
+    <string name="feature_filters_save">保存して適用</string>
+    <string name="feature_filters_undo">元に戻す</string>
+    <string name="feature_filters_redo">やり直す</string>
+    <string name="feature_filters_discard_title">変更を破棄しますか？</string>
+    <string name="feature_filters_discard_text">ルールの変更は保存されていません。</string>
+    <string name="feature_filters_discard_failed">下書きを削除できませんでした。もう一度破棄してください。</string>
+    <string name="feature_filters_discard">破棄</string>
+    <string name="feature_filters_keep_editing">編集を続ける</string>
+    <string name="feature_filters_rules_saved">ルールを保存して適用しました</string>
+    <string name="feature_filters_earlier_rules_saved">前回の変更を適用しました。新しい変更は保存されていません。</string>
+    <string name="feature_filters_draft_failed">ルールの下書きを保存できませんでした</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="other">リストを %1$d 個更新しました</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="other">リストを %1$d 個更新しました（失敗 %2$d 個）</item>
+    </plurals>
+    <string name="feature_filters_update_failed">リストの更新に失敗しました</string>
+    <string name="feature_filters_subscribed">購読を開始しました。リストをダウンロードしています。</string>
+    <string name="feature_filters_removed">購読を解除しました</string>
+    <string name="feature_filters_https_only">HTTPS の URL のみ使用できます</string>
+    <string name="feature_filters_not_a_domain">無効なドメインです</string>
+    <string name="feature_filters_blocked_domain">%1$s をブロックしました</string>
+    <string name="feature_filters_trusted">%1$s を信頼済みサイトに追加しました</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="other">ルールを %1$d 件インポートしました</item>
+    </plurals>
+    <string name="feature_filters_exported">ルールをエクスポートしました</string>
+    <string name="feature_filters_failed">操作に失敗しました。「設定」でフィルタリングサービスを確認してください。</string>
+    <string name="feature_filters_issue_separator">：</string>
+    <string name="feature_filters_search">リストとルールを検索</string>
+    <string name="feature_filters_search_hint">リストとルールを検索</string>
+    <string name="feature_filters_search_none">結果がありません</string>
+    <string name="feature_filters_search_available">利用可能なリスト</string>
+    <string name="feature_filters_list_on">オン</string>
+    <string name="feature_filters_block_preview">%1$s を追加します</string>
+    <string name="feature_filters_list_added">ルール %1$s 件（更新で %2$s 件を追加）</string>
+    <string name="feature_filters_test_url_text">現在のリストとルールにリクエストが一致するかを確認します。</string>
+    <string name="feature_filters_syntax">ルールの構文</string>
+    <string name="feature_filters_syntax_text">EasyList、uBlock Origin、AdGuard のいずれかの構文で、1 行に 1 件ずつルールを記述します。</string>
+    <string name="feature_filters_syntax_host">ドメインとそのサブドメインをブロックします。</string>
+    <string name="feature_filters_syntax_option">$ に続くオプションでルールの適用範囲を限定します。この例では、他のサイトからのリクエストのみがブロックされます。</string>
+    <string name="feature_filters_syntax_app">$app= はルールの適用対象を指定したアプリに限定します。</string>
+    <string name="feature_filters_syntax_path">一致する URL をブロックします。* は任意の文字列に一致し、$image は適用対象を画像に限定します。</string>
+    <string name="feature_filters_syntax_exception">@@ を使うと、他のルールでブロックされるリクエストが許可されます。</string>
+    <string name="feature_filters_syntax_cosmetic">ページ要素を非表示にします。このルールを無効にするには、「設定」で「ページ要素を非表示」をオフにします。</string>
+    <string name="feature_filters_syntax_comment">! で始まる行はコメントです。</string>
+    <string name="feature_filters_import_too_large">ファイルがルールの上限（16 MB）を超えています</string>
+    <string name="feature_filters_schedule">%1$s更新</string>
+    <string name="feature_filters_schedule_wifi">%1$s、Wi-Fi で更新</string>
+    <string name="feature_filters_schedule_never">自動更新なし</string>
+    <string name="feature_filters_every_day">毎日</string>
+    <string name="feature_filters_every_three_days">3 日ごとに</string>
+    <string name="feature_filters_every_week">毎週</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="other">リストを %1$d 個更新し、ルールを %2$s 件追加しました</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">HTTPS 除外リストの準備ができていません。ドメインのみでフィルタリングします。</string>
+    <string name="feature_filters_exclusions_failed">一部の HTTPS 除外リストを更新できませんでした。保存済みのリストが引き続き使われます。</string>
+</resources>

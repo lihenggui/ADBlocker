@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">アクティビティ</string>
+    <string name="feature_activity_settings">設定</string>
+    <string name="feature_activity_start_recording">記録を開始</string>
+    <string name="feature_activity_stop_recording">記録を停止</string>
+    <string name="feature_activity_starting">記録を開始しています…</string>
+    <string name="feature_activity_recording">リクエストを記録中</string>
+    <string name="feature_activity_recorded">記録を停止しました</string>
+    <string name="feature_activity_interrupted">記録が中断されました</string>
+    <string name="feature_activity_no_recording">記録はまだありません</string>
+    <string name="feature_activity_recording_intro">フィルタリング対象のアプリのリクエストを記録します。記録中もアプリを切り替えられます。最新の 500 件のリクエストがメモリに残ります。</string>
+    <string name="feature_activity_no_matches">条件に一致するリクエストがありません</string>
+    <string name="feature_activity_empty_result">リクエストの記録がありません</string>
+    <string name="feature_activity_app_requests_hint">ここにリクエストを表示するには、「アクティビティ」で記録を開始してください。</string>
+    <string name="feature_activity_notification_channel">アクティビティの記録</string>
+    <string name="feature_activity_notification_title">ADBlocker がアクティビティを記録中</string>
+    <string name="feature_activity_all">すべて</string>
+    <string name="feature_activity_blocked">ブロック済み</string>
+    <string name="feature_activity_allowed">許可済み</string>
+    <string name="feature_activity_encrypted">未復号</string>
+    <string name="feature_activity_all_apps">すべてのアプリ</string>
+    <string name="feature_activity_dropped">（%1$d 件を省略）</string>
+    <string name="feature_activity_empty">リクエストを待機中</string>
+    <string name="feature_activity_empty_idle">フィルタリングされている通信はありません</string>
+    <string name="feature_activity_verdict_blocked">リクエストをブロック</string>
+    <string name="feature_activity_verdict_host_blocked">ドメインをブロック</string>
+    <string name="feature_activity_verdict_allowed">許可済み</string>
+    <string name="feature_activity_verdict_passed">未復号</string>
+    <string name="feature_activity_kind_script">スクリプト</string>
+    <string name="feature_activity_kind_image">画像</string>
+    <string name="feature_activity_kind_document">ページ</string>
+    <string name="feature_activity_kind_stylesheet">スタイル</string>
+    <string name="feature_activity_kind_font">フォント</string>
+    <string name="feature_activity_kind_media">メディア</string>
+    <string name="feature_activity_app">アプリ</string>
+    <string name="feature_activity_kind">種類</string>
+    <string name="feature_activity_page">ページ</string>
+    <string name="feature_activity_rule">現在一致するルール（GET）</string>
+    <string name="feature_activity_rule_unavailable">確認できません</string>
+    <string name="feature_activity_why">理由</string>
+    <string name="feature_activity_my_rules">マイルール</string>
+    <string name="feature_activity_reason_pinned">アプリはこのドメインの ADBlocker 証明書を受け入れないため、ドメインのみでフィルタリングされます。</string>
+    <string name="feature_activity_reason_hosts_only">この接続はドメインでフィルタリングされました。URL フィルタリングがオフだったか、HTTPS の検査を行えませんでした。</string>
+    <string name="feature_activity_reason_excluded">このドメインは HTTPS 除外リスト（銀行のリストなど）に登録されています。</string>
+    <string name="feature_activity_reason_trusted">このサイトは信頼済みです。</string>
+    <string name="feature_activity_reason_sensitive">サーバーに Extended Validation 証明書があるため、接続は復号されません。</string>
+    <string name="feature_activity_reason_no_name">この接続ではドメインが指定されていません。</string>
+    <string name="feature_activity_reason_untrusted">このアプリはまだ ADBlocker を信頼していません。</string>
+    <string name="feature_activity_reason_unverified">サーバーを検証できなかったため、アプリが独自に検証します。</string>
+    <string name="feature_activity_reason_other">内容を読み取らずにアプリに渡しました。</string>
+    <string name="feature_activity_trust_site">%1$s を信頼</string>
+    <string name="feature_activity_block_host">このドメインをブロック</string>
+    <string name="feature_activity_block_in_app">%1$s でブロック</string>
+    <string name="feature_activity_block_in_all_apps">すべてのアプリでブロック</string>
+    <string name="feature_activity_forget">復号を再試行</string>
+    <string name="feature_activity_copy">コピー</string>
+    <string name="feature_activity_trusted">%1$s を信頼済みサイトに追加しました</string>
+    <string name="feature_activity_blocked_host_everywhere">すべてのアプリで %1$s をブロックしました</string>
+    <string name="feature_activity_blocked_host_in_app">%2$s で %1$s をブロックしました</string>
+    <string name="feature_activity_forgotten">次回接続時にもう一度復号を試みます</string>
+    <string name="feature_activity_failed">操作に失敗しました。「設定」でフィルタリングサービスを確認してください。</string>
+    <string name="feature_activity_select">リクエストを選択</string>
+    <string name="feature_activity_select_text">現在のルールで URL を確認するか、サイトを信頼またはブロックできます</string>
+    <string name="feature_activity_reason_host_blocked">ドメイン全体がブロックされているため、接続は拒否されました。</string>
+    <string name="feature_activity_app_requests">リクエスト</string>
+    <string name="feature_activity_open_activity">アクティビティで開く</string>
+    <string name="feature_activity_reason_exclusions_pending">HTTPS 除外リストの準備ができていません</string>
+    <string name="feature_activity_apps_unavailable">アプリ名または絞り込み条件を読み込めませんでした</string>
+    <string name="feature_activity_status_unavailable">フィルタリングの状態を確認できません</string>
+</resources>

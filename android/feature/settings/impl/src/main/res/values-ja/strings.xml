@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">設定</string>
+    <string name="feature_settings_back">戻る</string>
+    <string name="feature_settings_appearance">外観</string>
+    <string name="feature_settings_theme">テーマ</string>
+    <string name="feature_settings_theme_system">システムに合わせる</string>
+    <string name="feature_settings_theme_light">ライト</string>
+    <string name="feature_settings_theme_dark">ダーク</string>
+    <string name="feature_settings_dynamic_color">壁紙の色</string>
+    <string name="feature_settings_dynamic_color_text">壁紙の色を使用します</string>
+    <string name="feature_settings_updates">リストの更新</string>
+    <string name="feature_settings_update_interval">自動更新</string>
+    <string name="feature_settings_interval_daily">毎日</string>
+    <string name="feature_settings_interval_three_days">3 日ごと</string>
+    <string name="feature_settings_interval_weekly">毎週</string>
+    <string name="feature_settings_interval_never">更新しない</string>
+    <string name="feature_settings_wifi_only">Wi-Fi 接続時のみ更新</string>
+    <string name="feature_settings_wifi_only_text">モバイルデータ通信ではリストをダウンロードしません</string>
+    <string name="feature_settings_app_list">アプリ一覧</string>
+    <string name="feature_settings_system_apps">システムアプリを表示</string>
+    <string name="feature_settings_system_apps_text">デフォルトでは非表示</string>
+    <string name="feature_settings_service">フィルタリングサービス</string>
+    <string name="feature_settings_scope_checking">フィルタリング対象を確認中…</string>
+    <string name="feature_settings_scope_unavailable">フィルタリング対象を確認できません</string>
+    <string name="feature_settings_status_unknown">状態不明</string>
+    <string name="feature_settings_status_running">実行中</string>
+    <string name="feature_settings_status_paused">一時停止中</string>
+    <string name="feature_settings_status_stopped">停止中</string>
+    <string name="feature_settings_status_turned_off">オフ</string>
+    <string name="feature_settings_turned_off_text">起動が 2 回連続で完了しませんでした</string>
+    <string name="feature_settings_started">起動: %1$s</string>
+    <string name="feature_settings_restart">フィルタリングサービスを再起動</string>
+    <string name="feature_settings_restart_text">再起動中、アプリはフィルタリングなしで接続します</string>
+    <string name="feature_settings_turn_on_again">オンに戻す</string>
+    <string name="feature_settings_module_install">root モードを設定</string>
+    <string name="feature_settings_module_reinstall">root モードを更新</string>
+    <string name="feature_settings_module_unavailable">root モードの状態を確認できません</string>
+    <string name="feature_settings_module_check_again">root モードの状態を確認できません（再確認）</string>
+    <string name="feature_settings_root_not_set_up_text">未設定。アプリはフィルタリングなしで接続します</string>
+    <string name="feature_settings_root_setting_up">root モードを設定中…</string>
+    <string name="feature_settings_root_setup_failed">設定に失敗しました（再試行）</string>
+    <string name="feature_settings_root_update_text">インストール済みのバージョンがこのアプリと異なります</string>
+    <string name="feature_settings_root_updating">root モードを更新中…</string>
+    <string name="feature_settings_root_update_failed">更新に失敗しました（再試行）</string>
+    <string name="feature_settings_root_updated">root モードを更新しました</string>
+    <string name="feature_settings_root_missing_text">root 管理アプリで ADBlocker に root 権限を付与してから、再確認してください</string>
+    <string name="feature_settings_root_remove">root モードを削除</string>
+    <string name="feature_settings_root_remove_text">フィルタリングを停止し、root モードのデータを削除します</string>
+    <string name="feature_settings_root_removing">root モードを削除中…</string>
+    <string name="feature_settings_root_remove_failed">削除できませんでした（再試行）</string>
+    <string name="feature_settings_root_remove_title">root モードを削除しますか？</string>
+    <string name="feature_settings_root_remove_explain">フィルタリングが停止し、アプリはフィルタリングなしで接続します。root モードの認証局と、アプリの選択内容、リスト、ルール、信頼済みサイト、統計情報が削除されます。テーマなどのアプリ設定は保持されます。root モードはここで再設定できます。</string>
+    <string name="feature_settings_root_remove_confirm">削除</string>
+    <string name="feature_settings_root_removed">root モードを削除しました</string>
+    <string name="feature_settings_root_flashed">モジュールとしてインストール済み</string>
+    <string name="feature_settings_root_flashed_in">%1$s にモジュールとしてインストール済み</string>
+    <string name="feature_settings_root_flashed_text">root モードを削除するには、そこでモジュールを削除して再起動してください</string>
+    <string name="feature_settings_root_flashed_manager_text">root モードを削除するには、root 管理アプリでモジュールを削除して再起動してください</string>
+    <string name="feature_settings_root_flashed_pending_text">次回の再起動後に適用されます</string>
+    <string name="feature_settings_root_restart_to_update">デバイスを再起動して更新を完了してください</string>
+    <string name="feature_settings_root_marked_removal">root 管理アプリで削除予定。再起動すると削除されます</string>
+    <string name="feature_settings_pinned">証明書が拒否されたドメイン</string>
+    <string name="feature_settings_pinned_checking">ドメインを確認中…</string>
+    <string name="feature_settings_pinned_unavailable">ドメイン一覧を取得できません</string>
+    <string name="feature_settings_pinned_none">なし</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="other">アプリ %1$d 個</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="other">ドメイン %1$d 件</item>
+    </plurals>
+    <string name="feature_settings_data">データ</string>
+    <string name="feature_settings_export_logs">ログをエクスポート</string>
+    <string name="feature_settings_export_logs_text">ログには実行した処理とその結果が記録されます。アプリの接続先は記録されません</string>
+    <string name="feature_settings_about">アプリについて</string>
+    <string name="feature_settings_app_version">バージョン %1$s（GPL-3.0）</string>
+    <string name="feature_settings_source">ソースコード</string>
+    <string name="feature_settings_source_text">アプリとフィルタリストのライセンス</string>
+    <string name="feature_settings_restarted">フィルタリングサービスを再起動しました</string>
+    <string name="feature_settings_service_timeout">フィルタリングサービスが時間内に応答しませんでした。</string>
+    <string name="feature_settings_module_disabled">root 管理アプリで ADBlocker モジュールが無効になっているか、削除が予定されています。root 管理アプリで設定を変更してください。</string>
+    <string name="feature_settings_module_disabled_in">%1$s で ADBlocker モジュールが無効になっているか、削除が予定されています。そこで設定を変更してください。</string>
+    <string name="feature_settings_module_installed">root モードは実行中</string>
+    <string name="feature_settings_pinned_forgotten">記録を消去しました。次回接続時にもう一度復号を試みます。</string>
+    <string name="feature_settings_logs_exported_partial">アプリのログをエクスポートしました。root モードのログの一部を読み取れませんでした。</string>
+    <string name="feature_settings_logs_exported">ログをエクスポートしました</string>
+    <string name="feature_settings_failed">操作に失敗しました</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">URL フィルタリング</string>
+    <string name="feature_settings_url_filtering_text">対応しているすべてのフィルタリング対象アプリに URL ルールを適用します。オフの場合は、ドメイン全体をブロックします。</string>
+    <string name="feature_settings_url_filtering_unknown">最新のフィルタリングサービスが実行中である必要があります</string>
+    <string name="feature_settings_url_filtering_on">URL フィルタリングはオン</string>
+    <string name="feature_settings_url_filtering_off">URL フィルタリングはオフ</string>
+    <string name="feature_settings_cancel">キャンセル</string>
+    <string name="feature_settings_cosmetic">ページ要素を非表示</string>
+    <string name="feature_settings_cosmetic_text">復号したページの内容を変更し、フィルタルールで指定された空の広告枠などの要素を非表示にします。</string>
+    <string name="feature_settings_cosmetic_security">セキュリティへの影響</string>
+    <string name="feature_settings_pinned_text">これらのアプリは、該当するドメインの証明書を独自に検証するため、接続はドメインのみでフィルタリングされます。ドメインの記録を消去すると、そのドメインへの次回接続時にもう一度復号を試みます。</string>
+    <string name="feature_settings_forget">記録を消去</string>
+    <string name="feature_settings_forget_all">すべての記録を消去</string>
+    <string name="feature_settings_forget_all_title">すべてのドメインの記録を消去しますか？</string>
+    <string name="feature_settings_forget_all_text">各ドメインへの次回接続時に、もう一度復号を試みます。</string>
+    <string name="feature_settings_method">フィルタリング方式</string>
+    <string name="feature_settings_method_vpn">VPN モード</string>
+    <string name="feature_settings_method_vpn_text">使用中（root 権限不要）</string>
+    <string name="feature_settings_method_vpn_available">root 権限不要（ドメインでフィルタリング）</string>
+    <string name="feature_settings_method_root">root モード</string>
+    <string name="feature_settings_method_root_not_set_up">未設定（HTTPS 内の URL でフィルタリング）</string>
+    <string name="feature_settings_method_root_restart_first">先にデバイスを再起動してモジュールの更新を完了してください</string>
+    <string name="feature_settings_method_root_checking">root 権限を確認中</string>
+    <string name="feature_settings_method_root_available">root 権限付与済み（HTTPS 内の URL でフィルタリング）</string>
+    <string name="feature_settings_method_root_missing">root 権限が検出されませんでした（再確認）</string>
+    <string name="feature_settings_root_missing">root 権限が検出されませんでした</string>
+    <string name="feature_settings_switch_root_title">root モードに切り替えますか？</string>
+    <string name="feature_settings_switch_root_text">ADBlocker が root モードを設定します。その後、root モードが VPN からフィルタリングを引き継ぎます。root モードが動作するまで、VPN は接続されたままです。アプリ、リスト、ルール、信頼済みサイトが引き継がれます。</string>
+    <string name="feature_settings_switch_root">切り替え</string>
+    <string name="feature_settings_switched_to_root">root モードに切り替えました</string>
+    <string name="feature_settings_switched_to_vpn">VPN モードに切り替えました</string>
+    <string name="feature_settings_switch_root_pending">root モードへの切り替えが完了しませんでした。</string>
+    <string name="feature_settings_switch_root_retry">切り替えが完了しませんでした（再試行）</string>
+    <string name="feature_settings_cancel_root_switch">root モードへの切り替えをキャンセル</string>
+    <string name="feature_settings_cancel_root_pending">キャンセル待ち</string>
+    <string name="feature_settings_retry_root_cancel">キャンセルを再試行</string>
+    <string name="feature_settings_always_on">常時接続 VPN</string>
+    <string name="feature_settings_always_on_text">デバイスの起動時や ADBlocker が予期せず停止したときに、Android が ADBlocker を起動します</string>
+    <string name="feature_settings_state_detail">%1$s（%2$s）</string>
+    <string name="feature_settings_state_on">オン</string>
+    <string name="feature_settings_state_off">オフ</string>
+    <string name="feature_settings_lockdown">VPN 以外の接続のブロック</string>
+    <string name="feature_settings_lockdown_on">オン。フィルタリングの停止中、選択したアプリは接続できません</string>
+    <string name="feature_settings_lockdown_off">オンにすると、フィルタリングの停止中は選択したアプリが接続できません。この設定はシステム設定でのみ変更できます。</string>
+    <string name="feature_settings_notifications">通知</string>
+    <string name="feature_settings_notifications_on">許可済み。通知からフィルタリングを一時停止できます</string>
+    <string name="feature_settings_notifications_off">未許可。通知なしでもフィルタリングは動作します</string>
+    <string name="feature_settings_https_setup">HTTPS フィルタリングを設定</string>
+    <string name="feature_settings_https_not_set_up">未設定。ユーザー証明書を信頼するアプリが必要です</string>
+    <string name="feature_settings_https_installed">証明書をインストール済み。URL フィルタリングを管理できます</string>
+    <string name="feature_settings_url_filtering_needs_certificate">HTTPS の URL をフィルタリングするには、証明書をインストールしてください。</string>
+    <string name="feature_settings_remove_certificate">証明書を削除</string>
+    <string name="feature_settings_remove_certificate_text">復号をオフにしてシステム設定を開きます</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker が先に HTTPS の復号をオフにします。その後、Android の設定で証明書を削除できます。</string>
+    <!-- English Settings labels: Security &amp; privacy › More security &amp; privacy › Encryption &amp; credentials. -->
+    <string name="feature_settings_remove_certificate_path">セキュリティとプライバシー › その他のセキュリティとプライバシー › 暗号化と認証情報 › 信頼できる認証情報 › ユーザー › ADBlocker user CA › アンインストール</string>
+    <string name="feature_settings_remove_certificate_vary">メニュー名はメーカーによって異なります。</string>
+    <string name="feature_settings_remove_certificate_open">オフにして設定を開く</string>
+</resources>
