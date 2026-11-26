@@ -17,8 +17,8 @@ preserved with the source.
   `vendor/`. This includes the MPL-2.0 adblock engine and the license files
   for `ring` and its BoringSSL and ISC portions.
 - `abd-engine/resources/psl/rules.txt` is the [Public Suffix List][psl]
-  as [psl 2.1.261][psl-crate] carries it in `data/rules.txt`, SHA-256
-  `a4f566dfa00e59915c6ecac5da2312633963ab6d4cf7bab6e272363b1cecaad5`.
+  as [psl 2.1.263][psl-crate] carries it in `data/rules.txt`, SHA-256
+  `695dda3b2eab3337a82953e7ebe4b15d6c5a95975b8765f30d6abb24f90dd365`.
   The list is under the [Mozilla Public License 2.0][mpl], whose text is
   in `licenses/MPL-2.0.txt`. Run `scripts/update-psl.sh` when the `psl`
   version in `Cargo.lock` changes.
@@ -69,7 +69,7 @@ preserved with the source.
 [aya-mit]: licenses/aya-template-MIT.txt
 [libsu]: https://github.com/topjohnwu/libsu/tree/6.0.0
 [psl]: https://publicsuffix.org/
-[psl-crate]: https://github.com/addr-rs/psl/blob/v2.1.261/data/rules.txt
+[psl-crate]: https://github.com/addr-rs/psl/blob/v2.1.263/data/rules.txt
 [mpl]: licenses/MPL-2.0.txt
 [graphics-path]: https://android.googlesource.com/platform/frameworks/support/+/1c44f0be720ff16cd30357ad2375239bf97a1da8/graphics/graphics-path/
 [datastore-core]: https://android.googlesource.com/platform/frameworks/support/+/de4cda56f812357e582b3e1aa32bc737636614a2/datastore/datastore-core/
