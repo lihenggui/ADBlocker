@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">HTTPS フィルタリング</string>
+    <string name="feature_https_back">戻る</string>
+    <string name="feature_https_step">ステップ %1$d/%2$d</string>
+    <string name="feature_https_later">後で</string>
+    <string name="feature_https_continue">続行</string>
+    <string name="feature_https_previous">戻る</string>
+    <string name="feature_https_impact_title">セキュリティへの影響</string>
+    <string name="feature_https_impact_text">HTTPS 内のリクエストをフィルタリングするには、システムのユーザー証明書に ADBlocker の証明書が含まれている必要があります。</string>
+    <string name="feature_https_impact_key">証明書はこのデバイスで作成されます。秘密鍵はアプリの非公開ストレージに保存され、アプリをアンインストールすると削除されます。</string>
+    <string name="feature_https_impact_apps">HTTPS 通信を復号できるのは、ユーザー証明書を信頼するアプリ（主に一部のブラウザ）だけです。その他のアプリは引き続きドメインでフィルタリングされます。</string>
+    <string name="feature_https_impact_notice">インストールすると、システムには「ネットワークが監視されている可能性があります」という通知が表示され続けます。</string>
+    <string name="feature_https_impact_remove">証明書はいつでもシステム設定から削除できます。「設定 › HTTPS」からシステム設定に進めます。</string>
+    <string name="feature_https_install_title">証明書のインストール</string>
+    <string name="feature_https_install_text">Android では、アプリによる証明書のインストールは許可されていません。証明書はシステム設定でインストールします。</string>
+    <string name="feature_https_install_save">証明書を保存</string>
+    <string name="feature_https_install_save_text">デバイスに ADBlocker.crt を保存します</string>
+    <string name="feature_https_install_saved">ADBlocker.crt として保存しました</string>
+    <string name="feature_https_install_open">システム設定を開く</string>
+    <!-- English Settings labels: Security &amp; privacy › More security &amp; privacy › Encryption &amp; credentials. -->
+    <string name="feature_https_install_open_text">セキュリティとプライバシー › その他のセキュリティとプライバシー › 暗号化と認証情報 › 証明書のインストール › CA 証明書</string>
+    <string name="feature_https_install_choose">ADBlocker.crt を選択して確認</string>
+    <string name="feature_https_install_choose_text">メニュー名はメーカーによって異なります</string>
+    <string name="feature_https_install_not_found">証明書はまだユーザー証明書に含まれていません。</string>
+    <string name="feature_https_save">証明書を保存</string>
+    <string name="feature_https_open_security">セキュリティ設定を開く</string>
+    <string name="feature_https_save_failed">証明書を保存できませんでした</string>
+    <string name="feature_https_apps_title">証明書をインストールしました</string>
+    <string name="feature_https_apps_text">対応しているすべてのフィルタリング対象アプリに URL ルールが適用されます。証明書を拒否するアプリの通信は暗号化されたままです。</string>
+    <string name="feature_https_turn_on">続行</string>
+    <string name="feature_https_failed">操作に失敗しました</string>
+    <string name="feature_https_done_title">URL フィルタリングはオン</string>
+    <string name="feature_https_result_full">URL も対象</string>
+    <string name="feature_https_result_hosts">ドメインのみ</string>
+    <string name="feature_https_done_hint">URL フィルタリングは「設定」で変更できます。</string>
+    <string name="feature_https_finish">完了</string>
+    <string name="feature_https_work_title">仕事用プロファイルの HTTPS</string>
+    <string name="feature_https_work_instructions">公開証明書を保存し、仕事用プロファイルの管理者にそのプロファイルへのインストールを依頼してください。組織のポリシーで許可されている場合は、そのプロファイルの証明書設定からインストールできます。HTTPS フィルタリングは、仕事用プロファイルの証明書を信頼するアプリに適用されます。</string>
+    <string name="feature_https_work_save">証明書を保存</string>
+    <string name="feature_https_work_saved">証明書を保存しました</string>
+    <string name="feature_https_result_certificate">ドメインのみ（証明書なし）</string>
+    <string name="feature_https_result_exclusions">ドメインのみ（HTTPS 除外リストを読み込み中）</string>
+    <string name="feature_https_results_unavailable">アプリのフィルタリング結果を読み取れませんでした</string>
+</resources>

@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">アプリを検索</string>
+    <string name="feature_onboarding_back">戻る</string>
+    <string name="feature_onboarding_step">ステップ %1$d/%2$d</string>
+    <string name="feature_onboarding_welcome_text">ブラウザ用広告ブロッカーのフィルタリストを使い、選択したアプリのネットワークリクエストをフィルタリングします。</string>
+    <string name="feature_onboarding_start">開始</string>
+    <string name="feature_onboarding_fact_private">データはデバイスの外に出ません。VPN モードでのみ、アプリは選択したアプリの接続先とリストの配布元に接続します。</string>
+    <string name="feature_onboarding_fact_methods">root モードまたは VPN モードで動作します。</string>
+    <string name="feature_onboarding_fact_chosen">選択したアプリのみをフィルタリングします。その他のアプリの接続内容は読み取りません。</string>
+    <string name="feature_onboarding_check_title">デバイスの確認</string>
+    <string name="feature_onboarding_check_text">このデバイスで ADBlocker を実行できるか確認します。</string>
+    <string name="feature_onboarding_checking">確認中</string>
+    <string name="feature_onboarding_ok">問題なし</string>
+    <string name="feature_onboarding_check_root">root 権限</string>
+    <string name="feature_onboarding_check_android">Android バージョン</string>
+    <string name="feature_onboarding_check_kernel">カーネル機能</string>
+    <string name="feature_onboarding_check_arch">プロセッサ</string>
+    <string name="feature_onboarding_check_root_failed">root 権限が付与されていません。root 管理アプリ（KernelSU、Magisk、APatch など）で ADBlocker に root 権限を付与してください。</string>
+    <string name="feature_onboarding_check_android_failed">Android 12 以降が必要です</string>
+    <string name="feature_onboarding_check_kernel_failed">フィルタリングに必要な機能を利用できません</string>
+    <string name="feature_onboarding_check_arch_failed">arm64 と x86_64 のみサポートしています</string>
+    <string name="feature_onboarding_check_again">再確認</string>
+    <string name="feature_onboarding_continue">続行</string>
+    <string name="feature_onboarding_cert_title">URL フィルタリング</string>
+    <string name="feature_onboarding_cert_text">対応しているフィルタリング対象アプリには、HTTPS 内も含めて URL ルールを適用します。ドメイン全体のブロックのみにするには、「設定」で URL フィルタリングをオフにしてください。</string>
+    <string name="feature_onboarding_cert_key">秘密鍵はこのデバイスで作成、保管されます。読み取れるのは root のみです。root モードを削除すると、秘密鍵も削除されます。</string>
+    <string name="feature_onboarding_cert_notice">まず、システムが信頼する証明書を使って各サーバーを検証します。検証に失敗したサーバーに対しては、署名を一切行いません。</string>
+    <string name="feature_onboarding_cert_browsers">フィルタリング対象のブラウザでは、証明書の透明性（Certificate Transparency）など、一部の証明書の検証が省略されます。</string>
+    <string name="feature_onboarding_cert_ack">確認しました</string>
+    <string name="feature_onboarding_apps_title">フィルタリングするアプリを選択</string>
+    <string name="feature_onboarding_apps_text">フィルタリングするアプリを選択してください。アプリは後から追加することもできます。</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="other">続行（%1$d 個選択中）</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">フィルタリスト</string>
+    <string name="feature_onboarding_lists_text">システムの地域設定に基づいて地域別リストが選ばれます。選択は変更できます。</string>
+    <string name="feature_onboarding_installing_title">設定中</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="other">%1$d 個のアプリをフィルタリング中</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">選択したアプリのフィルタリングを開始しました。アプリが動作しなくなった場合は、「概要」画面でフィルタリングを一時停止してください。</string>
+    <string name="feature_onboarding_failed_title">設定に失敗しました</string>
+    <string name="feature_onboarding_failed_text">root モードを設定できませんでした。アプリのネットワーク接続に影響はありません。</string>
+    <string name="feature_onboarding_restart_to_update">デバイスを再起動してモジュールの更新を完了し、ADBlocker を開き直してください。</string>
+    <string name="feature_onboarding_try_again">再試行</string>
+    <string name="feature_onboarding_finish">完了</string>
+    <string name="feature_onboarding_check_after_root">root 権限の付与後に確認</string>
+    <string name="feature_onboarding_apps_none">対象のアプリがありません</string>
+    <string name="feature_onboarding_apps_none_text">ネットワークを使用できるインストール済みアプリがここに表示されます。</string>
+    <string name="feature_onboarding_all_apps_withheld">システムが ADBlocker にインストール済みアプリの一覧の読み取りを許可していません。許可されるまで、ほとんどのアプリはフィルタリングされません。</string>
+    <string name="feature_onboarding_check_root_granted">付与済み（%1$s）</string>
+    <string name="feature_onboarding_check_root_granted_plain">付与済み</string>
+    <string name="feature_onboarding_check_kernel_ok">フィルタリングに必要な機能に対応</string>
+    <string name="feature_onboarding_check_kernel_unverified">フィルタリングの開始時に確認</string>
+    <string name="feature_onboarding_lists_hint">「フィルタ」で他のリストを追加できます。</string>
+    <string name="feature_onboarding_step_module">root モードを設定</string>
+    <string name="feature_onboarding_step_apps">選択したアプリを追加</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="other">リストを %1$d 個ダウンロード</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">フィルタリングを開始</string>
+    <string name="feature_onboarding_install_progress">設定の進行状況</string>
+    <string name="feature_onboarding_check_no_root_text">root 権限が検出されませんでした。VPN モードでフィルタリングできます。root 権限を付与すると root モードも利用できます。</string>
+    <string name="feature_onboarding_check_unsupported_text">このデバイスは root モードに対応していません。VPN モードでフィルタリングできます。</string>
+    <string name="feature_onboarding_check_root_not_detected">未検出</string>
+    <string name="feature_onboarding_check_root_again">root 権限を再確認</string>
+    <string name="feature_onboarding_method">フィルタリング方式</string>
+    <string name="feature_onboarding_method_vpn">VPN モード</string>
+    <string name="feature_onboarding_method_vpn_text">root 権限は不要です。選択したアプリをドメインでフィルタリングします。システムの VPN 枠を使用します。</string>
+    <string name="feature_onboarding_method_root">root モード</string>
+    <string name="feature_onboarding_method_root_no_root">暗号化されたサイトを URL でフィルタリングします。root 権限が必要です。</string>
+    <string name="feature_onboarding_method_root_unsupported">暗号化されたサイトを URL でフィルタリングします。このデバイスでは利用できません。</string>
+    <string name="feature_onboarding_vpn_title">VPN モード</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker はこのデバイス上に VPN を設定します。選択したアプリの接続のみが、この VPN を経由します。</string>
+    <string name="feature_onboarding_vpn_apps">選択したアプリはローカル VPN 経由で接続します。その他のアプリに影響はありません。</string>
+    <string name="feature_onboarding_vpn_domains">各接続の宛先ドメインに基づいて、広告やトラッカーのドメインをブロックします。接続は復号されません。</string>
+    <string name="feature_onboarding_vpn_one">Android で同時に使用できる VPN は 1 つです。フィルタリングを開始すると、他の VPN アプリの接続が切断されます。</string>
+    <string name="feature_onboarding_vpn_local">この VPN はリモートサーバーに接続しません。データはデバイス内にとどまります。</string>
+    <string name="feature_onboarding_vpn_hint">暗号化されたサイトの URL フィルタリングは、後から「設定」で設定できます。</string>
+    <string name="feature_onboarding_filter_later_title">後からフィルタリング</string>
+    <string name="feature_onboarding_filter_later_text">フィルタリングを開始するには、「アプリ」画面からアプリを追加してください。</string>
+    <string name="feature_onboarding_save_setup">設定を保存</string>
+    <string name="feature_onboarding_start_text">フィルタリングを始めるには、システムで 2 つの権限を許可する必要があります。</string>
+    <string name="feature_onboarding_grant_notifications">通知</string>
+    <string name="feature_onboarding_grant_notifications_text">フィルタリング中に表示され、通知から一時停止できます</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">システムのダイアログで確認します</string>
+    <string name="feature_onboarding_grant_lists_text">初回はネットワーク接続が必要です</string>
+    <string name="feature_onboarding_vpn_refused">VPN の使用が許可されませんでした。VPN なしではフィルタリングを開始できません。</string>
+    <string name="feature_onboarding_starting_title">開始中</string>
+    <string name="feature_onboarding_start_failed_title">フィルタリングを開始できませんでした</string>
+    <string name="feature_onboarding_start_failed_text">VPN を開始できませんでした。アプリのネットワーク接続に影響はありません。</string>
+    <string name="feature_onboarding_done_text_vpn">通知からいつでもフィルタリングを一時停止できます。</string>
+    <string name="feature_onboarding_notifications_allowed">通知は許可済み</string>
+    <string name="feature_onboarding_notifications_off">通知は未許可</string>
+    <string name="feature_onboarding_notifications_off_text">「設定」で許可できます</string>
+    <string name="feature_onboarding_vpn_connected">VPN に接続済み</string>
+    <string name="feature_onboarding_vpn_connected_text">選択したアプリのみが VPN を使用します</string>
+    <string name="feature_onboarding_lists_downloaded">リストをダウンロードしました</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="other">リスト %1$d 個</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="other">ルール %1$s 件</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s、%2$s</string>
+    <string name="feature_onboarding_lists_failed">リストをダウンロードできませんでした</string>
+    <string name="feature_onboarding_lists_failed_text">バックグラウンドで再試行します</string>
+    <string name="feature_onboarding_done_https">ブラウザで暗号化されたサイトを URL でフィルタリングするには、「設定」で復号を設定してください。</string>
+</resources>

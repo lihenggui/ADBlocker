@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">ブラウザ用広告ブロッカーのフィルタリストを使い、選択したアプリの通信を HTTPS も含めてフィルタリングします。</string>
+    <string name="nav_overview">概要</string>
+    <string name="nav_apps">アプリ</string>
+    <string name="nav_filters">フィルタ</string>
+    <string name="nav_activity">アクティビティ</string>
+    <string name="pane_drag_handle">ペインのサイズ調整ハンドル</string>
+    <string name="pane_current_split">現在のペインの比率は %1$s です</string>
+    <string name="pane_change_split">ペインの比率を %1$s に変更</string>
+    <string name="tile_label">広告ブロック</string>
+    <string name="tile_filtering">オン</string>
+    <string name="tile_paused">一時停止中</string>
+    <string name="tile_stopped">停止中</string>
+</resources>

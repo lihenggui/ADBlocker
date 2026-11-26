@@ -47,32 +47,32 @@ URLs, package names, and certificate file names as written.
 
 ## Glossary
 
-| English | Meaning in ADBlocker | Simplified Chinese | Traditional Chinese | Russian | Spanish | Portuguese (Brazil) | Indonesian | Vietnamese | Turkish |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| App | An Android application. | 应用 | 應用程式 | Приложение | Aplicación | App | Aplikasi | Ứng dụng | Uygulama |
-| Settings (Android) | Android's system settings. | 设置 | 設定 | Настройки | Ajustes | Configurações | Setelan | Cài đặt | Ayarlar |
-| Network | The network an app connects to. | 网络 | 網路 | Сеть | Red | Rede | Jaringan | Mạng | Ağ |
-| Block | Refuse a request or a connection that matches a blocking rule. | 拦截 | 封鎖 | Блокировать | Bloquear | Bloquear | Blokir | Chặn | Engelle |
-| Allow | Let a request or connection through. | 放行 | 允許 | Разрешить | Permitir | Permitir | Izinkan | Cho phép | İzin ver |
-| Trust | Let connections to a site bypass blocking and decryption. | 信任 | 信任 | Доверять | Confiar (sitios de confianza) | Confiar | Percayai | Tin cậy | Güven |
-| Exclude | Bypass filtering for an app in the All apps scope. | 排除 | 排除 | Исключить | Excluir | Excluir | Kecualikan | Loại trừ | Hariç tut |
-| Pause | Temporarily suspend filtering globally or for an app. | 暂停 | 暫停 | Приостановить | Pausar | Pausar | Jeda | Tạm dừng | Duraklat |
-| Resume | End a filtering pause. | 恢复 | 繼續 | Возобновить | Reanudar | Retomar | Lanjutkan | Lọc tiếp | Devam et |
-| Filter / filtering | Apply the enabled lists and custom rules to eligible traffic. | 过滤 | 過濾 | Фильтровать / фильтрация | Filtrar / filtrado | Filtrar / filtragem | Saring / penyaringan | Lọc | Filtrele / filtreleme |
-| List / Lists tab | A subscription that supplies filter rules. The Lists tab manages subscriptions. | 过滤列表（标签页为“订阅”） | 過濾清單（分頁標題為「訂閱」） | Список фильтров / Списки | Lista de filtros (pestaña «Listas») | Lista de filtros (aba “Listas”) | Daftar filter (tab “Daftar”) | Danh sách lọc (thẻ “Danh sách”) | Liste / Listeler |
-| Rule | A directive that matches traffic or page elements, or defines an exception. | 规则 | 規則 | Правило | Regla | Regra | Aturan | Quy tắc | Kural |
-| Page element hiding | Hide elements named by rules on decrypted pages. | 隐藏页面元素 | 隱藏網頁元素 | Скрытие элементов страниц | Ocultar elementos de página | Ocultar elementos da página | Sembunyikan elemen halaman | Ẩn phần tử trang | Sayfa öğelerini gizleme |
-| URL filtering | Apply request-level rules to URLs, including inside HTTPS where supported. | 按网址过滤 | 依網址過濾 | Фильтрация по URL | Filtrado por URL | Filtragem de URL | Penyaringan URL | Lọc theo URL | URL filtreleme |
-| Certificate | The local CA certificate that an app must trust for HTTPS inspection. | 证书 | 憑證 | Сертификат | Certificado | Certificado | Sertifikat | Chứng chỉ | Sertifika |
-| User certificates / CA certificate | Android's user-installed certificates and a certificate authority's certificate. | 用户证书 / CA 证书 | 使用者憑證 / CA 憑證 | Пользовательские сертификаты / сертификат центра сертификации | Certificados de usuario / Certificado AC | Certificados do usuário / Certificado de CA | Sertifikat pengguna / sertifikat CA | Chứng chỉ người dùng / Chứng chỉ CA | Kullanıcı sertifikaları / CA sertifikası |
-| All apps | Filter eligible personal apps, with exclusions. Work apps are selected separately. | 全部应用 | 所有應用程式 | Все приложения | Todas las aplicaciones | Todos os apps | Semua aplikasi | Tất cả ứng dụng | Tüm uygulamalar |
-| Chosen apps | Filter apps the user explicitly selects. | 选定应用 | 選定的應用程式 | Выбранные приложения | Aplicaciones seleccionadas | Apps selecionados | Aplikasi pilihan | Ứng dụng đã chọn | Seçilen uygulamalar |
-| Work profile | The managed Android profile whose apps and certificate trust are separate. | 工作资料 | 工作資料夾 | Рабочий профиль | Perfil de trabajo | Perfil de trabalho | Profil kerja | Hồ sơ công việc | İş profili |
-| Root mode | Use the on-device root component to filter traffic. | root 模式 | root 模式 | Режим root | Modo root | Modo root | Mode root | Chế độ root | Root modu |
-| VPN mode | Use a local Android VPN to filter traffic without root. | VPN 模式 | VPN 模式 | Режим VPN | Modo VPN | Modo VPN | Mode VPN | Chế độ VPN | VPN modu |
-| Default | The setting in effect until the user changes it. | 默认 | 預設 | По умолчанию | Predeterminado | Padrão | Default | Mặc định | Varsayılan |
-| File / save | A document such as a rules export or certificate, or the action of saving it. | 文件 / 保存 | 檔案 / 儲存 | Файл / сохранить | Archivo / guardar | Arquivo / salvar | File / simpan | Tệp / Lưu | Dosya / kaydet |
-| Storage | Space where Android keeps files or app data. | 私有目录 | 儲存空間 | Хранилище | Almacenamiento | Armazenamento | Penyimpanan | Bộ nhớ | Depolama |
-| Notification | A message shown by Android in the notification shade. | 通知 | 通知 | Уведомление | Notificación | Notificação | Notifikasi | Thông báo | Bildirim |
-| Update (verb) | Download a fresh list or install a newer version of root mode. | 更新 | 更新 | Обновить | Actualizar | Atualizar | Perbarui | Cập nhật | Güncelle |
-| Log / record | Operational logs or the action of recording network requests. | 日志 / 记录 | 記錄 | Журнал / записывать | Registro / registrar | Registro / gravar | Log / rekam | Nhật ký / Ghi | Günlük / kaydet |
+| English | Meaning in ADBlocker | Simplified Chinese | Traditional Chinese | Russian | Spanish | Portuguese (Brazil) | Indonesian | Vietnamese | Turkish | Japanese |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| App | An Android application. | 应用 | 應用程式 | Приложение | Aplicación | App | Aplikasi | Ứng dụng | Uygulama | アプリ |
+| Settings (Android) | Android's system settings. | 设置 | 設定 | Настройки | Ajustes | Configurações | Setelan | Cài đặt | Ayarlar | 設定 |
+| Network | The network an app connects to. | 网络 | 網路 | Сеть | Red | Rede | Jaringan | Mạng | Ağ | ネットワーク |
+| Block | Refuse a request or a connection that matches a blocking rule. | 拦截 | 封鎖 | Блокировать | Bloquear | Bloquear | Blokir | Chặn | Engelle | ブロック |
+| Allow | Let a request or connection through. | 放行 | 允許 | Разрешить | Permitir | Permitir | Izinkan | Cho phép | İzin ver | 許可 |
+| Trust | Let connections to a site bypass blocking and decryption. | 信任 | 信任 | Доверять | Confiar (sitios de confianza) | Confiar | Percayai | Tin cậy | Güven | 信頼 |
+| Exclude | Bypass filtering for an app in the All apps scope. | 排除 | 排除 | Исключить | Excluir | Excluir | Kecualikan | Loại trừ | Hariç tut | 除外 |
+| Pause | Temporarily suspend filtering globally or for an app. | 暂停 | 暫停 | Приостановить | Pausar | Pausar | Jeda | Tạm dừng | Duraklat | 一時停止 |
+| Resume | End a filtering pause. | 恢复 | 繼續 | Возобновить | Reanudar | Retomar | Lanjutkan | Lọc tiếp | Devam et | 再開 |
+| Filter / filtering | Apply the enabled lists and custom rules to eligible traffic. | 过滤 | 過濾 | Фильтровать / фильтрация | Filtrar / filtrado | Filtrar / filtragem | Saring / penyaringan | Lọc | Filtrele / filtreleme | フィルタリング |
+| List / Lists tab | A subscription that supplies filter rules. The Lists tab manages subscriptions. | 过滤列表（标签页为“订阅”） | 過濾清單（分頁標題為「訂閱」） | Список фильтров / Списки | Lista de filtros (pestaña «Listas») | Lista de filtros (aba “Listas”) | Daftar filter (tab “Daftar”) | Danh sách lọc (thẻ “Danh sách”) | Liste / Listeler | フィルタリスト（タブ名は「リスト」） |
+| Rule | A directive that matches traffic or page elements, or defines an exception. | 规则 | 規則 | Правило | Regla | Regra | Aturan | Quy tắc | Kural | ルール |
+| Page element hiding | Hide elements named by rules on decrypted pages. | 隐藏页面元素 | 隱藏網頁元素 | Скрытие элементов страниц | Ocultar elementos de página | Ocultar elementos da página | Sembunyikan elemen halaman | Ẩn phần tử trang | Sayfa öğelerini gizleme | ページ要素を非表示 |
+| URL filtering | Apply request-level rules to URLs, including inside HTTPS where supported. | 按网址过滤 | 依網址過濾 | Фильтрация по URL | Filtrado por URL | Filtragem de URL | Penyaringan URL | Lọc theo URL | URL filtreleme | URL フィルタリング |
+| Certificate | The local CA certificate that an app must trust for HTTPS inspection. | 证书 | 憑證 | Сертификат | Certificado | Certificado | Sertifikat | Chứng chỉ | Sertifika | 証明書 |
+| User certificates / CA certificate | Android's user-installed certificates and a certificate authority's certificate. | 用户证书 / CA 证书 | 使用者憑證 / CA 憑證 | Пользовательские сертификаты / сертификат центра сертификации | Certificados de usuario / Certificado AC | Certificados do usuário / Certificado de CA | Sertifikat pengguna / sertifikat CA | Chứng chỉ người dùng / Chứng chỉ CA | Kullanıcı sertifikaları / CA sertifikası | ユーザー証明書 / CA 証明書 |
+| All apps | Filter eligible personal apps, with exclusions. Work apps are selected separately. | 全部应用 | 所有應用程式 | Все приложения | Todas las aplicaciones | Todos os apps | Semua aplikasi | Tất cả ứng dụng | Tüm uygulamalar | すべてのアプリ |
+| Chosen apps | Filter apps the user explicitly selects. | 选定应用 | 選定的應用程式 | Выбранные приложения | Aplicaciones seleccionadas | Apps selecionados | Aplikasi pilihan | Ứng dụng đã chọn | Seçilen uygulamalar | 選択したアプリ |
+| Work profile | The managed Android profile whose apps and certificate trust are separate. | 工作资料 | 工作資料夾 | Рабочий профиль | Perfil de trabajo | Perfil de trabalho | Profil kerja | Hồ sơ công việc | İş profili | 仕事用プロファイル |
+| Root mode | Use the on-device root component to filter traffic. | root 模式 | root 模式 | Режим root | Modo root | Modo root | Mode root | Chế độ root | Root modu | root モード |
+| VPN mode | Use a local Android VPN to filter traffic without root. | VPN 模式 | VPN 模式 | Режим VPN | Modo VPN | Modo VPN | Mode VPN | Chế độ VPN | VPN modu | VPN モード |
+| Default | The setting in effect until the user changes it. | 默认 | 預設 | По умолчанию | Predeterminado | Padrão | Default | Mặc định | Varsayılan | デフォルト |
+| File / save | A document such as a rules export or certificate, or the action of saving it. | 文件 / 保存 | 檔案 / 儲存 | Файл / сохранить | Archivo / guardar | Arquivo / salvar | File / simpan | Tệp / Lưu | Dosya / kaydet | ファイル / 保存 |
+| Storage | Space where Android keeps files or app data. | 私有目录 | 儲存空間 | Хранилище | Almacenamiento | Armazenamento | Penyimpanan | Bộ nhớ | Depolama | ストレージ |
+| Notification | A message shown by Android in the notification shade. | 通知 | 通知 | Уведомление | Notificación | Notificação | Notifikasi | Thông báo | Bildirim | 通知 |
+| Update (verb) | Download a fresh list or install a newer version of root mode. | 更新 | 更新 | Обновить | Actualizar | Atualizar | Perbarui | Cập nhật | Güncelle | 更新 |
+| Log / record | Operational logs or the action of recording network requests. | 日志 / 记录 | 記錄 | Журнал / записывать | Registro / registrar | Registro / gravar | Log / rekam | Nhật ký / Ghi | Günlük / kaydet | ログ / 記録 |

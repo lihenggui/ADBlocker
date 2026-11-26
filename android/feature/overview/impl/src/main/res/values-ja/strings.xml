@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">設定</string>
+    <string name="feature_overview_filtering">フィルタリング中</string>
+    <string name="feature_overview_paused">一時停止中</string>
+    <string name="feature_overview_stopped">フィルタリングサービスは停止中</string>
+    <string name="feature_overview_filtering_detail">%1$s、%2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="other">アプリ %1$s 個</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="other">ルール %1$s 件</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">あと %1$s で再開</string>
+    <string name="feature_overview_paused_detail">再開するまで</string>
+    <string name="feature_overview_stopped_detail">アプリはフィルタリングなしで接続します</string>
+    <string name="feature_overview_resume">再開</string>
+    <string name="feature_overview_start">開始</string>
+    <string name="feature_overview_pause_hour">1 時間一時停止</string>
+    <string name="feature_overview_more_durations">他の一時停止時間</string>
+    <string name="feature_overview_expanded">展開済み</string>
+    <string name="feature_overview_collapsed">折りたたみ済み</string>
+    <string name="feature_overview_until_resumed">再開するまで</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="other">%1$d 時間</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="other">%1$d 分</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">今日のブロック件数</string>
+    <string name="feature_overview_blocked_breakdown">リクエスト %1$s 件、接続 %2$s 件</string>
+    <string name="feature_overview_week_description">過去 7 日間のブロック件数: %1$s</string>
+    <string name="feature_overview_today">今日</string>
+    <string name="feature_overview_top_apps">ブロック件数の多いアプリ</string>
+    <string name="feature_overview_status">状態</string>
+    <string name="feature_overview_lists">フィルタリスト</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="other">%1$d 個が有効（更新: %2$s）</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="other">%1$d 個が有効（未ダウンロード）</item>
+    </plurals>
+    <string name="feature_overview_service">フィルタリングサービス</string>
+    <string name="feature_overview_service_running">実行中</string>
+    <string name="feature_overview_service_running_since">%1$s 実行中</string>
+    <string name="feature_overview_service_stopped">停止中</string>
+    <string name="feature_overview_updating">root モードを更新中…</string>
+    <string name="feature_overview_restart_to_update">デバイスを再起動してモジュールの更新を完了してください。</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="other">%1$d 時間一時停止しました。アプリはフィルタリングなしで接続します。</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="other">%1$d 分間一時停止しました。アプリはフィルタリングなしで接続します。</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">再開するまで一時停止しました。アプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_undo">元に戻す</string>
+    <string name="feature_overview_module_disabled">root 管理アプリで ADBlocker モジュールが無効になっているか、削除が予定されています。root 管理アプリで設定を変更してください。</string>
+    <string name="feature_overview_module_disabled_in">%1$s で ADBlocker モジュールが無効になっているか、削除が予定されています。そこで設定を変更してください。</string>
+    <string name="feature_overview_service_timeout">フィルタリングサービスが時間内に応答しませんでした。</string>
+    <string name="feature_overview_root_pending">root モードへの切り替えが完了しませんでした。「設定」で再試行してください。</string>
+    <string name="feature_overview_action_failed">操作に失敗しました。「設定」でフィルタリングサービスを確認してください。</string>
+    <string name="feature_overview_turned_off">オフ</string>
+    <string name="feature_overview_turned_off_detail">起動が 2 回連続で完了しなかったため、%1$s にフィルタリングが自動的にオフになりました。アプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_turn_on_again">オンに戻す</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN（%1$s、%2$s）</string>
+    <string name="feature_overview_connecting">接続中</string>
+    <string name="feature_overview_connecting_detail">VPN（%1$s）</string>
+    <string name="feature_overview_disconnected">未接続</string>
+    <string name="feature_overview_vpn_off_detail">選択したアプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_vpn_revoked_detail">別の VPN アプリ、またはシステム設定で VPN がオフになりました。選択したアプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_vpn_failed_detail">フィルタリングが予期せず停止しました。選択したアプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_vpn_lockdown_detail">「VPN 以外の接続のブロック」がオンです。VPN が再接続されるまで、選択したアプリは接続できません。</string>
+    <string name="feature_overview_reconnect">再接続</string>
+    <string name="feature_overview_vpn_refused">VPN の使用が許可されませんでした。選択したアプリはフィルタリングなしで接続します。</string>
+    <string name="feature_overview_method">フィルタリング方式</string>
+    <string name="feature_overview_method_vpn_on">VPN（接続済み）</string>
+    <string name="feature_overview_method_vpn_connecting">VPN（接続中）</string>
+    <string name="feature_overview_method_vpn_off">VPN（未接続）</string>
+    <string name="feature_overview_https">暗号化されたサイト</string>
+    <string name="feature_overview_https_not_set_up">ドメインのみ（ブラウザ向けに設定可能）</string>
+    <string name="feature_overview_https_off">ドメインのみ（復号はオフ）</string>
+    <string name="feature_overview_https_none">ドメインのみ</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="other">%1$d 個のアプリの通信を復号</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">「VPN 以外の接続のブロック」はオン</string>
+    <string name="feature_overview_lockdown_text">フィルタリングの停止中、選択したアプリは接続できません。</string>
+    <string name="feature_overview_notice_ok">閉じる</string>
+    <string name="feature_overview_root_title">root 権限を検出しました</string>
+    <string name="feature_overview_root_text">root モードでは、VPN を使用せずに暗号化されたサイトを URL でフィルタリングします。選択したアプリ、リスト、ルールは保持されます。</string>
+    <string name="feature_overview_root_dismiss">今はしない</string>
+    <string name="feature_overview_root_switch">root モードに切り替え</string>
+    <string name="feature_overview_battery_title">Android が VPN を停止しました</string>
+    <string name="feature_overview_battery_text">バックグラウンドでフィルタリングが停止しました。フィルタリングを維持しやすくするには、ADBlocker のバッテリー使用を制限なしにしてください。</string>
+    <string name="feature_overview_battery_action">バックグラウンド使用を許可</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="other">未ダウンロードのリスト %1$d 個</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="other">ダウンロードできなかったリスト %1$d 個</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="other">ダウンロードが完了すると、フィルタリングに使用されます。</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="other">ダウンロードが完了すると、フィルタリングに使用されます。</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">今すぐダウンロード</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="other">以前のリストを使ってフィルタリングを続けます。</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">リストを開く</string>
+    <string name="feature_overview_lists_download_failed">ダウンロードに失敗しました</string>
+    <string name="feature_overview_app_list_withheld_title">ほとんどのアプリがフィルタリングされていません</string>
+    <string name="feature_overview_app_list_withheld_text">システムが ADBlocker にインストール済みアプリの一覧の読み取りを許可していません。許可されるとフィルタリングされます。</string>
+</resources>
