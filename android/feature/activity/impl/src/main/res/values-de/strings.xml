@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Aktivität</string>
+    <string name="feature_activity_settings">Einstellungen</string>
+    <string name="feature_activity_start_recording">Aufnahme starten</string>
+    <string name="feature_activity_stop_recording">Aufnahme beenden</string>
+    <string name="feature_activity_starting">Aufnahme wird gestartet …</string>
+    <string name="feature_activity_recording">Anfragen werden aufgezeichnet</string>
+    <string name="feature_activity_recorded">Aufnahme beendet</string>
+    <string name="feature_activity_interrupted">Aufnahme unterbrochen</string>
+    <string name="feature_activity_no_recording">Noch keine Aufnahme</string>
+    <string name="feature_activity_recording_intro">Zeichne Anfragen gefilterter Apps auf. Du kannst während der Aufnahme zwischen Apps wechseln. Die letzten 500 Anfragen bleiben im Arbeitsspeicher.</string>
+    <string name="feature_activity_no_matches">Keine Anfragen für diese Filter</string>
+    <string name="feature_activity_empty_result">Keine Anfragen aufgezeichnet</string>
+    <string name="feature_activity_app_requests_hint">Starte unter „Aktivität“ eine Aufnahme, um hier Anfragen zu sehen.</string>
+    <string name="feature_activity_notification_channel">Aktivitätsaufzeichnung</string>
+    <string name="feature_activity_notification_title">ADBlocker zeichnet Aktivitäten auf</string>
+    <string name="feature_activity_all">Alle</string>
+    <string name="feature_activity_blocked">Blockiert</string>
+    <string name="feature_activity_allowed">Zugelassen</string>
+    <string name="feature_activity_encrypted">Nicht entschlüsselt</string>
+    <string name="feature_activity_all_apps">Alle Apps</string>
+    <string name="feature_activity_dropped">(%1$d übersprungen)</string>
+    <string name="feature_activity_empty">Warten auf Anfragen</string>
+    <string name="feature_activity_empty_idle">Es wird nichts gefiltert</string>
+    <string name="feature_activity_verdict_blocked">Anfrage blockiert</string>
+    <string name="feature_activity_verdict_host_blocked">Domain blockiert</string>
+    <string name="feature_activity_verdict_allowed">Zugelassen</string>
+    <string name="feature_activity_verdict_passed">Nicht entschlüsselt</string>
+    <string name="feature_activity_kind_script">Skript</string>
+    <string name="feature_activity_kind_image">Bild</string>
+    <string name="feature_activity_kind_document">Seite</string>
+    <string name="feature_activity_kind_stylesheet">Stil</string>
+    <string name="feature_activity_kind_font">Schrift</string>
+    <string name="feature_activity_kind_media">Medien</string>
+    <string name="feature_activity_app">App</string>
+    <string name="feature_activity_kind">Typ</string>
+    <string name="feature_activity_page">Seite</string>
+    <string name="feature_activity_rule">Aktuell passende Regel (GET)</string>
+    <string name="feature_activity_rule_unavailable">Nicht verfügbar</string>
+    <string name="feature_activity_why">Grund</string>
+    <string name="feature_activity_my_rules">Eigene Regeln</string>
+    <string name="feature_activity_reason_pinned">Die App akzeptiert das ADBlocker-Zertifikat für diese Domain nicht. Deshalb wird nur nach Domain gefiltert.</string>
+    <string name="feature_activity_reason_hosts_only">Diese Verbindung wurde nach Domain gefiltert. Die URL-Filterung war aus oder eine HTTPS-Prüfung war nicht möglich.</string>
+    <string name="feature_activity_reason_excluded">Die Domain steht auf einer Liste mit HTTPS-Ausnahmen, etwa der Liste der Banken.</string>
+    <string name="feature_activity_reason_trusted">Dieser Website wird vertraut.</string>
+    <string name="feature_activity_reason_sensitive">Der Server hat ein Zertifikat mit Extended Validation. Daher wird die Verbindung nicht entschlüsselt.</string>
+    <string name="feature_activity_reason_no_name">Die Verbindung gibt keine Domain an.</string>
+    <string name="feature_activity_reason_untrusted">Diese App vertraut ADBlocker noch nicht.</string>
+    <string name="feature_activity_reason_unverified">Der Server konnte nicht überprüft werden. Deshalb übernimmt die App die Prüfung selbst.</string>
+    <string name="feature_activity_reason_other">Ungelesen an die App weitergeleitet.</string>
+    <string name="feature_activity_trust_site">%1$s vertrauen</string>
+    <string name="feature_activity_block_host">Domain blockieren</string>
+    <string name="feature_activity_block_in_app">In %1$s blockieren</string>
+    <string name="feature_activity_block_in_all_apps">In allen Apps blockieren</string>
+    <string name="feature_activity_forget">Entschlüsselung erneut versuchen</string>
+    <string name="feature_activity_copy">Kopieren</string>
+    <string name="feature_activity_trusted">%1$s zu vertrauten Websites hinzugefügt</string>
+    <string name="feature_activity_blocked_host_everywhere">%1$s in allen Apps blockiert</string>
+    <string name="feature_activity_blocked_host_in_app">%1$s in %2$s blockiert</string>
+    <string name="feature_activity_forgotten">Beim nächsten Verbindungsaufbau wird die Entschlüsselung erneut versucht</string>
+    <string name="feature_activity_failed">Aktion fehlgeschlagen. Prüfe den Filterdienst in den Einstellungen.</string>
+    <string name="feature_activity_select">Anfrage auswählen</string>
+    <string name="feature_activity_select_text">Prüfe die URL anhand der aktuellen Regeln, vertraue der Website oder blockiere sie</string>
+    <string name="feature_activity_reason_host_blocked">Die gesamte Domain ist blockiert. Daher wurde die Verbindung abgelehnt.</string>
+    <string name="feature_activity_app_requests">Anfragen</string>
+    <string name="feature_activity_open_activity">In „Aktivität“ öffnen</string>
+    <string name="feature_activity_reason_exclusions_pending">HTTPS-Ausnahmen noch nicht verfügbar</string>
+    <string name="feature_activity_apps_unavailable">App-Namen oder Filteroptionen konnten nicht geladen werden</string>
+    <string name="feature_activity_status_unavailable">Filterstatus nicht verfügbar</string>
+</resources>

@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_https_title">HTTPS-Filterung</string>
+    <string name="feature_https_back">Zurück</string>
+    <string name="feature_https_step">Schritt %1$d von %2$d</string>
+    <string name="feature_https_later">Später</string>
+    <string name="feature_https_continue">Weiter</string>
+    <string name="feature_https_previous">Zurück</string>
+    <string name="feature_https_impact_title">Auswirkungen auf die Sicherheit</string>
+    <string name="feature_https_impact_text">Um Anfragen in HTTPS-Verbindungen zu filtern, muss das ADBlocker-Zertifikat zu den Nutzerzertifikaten des Systems gehören.</string>
+    <string name="feature_https_impact_key">Das Zertifikat wird auf diesem Gerät erstellt. Sein privater Schlüssel bleibt im privaten Speicher der App und wird gelöscht, wenn du die App deinstallierst.</string>
+    <string name="feature_https_impact_apps">Der HTTPS-Datenverkehr lässt sich nur bei Apps entschlüsseln, die Nutzerzertifikaten vertrauen. Das sind vor allem einige Browser. Andere Apps werden weiterhin nach Domain gefiltert.</string>
+    <string name="feature_https_impact_notice">Nach der Installation zeigt das System dauerhaft den Hinweis „Das Netzwerk wird eventuell überwacht.“</string>
+    <string name="feature_https_impact_remove">Du kannst das Zertifikat jederzeit in den Systemeinstellungen entfernen. Unter „Einstellungen › HTTPS“ gelangst du dorthin.</string>
+    <string name="feature_https_install_title">Zertifikat installieren</string>
+    <string name="feature_https_install_text">Android erlaubt Apps nicht, Zertifikate zu installieren. Das Zertifikat wird in den Systemeinstellungen installiert.</string>
+    <string name="feature_https_install_save">Zertifikat speichern</string>
+    <string name="feature_https_install_save_text">Speichert ADBlocker.crt auf dem Gerät</string>
+    <string name="feature_https_install_saved">Als ADBlocker.crt gespeichert</string>
+    <string name="feature_https_install_open">Systemeinstellungen öffnen</string>
+    <string name="feature_https_install_open_text">Datenschutz &amp; Sicherheit › Mehr Sicherheit und Datenschutz › Verschlüsselung &amp; Anmeldedaten › Ein Zertifikat installieren › CA-Zertifikat</string>
+    <string name="feature_https_install_choose">ADBlocker.crt auswählen und bestätigen</string>
+    <string name="feature_https_install_choose_text">Menünamen können je nach Hersteller abweichen</string>
+    <string name="feature_https_install_not_found">Das Zertifikat ist noch nicht unter den Nutzerzertifikaten.</string>
+    <string name="feature_https_save">Zertifikat speichern</string>
+    <string name="feature_https_open_security">Sicherheitseinstellungen öffnen</string>
+    <string name="feature_https_save_failed">Das Zertifikat konnte nicht gespeichert werden</string>
+    <string name="feature_https_apps_title">Zertifikat installiert</string>
+    <string name="feature_https_apps_text">URL-Regeln gelten, soweit unterstützt, für alle gefilterten Apps. Bei Apps, die das Zertifikat ablehnen, bleiben HTTPS-Verbindungen verschlüsselt.</string>
+    <string name="feature_https_turn_on">Weiter</string>
+    <string name="feature_https_failed">Aktion fehlgeschlagen</string>
+    <string name="feature_https_done_title">URL-Filterung aktiviert</string>
+    <string name="feature_https_result_full">Vollständige Filterung</string>
+    <string name="feature_https_result_hosts">Nur nach Domain</string>
+    <string name="feature_https_done_hint">Du kannst die URL-Filterung in den Einstellungen ändern.</string>
+    <string name="feature_https_finish">Fertig</string>
+    <string name="feature_https_work_title">HTTPS im Arbeitsprofil</string>
+    <string name="feature_https_work_instructions">Speichere das öffentliche Zertifikat und bitte den Administrator des Arbeitsprofils, es dort zu installieren. Wenn die Richtlinien deiner Organisation es zulassen, kannst du die Zertifikatseinstellungen des Arbeitsprofils verwenden. Die HTTPS-Filterung gilt für Apps, die Zertifikaten des Arbeitsprofils vertrauen.</string>
+    <string name="feature_https_work_save">Zertifikat speichern</string>
+    <string name="feature_https_work_saved">Zertifikat gespeichert</string>
+    <string name="feature_https_result_certificate">Nur nach Domain · Zertifikat fehlt</string>
+    <string name="feature_https_result_exclusions">Nur nach Domain · HTTPS-Ausnahmen werden geladen</string>
+    <string name="feature_https_results_unavailable">Filterergebnisse der Apps konnten nicht gelesen werden</string>
+</resources>

@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">Filterung</string>
+    <string name="vpn_channel_stopped">Filterung gestoppt</string>
+    <string name="vpn_starting">Filterung wird gestartet</string>
+    <plurals name="vpn_filtering">
+        <item quantity="one">%d App wird gefiltert</item>
+        <item quantity="other">%d Apps werden gefiltert</item>
+    </plurals>
+    <string name="vpn_no_apps">Keine Apps ausgewählt</string>
+    <string name="vpn_paused_until">Pausiert bis %s</string>
+    <string name="vpn_paused">Pausiert</string>
+    <string name="vpn_action_pause_hour">1 Stunde pausieren</string>
+    <string name="vpn_action_resume">Fortsetzen</string>
+    <string name="vpn_action_open">Öffnen</string>
+    <string name="vpn_revoked_title">Filterung gestoppt</string>
+    <string name="vpn_revoked_text">Das VPN wurde durch eine andere VPN-App oder in den Systemeinstellungen deaktiviert. Die ausgewählten Apps verbinden sich ohne Filterung.</string>
+    <string name="vpn_status_unavailable">Filterstatus nicht verfügbar</string>
+</resources>
