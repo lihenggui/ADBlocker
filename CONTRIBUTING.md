@@ -98,6 +98,9 @@ The parsers have property tests, and
 engine's dependence on `adblock` behavior and should be read first when
 updating that crate.
 
+Run `scripts/update-psl.sh [VERSION]` to sync the bundled Public Suffix List
+with `Cargo.lock`, optionally updating the locked `psl` version first.
+
 Run the parser [fuzz targets](fuzz/README.md) by hand with nightly Rust.
 
 ### HTTP/3 fixture
