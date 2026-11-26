@@ -18,6 +18,7 @@
     <string name="feature_settings_back">Back</string>
     <string name="feature_settings_appearance">Appearance</string>
     <string name="feature_settings_theme">Theme</string>
+    <!-- Theme option that follows the system appearance. -->
     <string name="feature_settings_theme_system">System</string>
     <string name="feature_settings_theme_light">Light</string>
     <string name="feature_settings_theme_dark">Dark</string>
@@ -28,6 +29,7 @@
     <string name="feature_settings_interval_daily">Every day</string>
     <string name="feature_settings_interval_three_days">Every 3 days</string>
     <string name="feature_settings_interval_weekly">Every week</string>
+    <!-- Disables automatic filter list updates. -->
     <string name="feature_settings_interval_never">Never</string>
     <string name="feature_settings_wifi_only">Update on Wi-Fi only</string>
     <string name="feature_settings_wifi_only_text">Lists are not downloaded over mobile data</string>
@@ -43,6 +45,7 @@
     <string name="feature_settings_status_stopped">Not running</string>
     <string name="feature_settings_status_turned_off">Turned off</string>
     <string name="feature_settings_turned_off_text">Two startups in a row did not finish</string>
+    <!-- %1$s is a relative time such as “yesterday”. -->
     <string name="feature_settings_started">started %1$s</string>
     <string name="feature_settings_restart">Restart filtering service</string>
     <string name="feature_settings_restart_text">Apps connect without filtering during the restart</string>
@@ -64,10 +67,13 @@
     <string name="feature_settings_root_removing">Removing root mode…</string>
     <string name="feature_settings_root_remove_failed">Not removed · Try again</string>
     <string name="feature_settings_root_remove_title">Remove root mode?</string>
+    <!-- Security: Explains which certificate and data are removed and when filtering stops. -->
     <string name="feature_settings_root_remove_explain">Filtering stops, and apps connect without filtering. The certificate authority of root mode is deleted, along with its chosen apps, lists, rules, trusted sites and statistics. App settings, such as the theme, are kept. Root mode can be set up again here.</string>
+    <!-- Confirms removal of root mode and its data. -->
     <string name="feature_settings_root_remove_confirm">Remove</string>
     <string name="feature_settings_root_removed">Root mode removed</string>
     <string name="feature_settings_root_flashed">Installed as a module</string>
+    <!-- %1$s is the name of the root manager. -->
     <string name="feature_settings_root_flashed_in">Installed as a module in %1$s</string>
     <string name="feature_settings_root_flashed_text">To remove root mode, remove the module there and restart</string>
     <string name="feature_settings_root_flashed_manager_text">To remove root mode, remove the module in the root manager and restart</string>
@@ -77,6 +83,7 @@
     <string name="feature_settings_pinned">Domains that reject the certificate</string>
     <string name="feature_settings_pinned_checking">Checking domains…</string>
     <string name="feature_settings_pinned_unavailable">Domain list unavailable</string>
+    <!-- No domains are known to reject the certificate. -->
     <string name="feature_settings_pinned_none">None</string>
     <plurals name="feature_settings_pinned_apps">
         <item quantity="one">%1$d app</item>
@@ -91,12 +98,14 @@
     <string name="feature_settings_export_logs_text">Logs record what ran and how it ended, not what apps connect to</string>
     <string name="feature_settings_about">About</string>
     <string name="feature_settings_app_name" translatable="false">ADBlocker</string>
+    <!-- %1$s is the app version. Preserve the GPL-3.0 identifier. -->
     <string name="feature_settings_app_version">Version %1$s · GPL-3.0</string>
     <string name="feature_settings_source">Source code</string>
     <string name="feature_settings_source_text">Licenses of the app and the filter lists</string>
     <string name="feature_settings_restarted">Filtering service restarted</string>
     <string name="feature_settings_service_timeout">The filtering service did not respond in time.</string>
     <string name="feature_settings_module_disabled">The ADBlocker module is turned off or set to be removed in the root manager. Change it there.</string>
+    <!-- %1$s is the name of the root manager. -->
     <string name="feature_settings_module_disabled_in">The ADBlocker module is turned off or set to be removed in %1$s. Change it there.</string>
     <string name="feature_settings_module_installed">Root mode is running</string>
     <string name="feature_settings_pinned_forgotten">Forgotten. Decryption is retried at the next connection.</string>
@@ -105,18 +114,23 @@
     <string name="feature_settings_failed">Action failed</string>
     <string name="feature_settings_https">HTTPS</string>
     <string name="feature_settings_url_filtering">URL filtering</string>
+    <!-- Security: Explains how turning off URL rules changes filtering. -->
     <string name="feature_settings_url_filtering_text">Apply URL rules to every filtered app where supported. When off, block whole domains.</string>
     <string name="feature_settings_url_filtering_unknown">Requires a running, up-to-date filtering service</string>
     <string name="feature_settings_url_filtering_on">URL filtering is on</string>
     <string name="feature_settings_url_filtering_off">URL filtering is off</string>
     <string name="feature_settings_cancel">Cancel</string>
     <string name="feature_settings_cosmetic">Hide page elements</string>
+    <!-- Security: Page element hiding changes decrypted page content. -->
     <string name="feature_settings_cosmetic_text">Modifies decrypted pages to hide elements named by filter rules, such as empty ad frames.</string>
     <string name="feature_settings_cosmetic_security">Security implications</string>
+    <!-- Security: Explains why the affected HTTPS connections remain encrypted. -->
     <string name="feature_settings_pinned_text">These apps check the certificates of these domains themselves, so the connections are filtered by domain only. After a domain is forgotten, decryption is retried at its next connection.</string>
+    <!-- Clears the remembered certificate refusal for one domain. -->
     <string name="feature_settings_forget">Forget</string>
     <string name="feature_settings_forget_all">Forget all</string>
     <string name="feature_settings_forget_all_title">Forget all domains?</string>
+    <!-- Security: HTTPS decryption will be attempted again at the next connection. -->
     <string name="feature_settings_forget_all_text">Decryption is retried for each of these domains at its next connection.</string>
     <string name="feature_settings_method">Filtering method</string>
     <string name="feature_settings_method_vpn">VPN mode</string>
@@ -130,7 +144,9 @@
     <string name="feature_settings_method_root_missing">Root access not detected · Check again</string>
     <string name="feature_settings_root_missing">Root access not detected</string>
     <string name="feature_settings_switch_root_title">Switch to root mode?</string>
+    <!-- Security: The local VPN continues filtering until root mode can take over. -->
     <string name="feature_settings_switch_root_text">ADBlocker sets up root mode, which then takes over from the VPN. The VPN stays connected until root mode runs. Apps, lists, rules and trusted sites are carried over.</string>
+    <!-- Confirms switching from VPN mode to root mode. -->
     <string name="feature_settings_switch_root">Switch</string>
     <string name="feature_settings_switched_to_root">Switched to root mode</string>
     <string name="feature_settings_switched_to_vpn">Switched to VPN mode</string>
@@ -141,24 +157,31 @@
     <string name="feature_settings_retry_root_cancel">Retry cancellation</string>
     <string name="feature_settings_vpn" translatable="false">VPN</string>
     <string name="feature_settings_always_on">Always-on VPN</string>
+    <!-- Security: Describes Android's restart policy for the local VPN. -->
     <string name="feature_settings_always_on_text">Android starts ADBlocker at boot and after it stops unexpectedly</string>
     <!-- Whether a system setting is on, then what it does: "On · Android starts ADBlocker at boot…". -->
     <string name="feature_settings_state_detail">%1$s · %2$s</string>
     <string name="feature_settings_state_on">On</string>
     <string name="feature_settings_state_off">Off</string>
     <string name="feature_settings_lockdown">Block connections without VPN</string>
+    <!-- Security: VPN lockdown blocks the chosen apps' network access while filtering is stopped. -->
     <string name="feature_settings_lockdown_on">On · The chosen apps cannot connect while filtering is stopped</string>
+    <!-- Security: VPN lockdown is controlled in Android settings. -->
     <string name="feature_settings_lockdown_off">When on, the chosen apps cannot connect while filtering is stopped. Set in the system settings only.</string>
     <string name="feature_settings_notifications">Notifications</string>
     <string name="feature_settings_notifications_on">Allowed · Filtering can be paused from the notification</string>
     <string name="feature_settings_notifications_off">Not allowed · Filtering works without them</string>
     <string name="feature_settings_https_setup">Set up HTTPS filtering</string>
+    <!-- Security: URL filtering in VPN mode requires apps that trust user certificates. -->
     <string name="feature_settings_https_not_set_up">Not set up · Requires apps that trust user certificates</string>
     <string name="feature_settings_https_installed">Certificate installed · Manage URL filtering</string>
+    <!-- Security: The user certificate is needed for HTTPS URL filtering. -->
     <string name="feature_settings_url_filtering_needs_certificate">Install the certificate to filter HTTPS URLs.</string>
     <string name="feature_settings_remove_certificate">Remove the certificate</string>
     <string name="feature_settings_remove_certificate_text">Turns off decryption and opens the system settings</string>
+    <!-- Security: Decryption is turned off before the user removes the certificate in Android settings. -->
     <string name="feature_settings_remove_certificate_explain">ADBlocker turns off HTTPS decryption first. You can then remove the certificate in Android settings.</string>
+    <!-- Android settings path for removing the ADBlocker user CA certificate. -->
     <string name="feature_settings_remove_certificate_path">Security &amp; privacy › More security &amp; privacy › Encryption &amp; credentials › Trusted credentials › User › ADBlocker user CA › Remove</string>
     <string name="feature_settings_remove_certificate_vary">Menu names vary by manufacturer.</string>
     <string name="feature_settings_remove_certificate_open">Turn off and open settings</string>

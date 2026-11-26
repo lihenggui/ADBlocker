@@ -16,6 +16,7 @@
 <resources>
     <string name="feature_filters_title">Filters</string>
     <string name="feature_filters_settings">Settings</string>
+    <!-- Tab for managing filter list subscriptions. -->
     <string name="feature_filters_tab_lists">Lists</string>
     <string name="feature_filters_tab_rules">My rules</string>
     <string name="feature_filters_tab_trusted">Trusted sites</string>
@@ -28,13 +29,18 @@
         <item quantity="one">downloaded rules · %1$d list</item>
         <item quantity="other">downloaded rules · %1$d lists</item>
     </plurals>
+    <!-- Downloads fresh copies of the subscribed filter lists. -->
     <string name="feature_filters_update_now">Update now</string>
     <string name="feature_filters_updating">Updating</string>
     <string name="feature_filters_update_progress">Update progress</string>
+    <!-- %1$s is a relative time such as “yesterday”. -->
     <string name="feature_filters_last_updated">Updated %1$s</string>
     <string name="feature_filters_never_updated">Not downloaded yet</string>
+    <!-- Heading for filter lists the user subscribes to. -->
     <string name="feature_filters_subscribed_header">Subscribed</string>
+    <!-- %1$s is the category of available filter lists. -->
     <string name="feature_filters_available">Available · %1$s</string>
+    <!-- %1$s is the filter list's name. Used for the list's toggle. -->
     <string name="feature_filters_subscribe">Subscribe to %1$s</string>
     <string name="feature_filters_list_fetching">Downloading and checking</string>
     <string name="feature_filters_list_failed">Update failed</string>
@@ -42,8 +48,10 @@
     <string name="feature_filters_list_off">Off</string>
     <string name="feature_filters_list_error">Last update failed</string>
     <string name="feature_filters_list_pending">Waiting to download</string>
+    <!-- %1$s is the formatted rule count and %2$s is when the list was updated. -->
     <string name="feature_filters_list_detail">%1$s rules · %2$s</string>
     <string name="feature_filters_list_rules">%1$s rules</string>
+    <!-- %1$s is the diagnostic from the failed list download. -->
     <string name="feature_filters_list_last_error">Last error: %1$s</string>
     <string name="feature_filters_remove_list">Unsubscribe</string>
     <string name="feature_filters_cosmetic_note">Lists in this category mainly hide page elements. Turn off Hide page elements in Settings to disable these rules.</string>
@@ -52,18 +60,22 @@
         <item quantity="one">%1$d rule</item>
         <item quantity="other">%1$d rules</item>
     </plurals>
+    <!-- %1$d counts custom rules and %2$d counts those that were not applied. -->
     <plurals name="feature_filters_rules_count_skipped">
         <item quantity="one">%1$d rule · %2$d not applied</item>
         <item quantity="other">%1$d rules · %2$d not applied</item>
     </plurals>
     <string name="feature_filters_rule_check_unavailable">Rule check unavailable</string>
+    <!-- %1$s is a rule count and %2$s is the rule-check status. -->
     <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <!-- Opens the custom rule editor. -->
     <string name="feature_filters_edit">Edit</string>
     <string name="feature_filters_tools">Tools</string>
     <string name="feature_filters_block_domain">Block a domain</string>
     <string name="feature_filters_block_domain_supporting">Adds a rule such as ||example.com^</string>
     <string name="feature_filters_block_domain_text">Blocks the domain and its subdomains in all filtered apps.</string>
     <string name="feature_filters_domain_label">Domain</string>
+    <!-- Action to add a blocking rule for the entered domain. -->
     <string name="feature_filters_block">Block</string>
     <string name="feature_filters_test_url">Test a URL</string>
     <string name="feature_filters_test_url_supporting">Shows which rule would block it</string>
@@ -72,29 +84,38 @@
     <string name="feature_filters_export">Export rules</string>
     <string name="feature_filters_export_supporting">As a .txt file</string>
     <string name="feature_filters_syntax_note">Turn off Hide page elements in Settings to disable element hiding rules (##).</string>
+    <!-- Security: A trusted site bypasses blocking and decryption. -->
     <string name="feature_filters_trusted_text">Connections to these sites are not decrypted or blocked. Intended for online banking, intranets and payment pages.</string>
     <string name="feature_filters_add_trusted">Add site</string>
+    <!-- %1$s is the domain to remove from trusted sites. -->
     <string name="feature_filters_remove_trusted">Remove %1$s</string>
     <string name="feature_filters_url_label">URL</string>
     <string name="feature_filters_page_label">Source page (optional)</string>
+    <!-- Runs the entered request through the current rules without opening the URL. -->
     <string name="feature_filters_check">Check</string>
     <string name="feature_filters_would_block">Would be blocked</string>
     <string name="feature_filters_would_allow">Would not be blocked</string>
     <string name="feature_filters_source_mine">My rules</string>
+    <!-- Type of request for a JavaScript resource. -->
     <string name="feature_filters_kind_script">Script</string>
     <string name="feature_filters_kind_image">Image</string>
+    <!-- Type of request that loads a web page itself. -->
     <string name="feature_filters_kind_document">Page</string>
     <string name="feature_filters_kind_xhr">XHR</string>
     <string name="feature_filters_kind_other">Other</string>
     <string name="feature_filters_issue_invalid">this line cannot be read as a rule.</string>
+    <!-- %1$s is a rule option. Keep the option name as written. -->
     <string name="feature_filters_issue_invalid_option">this line has an invalid option, %1$s.</string>
     <string name="feature_filters_issue_unsupported">this version does not apply this rule form.</string>
+    <!-- %1$s is an unsupported option or scriptlet name. Keep it as written. -->
     <string name="feature_filters_issue_unsupported_named">this version does not apply %1$s.</string>
     <string name="feature_filters_issue_inapplicable">this rule has nothing to act on here.</string>
+    <!-- %1$s is a rule option. Keep the option name as written. -->
     <string name="feature_filters_issue_inapplicable_named">the %1$s option has nothing to act on here.</string>
     <string name="feature_filters_issue_malformed_directive">the conditional directive is malformed.</string>
     <string name="feature_filters_issue_unsupported_include">this version does not load included lists.</string>
     <string name="feature_filters_issue_line">Line %1$d</string>
+    <!-- %1$d counts further diagnostics not shown. -->
     <plurals name="feature_filters_more_issues">
         <item quantity="one">%1$d more.</item>
         <item quantity="other">%1$d more.</item>
@@ -115,6 +136,7 @@
         <item quantity="one">Updated %1$d list</item>
         <item quantity="other">Updated %1$d lists</item>
     </plurals>
+    <!-- %1$d counts updated lists and %2$d counts failed updates. -->
     <plurals name="feature_filters_updated_with_failures">
         <item quantity="one">Updated %1$d list, %2$d failed</item>
         <item quantity="other">Updated %1$d lists, %2$d failed</item>
@@ -124,7 +146,9 @@
     <string name="feature_filters_removed">Unsubscribed</string>
     <string name="feature_filters_https_only">Only HTTPS URLs are supported</string>
     <string name="feature_filters_not_a_domain">Not a valid domain</string>
+    <!-- %1$s is the newly blocked domain. -->
     <string name="feature_filters_blocked_domain">Blocked %1$s</string>
+    <!-- %1$s is the domain added to trusted sites. -->
     <string name="feature_filters_trusted">Added %1$s to trusted sites</string>
     <plurals name="feature_filters_imported">
         <item quantity="one">Imported %1$d rule</item>
@@ -132,6 +156,7 @@
     </plurals>
     <string name="feature_filters_exported">Rules exported</string>
     <string name="feature_filters_failed">Action failed. Check the filtering service in Settings.</string>
+    <!-- Separates the line number from its diagnostic message. -->
     <string name="feature_filters_issue_separator">": "</string>
     <string name="feature_filters_search">Search lists and rules</string>
     <string name="feature_filters_search_hint">Search lists and rules</string>
@@ -153,16 +178,21 @@
     <string name="feature_filters_syntax_cosmetic">Hides page elements. Turn off Hide page elements in Settings to disable this rule.</string>
     <string name="feature_filters_syntax_comment">A line that starts with ! is a comment.</string>
     <string name="feature_filters_import_too_large">The file exceeds the 16 MB limit for rules</string>
+    <!-- %1$s is a schedule phrase such as “every day”. -->
     <string name="feature_filters_schedule">updates %1$s</string>
+    <!-- %1$s is a schedule phrase such as “every day”. -->
     <string name="feature_filters_schedule_wifi">updates %1$s on Wi-Fi</string>
     <string name="feature_filters_schedule_never">no automatic updates</string>
     <string name="feature_filters_every_day">every day</string>
     <string name="feature_filters_every_three_days">every 3 days</string>
     <string name="feature_filters_every_week">every week</string>
+    <!-- %1$d counts updated lists and %2$s is the formatted number of new rules. -->
     <plurals name="feature_filters_updated_added">
         <item quantity="one">Updated %1$d list, %2$s rules added</item>
         <item quantity="other">Updated %1$d lists, %2$s rules added</item>
     </plurals>
+    <!-- Security: HTTPS stays encrypted until the exclusion lists are ready. -->
     <string name="feature_filters_exclusions_pending">HTTPS exclusions are not ready. Only domains are filtered.</string>
+    <!-- Security: A failed update leaves the saved HTTPS exclusions in effect. -->
     <string name="feature_filters_exclusions_failed">Some HTTPS exclusion lists could not be refreshed. The saved copies are still in use.</string>
 </resources>

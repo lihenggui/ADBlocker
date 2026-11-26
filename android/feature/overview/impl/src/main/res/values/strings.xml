@@ -16,7 +16,9 @@
 <resources>
     <string name="feature_overview_title" translatable="false">ADBlocker</string>
     <string name="feature_overview_settings">Settings</string>
+    <!-- Status when traffic is being filtered. -->
     <string name="feature_overview_filtering">Filtering</string>
+    <!-- Status when filtering is temporarily suspended. -->
     <string name="feature_overview_paused">Paused</string>
     <string name="feature_overview_stopped">Filtering service not running</string>
     <!-- The number of filtered apps and the number of rules, such as "5 apps · 141,207 rules". -->
@@ -33,12 +35,17 @@
     <string name="feature_overview_resumes_in">Resumes in %1$s</string>
     <string name="feature_overview_paused_detail">Until resumed</string>
     <string name="feature_overview_stopped_detail">Apps connect without filtering</string>
+    <!-- Action that ends a filtering pause. -->
     <string name="feature_overview_resume">Resume</string>
+    <!-- Action that starts the filtering service. -->
     <string name="feature_overview_start">Start</string>
     <string name="feature_overview_pause_hour">Pause for 1 hour</string>
     <string name="feature_overview_more_durations">More pause durations</string>
+    <!-- Accessibility state of an expandable section. -->
     <string name="feature_overview_expanded">Expanded</string>
+    <!-- Accessibility state of an expandable section. -->
     <string name="feature_overview_collapsed">Collapsed</string>
+    <!-- Pause duration option with no automatic resume time. -->
     <string name="feature_overview_until_resumed">Until resumed</string>
     <plurals name="feature_overview_hours">
         <item quantity="one">%1$d hour</item>
@@ -49,22 +56,28 @@
         <item quantity="other">%1$d minutes</item>
     </plurals>
     <string name="feature_overview_blocked_today">Blocked today</string>
+    <!-- %1$s counts blocked requests and %2$s counts refused connections. -->
     <string name="feature_overview_blocked_breakdown">%1$s requests · %2$s connections</string>
+    <!-- %1$s lists each day's name and block count for the chart. -->
     <string name="feature_overview_week_description">Blocked in the last 7 days: %1$s</string>
     <string name="feature_overview_today">Today</string>
+    <!-- Ranking of apps with the most blocked traffic. -->
     <string name="feature_overview_top_apps">Most blocked</string>
     <string name="feature_overview_status">Status</string>
     <string name="feature_overview_lists">Filter lists</string>
+    <!-- %1$d counts enabled filter lists and %2$s is the relative time of their latest update. -->
     <plurals name="feature_overview_lists_detail">
         <item quantity="one">%1$d enabled · updated %2$s</item>
         <item quantity="other">%1$d enabled · updated %2$s</item>
     </plurals>
+    <!-- %1$d counts enabled filter lists. -->
     <plurals name="feature_overview_lists_never">
         <item quantity="one">%1$d enabled · not downloaded yet</item>
         <item quantity="other">%1$d enabled · not downloaded yet</item>
     </plurals>
     <string name="feature_overview_service">Filtering service</string>
     <string name="feature_overview_service_running">Running</string>
+    <!-- %1$s is the time the filtering service has been running. -->
     <string name="feature_overview_service_running_since">Running for %1$s</string>
     <string name="feature_overview_service_stopped">Not running</string>
     <string name="feature_overview_updating">Updating root mode…</string>
@@ -80,12 +93,14 @@
     <string name="feature_overview_paused_until_resumed">Paused until resumed. Apps connect without filtering.</string>
     <string name="feature_overview_undo">Undo</string>
     <string name="feature_overview_module_disabled">The ADBlocker module is turned off or set to be removed in the root manager. Change it there.</string>
+    <!-- %1$s is the name of the root manager. -->
     <string name="feature_overview_module_disabled_in">The ADBlocker module is turned off or set to be removed in %1$s. Change it there.</string>
     <string name="feature_overview_service_timeout">The filtering service did not respond in time.</string>
     <string name="feature_overview_root_pending">Switching to root mode did not finish. Try again in Settings.</string>
     <string name="feature_overview_action_failed">Action failed. Check the filtering service in Settings.</string>
     <string name="feature_overview_turned_off">Turned off</string>
     <!-- The date the device last failed to finish starting up. -->
+    <!-- %1$s is the date when automatic startup was disabled. -->
     <string name="feature_overview_turned_off_detail">Filtering turned itself off on %1$s after two consecutive startups did not finish. Apps connect without filtering.</string>
     <string name="feature_overview_turn_on_again">Turn on again</string>
     <!-- The number of filtered apps and of rules, after the method: "VPN · 5 apps · 141,207 rules". -->
@@ -94,11 +109,16 @@
     <!-- The number of filtered apps, such as "VPN · 5 apps". -->
     <string name="feature_overview_connecting_detail">VPN · %1$s</string>
     <string name="feature_overview_disconnected">Disconnected</string>
+    <!-- Security: These apps have network access while filtering is stopped. -->
     <string name="feature_overview_vpn_off_detail">The chosen apps connect without filtering.</string>
+    <!-- Security: Losing the local VPN lets chosen apps connect without filtering. -->
     <string name="feature_overview_vpn_revoked_detail">The VPN was turned off by another VPN app or in the system settings. The chosen apps connect without filtering.</string>
+    <!-- Security: Explains what happens to network access after a filtering failure. -->
     <string name="feature_overview_vpn_failed_detail">Filtering stopped unexpectedly. The chosen apps connect without filtering.</string>
+    <!-- Security: The system's VPN lockdown blocks network access until the VPN reconnects. -->
     <string name="feature_overview_vpn_lockdown_detail">Block connections without VPN is on. The chosen apps cannot connect until the VPN is reconnected.</string>
     <string name="feature_overview_reconnect">Reconnect</string>
+    <!-- Security: Without VPN consent, chosen apps can connect without filtering. -->
     <string name="feature_overview_vpn_refused">The VPN was not allowed. The chosen apps connect without filtering.</string>
     <string name="feature_overview_method">Filtering method</string>
     <string name="feature_overview_method_vpn_on">VPN · Connected</string>
@@ -107,15 +127,18 @@
     <string name="feature_overview_https">Encrypted sites</string>
     <string name="feature_overview_https_not_set_up">Domain only · Can be set up for browsers</string>
     <string name="feature_overview_https_off">Domain only · Decryption off</string>
+    <!-- HTTPS status when connections are filtered only by domain. -->
     <string name="feature_overview_https_none">Domain only</string>
     <plurals name="feature_overview_https_decrypted">
         <item quantity="one">%1$d app decrypted</item>
         <item quantity="other">%1$d apps decrypted</item>
     </plurals>
     <string name="feature_overview_lockdown_title">Block connections without VPN is on</string>
+    <!-- Security: While VPN lockdown is on, chosen apps cannot connect if filtering stops. -->
     <string name="feature_overview_lockdown_text">While filtering is stopped, the chosen apps cannot connect.</string>
     <string name="feature_overview_notice_ok">OK</string>
     <string name="feature_overview_root_title">Root access detected</string>
+    <!-- Security: Explains HTTPS URL filtering after switching from VPN to root mode. -->
     <string name="feature_overview_root_text">Root mode filters encrypted sites by URL without using the VPN. The chosen apps, lists and rules are kept.</string>
     <string name="feature_overview_root_dismiss">Not now</string>
     <string name="feature_overview_root_switch">Switch to root mode</string>

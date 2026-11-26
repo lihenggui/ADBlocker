@@ -21,17 +21,24 @@
     <string name="feature_https_continue">Continue</string>
     <string name="feature_https_previous">Back</string>
     <string name="feature_https_impact_title">Security impact</string>
+    <!-- Security: Explains why Android's user certificate store is used. -->
     <string name="feature_https_impact_text">Filtering requests inside HTTPS requires the ADBlocker certificate among the system’s user certificates.</string>
+    <!-- Security: The certificate is public, and its private key stays on the device. -->
     <string name="feature_https_impact_key">The certificate is created on this device. Its private key stays in the app’s private storage and is deleted when the app is uninstalled.</string>
+    <!-- Security: App trust in the user store determines whether HTTPS can be decrypted. -->
     <string name="feature_https_impact_apps">Only apps that trust user certificates can be decrypted, mainly some browsers. Other apps are still filtered by domain.</string>
+    <!-- Security: “Network may be monitored” is Android's certificate warning. -->
     <string name="feature_https_impact_notice">Once it is installed, the system keeps showing a “Network may be monitored” notice.</string>
+    <!-- Security: Removing the user certificate is an Android settings action. -->
     <string name="feature_https_impact_remove">The certificate can be removed in the system settings at any time. Settings › HTTPS leads there.</string>
     <string name="feature_https_install_title">Install the certificate</string>
+    <!-- Security: Installation is performed by the user through Android settings. -->
     <string name="feature_https_install_text">Android does not let apps install certificates. The certificate is installed in the system settings.</string>
     <string name="feature_https_install_save">Save the certificate</string>
     <string name="feature_https_install_save_text">Saves ADBlocker.crt on the device</string>
     <string name="feature_https_install_saved">Saved as ADBlocker.crt</string>
     <string name="feature_https_install_open">Open the system settings</string>
+    <!-- Android settings path for installing a user CA certificate. -->
     <string name="feature_https_install_open_text">Security &amp; privacy › More security &amp; privacy › Encryption &amp; credentials › Install a certificate › CA certificate</string>
     <string name="feature_https_install_choose">Choose ADBlocker.crt and confirm</string>
     <string name="feature_https_install_choose_text">Menu names vary by manufacturer</string>
@@ -40,15 +47,19 @@
     <string name="feature_https_open_security">Open security settings</string>
     <string name="feature_https_save_failed">The certificate could not be saved</string>
     <string name="feature_https_apps_title">Certificate installed</string>
+    <!-- Security: HTTPS stays encrypted for apps that reject the certificate. -->
     <string name="feature_https_apps_text">URL rules apply to all filtered apps where supported. Apps that reject the certificate stay encrypted.</string>
     <string name="feature_https_turn_on">Continue</string>
     <string name="feature_https_failed">Action failed</string>
     <string name="feature_https_done_title">URL filtering is on</string>
+    <!-- URL rules can be applied to this app's HTTPS requests. -->
     <string name="feature_https_result_full">Full filtering</string>
+    <!-- Only domain rules apply to this app's HTTPS connections. -->
     <string name="feature_https_result_hosts">Domain only</string>
     <string name="feature_https_done_hint">Change URL filtering in Settings.</string>
     <string name="feature_https_finish">Done</string>
     <string name="feature_https_work_title">Work profile HTTPS</string>
+    <!-- Security: Save the public certificate only. Work-profile policy controls installation and trust. -->
     <string name="feature_https_work_instructions">Save the public certificate and ask the work profile administrator to install it in that profile, or use its certificate settings if organization policy allows it. HTTPS filtering applies to apps that trust work profile certificates.</string>
     <string name="feature_https_work_save">Save certificate</string>
     <string name="feature_https_work_saved">Certificate saved</string>
