@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Hoạt động</string>
+    <string name="feature_activity_settings">Cài đặt</string>
+    <string name="feature_activity_start_recording">Bắt đầu ghi</string>
+    <string name="feature_activity_stop_recording">Dừng ghi</string>
+    <string name="feature_activity_starting">Đang bắt đầu ghi…</string>
+    <string name="feature_activity_recording">Đang ghi yêu cầu</string>
+    <string name="feature_activity_recorded">Đã dừng ghi</string>
+    <string name="feature_activity_interrupted">Quá trình ghi bị gián đoạn</string>
+    <string name="feature_activity_no_recording">Chưa ghi hoạt động</string>
+    <string name="feature_activity_recording_intro">Ghi các yêu cầu từ ứng dụng được lọc. Bạn có thể chuyển ứng dụng trong khi ghi. 500 yêu cầu gần nhất được giữ trong bộ nhớ.</string>
+    <string name="feature_activity_no_matches">Không có yêu cầu nào khớp với các bộ lọc này</string>
+    <string name="feature_activity_empty_result">Chưa ghi được yêu cầu nào</string>
+    <string name="feature_activity_app_requests_hint">Bắt đầu ghi trong mục Hoạt động để xem yêu cầu tại đây.</string>
+    <string name="feature_activity_notification_channel">Ghi hoạt động</string>
+    <string name="feature_activity_notification_title">ADBlocker đang ghi hoạt động</string>
+    <string name="feature_activity_all">Tất cả</string>
+    <string name="feature_activity_blocked">Đã chặn</string>
+    <string name="feature_activity_allowed">Đã cho phép</string>
+    <string name="feature_activity_encrypted">Không giải mã</string>
+    <string name="feature_activity_all_apps">Tất cả ứng dụng</string>
+    <string name="feature_activity_dropped">(bỏ qua %1$d)</string>
+    <string name="feature_activity_empty">Đang chờ yêu cầu</string>
+    <string name="feature_activity_empty_idle">Hiện không lọc lưu lượng nào</string>
+    <string name="feature_activity_verdict_blocked">Đã chặn yêu cầu</string>
+    <string name="feature_activity_verdict_host_blocked">Đã chặn tên miền</string>
+    <string name="feature_activity_verdict_allowed">Đã cho phép</string>
+    <string name="feature_activity_verdict_passed">Không giải mã</string>
+    <string name="feature_activity_kind_script">Tập lệnh</string>
+    <string name="feature_activity_kind_image">Hình ảnh</string>
+    <string name="feature_activity_kind_document">Trang</string>
+    <string name="feature_activity_kind_stylesheet">Kiểu trang</string>
+    <string name="feature_activity_kind_font">Phông chữ</string>
+    <string name="feature_activity_kind_media">Đa phương tiện</string>
+    <string name="feature_activity_app">Ứng dụng</string>
+    <string name="feature_activity_kind">Loại</string>
+    <string name="feature_activity_page">Trang</string>
+    <string name="feature_activity_rule">Quy tắc khớp hiện tại (GET)</string>
+    <string name="feature_activity_rule_unavailable">Không xác định được</string>
+    <string name="feature_activity_why">Lý do</string>
+    <string name="feature_activity_my_rules">Quy tắc của tôi</string>
+    <string name="feature_activity_reason_pinned">Ứng dụng không chấp nhận chứng chỉ ADBlocker cho tên miền này, nên kết nối chỉ được lọc theo tên miền.</string>
+    <string name="feature_activity_reason_hosts_only">Kết nối này đã được lọc theo tên miền. Tính năng lọc theo URL đã tắt hoặc không thể kiểm tra HTTPS.</string>
+    <string name="feature_activity_reason_excluded">Tên miền nằm trong danh sách loại trừ HTTPS, chẳng hạn như danh sách tên miền ngân hàng.</string>
+    <string name="feature_activity_reason_trusted">Đây là trang tin cậy.</string>
+    <string name="feature_activity_reason_sensitive">Máy chủ dùng chứng chỉ xác thực mở rộng (Extended Validation), nên kết nối không được giải mã.</string>
+    <string name="feature_activity_reason_no_name">Kết nối không chỉ định tên miền.</string>
+    <string name="feature_activity_reason_untrusted">Ứng dụng này chưa tin cậy ADBlocker.</string>
+    <string name="feature_activity_reason_unverified">Không xác minh được máy chủ, nên ứng dụng tự kiểm tra máy chủ đó.</string>
+    <string name="feature_activity_reason_other">Đã chuyển kết nối cho ứng dụng mà không đọc nội dung.</string>
+    <string name="feature_activity_trust_site">Tin cậy %1$s</string>
+    <string name="feature_activity_block_host">Chặn tên miền này</string>
+    <string name="feature_activity_block_in_app">Chặn trong %1$s</string>
+    <string name="feature_activity_block_in_all_apps">Chặn trong tất cả ứng dụng</string>
+    <string name="feature_activity_forget">Thử giải mã lại</string>
+    <string name="feature_activity_copy">Sao chép</string>
+    <string name="feature_activity_trusted">Đã thêm %1$s vào danh sách trang tin cậy</string>
+    <string name="feature_activity_blocked_host_everywhere">Đã chặn %1$s trong tất cả ứng dụng</string>
+    <string name="feature_activity_blocked_host_in_app">Đã chặn %1$s trong %2$s</string>
+    <string name="feature_activity_forgotten">Sẽ thử giải mã lại vào lần kết nối tiếp theo</string>
+    <string name="feature_activity_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
+    <string name="feature_activity_select">Chọn một yêu cầu</string>
+    <string name="feature_activity_select_text">Kiểm tra URL theo quy tắc hiện tại, hoặc tin cậy hay chặn trang web</string>
+    <string name="feature_activity_reason_host_blocked">Kết nối bị từ chối vì cả tên miền đã bị chặn.</string>
+    <string name="feature_activity_app_requests">Yêu cầu</string>
+    <string name="feature_activity_open_activity">Mở trong Hoạt động</string>
+    <string name="feature_activity_reason_exclusions_pending">Danh sách loại trừ HTTPS chưa sẵn sàng</string>
+    <string name="feature_activity_apps_unavailable">Không tải được tên ứng dụng hoặc tùy chọn lọc</string>
+    <string name="feature_activity_status_unavailable">Không xem được trạng thái lọc</string>
+</resources>

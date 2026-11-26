@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Cài đặt</string>
+    <string name="feature_settings_back">Quay lại</string>
+    <string name="feature_settings_appearance">Giao diện</string>
+    <string name="feature_settings_theme">Chủ đề</string>
+    <string name="feature_settings_theme_system">Theo hệ thống</string>
+    <string name="feature_settings_theme_light">Sáng</string>
+    <string name="feature_settings_theme_dark">Tối</string>
+    <string name="feature_settings_dynamic_color">Màu hình nền</string>
+    <string name="feature_settings_dynamic_color_text">Dùng màu từ hình nền</string>
+    <string name="feature_settings_updates">Cập nhật danh sách</string>
+    <string name="feature_settings_update_interval">Tự động cập nhật</string>
+    <string name="feature_settings_interval_daily">Hằng ngày</string>
+    <string name="feature_settings_interval_three_days">Mỗi 3 ngày</string>
+    <string name="feature_settings_interval_weekly">Hằng tuần</string>
+    <string name="feature_settings_interval_never">Không bao giờ</string>
+    <string name="feature_settings_wifi_only">Chỉ cập nhật qua Wi-Fi</string>
+    <string name="feature_settings_wifi_only_text">Không tải danh sách qua dữ liệu di động</string>
+    <string name="feature_settings_app_list">Danh sách ứng dụng</string>
+    <string name="feature_settings_system_apps">Hiện ứng dụng hệ thống</string>
+    <string name="feature_settings_system_apps_text">Ẩn theo mặc định</string>
+    <string name="feature_settings_service">Dịch vụ lọc</string>
+    <string name="feature_settings_scope_checking">Đang kiểm tra phạm vi lọc…</string>
+    <string name="feature_settings_scope_unavailable">Không xem được phạm vi lọc</string>
+    <string name="feature_settings_status_unknown">Không rõ trạng thái</string>
+    <string name="feature_settings_status_running">Đang chạy</string>
+    <string name="feature_settings_status_paused">Đã tạm dừng</string>
+    <string name="feature_settings_status_stopped">Không chạy</string>
+    <string name="feature_settings_status_turned_off">Đã tắt</string>
+    <string name="feature_settings_turned_off_text">Hai lần khởi động liên tiếp không hoàn tất</string>
+    <string name="feature_settings_started">bắt đầu %1$s</string>
+    <string name="feature_settings_restart">Khởi động lại dịch vụ lọc</string>
+    <string name="feature_settings_restart_text">Ứng dụng kết nối mà không được lọc trong khi khởi động lại</string>
+    <string name="feature_settings_turn_on_again">Bật lại</string>
+    <string name="feature_settings_module_install">Thiết lập chế độ root</string>
+    <string name="feature_settings_module_reinstall">Cập nhật chế độ root</string>
+    <string name="feature_settings_module_unavailable">Không xem được trạng thái chế độ root</string>
+    <string name="feature_settings_module_check_again">Không xem được trạng thái chế độ root · Kiểm tra lại</string>
+    <string name="feature_settings_root_not_set_up_text">Chưa thiết lập · Ứng dụng kết nối mà không được lọc</string>
+    <string name="feature_settings_root_setting_up">Đang thiết lập chế độ root…</string>
+    <string name="feature_settings_root_setup_failed">Thiết lập không thành công · Thử lại</string>
+    <string name="feature_settings_root_update_text">Phiên bản đã cài đặt khác phiên bản của ứng dụng này</string>
+    <string name="feature_settings_root_updating">Đang cập nhật chế độ root…</string>
+    <string name="feature_settings_root_update_failed">Cập nhật không thành công · Thử lại</string>
+    <string name="feature_settings_root_updated">Đã cập nhật chế độ root</string>
+    <string name="feature_settings_root_missing_text">Cấp quyền root cho ADBlocker trong trình quản lý root · Kiểm tra lại</string>
+    <string name="feature_settings_root_remove">Gỡ bỏ chế độ root</string>
+    <string name="feature_settings_root_remove_text">Dừng lọc và xóa dữ liệu của chế độ root</string>
+    <string name="feature_settings_root_removing">Đang gỡ bỏ chế độ root…</string>
+    <string name="feature_settings_root_remove_failed">Chưa gỡ bỏ · Thử lại</string>
+    <string name="feature_settings_root_remove_title">Gỡ bỏ chế độ root?</string>
+    <string name="feature_settings_root_remove_explain">Tính năng lọc dừng và các ứng dụng kết nối mà không được lọc. CA của chế độ root sẽ bị xóa, cùng với lựa chọn ứng dụng, danh sách lọc, quy tắc, trang tin cậy và số liệu thống kê của chế độ này. Cài đặt của ứng dụng, chẳng hạn như chủ đề, vẫn được giữ lại. Bạn có thể thiết lập lại chế độ root tại đây.</string>
+    <string name="feature_settings_root_remove_confirm">Gỡ bỏ</string>
+    <string name="feature_settings_root_removed">Đã gỡ bỏ chế độ root</string>
+    <string name="feature_settings_root_flashed">Đã cài đặt dưới dạng mô-đun</string>
+    <string name="feature_settings_root_flashed_in">Đã cài đặt dưới dạng mô-đun trong %1$s</string>
+    <string name="feature_settings_root_flashed_text">Để gỡ bỏ chế độ root, hãy gỡ mô-đun tại đó rồi khởi động lại</string>
+    <string name="feature_settings_root_flashed_manager_text">Để gỡ bỏ chế độ root, hãy gỡ mô-đun trong trình quản lý root rồi khởi động lại</string>
+    <string name="feature_settings_root_flashed_pending_text">Có hiệu lực sau lần khởi động lại tiếp theo</string>
+    <string name="feature_settings_root_restart_to_update">Khởi động lại thiết bị để hoàn tất cập nhật</string>
+    <string name="feature_settings_root_marked_removal">Đã đánh dấu để gỡ bỏ trong trình quản lý root · Khởi động lại để gỡ bỏ</string>
+    <string name="feature_settings_pinned">Tên miền từ chối chứng chỉ</string>
+    <string name="feature_settings_pinned_checking">Đang kiểm tra tên miền…</string>
+    <string name="feature_settings_pinned_unavailable">Không xem được danh sách tên miền</string>
+    <string name="feature_settings_pinned_none">Không có</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="other">%1$d ứng dụng</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="other">%1$d tên miền</item>
+    </plurals>
+    <string name="feature_settings_data">Dữ liệu</string>
+    <string name="feature_settings_export_logs">Xuất nhật ký</string>
+    <string name="feature_settings_export_logs_text">Nhật ký ghi lại hoạt động đã chạy và kết quả, không ghi đích kết nối của các ứng dụng</string>
+    <string name="feature_settings_about">Giới thiệu</string>
+    <string name="feature_settings_app_version">Phiên bản %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Mã nguồn</string>
+    <string name="feature_settings_source_text">Giấy phép của ứng dụng và danh sách lọc</string>
+    <string name="feature_settings_restarted">Đã khởi động lại dịch vụ lọc</string>
+    <string name="feature_settings_service_timeout">Dịch vụ lọc không phản hồi kịp thời.</string>
+    <string name="feature_settings_module_disabled">Mô-đun ADBlocker đã bị tắt hoặc được đánh dấu để gỡ bỏ trong trình quản lý root. Hãy thay đổi tại đó.</string>
+    <string name="feature_settings_module_disabled_in">Mô-đun ADBlocker đã bị tắt hoặc được đánh dấu để gỡ bỏ trong %1$s. Hãy thay đổi tại đó.</string>
+    <string name="feature_settings_module_installed">Chế độ root đang chạy</string>
+    <string name="feature_settings_pinned_forgotten">Đã quên. Sẽ thử giải mã lại vào lần kết nối tiếp theo.</string>
+    <string name="feature_settings_logs_exported_partial">Đã xuất nhật ký ứng dụng. Không đọc được toàn bộ nhật ký của chế độ root.</string>
+    <string name="feature_settings_logs_exported">Đã xuất nhật ký</string>
+    <string name="feature_settings_failed">Không thực hiện được</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">Lọc theo URL</string>
+    <string name="feature_settings_url_filtering_text">Áp dụng quy tắc URL cho mọi ứng dụng được lọc nếu có hỗ trợ. Khi tắt tính năng này, chỉ chặn cả tên miền.</string>
+    <string name="feature_settings_url_filtering_unknown">Cần dịch vụ lọc đang chạy và đã được cập nhật</string>
+    <string name="feature_settings_url_filtering_on">Đã bật lọc theo URL</string>
+    <string name="feature_settings_url_filtering_off">Đã tắt lọc theo URL</string>
+    <string name="feature_settings_cancel">Hủy</string>
+    <string name="feature_settings_cosmetic">Ẩn phần tử trang</string>
+    <string name="feature_settings_cosmetic_text">Sửa đổi các trang đã giải mã để ẩn các phần tử mà quy tắc lọc chỉ định, chẳng hạn như khung quảng cáo trống.</string>
+    <string name="feature_settings_cosmetic_security">Ảnh hưởng đến bảo mật</string>
+    <string name="feature_settings_pinned_text">Các ứng dụng này tự kiểm tra chứng chỉ của các tên miền này, nên kết nối chỉ được lọc theo tên miền. Sau khi quên một tên miền, ADBlocker sẽ thử giải mã lại vào lần kết nối tiếp theo tới tên miền đó.</string>
+    <string name="feature_settings_forget">Quên</string>
+    <string name="feature_settings_forget_all">Quên tất cả</string>
+    <string name="feature_settings_forget_all_title">Quên tất cả tên miền?</string>
+    <string name="feature_settings_forget_all_text">ADBlocker sẽ thử giải mã lại cho từng tên miền này vào lần kết nối tiếp theo tới tên miền đó.</string>
+    <string name="feature_settings_method">Phương thức lọc</string>
+    <string name="feature_settings_method_vpn">Chế độ VPN</string>
+    <string name="feature_settings_method_vpn_text">Đang dùng · Không cần quyền root</string>
+    <string name="feature_settings_method_vpn_available">Không cần quyền root · Lọc theo tên miền</string>
+    <string name="feature_settings_method_root">Chế độ root</string>
+    <string name="feature_settings_method_root_not_set_up">Chưa thiết lập · Lọc theo URL trong HTTPS</string>
+    <string name="feature_settings_method_root_restart_first">Trước tiên, khởi động lại thiết bị để hoàn tất cập nhật mô-đun</string>
+    <string name="feature_settings_method_root_checking">Đang kiểm tra quyền root</string>
+    <string name="feature_settings_method_root_available">Đã cấp quyền root · Lọc theo URL trong HTTPS</string>
+    <string name="feature_settings_method_root_missing">Không phát hiện quyền root · Kiểm tra lại</string>
+    <string name="feature_settings_root_missing">Không phát hiện quyền root</string>
+    <string name="feature_settings_switch_root_title">Chuyển sang chế độ root?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker thiết lập chế độ root để tiếp quản việc lọc từ VPN. VPN vẫn kết nối cho đến khi chế độ root chạy. Lựa chọn ứng dụng, danh sách lọc, quy tắc và trang tin cậy được chuyển sang.</string>
+    <string name="feature_settings_switch_root">Chuyển</string>
+    <string name="feature_settings_switched_to_root">Đã chuyển sang chế độ root</string>
+    <string name="feature_settings_switched_to_vpn">Đã chuyển sang chế độ VPN</string>
+    <string name="feature_settings_switch_root_pending">Chưa chuyển xong sang chế độ root.</string>
+    <string name="feature_settings_switch_root_retry">Chưa chuyển xong · Thử lại</string>
+    <string name="feature_settings_cancel_root_switch">Hủy chuyển sang chế độ root</string>
+    <string name="feature_settings_cancel_root_pending">Đang chờ hủy</string>
+    <string name="feature_settings_retry_root_cancel">Thử hủy lại</string>
+    <string name="feature_settings_always_on">VPN luôn bật</string>
+    <string name="feature_settings_always_on_text">Android khởi động ADBlocker khi thiết bị khởi động và sau khi ADBlocker dừng đột ngột</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">Bật</string>
+    <string name="feature_settings_state_off">Tắt</string>
+    <string name="feature_settings_lockdown">Chặn các đường kết nối không qua VPN</string>
+    <string name="feature_settings_lockdown_on">Bật · Các ứng dụng đã chọn không thể kết nối khi tính năng lọc dừng</string>
+    <string name="feature_settings_lockdown_off">Khi bật, các ứng dụng đã chọn không thể kết nối khi tính năng lọc dừng. Chỉ có thể thiết lập trong phần cài đặt hệ thống.</string>
+    <string name="feature_settings_notifications">Thông báo</string>
+    <string name="feature_settings_notifications_on">Đã cho phép · Có thể tạm dừng lọc từ thông báo</string>
+    <string name="feature_settings_notifications_off">Chưa cho phép · Vẫn lọc được khi không có thông báo</string>
+    <string name="feature_settings_https_setup">Thiết lập lọc HTTPS</string>
+    <string name="feature_settings_https_not_set_up">Chưa thiết lập · Cần ứng dụng tin cậy chứng chỉ người dùng</string>
+    <string name="feature_settings_https_installed">Đã cài đặt chứng chỉ · Quản lý chế độ lọc theo URL</string>
+    <string name="feature_settings_url_filtering_needs_certificate">Cài đặt chứng chỉ để lọc URL trong HTTPS.</string>
+    <string name="feature_settings_remove_certificate">Gỡ cài đặt chứng chỉ</string>
+    <string name="feature_settings_remove_certificate_text">Tắt giải mã và mở cài đặt hệ thống</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker tắt giải mã HTTPS trước. Sau đó, bạn có thể gỡ cài đặt chứng chỉ trong phần cài đặt Android.</string>
+    <string name="feature_settings_remove_certificate_path">Bảo mật và quyền riêng tư › Các chế độ khác về bảo mật và quyền riêng tư › Mã hóa và thông tin xác thực › Thông tin xác thực tin cậy › Người dùng › ADBlocker user CA › Gỡ cài đặt</string>
+    <string name="feature_settings_remove_certificate_vary">Tên mục có thể khác tùy theo nhà sản xuất.</string>
+    <string name="feature_settings_remove_certificate_open">Tắt và mở cài đặt</string>
+</resources>

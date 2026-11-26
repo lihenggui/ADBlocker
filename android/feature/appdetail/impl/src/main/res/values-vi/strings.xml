@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_appdetail_back">Quay lại</string>
+    <string name="feature_appdetail_open">Mở %1$s</string>
+    <string name="feature_appdetail_not_installed">Ứng dụng này đã bị gỡ cài đặt</string>
+    <string name="feature_appdetail_filter_this">Lọc ứng dụng này</string>
+    <string name="feature_appdetail_filter_group">Lọc chung các ứng dụng này</string>
+    <string name="feature_appdetail_pause_group">Tạm dừng nhóm này 1 giờ</string>
+    <string name="feature_appdetail_shared_members">Ứng dụng dùng chung UID này</string>
+    <string name="feature_appdetail_off">Lưu lượng không đi qua ADBlocker</string>
+    <string name="feature_appdetail_on_full">Chặn quảng cáo và trình theo dõi</string>
+    <string name="feature_appdetail_on_hosts">Chỉ chặn tên miền quảng cáo và theo dõi</string>
+    <string name="feature_appdetail_blocked">Đã chặn</string>
+    <string name="feature_appdetail_today">Hôm nay</string>
+    <string name="feature_appdetail_week">7 ngày</string>
+    <string name="feature_appdetail_trouble">Khắc phục sự cố</string>
+    <string name="feature_appdetail_pause">Tạm dừng ứng dụng này 1 giờ</string>
+    <string name="feature_appdetail_pause_text">Dùng khi một trang hoặc tính năng không hoạt động</string>
+    <string name="feature_appdetail_resume">Lọc tiếp ứng dụng này</string>
+    <string name="feature_appdetail_paused_until">Tạm dừng đến %1$s</string>
+    <string name="feature_appdetail_requests">Xem yêu cầu</string>
+    <string name="feature_appdetail_requests_text">Mở Hoạt động và chỉ hiện yêu cầu của ứng dụng này</string>
+    <string name="feature_appdetail_group_requests_text">Mở Hoạt động và chỉ hiện yêu cầu của nhóm này</string>
+    <string name="feature_appdetail_pinned">Tên miền từ chối chứng chỉ</string>
+    <string name="feature_appdetail_pinned_none">Không có</string>
+    <string name="feature_appdetail_pinned_count">%1$d · Chỉ lọc theo tên miền</string>
+    <string name="feature_appdetail_pinned_text">Ứng dụng này tự kiểm tra chứng chỉ của các tên miền này. Sau khi quên một tên miền, ADBlocker sẽ thử giải mã lại vào lần kết nối tiếp theo tới tên miền đó.</string>
+    <string name="feature_appdetail_forget">Quên</string>
+    <string name="feature_appdetail_forget_all">Quên tất cả</string>
+    <string name="feature_appdetail_forgotten">Đã quên. Sẽ thử giải mã lại vào lần kết nối tiếp theo.</string>
+    <string name="feature_appdetail_paused">Đã tạm dừng ứng dụng trong 1 giờ</string>
+    <string name="feature_appdetail_group_paused">Đã tạm dừng nhóm trong 1 giờ</string>
+    <string name="feature_appdetail_undo">Hoàn tác</string>
+    <string name="feature_appdetail_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
+    <string name="feature_appdetail_level_url_filtering_off">Tính năng lọc theo URL đang tắt trong phần Cài đặt. Chỉ chặn cả tên miền.</string>
+    <string name="feature_appdetail_level_unknown">Dịch vụ lọc hiện không thể giải mã lưu lượng HTTPS của ứng dụng này, nên chỉ lọc kết nối HTTPS theo tên miền.</string>
+    <string name="feature_appdetail_level_needs_certificate">Để lọc URL trong HTTPS, hãy thiết lập chứng chỉ. Ứng dụng phải tin cậy chứng chỉ người dùng.</string>
+    <string name="feature_appdetail_set_up_https">Thiết lập lọc HTTPS</string>
+    <string name="feature_appdetail_exclusions_pending">Kết nối HTTPS được lọc theo tên miền cho đến khi danh sách loại trừ sẵn sàng.</string>
+    <string name="feature_appdetail_work_certificate">Kết nối HTTPS vẫn được mã hóa cho đến khi ứng dụng này tin cậy chứng chỉ trong hồ sơ công việc của mình.</string>
+    <string name="feature_appdetail_work_quiet">Bật hồ sơ công việc để dùng ứng dụng này.</string>
+    <string name="feature_appdetail_work_unavailable">Ứng dụng này không dùng được trong hồ sơ công việc.</string>
+    <string name="feature_appdetail_shared_uid">Ứng dụng này dùng chung UID trên Android với một ứng dụng khác. Chế độ root không thể lọc riêng ứng dụng này.</string>
+    <string name="feature_appdetail_mixed">Lọc yêu cầu HTTP và tên miền HTTPS</string>
+    <string name="feature_appdetail_include">Đưa vào phạm vi lọc</string>
+    <string name="feature_appdetail_counts_checking">Đang kiểm tra số lượt chặn…</string>
+    <string name="feature_appdetail_counts_unavailable">Không xem được số lượt chặn</string>
+    <string name="feature_appdetail_pinned_checking">Đang kiểm tra…</string>
+    <string name="feature_appdetail_pinned_unavailable">Không đọc được tên miền</string>
+</resources>

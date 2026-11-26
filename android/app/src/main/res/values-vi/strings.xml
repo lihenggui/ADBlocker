@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="module_description">Lọc lưu lượng của các ứng dụng đã chọn, kể cả lưu lượng HTTPS, bằng danh sách lọc của các trình chặn quảng cáo trên trình duyệt.</string>
+    <string name="nav_overview">Tổng quan</string>
+    <string name="nav_apps">Ứng dụng</string>
+    <string name="nav_filters">Bộ lọc</string>
+    <string name="nav_activity">Hoạt động</string>
+    <string name="pane_drag_handle">Tay nắm điều chỉnh kích thước khung</string>
+    <string name="pane_current_split">Tỷ lệ chia khung hiện tại: %1$s</string>
+    <string name="pane_change_split">Đổi tỷ lệ chia khung thành %1$s</string>
+    <string name="tile_label">Chặn quảng cáo</string>
+    <string name="tile_filtering">Bật</string>
+    <string name="tile_paused">Đã tạm dừng</string>
+    <string name="tile_stopped">Không chạy</string>
+</resources>

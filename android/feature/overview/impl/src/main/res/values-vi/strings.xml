@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_overview_settings">Cài đặt</string>
+    <string name="feature_overview_filtering">Đang lọc</string>
+    <string name="feature_overview_paused">Đã tạm dừng</string>
+    <string name="feature_overview_stopped">Dịch vụ lọc không chạy</string>
+    <string name="feature_overview_filtering_detail">%1$s · %2$s</string>
+    <plurals name="feature_overview_apps">
+        <item quantity="other">%1$s ứng dụng</item>
+    </plurals>
+    <plurals name="feature_overview_rules">
+        <item quantity="other">%1$s quy tắc</item>
+    </plurals>
+    <string name="feature_overview_resumes_in">Lọc tiếp sau %1$s</string>
+    <string name="feature_overview_paused_detail">Đến khi lọc tiếp</string>
+    <string name="feature_overview_stopped_detail">Ứng dụng kết nối mà không được lọc</string>
+    <string name="feature_overview_resume">Lọc tiếp</string>
+    <string name="feature_overview_start">Bắt đầu</string>
+    <string name="feature_overview_pause_hour">Tạm dừng 1 giờ</string>
+    <string name="feature_overview_more_durations">Thêm thời lượng tạm dừng</string>
+    <string name="feature_overview_expanded">Đã mở rộng</string>
+    <string name="feature_overview_collapsed">Đã thu gọn</string>
+    <string name="feature_overview_until_resumed">Đến khi lọc tiếp</string>
+    <plurals name="feature_overview_hours">
+        <item quantity="other">%1$d giờ</item>
+    </plurals>
+    <plurals name="feature_overview_minutes">
+        <item quantity="other">%1$d phút</item>
+    </plurals>
+    <string name="feature_overview_blocked_today">Đã chặn hôm nay</string>
+    <string name="feature_overview_blocked_breakdown">%1$s yêu cầu · %2$s kết nối</string>
+    <string name="feature_overview_week_description">Đã chặn trong 7 ngày qua: %1$s</string>
+    <string name="feature_overview_today">Hôm nay</string>
+    <string name="feature_overview_top_apps">Bị chặn nhiều nhất</string>
+    <string name="feature_overview_status">Trạng thái</string>
+    <string name="feature_overview_lists">Danh sách lọc</string>
+    <plurals name="feature_overview_lists_detail">
+        <item quantity="other">Đã bật %1$d · Cập nhật %2$s</item>
+    </plurals>
+    <plurals name="feature_overview_lists_never">
+        <item quantity="other">Đã bật %1$d · Chưa tải xuống</item>
+    </plurals>
+    <string name="feature_overview_service">Dịch vụ lọc</string>
+    <string name="feature_overview_service_running">Đang chạy</string>
+    <string name="feature_overview_service_running_since">Đã chạy được %1$s</string>
+    <string name="feature_overview_service_stopped">Không chạy</string>
+    <string name="feature_overview_updating">Đang cập nhật chế độ root…</string>
+    <string name="feature_overview_restart_to_update">Khởi động lại thiết bị để hoàn tất cập nhật mô-đun.</string>
+    <plurals name="feature_overview_paused_for_hours">
+        <item quantity="other">Đã tạm dừng trong %1$d giờ. Ứng dụng kết nối mà không được lọc.</item>
+    </plurals>
+    <plurals name="feature_overview_paused_for_minutes">
+        <item quantity="other">Đã tạm dừng trong %1$d phút. Ứng dụng kết nối mà không được lọc.</item>
+    </plurals>
+    <string name="feature_overview_paused_until_resumed">Đã tạm dừng cho đến khi lọc tiếp. Ứng dụng kết nối mà không được lọc.</string>
+    <string name="feature_overview_undo">Hoàn tác</string>
+    <string name="feature_overview_module_disabled">Mô-đun ADBlocker đã bị tắt hoặc được đánh dấu để gỡ bỏ trong trình quản lý root. Hãy thay đổi tại đó.</string>
+    <string name="feature_overview_module_disabled_in">Mô-đun ADBlocker đã bị tắt hoặc được đánh dấu để gỡ bỏ trong %1$s. Hãy thay đổi tại đó.</string>
+    <string name="feature_overview_service_timeout">Dịch vụ lọc không phản hồi kịp thời.</string>
+    <string name="feature_overview_root_pending">Chưa chuyển xong sang chế độ root. Hãy thử lại trong phần Cài đặt.</string>
+    <string name="feature_overview_action_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
+    <string name="feature_overview_turned_off">Đã tắt</string>
+    <string name="feature_overview_turned_off_detail">Tính năng lọc tự tắt vào ngày %1$s sau khi hai lần khởi động liên tiếp không hoàn tất. Ứng dụng kết nối mà không được lọc.</string>
+    <string name="feature_overview_turn_on_again">Bật lại</string>
+    <string name="feature_overview_filtering_detail_vpn">VPN · %1$s · %2$s</string>
+    <string name="feature_overview_connecting">Đang kết nối</string>
+    <string name="feature_overview_connecting_detail">VPN · %1$s</string>
+    <string name="feature_overview_disconnected">Đã ngắt kết nối</string>
+    <string name="feature_overview_vpn_off_detail">Các ứng dụng đã chọn kết nối mà không được lọc.</string>
+    <string name="feature_overview_vpn_revoked_detail">VPN đã bị tắt bởi một ứng dụng VPN khác hoặc trong phần cài đặt hệ thống. Các ứng dụng đã chọn kết nối mà không được lọc.</string>
+    <string name="feature_overview_vpn_failed_detail">Tính năng lọc dừng đột ngột. Các ứng dụng đã chọn kết nối mà không được lọc.</string>
+    <string name="feature_overview_vpn_lockdown_detail">Đã bật Chặn các đường kết nối không qua VPN. Các ứng dụng đã chọn không thể kết nối cho đến khi VPN kết nối lại.</string>
+    <string name="feature_overview_reconnect">Kết nối lại</string>
+    <string name="feature_overview_vpn_refused">VPN không được cấp quyền. Các ứng dụng đã chọn kết nối mà không được lọc.</string>
+    <string name="feature_overview_method">Phương thức lọc</string>
+    <string name="feature_overview_method_vpn_on">VPN · Đã kết nối</string>
+    <string name="feature_overview_method_vpn_connecting">VPN · Đang kết nối</string>
+    <string name="feature_overview_method_vpn_off">VPN · Đã ngắt kết nối</string>
+    <string name="feature_overview_https">Trang web mã hóa</string>
+    <string name="feature_overview_https_not_set_up">Chỉ theo tên miền · Có thể thiết lập cho trình duyệt</string>
+    <string name="feature_overview_https_off">Chỉ theo tên miền · Đã tắt giải mã</string>
+    <string name="feature_overview_https_none">Chỉ theo tên miền</string>
+    <plurals name="feature_overview_https_decrypted">
+        <item quantity="other">Đã giải mã HTTPS của %1$d ứng dụng</item>
+    </plurals>
+    <string name="feature_overview_lockdown_title">Đã bật Chặn các đường kết nối không qua VPN</string>
+    <string name="feature_overview_lockdown_text">Khi tính năng lọc dừng, các ứng dụng đã chọn không thể kết nối.</string>
+    <string name="feature_overview_notice_ok">OK</string>
+    <string name="feature_overview_root_title">Đã phát hiện quyền root</string>
+    <string name="feature_overview_root_text">Chế độ root lọc trang web mã hóa theo URL mà không dùng VPN. Các ứng dụng đã chọn, danh sách lọc và quy tắc được giữ lại.</string>
+    <string name="feature_overview_root_dismiss">Để sau</string>
+    <string name="feature_overview_root_switch">Chuyển sang chế độ root</string>
+    <string name="feature_overview_battery_title">Android đã dừng VPN</string>
+    <string name="feature_overview_battery_text">Tính năng lọc đã dừng khi chạy trong nền. Cho phép ADBlocker chạy mà không bị hạn chế về pin để giúp duy trì hoạt động lọc.</string>
+    <string name="feature_overview_battery_action">Cho phép chạy nền</string>
+    <plurals name="feature_overview_lists_pending_title">
+        <item quantity="other">Chưa tải %1$d danh sách</item>
+    </plurals>
+    <plurals name="feature_overview_lists_failed_title">
+        <item quantity="other">Không tải được %1$d danh sách</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_pending">
+        <item quantity="other">Danh sách sẽ bắt đầu lọc sau khi tải xong.</item>
+    </plurals>
+    <plurals name="feature_overview_lists_missing_failed">
+        <item quantity="other">Danh sách sẽ bắt đầu lọc sau khi tải xong.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_download">Tải ngay</string>
+    <plurals name="feature_overview_lists_previous_copy">
+        <item quantity="other">Tiếp tục lọc bằng bản trước đó.</item>
+    </plurals>
+    <string name="feature_overview_lists_missing_open">Mở danh sách</string>
+    <string name="feature_overview_lists_download_failed">Tải xuống không thành công</string>
+    <string name="feature_overview_app_list_withheld_title">Hầu hết ứng dụng chưa được lọc</string>
+    <string name="feature_overview_app_list_withheld_text">Hệ thống chưa cho phép ADBlocker đọc danh sách ứng dụng đã cài đặt. Các ứng dụng đó sẽ được lọc khi có quyền.</string>
+</resources>
