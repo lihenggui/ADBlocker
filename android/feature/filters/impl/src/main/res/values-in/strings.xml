@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">Filter</string>
+    <string name="feature_filters_settings">Setelan</string>
+    <string name="feature_filters_tab_lists">Daftar</string>
+    <string name="feature_filters_tab_rules">Aturan saya</string>
+    <string name="feature_filters_tab_trusted">Situs tepercaya</string>
+    <string name="feature_filters_add_list">Tambah daftar</string>
+    <string name="feature_filters_add_list_text">URL daftar filter dengan sintaks EasyList atau uBlock Origin. Hanya URL HTTPS yang didukung.</string>
+    <string name="feature_filters_add_list_label">URL daftar</string>
+    <string name="feature_filters_add">Tambah</string>
+    <string name="feature_filters_cancel">Batal</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="other">aturan diunduh · %1$d daftar</item>
+    </plurals>
+    <string name="feature_filters_update_now">Perbarui sekarang</string>
+    <string name="feature_filters_updating">Memperbarui</string>
+    <string name="feature_filters_update_progress">Progres pembaruan</string>
+    <string name="feature_filters_last_updated">Diperbarui %1$s</string>
+    <string name="feature_filters_never_updated">Belum diunduh</string>
+    <string name="feature_filters_subscribed_header">Langganan</string>
+    <string name="feature_filters_available">Tersedia · %1$s</string>
+    <string name="feature_filters_subscribe">Berlangganan %1$s</string>
+    <string name="feature_filters_list_fetching">Mengunduh dan memeriksa</string>
+    <string name="feature_filters_list_failed">Pembaruan gagal</string>
+    <string name="feature_filters_list_done">%1$s aturan · baru diperbarui</string>
+    <string name="feature_filters_list_off">Nonaktif</string>
+    <string name="feature_filters_list_error">Pembaruan terakhir gagal</string>
+    <string name="feature_filters_list_pending">Menunggu unduhan</string>
+    <string name="feature_filters_list_detail">%1$s aturan · %2$s</string>
+    <string name="feature_filters_list_rules">%1$s aturan</string>
+    <string name="feature_filters_list_last_error">Error terakhir: %1$s</string>
+    <string name="feature_filters_remove_list">Berhenti berlangganan</string>
+    <string name="feature_filters_cosmetic_note">Daftar dalam kategori ini terutama menyembunyikan elemen halaman. Nonaktifkan Sembunyikan elemen halaman di Setelan untuk menonaktifkan aturan ini.</string>
+    <string name="feature_filters_my_rules">Aturan saya</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="other">%1$d aturan</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="other">%1$d aturan · %2$d tidak diterapkan</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">Pemeriksaan aturan tidak tersedia</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">Ubah</string>
+    <string name="feature_filters_tools">Alat</string>
+    <string name="feature_filters_block_domain">Blokir domain</string>
+    <string name="feature_filters_block_domain_supporting">Menambahkan aturan seperti ||example.com^</string>
+    <string name="feature_filters_block_domain_text">Memblokir domain dan subdomainnya di semua aplikasi yang disaring.</string>
+    <string name="feature_filters_domain_label">Domain</string>
+    <string name="feature_filters_block">Blokir</string>
+    <string name="feature_filters_test_url">Uji URL</string>
+    <string name="feature_filters_test_url_supporting">Menampilkan aturan yang akan memblokirnya</string>
+    <string name="feature_filters_import">Impor aturan</string>
+    <string name="feature_filters_import_supporting">Menggunakan sintaks uBlock Origin atau AdGuard</string>
+    <string name="feature_filters_export">Ekspor aturan</string>
+    <string name="feature_filters_export_supporting">Sebagai file .txt</string>
+    <string name="feature_filters_syntax_note">Nonaktifkan Sembunyikan elemen halaman di Setelan untuk menonaktifkan aturan penyembunyian elemen (##).</string>
+    <string name="feature_filters_trusted_text">Koneksi ke situs-situs ini tidak didekripsi atau diblokir. Ditujukan untuk perbankan online, intranet, dan halaman pembayaran.</string>
+    <string name="feature_filters_add_trusted">Tambah situs</string>
+    <string name="feature_filters_remove_trusted">Hapus %1$s</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">Halaman asal (opsional)</string>
+    <string name="feature_filters_check">Periksa</string>
+    <string name="feature_filters_would_block">Akan diblokir</string>
+    <string name="feature_filters_would_allow">Tidak akan diblokir</string>
+    <string name="feature_filters_source_mine">Aturan saya</string>
+    <string name="feature_filters_kind_script">Skrip</string>
+    <string name="feature_filters_kind_image">Gambar</string>
+    <string name="feature_filters_kind_document">Halaman</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">Lainnya</string>
+    <string name="feature_filters_issue_invalid">baris ini tidak dapat dibaca sebagai aturan.</string>
+    <string name="feature_filters_issue_invalid_option">baris ini memiliki opsi yang tidak valid, %1$s.</string>
+    <string name="feature_filters_issue_unsupported">versi ini tidak menerapkan bentuk aturan ini.</string>
+    <string name="feature_filters_issue_unsupported_named">versi ini tidak menerapkan %1$s.</string>
+    <string name="feature_filters_issue_inapplicable">aturan ini tidak memiliki sasaran di sini.</string>
+    <string name="feature_filters_issue_inapplicable_named">opsi %1$s tidak memiliki sasaran di sini.</string>
+    <string name="feature_filters_issue_malformed_directive">format direktif bersyarat tidak valid.</string>
+    <string name="feature_filters_issue_unsupported_include">versi ini tidak memuat daftar yang disertakan.</string>
+    <string name="feature_filters_issue_line">Baris %1$d</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="other">%1$d lainnya.</item>
+    </plurals>
+    <string name="feature_filters_back">Kembali</string>
+    <string name="feature_filters_save">Simpan dan terapkan</string>
+    <string name="feature_filters_undo">Urungkan</string>
+    <string name="feature_filters_redo">Ulangi</string>
+    <string name="feature_filters_discard_title">Buang perubahan?</string>
+    <string name="feature_filters_discard_text">Perubahan aturan belum disimpan.</string>
+    <string name="feature_filters_discard_failed">Draf tidak dapat dihapus. Coba buang lagi.</string>
+    <string name="feature_filters_discard">Buang</string>
+    <string name="feature_filters_keep_editing">Lanjutkan mengedit</string>
+    <string name="feature_filters_rules_saved">Aturan disimpan dan diterapkan</string>
+    <string name="feature_filters_earlier_rules_saved">Perubahan sebelumnya diterapkan. Perubahan baru belum disimpan.</string>
+    <string name="feature_filters_draft_failed">Draf aturan tidak dapat disimpan untuk nanti</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="other">%1$d daftar diperbarui</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="other">%1$d daftar diperbarui, %2$d gagal</item>
+    </plurals>
+    <string name="feature_filters_update_failed">Gagal memperbarui daftar</string>
+    <string name="feature_filters_subscribed">Berlangganan. Daftar sedang diunduh.</string>
+    <string name="feature_filters_removed">Langganan dihentikan</string>
+    <string name="feature_filters_https_only">Hanya URL HTTPS yang didukung</string>
+    <string name="feature_filters_not_a_domain">Domain tidak valid</string>
+    <string name="feature_filters_blocked_domain">%1$s diblokir</string>
+    <string name="feature_filters_trusted">%1$s ditambahkan ke situs tepercaya</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="other">%1$d aturan diimpor</item>
+    </plurals>
+    <string name="feature_filters_exported">Aturan diekspor</string>
+    <string name="feature_filters_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
+    <string name="feature_filters_issue_separator">": "</string>
+    <string name="feature_filters_search">Cari daftar dan aturan</string>
+    <string name="feature_filters_search_hint">Cari daftar dan aturan</string>
+    <string name="feature_filters_search_none">Tidak ada hasil</string>
+    <string name="feature_filters_search_available">Daftar yang tersedia</string>
+    <string name="feature_filters_list_on">Aktif</string>
+    <string name="feature_filters_block_preview">Menambahkan %1$s</string>
+    <string name="feature_filters_list_added">%1$s aturan · baru diperbarui, %2$s baru</string>
+    <string name="feature_filters_test_url_text">Memeriksa permintaan berdasarkan daftar dan aturan saat ini.</string>
+    <string name="feature_filters_syntax">Sintaks aturan</string>
+    <string name="feature_filters_syntax_text">Satu aturan per baris, dengan sintaks EasyList, uBlock Origin, atau AdGuard.</string>
+    <string name="feature_filters_syntax_host">Memblokir domain dan subdomainnya.</string>
+    <string name="feature_filters_syntax_option">Opsi setelah $ membatasi cakupan aturan. Di sini, hanya permintaan dari situs lain yang diblokir.</string>
+    <string name="feature_filters_syntax_app">$app= membatasi aturan pada aplikasi yang disebutkan.</string>
+    <string name="feature_filters_syntax_path">Memblokir URL yang cocok. * cocok dengan teks apa pun, dan $image membatasi aturan pada gambar.</string>
+    <string name="feature_filters_syntax_exception">@@ mengizinkan permintaan yang akan diblokir oleh aturan lain.</string>
+    <string name="feature_filters_syntax_cosmetic">Menyembunyikan elemen halaman. Nonaktifkan Sembunyikan elemen halaman di Setelan untuk menonaktifkan aturan ini.</string>
+    <string name="feature_filters_syntax_comment">Baris yang diawali ! adalah komentar.</string>
+    <string name="feature_filters_import_too_large">Ukuran file melebihi batas 16 MB untuk aturan</string>
+    <string name="feature_filters_schedule">diperbarui %1$s</string>
+    <string name="feature_filters_schedule_wifi">diperbarui %1$s melalui Wi-Fi</string>
+    <string name="feature_filters_schedule_never">tanpa pembaruan otomatis</string>
+    <string name="feature_filters_every_day">setiap hari</string>
+    <string name="feature_filters_every_three_days">setiap 3 hari</string>
+    <string name="feature_filters_every_week">setiap minggu</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="other">%1$d daftar diperbarui, %2$s aturan ditambahkan</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">Pengecualian HTTPS belum siap. Penyaringan hanya berdasarkan domain.</string>
+    <string name="feature_filters_exclusions_failed">Beberapa daftar pengecualian HTTPS tidak dapat diperbarui. Salinan yang tersimpan masih digunakan.</string>
+</resources>

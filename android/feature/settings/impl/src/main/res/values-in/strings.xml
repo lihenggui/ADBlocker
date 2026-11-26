@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_settings_title">Setelan</string>
+    <string name="feature_settings_back">Kembali</string>
+    <string name="feature_settings_appearance">Tampilan</string>
+    <string name="feature_settings_theme">Tema</string>
+    <string name="feature_settings_theme_system">Sistem</string>
+    <string name="feature_settings_theme_light">Terang</string>
+    <string name="feature_settings_theme_dark">Gelap</string>
+    <string name="feature_settings_dynamic_color">Warna wallpaper</string>
+    <string name="feature_settings_dynamic_color_text">Menggunakan warna dari wallpaper</string>
+    <string name="feature_settings_updates">Pembaruan daftar</string>
+    <string name="feature_settings_update_interval">Perbarui otomatis</string>
+    <string name="feature_settings_interval_daily">Setiap hari</string>
+    <string name="feature_settings_interval_three_days">Setiap 3 hari</string>
+    <string name="feature_settings_interval_weekly">Setiap minggu</string>
+    <string name="feature_settings_interval_never">Tidak pernah</string>
+    <string name="feature_settings_wifi_only">Perbarui hanya via Wi-Fi</string>
+    <string name="feature_settings_wifi_only_text">Daftar tidak diunduh melalui data seluler</string>
+    <string name="feature_settings_app_list">Daftar aplikasi</string>
+    <string name="feature_settings_system_apps">Tampilkan aplikasi sistem</string>
+    <string name="feature_settings_system_apps_text">Disembunyikan secara default</string>
+    <string name="feature_settings_service">Layanan penyaringan</string>
+    <string name="feature_settings_scope_checking">Memeriksa cakupan penyaringan…</string>
+    <string name="feature_settings_scope_unavailable">Cakupan penyaringan tidak tersedia</string>
+    <string name="feature_settings_status_unknown">Status tidak diketahui</string>
+    <string name="feature_settings_status_running">Berjalan</string>
+    <string name="feature_settings_status_paused">Dijeda</string>
+    <string name="feature_settings_status_stopped">Tidak berjalan</string>
+    <string name="feature_settings_status_turned_off">Dinonaktifkan</string>
+    <string name="feature_settings_turned_off_text">Dua kali proses mulai berturut-turut tidak selesai</string>
+    <string name="feature_settings_started">dimulai %1$s</string>
+    <string name="feature_settings_restart">Mulai ulang layanan penyaringan</string>
+    <string name="feature_settings_restart_text">Aplikasi terhubung tanpa penyaringan selama proses mulai ulang</string>
+    <string name="feature_settings_turn_on_again">Aktifkan lagi</string>
+    <string name="feature_settings_module_install">Siapkan mode root</string>
+    <string name="feature_settings_module_reinstall">Perbarui mode root</string>
+    <string name="feature_settings_module_unavailable">Status mode root tidak tersedia</string>
+    <string name="feature_settings_module_check_again">Status mode root tidak tersedia · Periksa lagi</string>
+    <string name="feature_settings_root_not_set_up_text">Belum disiapkan · Aplikasi terhubung tanpa penyaringan</string>
+    <string name="feature_settings_root_setting_up">Menyiapkan mode root…</string>
+    <string name="feature_settings_root_setup_failed">Penyiapan gagal · Coba lagi</string>
+    <string name="feature_settings_root_update_text">Versi yang terinstal berbeda dari versi aplikasi ini</string>
+    <string name="feature_settings_root_updating">Memperbarui mode root…</string>
+    <string name="feature_settings_root_update_failed">Pembaruan gagal · Coba lagi</string>
+    <string name="feature_settings_root_updated">Mode root diperbarui</string>
+    <string name="feature_settings_root_missing_text">Berikan akses root kepada ADBlocker di pengelola root · Periksa lagi</string>
+    <string name="feature_settings_root_remove">Hapus mode root</string>
+    <string name="feature_settings_root_remove_text">Menghentikan penyaringan dan menghapus data mode root</string>
+    <string name="feature_settings_root_removing">Menghapus mode root…</string>
+    <string name="feature_settings_root_remove_failed">Belum dihapus · Coba lagi</string>
+    <string name="feature_settings_root_remove_title">Hapus mode root?</string>
+    <string name="feature_settings_root_remove_explain">Penyaringan berhenti dan aplikasi terhubung tanpa penyaringan. Otoritas sertifikat mode root dihapus, beserta pilihan aplikasi, daftar, aturan, situs tepercaya, dan statistiknya. Setelan aplikasi, seperti tema, tetap disimpan. Mode root dapat disiapkan lagi di sini.</string>
+    <string name="feature_settings_root_remove_confirm">Hapus</string>
+    <string name="feature_settings_root_removed">Mode root dihapus</string>
+    <string name="feature_settings_root_flashed">Terinstal sebagai modul</string>
+    <string name="feature_settings_root_flashed_in">Terinstal sebagai modul di %1$s</string>
+    <string name="feature_settings_root_flashed_text">Untuk menghapus mode root, hapus modul di sana dan mulai ulang perangkat</string>
+    <string name="feature_settings_root_flashed_manager_text">Untuk menghapus mode root, hapus modul di pengelola root dan mulai ulang perangkat</string>
+    <string name="feature_settings_root_flashed_pending_text">Berlaku setelah perangkat mulai ulang</string>
+    <string name="feature_settings_root_restart_to_update">Mulai ulang perangkat untuk menyelesaikan pembaruan</string>
+    <string name="feature_settings_root_marked_removal">Ditandai untuk dihapus di pengelola root · Mulai ulang untuk menghapus</string>
+    <string name="feature_settings_pinned">Domain yang menolak sertifikat</string>
+    <string name="feature_settings_pinned_checking">Memeriksa domain…</string>
+    <string name="feature_settings_pinned_unavailable">Daftar domain tidak tersedia</string>
+    <string name="feature_settings_pinned_none">Tidak ada</string>
+    <plurals name="feature_settings_pinned_apps">
+        <item quantity="other">%1$d aplikasi</item>
+    </plurals>
+    <plurals name="feature_settings_pinned_domains">
+        <item quantity="other">%1$d domain</item>
+    </plurals>
+    <string name="feature_settings_data">Data</string>
+    <string name="feature_settings_export_logs">Ekspor log</string>
+    <string name="feature_settings_export_logs_text">Log mencatat apa yang berjalan dan bagaimana prosesnya berakhir, tanpa mencatat tujuan koneksi aplikasi</string>
+    <string name="feature_settings_about">Tentang</string>
+    <string name="feature_settings_app_version">Versi %1$s · GPL-3.0</string>
+    <string name="feature_settings_source">Kode sumber</string>
+    <string name="feature_settings_source_text">Lisensi aplikasi dan daftar filter</string>
+    <string name="feature_settings_restarted">Layanan penyaringan dimulai ulang</string>
+    <string name="feature_settings_service_timeout">Layanan penyaringan tidak merespons tepat waktu.</string>
+    <string name="feature_settings_module_disabled">Modul ADBlocker dinonaktifkan atau dijadwalkan untuk dihapus di pengelola root. Ubah setelannya di sana.</string>
+    <string name="feature_settings_module_disabled_in">Modul ADBlocker dinonaktifkan atau dijadwalkan untuk dihapus di %1$s. Ubah setelannya di sana.</string>
+    <string name="feature_settings_module_installed">Mode root berjalan</string>
+    <string name="feature_settings_pinned_forgotten">Dilupakan. Dekripsi dicoba lagi pada koneksi berikutnya.</string>
+    <string name="feature_settings_logs_exported_partial">Log aplikasi diekspor. Log mode root tidak dapat dibaca sepenuhnya.</string>
+    <string name="feature_settings_logs_exported">Log diekspor</string>
+    <string name="feature_settings_failed">Tindakan gagal</string>
+    <string name="feature_settings_https">HTTPS</string>
+    <string name="feature_settings_url_filtering">Penyaringan URL</string>
+    <string name="feature_settings_url_filtering_text">Terapkan aturan URL pada setiap aplikasi yang disaring jika didukung. Jika nonaktif, pemblokiran berlaku untuk seluruh domain.</string>
+    <string name="feature_settings_url_filtering_unknown">Memerlukan layanan penyaringan yang berjalan dan sudah diperbarui</string>
+    <string name="feature_settings_url_filtering_on">Penyaringan URL aktif</string>
+    <string name="feature_settings_url_filtering_off">Penyaringan URL nonaktif</string>
+    <string name="feature_settings_cancel">Batal</string>
+    <string name="feature_settings_cosmetic">Sembunyikan elemen halaman</string>
+    <string name="feature_settings_cosmetic_text">Mengubah halaman yang sudah didekripsi untuk menyembunyikan elemen yang ditentukan oleh aturan filter, seperti bingkai iklan kosong.</string>
+    <string name="feature_settings_cosmetic_security">Dampak keamanan</string>
+    <string name="feature_settings_pinned_text">Aplikasi ini memeriksa sendiri sertifikat domain tersebut, sehingga koneksinya hanya disaring berdasarkan domain. Setelah domain dilupakan, dekripsi dicoba lagi pada koneksi berikutnya ke domain itu.</string>
+    <string name="feature_settings_forget">Lupakan</string>
+    <string name="feature_settings_forget_all">Lupakan semua</string>
+    <string name="feature_settings_forget_all_title">Lupakan semua domain?</string>
+    <string name="feature_settings_forget_all_text">Dekripsi dicoba lagi pada koneksi berikutnya ke setiap domain ini.</string>
+    <string name="feature_settings_method">Metode penyaringan</string>
+    <string name="feature_settings_method_vpn">Mode VPN</string>
+    <string name="feature_settings_method_vpn_text">Digunakan · Tidak perlu root</string>
+    <string name="feature_settings_method_vpn_available">Tidak perlu root · Menyaring berdasarkan domain</string>
+    <string name="feature_settings_method_root">Mode root</string>
+    <string name="feature_settings_method_root_not_set_up">Belum disiapkan · Menyaring berdasarkan URL di dalam HTTPS</string>
+    <string name="feature_settings_method_root_restart_first">Mulai ulang perangkat terlebih dahulu untuk menyelesaikan pembaruan modul</string>
+    <string name="feature_settings_method_root_checking">Memeriksa akses root</string>
+    <string name="feature_settings_method_root_available">Akses root diberikan · Menyaring berdasarkan URL di dalam HTTPS</string>
+    <string name="feature_settings_method_root_missing">Akses root tidak terdeteksi · Periksa lagi</string>
+    <string name="feature_settings_root_missing">Akses root tidak terdeteksi</string>
+    <string name="feature_settings_switch_root_title">Beralih ke mode root?</string>
+    <string name="feature_settings_switch_root_text">ADBlocker menyiapkan mode root, yang kemudian mengambil alih dari VPN. VPN tetap terhubung hingga mode root berjalan. Aplikasi, daftar, aturan, dan situs tepercaya dipindahkan.</string>
+    <string name="feature_settings_switch_root">Beralih</string>
+    <string name="feature_settings_switched_to_root">Beralih ke mode root</string>
+    <string name="feature_settings_switched_to_vpn">Beralih ke mode VPN</string>
+    <string name="feature_settings_switch_root_pending">Peralihan ke mode root belum selesai.</string>
+    <string name="feature_settings_switch_root_retry">Peralihan belum selesai · Coba lagi</string>
+    <string name="feature_settings_cancel_root_switch">Batalkan peralihan ke mode root</string>
+    <string name="feature_settings_cancel_root_pending">Pembatalan tertunda</string>
+    <string name="feature_settings_retry_root_cancel">Coba batalkan lagi</string>
+    <string name="feature_settings_always_on">VPN selalu aktif</string>
+    <string name="feature_settings_always_on_text">Android menjalankan ADBlocker saat perangkat dinyalakan dan setelah aplikasi berhenti secara tiba-tiba</string>
+    <string name="feature_settings_state_detail">%1$s · %2$s</string>
+    <string name="feature_settings_state_on">Aktif</string>
+    <string name="feature_settings_state_off">Nonaktif</string>
+    <string name="feature_settings_lockdown">Memblokir koneksi tanpa VPN</string>
+    <string name="feature_settings_lockdown_on">Aktif · Aplikasi pilihan tidak dapat terhubung selama penyaringan berhenti</string>
+    <string name="feature_settings_lockdown_off">Saat aktif, aplikasi pilihan tidak dapat terhubung selama penyaringan berhenti. Hanya dapat diatur di setelan sistem.</string>
+    <string name="feature_settings_notifications">Notifikasi</string>
+    <string name="feature_settings_notifications_on">Diizinkan · Penyaringan dapat dijeda dari notifikasi</string>
+    <string name="feature_settings_notifications_off">Tidak diizinkan · Penyaringan tetap berfungsi tanpa notifikasi</string>
+    <string name="feature_settings_https_setup">Siapkan penyaringan HTTPS</string>
+    <string name="feature_settings_https_not_set_up">Belum disiapkan · Memerlukan aplikasi yang memercayai sertifikat pengguna</string>
+    <string name="feature_settings_https_installed">Sertifikat terinstal · Kelola penyaringan URL</string>
+    <string name="feature_settings_url_filtering_needs_certificate">Instal sertifikat untuk menyaring URL HTTPS.</string>
+    <string name="feature_settings_remove_certificate">Hapus sertifikat</string>
+    <string name="feature_settings_remove_certificate_text">Menonaktifkan dekripsi dan membuka setelan sistem</string>
+    <string name="feature_settings_remove_certificate_explain">ADBlocker menonaktifkan dekripsi HTTPS terlebih dahulu. Anda kemudian dapat menghapus sertifikat di setelan Android.</string>
+    <string name="feature_settings_remove_certificate_path">Keamanan &amp; privasi › Keamanan &amp; privasi lain › Enkripsi &amp; kredensial › Kredensial tepercaya › Pengguna › ADBlocker user CA › Uninstal</string>
+    <string name="feature_settings_remove_certificate_vary">Nama menu berbeda-beda menurut produsen.</string>
+    <string name="feature_settings_remove_certificate_open">Nonaktifkan dan buka setelan</string>
+</resources>

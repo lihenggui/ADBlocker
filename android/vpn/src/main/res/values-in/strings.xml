@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="vpn_channel_running">Penyaringan</string>
+    <string name="vpn_channel_stopped">Penyaringan berhenti</string>
+
+    <string name="vpn_starting">Memulai penyaringan</string>
+    <plurals name="vpn_filtering">
+        <item quantity="other">Menyaring %d aplikasi</item>
+    </plurals>
+    <string name="vpn_no_apps">Belum ada aplikasi yang dipilih</string>
+    <string name="vpn_paused_until">Dijeda hingga %s</string>
+    <string name="vpn_paused">Dijeda</string>
+    <string name="vpn_action_pause_hour">Jeda 1 jam</string>
+    <string name="vpn_action_resume">Lanjutkan</string>
+    <string name="vpn_action_open">Buka</string>
+
+    <string name="vpn_revoked_title">Penyaringan berhenti</string>
+    <string name="vpn_revoked_text">VPN dinonaktifkan oleh aplikasi VPN lain atau melalui setelan sistem. Aplikasi pilihan terhubung tanpa penyaringan.</string>
+    <string name="vpn_status_unavailable">Status penyaringan tidak tersedia</string>
+</resources>
