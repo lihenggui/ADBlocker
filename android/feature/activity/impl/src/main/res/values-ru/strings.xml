@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_activity_title">Активность</string>
+    <string name="feature_activity_settings">Настройки</string>
+    <string name="feature_activity_start_recording">Начать запись</string>
+    <string name="feature_activity_stop_recording">Остановить запись</string>
+    <string name="feature_activity_starting">Запуск записи…</string>
+    <string name="feature_activity_recording">Запись запросов</string>
+    <string name="feature_activity_recorded">Запись остановлена</string>
+    <string name="feature_activity_interrupted">Запись прервана</string>
+    <string name="feature_activity_no_recording">Записей пока нет</string>
+    <string name="feature_activity_recording_intro">Записывайте запросы фильтруемых приложений. Во время записи можно переключаться между приложениями. Последние 500 запросов хранятся в памяти.</string>
+    <string name="feature_activity_no_matches">Нет запросов, подходящих под эти фильтры</string>
+    <string name="feature_activity_empty_result">Запросы не записаны</string>
+    <string name="feature_activity_app_requests_hint">Начните запись в разделе «Активность», чтобы увидеть здесь запросы.</string>
+    <string name="feature_activity_notification_channel">Запись активности</string>
+    <string name="feature_activity_notification_title">ADBlocker записывает активность</string>
+    <string name="feature_activity_all">Все</string>
+    <string name="feature_activity_blocked">Блокировки</string>
+    <string name="feature_activity_allowed">Разрешенные</string>
+    <string name="feature_activity_encrypted">Без расшифровки</string>
+    <string name="feature_activity_all_apps">Все приложения</string>
+    <string name="feature_activity_dropped">(пропущено: %1$d)</string>
+    <string name="feature_activity_empty">Ожидание запросов</string>
+    <string name="feature_activity_empty_idle">Фильтрация не идет</string>
+    <string name="feature_activity_verdict_blocked">Запрос заблокирован</string>
+    <string name="feature_activity_verdict_host_blocked">Домен заблокирован</string>
+    <string name="feature_activity_verdict_allowed">Разрешено</string>
+    <string name="feature_activity_verdict_passed">Без расшифровки</string>
+    <string name="feature_activity_kind_script">Скрипт</string>
+    <string name="feature_activity_kind_image">Изображение</string>
+    <string name="feature_activity_kind_document">Страница</string>
+    <string name="feature_activity_kind_stylesheet">Стиль</string>
+    <string name="feature_activity_kind_font">Шрифт</string>
+    <string name="feature_activity_kind_media">Медиа</string>
+    <string name="feature_activity_app">Приложение</string>
+    <string name="feature_activity_kind">Тип</string>
+    <string name="feature_activity_page">Страница</string>
+    <string name="feature_activity_rule">Совпадение с текущим правилом (GET)</string>
+    <string name="feature_activity_rule_unavailable">Недоступно</string>
+    <string name="feature_activity_why">Причина</string>
+    <string name="feature_activity_my_rules">Мои правила</string>
+    <string name="feature_activity_reason_pinned">Приложение не принимает сертификат ADBlocker для этого домена, поэтому соединение фильтруется только по домену.</string>
+    <string name="feature_activity_reason_hosts_only">Соединение отфильтровано по домену. Фильтрация по URL была отключена или анализ HTTPS был недоступен.</string>
+    <string name="feature_activity_reason_excluded">Домен есть в списке исключений HTTPS, например в списке банков.</string>
+    <string name="feature_activity_reason_trusted">Это доверенный сайт.</string>
+    <string name="feature_activity_reason_sensitive">У сервера сертификат Extended Validation, поэтому соединение не расшифровывается.</string>
+    <string name="feature_activity_reason_no_name">Домен соединения не указан.</string>
+    <string name="feature_activity_reason_untrusted">Это приложение пока не доверяет ADBlocker.</string>
+    <string name="feature_activity_reason_unverified">Не удалось проверить сервер, поэтому приложение проверяет его само.</string>
+    <string name="feature_activity_reason_other">Передано приложению без чтения.</string>
+    <string name="feature_activity_trust_site">Доверять %1$s</string>
+    <string name="feature_activity_block_host">Блокировать домен</string>
+    <string name="feature_activity_block_in_app">Блокировать в %1$s</string>
+    <string name="feature_activity_block_in_all_apps">Блокировать во всех приложениях</string>
+    <string name="feature_activity_forget">Повторить расшифровку</string>
+    <string name="feature_activity_copy">Копировать</string>
+    <string name="feature_activity_trusted">%1$s добавлен в список доверенных сайтов</string>
+    <string name="feature_activity_blocked_host_everywhere">%1$s заблокирован во всех приложениях</string>
+    <string name="feature_activity_blocked_host_in_app">%1$s заблокирован в %2$s</string>
+    <string name="feature_activity_forgotten">При следующем подключении будет предпринята новая попытка расшифровки</string>
+    <string name="feature_activity_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
+    <string name="feature_activity_select">Выберите запрос</string>
+    <string name="feature_activity_select_text">Проверьте URL по текущим правилам, добавьте сайт в доверенные или заблокируйте его</string>
+    <string name="feature_activity_reason_host_blocked">Домен заблокирован целиком, поэтому соединение отклонено.</string>
+    <string name="feature_activity_app_requests">Запросы</string>
+    <string name="feature_activity_open_activity">Открыть в разделе «Активность»</string>
+    <string name="feature_activity_reason_exclusions_pending">Исключения HTTPS не готовы</string>
+    <string name="feature_activity_apps_unavailable">Не удалось загрузить названия приложений или варианты фильтра</string>
+    <string name="feature_activity_status_unavailable">Статус фильтрации недоступен</string>
+</resources>

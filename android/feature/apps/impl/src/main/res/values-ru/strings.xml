@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_apps_search">Поиск приложений</string>
+    <string name="feature_apps_settings">Настройки</string>
+    <string name="feature_apps_filtered">Фильтруются %1$d</string>
+    <string name="feature_apps_all">Все %1$d</string>
+    <string name="feature_apps_section_filtered">Фильтруются</string>
+    <string name="feature_apps_section_others">Другие приложения</string>
+    <string name="feature_apps_empty_filtered">Нет фильтруемых приложений</string>
+    <string name="feature_apps_empty_filtered_text">Выберите приложение и включите фильтрацию переключателем.</string>
+    <string name="feature_apps_browse_apps">К приложениям</string>
+    <string name="feature_apps_status_filtered">За сегодня заблокировано: %1$s</string>
+    <string name="feature_apps_status_hosts">Только домены · за сегодня заблокировано: %1$s</string>
+    <string name="feature_apps_status_paused">На паузе · возобновится через %1$s</string>
+    <string name="feature_apps_status_off">Не фильтруется</string>
+    <string name="feature_apps_now_filtering">Фильтруется %1$s</string>
+    <string name="feature_apps_stopped_filtering">Фильтрация остановлена: %1$s</string>
+    <string name="feature_apps_undo">Отменить</string>
+    <string name="feature_apps_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
+    <string name="feature_apps_select">Выберите приложение</string>
+    <string name="feature_apps_select_text">Здесь будут режим фильтрации и число блокировок</string>
+    <string name="feature_apps_status_work_quiet">Рабочий профиль приостановлен</string>
+    <string name="feature_apps_status_work_unavailable">Недоступно в рабочем профиле</string>
+    <string name="feature_apps_work_inventory_unavailable">Не удалось загрузить часть рабочих приложений.</string>
+    <string name="feature_apps_work_inventory_retry">Повторить</string>
+    <string name="feature_apps_selection_removed">Выбор снят: %1$s</string>
+    <string name="feature_apps_status_mixed">HTTP-запросы и домены HTTPS · за сегодня заблокировано: %1$s</string>
+    <string name="feature_apps_exclude">Исключить</string>
+    <string name="feature_apps_include">Включить</string>
+    <string name="feature_apps_excluded">Исключено</string>
+    <string name="feature_apps_included">Включено в фильтрацию: %1$s</string>
+    <string name="feature_apps_excluded_message">Исключено: %1$s</string>
+    <string name="feature_apps_status_filtered_no_count">Число блокировок недоступно</string>
+    <string name="feature_apps_status_hosts_no_count">Только домены · число блокировок недоступно</string>
+    <string name="feature_apps_status_mixed_no_count">HTTP-запросы и домены HTTPS · число блокировок недоступно</string>
+</resources>

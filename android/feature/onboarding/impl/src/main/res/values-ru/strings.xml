@@ -1,0 +1,140 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_onboarding_search_apps">Найти приложение</string>
+    <string name="feature_onboarding_back">Назад</string>
+    <string name="feature_onboarding_step">Шаг %1$d из %2$d</string>
+    <string name="feature_onboarding_welcome_text">Фильтрует сетевые запросы выбранных приложений по спискам фильтров браузерных блокировщиков рекламы.</string>
+    <string name="feature_onboarding_start">Начать</string>
+    <string name="feature_onboarding_fact_private">Данные не покидают устройство. Приложение устанавливает сетевые соединения только в режиме VPN — с узлами, к которым обращаются выбранные приложения, и с источниками списков.</string>
+    <string name="feature_onboarding_fact_methods">Работает в режиме root или VPN.</string>
+    <string name="feature_onboarding_fact_chosen">Фильтруются только выбранные приложения. Соединения других приложений не считываются.</string>
+    <string name="feature_onboarding_check_title">Проверка устройства</string>
+    <string name="feature_onboarding_check_text">Проверяет, может ли ADBlocker работать на этом устройстве.</string>
+    <string name="feature_onboarding_checking">Проверка</string>
+    <string name="feature_onboarding_ok">ОК</string>
+    <string name="feature_onboarding_check_root">root-доступ</string>
+    <string name="feature_onboarding_check_android">Версия Android</string>
+    <string name="feature_onboarding_check_kernel">Функции ядра</string>
+    <string name="feature_onboarding_check_arch">Процессор</string>
+    <string name="feature_onboarding_check_root_failed">Нет доступа. Предоставьте ADBlocker root-доступ в менеджере root (KernelSU, Magisk или APatch).</string>
+    <string name="feature_onboarding_check_android_failed">Требуется Android 12 или более поздняя версия</string>
+    <string name="feature_onboarding_check_kernel_failed">Необходимые функции фильтрации недоступны</string>
+    <string name="feature_onboarding_check_arch_failed">Поддерживаются только arm64 и x86_64</string>
+    <string name="feature_onboarding_check_again">Проверить снова</string>
+    <string name="feature_onboarding_continue">Далее</string>
+    <string name="feature_onboarding_cert_title">Фильтрация по URL</string>
+    <string name="feature_onboarding_cert_text">Правила для URL применяются к фильтруемым приложениям, где это поддерживается, в том числе для HTTPS-соединений. Чтобы блокировать только домены целиком, отключите фильтрацию по URL в настройках.</string>
+    <string name="feature_onboarding_cert_key">Закрытый ключ создается и хранится на этом устройстве. Прочитать его можно только с правами root. Ключ удаляется при удалении режима root.</string>
+    <string name="feature_onboarding_cert_notice">Сначала каждый сервер проверяется по надежным сертификатам системы. Если сервер не проходит проверку, для него ничего не подписывается.</string>
+    <string name="feature_onboarding_cert_browsers">В фильтруемых браузерах пропускаются некоторые проверки сертификатов, например Certificate Transparency.</string>
+    <string name="feature_onboarding_cert_ack">Понятно</string>
+    <string name="feature_onboarding_apps_title">Выберите приложения для фильтрации</string>
+    <string name="feature_onboarding_apps_text">Выберите приложения, которые хотите фильтровать. Добавить приложения можно и позже.</string>
+    <plurals name="feature_onboarding_apps_continue">
+        <item quantity="one">Далее (выбрано: %1$d)</item>
+        <item quantity="few">Далее (выбрано: %1$d)</item>
+        <item quantity="many">Далее (выбрано: %1$d)</item>
+        <item quantity="other">Далее (выбрано: %1$d)</item>
+    </plurals>
+    <string name="feature_onboarding_lists_title">Списки фильтров</string>
+    <string name="feature_onboarding_lists_text">Региональные списки подбираются по региону в системных настройках. Этот выбор можно изменить.</string>
+    <string name="feature_onboarding_installing_title">Настройка</string>
+    <plurals name="feature_onboarding_done_title">
+        <item quantity="one">Фильтруется %1$d приложение</item>
+        <item quantity="few">Фильтруются %1$d приложения</item>
+        <item quantity="many">Фильтруется %1$d приложений</item>
+        <item quantity="other">Фильтруется %1$d приложения</item>
+    </plurals>
+    <string name="feature_onboarding_done_text">Выбранные приложения теперь фильтруются. Если приложение перестанет работать, приостановите фильтрацию на странице «Обзор».</string>
+    <string name="feature_onboarding_failed_title">Не удалось настроить</string>
+    <string name="feature_onboarding_failed_text">Не удалось настроить режим root. Это не влияет на доступ приложений к сети.</string>
+    <string name="feature_onboarding_restart_to_update">Перезагрузите устройство, чтобы завершить обновление модуля, и снова откройте ADBlocker.</string>
+    <string name="feature_onboarding_try_again">Повторить</string>
+    <string name="feature_onboarding_finish">Готово</string>
+    <string name="feature_onboarding_check_after_root">Проверяется после предоставления root-доступа</string>
+    <string name="feature_onboarding_apps_none">Нет приложений для фильтрации</string>
+    <string name="feature_onboarding_apps_none_text">Здесь появятся установленные приложения, которые могут подключаться к сети.</string>
+    <string name="feature_onboarding_all_apps_withheld">Система не разрешила ADBlocker читать список установленных приложений. Пока доступ не разрешен, большинство приложений не фильтруется.</string>
+    <string name="feature_onboarding_check_root_granted">%1$s · доступ есть</string>
+    <string name="feature_onboarding_check_root_granted_plain">Доступ есть</string>
+    <string name="feature_onboarding_check_kernel_ok">Необходимые функции фильтрации поддерживаются</string>
+    <string name="feature_onboarding_check_kernel_unverified">Проверяется при запуске фильтрации</string>
+    <string name="feature_onboarding_lists_hint">Другие списки доступны в разделе «Фильтры».</string>
+    <string name="feature_onboarding_step_module">Настроить режим root</string>
+    <string name="feature_onboarding_step_apps">Добавить выбранные приложения</string>
+    <plurals name="feature_onboarding_step_lists">
+        <item quantity="one">Загрузить %1$d список</item>
+        <item quantity="few">Загрузить %1$d списка</item>
+        <item quantity="many">Загрузить %1$d списков</item>
+        <item quantity="other">Загрузить %1$d списка</item>
+    </plurals>
+    <string name="feature_onboarding_step_start">Запустить фильтрацию</string>
+    <string name="feature_onboarding_install_progress">Ход настройки</string>
+    <string name="feature_onboarding_check_no_root_text">root-доступ не обнаружен. Фильтрация доступна в режиме VPN или в режиме root после предоставления root-доступа.</string>
+    <string name="feature_onboarding_check_unsupported_text">Это устройство не поддерживает режим root. Можно фильтровать в режиме VPN.</string>
+    <string name="feature_onboarding_check_root_not_detected">Не обнаружен</string>
+    <string name="feature_onboarding_check_root_again">Проверить root снова</string>
+    <string name="feature_onboarding_method">Способ фильтрации</string>
+    <string name="feature_onboarding_method_vpn">Режим VPN</string>
+    <string name="feature_onboarding_method_vpn_text">root не требуется. Фильтрует выбранные приложения по доменам и занимает системный слот VPN.</string>
+    <string name="feature_onboarding_method_root">Режим root</string>
+    <string name="feature_onboarding_method_root_no_root">Фильтрует зашифрованные сайты по URL. Требуется root-доступ.</string>
+    <string name="feature_onboarding_method_root_unsupported">Фильтрует зашифрованные сайты по URL. На этом устройстве не поддерживается.</string>
+    <string name="feature_onboarding_vpn_title">Режим VPN</string>
+    <string name="feature_onboarding_vpn_text">ADBlocker настраивает VPN на этом устройстве. Через нее проходят только соединения выбранных приложений.</string>
+    <string name="feature_onboarding_vpn_apps">Выбранные приложения подключаются через локальную VPN. На другие приложения это не влияет.</string>
+    <string name="feature_onboarding_vpn_domains">Домены рекламы и трекеров блокируются по домену назначения каждого соединения. Соединения не расшифровываются.</string>
+    <string name="feature_onboarding_vpn_one">Android позволяет использовать только одну VPN одновременно. При запуске фильтрации другое VPN-приложение отключается.</string>
+    <string name="feature_onboarding_vpn_local">VPN не подключается ни к одному удаленному серверу. Данные остаются на устройстве.</string>
+    <string name="feature_onboarding_vpn_hint">Фильтрацию зашифрованных сайтов по URL можно настроить позже в настройках.</string>
+    <string name="feature_onboarding_filter_later_title">Настроить фильтрацию позже</string>
+    <string name="feature_onboarding_filter_later_text">Добавьте приложение на странице «Приложения», когда будете готовы начать фильтрацию.</string>
+    <string name="feature_onboarding_save_setup">Сохранить настройки</string>
+    <string name="feature_onboarding_start_text">Для запуска фильтрации нужны два системных разрешения.</string>
+    <string name="feature_onboarding_grant_notifications">Уведомления</string>
+    <string name="feature_onboarding_grant_notifications_text">Показываются во время фильтрации и позволяют ее приостановить</string>
+    <string name="feature_onboarding_grant_vpn">VPN</string>
+    <string name="feature_onboarding_grant_vpn_text">Подтверждается в системном диалоговом окне</string>
+    <string name="feature_onboarding_grant_lists_text">При первой загрузке нужно подключение к сети</string>
+    <string name="feature_onboarding_vpn_refused">Использование VPN не разрешено. Без нее фильтрация не может начаться.</string>
+    <string name="feature_onboarding_starting_title">Запуск</string>
+    <string name="feature_onboarding_start_failed_title">Фильтрация не запустилась</string>
+    <string name="feature_onboarding_start_failed_text">Не удалось запустить VPN. Это не влияет на доступ приложений к сети.</string>
+    <string name="feature_onboarding_done_text_vpn">Фильтрацию можно в любой момент приостановить из уведомления.</string>
+    <string name="feature_onboarding_notifications_allowed">Уведомления разрешены</string>
+    <string name="feature_onboarding_notifications_off">Уведомления не разрешены</string>
+    <string name="feature_onboarding_notifications_off_text">Можно разрешить в настройках</string>
+    <string name="feature_onboarding_vpn_connected">VPN подключена</string>
+    <string name="feature_onboarding_vpn_connected_text">VPN используют только выбранные приложения</string>
+    <string name="feature_onboarding_lists_downloaded">Списки загружены</string>
+    <plurals name="feature_onboarding_lists_count">
+        <item quantity="one">%1$d список</item>
+        <item quantity="few">%1$d списка</item>
+        <item quantity="many">%1$d списков</item>
+        <item quantity="other">%1$d списка</item>
+    </plurals>
+    <plurals name="feature_onboarding_rules">
+        <item quantity="one">%1$s правило</item>
+        <item quantity="few">%1$s правила</item>
+        <item quantity="many">%1$s правил</item>
+        <item quantity="other">%1$s правила</item>
+    </plurals>
+    <string name="feature_onboarding_lists_summary">%1$s · %2$s</string>
+    <string name="feature_onboarding_lists_failed">Списки не загружены</string>
+    <string name="feature_onboarding_lists_failed_text">Повторная попытка в фоновом режиме</string>
+    <string name="feature_onboarding_done_https">Чтобы фильтровать зашифрованные сайты по URL в браузерах, настройте расшифровку в настройках.</string>
+</resources>

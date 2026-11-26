@@ -1,0 +1,182 @@
+<?xml version="1.0" encoding="utf-8"?><!--
+     Copyright (C) 2026 Mercury Li
+
+     This program is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License version 3 as
+     published by the Free Software Foundation.
+
+     This program is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with this program. If not, see <https://www.gnu.org/licenses/>.
+-->
+<resources>
+    <string name="feature_filters_title">Фильтры</string>
+    <string name="feature_filters_settings">Настройки</string>
+    <string name="feature_filters_tab_lists">Списки</string>
+    <string name="feature_filters_tab_rules">Мои правила</string>
+    <string name="feature_filters_tab_trusted">Доверенные сайты</string>
+    <string name="feature_filters_add_list">Добавить список</string>
+    <string name="feature_filters_add_list_text">Укажите URL списка фильтров в синтаксисе EasyList или uBlock Origin. Поддерживаются только URL с HTTPS.</string>
+    <string name="feature_filters_add_list_label">URL списка</string>
+    <string name="feature_filters_add">Добавить</string>
+    <string name="feature_filters_cancel">Отмена</string>
+    <plurals name="feature_filters_rules_in_lists">
+        <item quantity="one">загружено правил · %1$d список</item>
+        <item quantity="few">загружено правил · %1$d списка</item>
+        <item quantity="many">загружено правил · %1$d списков</item>
+        <item quantity="other">загружено правил · %1$d списка</item>
+    </plurals>
+    <string name="feature_filters_update_now">Обновить</string>
+    <string name="feature_filters_updating">Обновление</string>
+    <string name="feature_filters_update_progress">Ход обновления</string>
+    <string name="feature_filters_last_updated">Обновлено %1$s</string>
+    <string name="feature_filters_never_updated">Еще не загружен</string>
+    <string name="feature_filters_subscribed_header">Подписки</string>
+    <string name="feature_filters_available">Доступные · %1$s</string>
+    <string name="feature_filters_subscribe">Подписаться на %1$s</string>
+    <string name="feature_filters_list_fetching">Загрузка и проверка</string>
+    <string name="feature_filters_list_failed">Не удалось обновить</string>
+    <string name="feature_filters_list_done">Правил: %1$s · только что обновлено</string>
+    <string name="feature_filters_list_off">Отключен</string>
+    <string name="feature_filters_list_error">Последнее обновление не удалось</string>
+    <string name="feature_filters_list_pending">Ожидание загрузки</string>
+    <string name="feature_filters_list_detail">Правил: %1$s · %2$s</string>
+    <string name="feature_filters_list_rules">Правил: %1$s</string>
+    <string name="feature_filters_list_last_error">Последняя ошибка: %1$s</string>
+    <string name="feature_filters_remove_list">Отписаться</string>
+    <string name="feature_filters_cosmetic_note">Списки в этой категории в основном скрывают элементы страниц. Чтобы отключить эти правила, выключите параметр «Скрывать элементы страниц» в настройках.</string>
+    <string name="feature_filters_my_rules">Мои правила</string>
+    <plurals name="feature_filters_rules_count">
+        <item quantity="one">%1$d правило</item>
+        <item quantity="few">%1$d правила</item>
+        <item quantity="many">%1$d правил</item>
+        <item quantity="other">%1$d правила</item>
+    </plurals>
+    <plurals name="feature_filters_rules_count_skipped">
+        <item quantity="one">%1$d правило · не применено: %2$d</item>
+        <item quantity="few">%1$d правила · не применено: %2$d</item>
+        <item quantity="many">%1$d правил · не применено: %2$d</item>
+        <item quantity="other">%1$d правила · не применено: %2$d</item>
+    </plurals>
+    <string name="feature_filters_rule_check_unavailable">Проверка правил недоступна</string>
+    <string name="feature_filters_rules_count_with_status">%1$s · %2$s</string>
+    <string name="feature_filters_edit">Изменить</string>
+    <string name="feature_filters_tools">Инструменты</string>
+    <string name="feature_filters_block_domain">Блокировать домен</string>
+    <string name="feature_filters_block_domain_supporting">Добавляет правило вида ||example.com^</string>
+    <string name="feature_filters_block_domain_text">Блокирует домен и его поддомены во всех фильтруемых приложениях.</string>
+    <string name="feature_filters_domain_label">Домен</string>
+    <string name="feature_filters_block">Блокировать</string>
+    <string name="feature_filters_test_url">Проверить URL</string>
+    <string name="feature_filters_test_url_supporting">Показывает, какое правило его заблокирует</string>
+    <string name="feature_filters_import">Импорт правил</string>
+    <string name="feature_filters_import_supporting">В синтаксисе uBlock Origin или AdGuard</string>
+    <string name="feature_filters_export">Экспорт правил</string>
+    <string name="feature_filters_export_supporting">В файл .txt</string>
+    <string name="feature_filters_syntax_note">Чтобы отключить правила скрытия элементов (##), выключите параметр «Скрывать элементы страниц» в настройках.</string>
+    <string name="feature_filters_trusted_text">Соединения с этими сайтами не расшифровываются и не блокируются. Подходит для интернет-банков, внутренних сетей и страниц оплаты.</string>
+    <string name="feature_filters_add_trusted">Добавить сайт</string>
+    <string name="feature_filters_remove_trusted">Удалить %1$s</string>
+    <string name="feature_filters_url_label">URL</string>
+    <string name="feature_filters_page_label">Исходная страница (необязательно)</string>
+    <string name="feature_filters_check">Проверить</string>
+    <string name="feature_filters_would_block">Будет заблокирован</string>
+    <string name="feature_filters_would_allow">Не будет заблокирован</string>
+    <string name="feature_filters_source_mine">Мои правила</string>
+    <string name="feature_filters_kind_script">Скрипт</string>
+    <string name="feature_filters_kind_image">Изображение</string>
+    <string name="feature_filters_kind_document">Страница</string>
+    <string name="feature_filters_kind_xhr">XHR</string>
+    <string name="feature_filters_kind_other">Другое</string>
+    <string name="feature_filters_issue_invalid">строку невозможно прочитать как правило.</string>
+    <string name="feature_filters_issue_invalid_option">в строке есть недопустимый параметр %1$s.</string>
+    <string name="feature_filters_issue_unsupported">эта версия не применяет правила такого вида.</string>
+    <string name="feature_filters_issue_unsupported_named">эта версия не применяет %1$s.</string>
+    <string name="feature_filters_issue_inapplicable">здесь не к чему применить это правило.</string>
+    <string name="feature_filters_issue_inapplicable_named">здесь не к чему применить параметр %1$s.</string>
+    <string name="feature_filters_issue_malformed_directive">ошибка в синтаксисе условной директивы.</string>
+    <string name="feature_filters_issue_unsupported_include">эта версия не загружает подключаемые списки.</string>
+    <string name="feature_filters_issue_line">Строка %1$d</string>
+    <plurals name="feature_filters_more_issues">
+        <item quantity="one">Еще %1$d.</item>
+        <item quantity="few">Еще %1$d.</item>
+        <item quantity="many">Еще %1$d.</item>
+        <item quantity="other">Еще %1$d.</item>
+    </plurals>
+    <string name="feature_filters_back">Назад</string>
+    <string name="feature_filters_save">Сохранить и применить</string>
+    <string name="feature_filters_undo">Отменить</string>
+    <string name="feature_filters_redo">Повторить</string>
+    <string name="feature_filters_discard_title">Отменить изменения?</string>
+    <string name="feature_filters_discard_text">Изменения правил не сохранены.</string>
+    <string name="feature_filters_discard_failed">Не удалось удалить черновик. Попробуйте еще раз.</string>
+    <string name="feature_filters_discard">Не сохранять</string>
+    <string name="feature_filters_keep_editing">Продолжить правку</string>
+    <string name="feature_filters_rules_saved">Правила сохранены и применены</string>
+    <string name="feature_filters_earlier_rules_saved">Предыдущие изменения применены. Новые правки не сохранены.</string>
+    <string name="feature_filters_draft_failed">Не удалось сохранить черновик правил</string>
+    <plurals name="feature_filters_updated">
+        <item quantity="one">Обновлен %1$d список</item>
+        <item quantity="few">Обновлены %1$d списка</item>
+        <item quantity="many">Обновлено %1$d списков</item>
+        <item quantity="other">Обновлено %1$d списка</item>
+    </plurals>
+    <plurals name="feature_filters_updated_with_failures">
+        <item quantity="one">Обновлен %1$d список, ошибок: %2$d</item>
+        <item quantity="few">Обновлены %1$d списка, ошибок: %2$d</item>
+        <item quantity="many">Обновлено %1$d списков, ошибок: %2$d</item>
+        <item quantity="other">Обновлено %1$d списка, ошибок: %2$d</item>
+    </plurals>
+    <string name="feature_filters_update_failed">Не удалось обновить списки</string>
+    <string name="feature_filters_subscribed">Подписка оформлена. Список загружается.</string>
+    <string name="feature_filters_removed">Подписка отменена</string>
+    <string name="feature_filters_https_only">Поддерживаются только URL с HTTPS</string>
+    <string name="feature_filters_not_a_domain">Недопустимый домен</string>
+    <string name="feature_filters_blocked_domain">%1$s заблокирован</string>
+    <string name="feature_filters_trusted">%1$s добавлен в список доверенных сайтов</string>
+    <plurals name="feature_filters_imported">
+        <item quantity="one">Импортировано %1$d правило</item>
+        <item quantity="few">Импортировано %1$d правила</item>
+        <item quantity="many">Импортировано %1$d правил</item>
+        <item quantity="other">Импортировано %1$d правила</item>
+    </plurals>
+    <string name="feature_filters_exported">Правила экспортированы</string>
+    <string name="feature_filters_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
+    <string name="feature_filters_issue_separator">": "</string>
+    <string name="feature_filters_search">Поиск по спискам и правилам</string>
+    <string name="feature_filters_search_hint">Поиск по спискам и правилам</string>
+    <string name="feature_filters_search_none">Ничего не найдено</string>
+    <string name="feature_filters_search_available">Доступные списки</string>
+    <string name="feature_filters_list_on">Включен</string>
+    <string name="feature_filters_block_preview">Добавляет %1$s</string>
+    <string name="feature_filters_list_added">Правил: %1$s · только что обновлено, новых: %2$s</string>
+    <string name="feature_filters_test_url_text">Проверяет запрос по текущим спискам и правилам.</string>
+    <string name="feature_filters_syntax">Синтаксис правил</string>
+    <string name="feature_filters_syntax_text">По одному правилу на строку в синтаксисе EasyList, uBlock Origin или AdGuard.</string>
+    <string name="feature_filters_syntax_host">Блокирует домен и его поддомены.</string>
+    <string name="feature_filters_syntax_option">Параметры после $ ограничивают действие правила. Здесь блокируются только запросы с других сайтов.</string>
+    <string name="feature_filters_syntax_app">Параметр $app= ограничивает действие правила указанным приложением.</string>
+    <string name="feature_filters_syntax_path">Блокирует подходящие URL. Символ * соответствует любому тексту, а параметр $image ограничивает действие правила изображениями.</string>
+    <string name="feature_filters_syntax_exception">Префикс @@ разрешает запросы, которые заблокировали бы другие правила.</string>
+    <string name="feature_filters_syntax_cosmetic">Скрывает элементы страниц. Чтобы отключить это правило, выключите параметр «Скрывать элементы страниц» в настройках.</string>
+    <string name="feature_filters_syntax_comment">Строка, начинающаяся с !, считается комментарием.</string>
+    <string name="feature_filters_import_too_large">Файл с правилами превышает ограничение в 16 МБ</string>
+    <string name="feature_filters_schedule">обновление %1$s</string>
+    <string name="feature_filters_schedule_wifi">обновление %1$s по Wi-Fi</string>
+    <string name="feature_filters_schedule_never">без автообновления</string>
+    <string name="feature_filters_every_day">каждый день</string>
+    <string name="feature_filters_every_three_days">каждые 3 дня</string>
+    <string name="feature_filters_every_week">каждую неделю</string>
+    <plurals name="feature_filters_updated_added">
+        <item quantity="one">Обновлен %1$d список, добавлено правил: %2$s</item>
+        <item quantity="few">Обновлены %1$d списка, добавлено правил: %2$s</item>
+        <item quantity="many">Обновлено %1$d списков, добавлено правил: %2$s</item>
+        <item quantity="other">Обновлено %1$d списка, добавлено правил: %2$s</item>
+    </plurals>
+    <string name="feature_filters_exclusions_pending">Исключения HTTPS не готовы. Фильтруются только домены.</string>
+    <string name="feature_filters_exclusions_failed">Не удалось обновить некоторые списки исключений HTTPS. По-прежнему используются сохраненные копии.</string>
+</resources>
