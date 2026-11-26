@@ -89,21 +89,40 @@ fn conditional_rules_and_badfilters_survive_a_cache_round_trip() {
 
 #[test]
 fn inactive_generic_cosmetics_stay_out_of_the_specific_hide_exception_engine() {
-    let filters = filters(
+    let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    std::fs::write(
+        dir.path().join("a.txt"),
         "@@||page.example^$specifichide\n\
          !#if env_mobile\n##.active\n!#else\n##.inactive\n!#endif\n",
-    );
-    let hiding = filters.hiding("https://page.example/");
-    assert_eq!(
-        filters
-            .hiding_by_name(
-                &hiding,
-                &HashSet::from(["active".to_owned(), "inactive".to_owned()]),
-                &HashSet::new(),
-            )
-            .as_deref(),
-        Some(".active{display:none!important}\n")
-    );
+    )
+    .unwrap();
+    std::fs::write(
+        dir.path().join("b.txt"),
+        "##div[data-ad] > span\npage.example,control.example##.site-specific\n",
+    )
+    .unwrap();
+
+    let built = Filters::load_cached(&[dir.path()], cache.path()).unwrap();
+    let cached = Filters::read_cache(cache.path(), built.generation.unwrap()).unwrap();
+    for filters in [built, cached] {
+        let hiding = filters.hiding("https://page.example/");
+        assert_eq!(
+            hiding.css.as_deref(),
+            Some("div[data-ad] > span{display:none!important}\n")
+        );
+        let control = filters.hiding("https://control.example/").css.unwrap();
+        assert!(control.contains(".site-specific{display:none!important}"));
+        assert_eq!(
+            filters
+                .hiding_by_name(
+                    &hiding,
+                    &HashSet::from(["active".to_owned(), "inactive".to_owned()]),
+                    &HashSet::new(),
+                )
+                .as_deref(),
+            Some(".active{display:none!important}\n")
+        );
+    }
 }
 
 #[test]

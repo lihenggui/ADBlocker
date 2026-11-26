@@ -200,6 +200,8 @@ pub(super) struct ResponseProjections<'a> {
     lines: BTreeMap<(bool, Cow<'a, str>), Option<Parsed<'a>>>,
 }
 
+pub(super) struct ResponseSpecs(Vec<Parsed<'static>>);
+
 impl<'a> ResponseProjections<'a> {
     pub(super) fn add(&mut self, line: &'a str, response: ResponseRule<'a>) {
         let line = response.normalized(line);
@@ -222,11 +224,7 @@ impl<'a> ResponseProjections<'a> {
         }
     }
 
-    pub(super) fn compile(self, patterns: &mut Patterns) -> Option<ResponseRules> {
-        self.compile_with_budget(MAX_RESPONSE_REGEX_BYTES, patterns)
-    }
-
-    fn compile_with_budget(self, budget: usize, patterns: &mut Patterns) -> Option<ResponseRules> {
+    pub(super) fn prepare(self) -> ResponseSpecs {
         let disabled: BTreeSet<_> = self
             .lines
             .values()
@@ -236,17 +234,34 @@ impl<'a> ResponseProjections<'a> {
                 badfilter.then(|| identity.clone())
             })
             .collect();
-        let rules = self
-            .lines
-            .into_values()
-            .flatten()
-            .filter(|rule| {
-                rule.transform_identity
-                    .as_ref()
-                    .is_none_or(|(identity, badfilter)| !badfilter && !disabled.contains(identity))
-            })
-            .collect();
-        ResponseRules::compile(rules, budget, patterns)
+        ResponseSpecs(
+            self.lines
+                .into_values()
+                .flatten()
+                .filter(|rule| {
+                    rule.transform_identity
+                        .as_ref()
+                        .is_none_or(|(identity, badfilter)| {
+                            !badfilter && !disabled.contains(identity)
+                        })
+                })
+                .map(|rule| Parsed {
+                    pattern: Cow::Owned(rule.pattern.into_owned()),
+                    transform_identity: None,
+                    ..rule
+                })
+                .collect(),
+        )
+    }
+}
+
+impl ResponseSpecs {
+    pub(super) fn compile(self, patterns: &mut Patterns) -> Option<ResponseRules> {
+        self.compile_with_budget(MAX_RESPONSE_REGEX_BYTES, patterns)
+    }
+
+    fn compile_with_budget(self, budget: usize, patterns: &mut Patterns) -> Option<ResponseRules> {
+        ResponseRules::compile(self.0, budget, patterns)
     }
 }
 
