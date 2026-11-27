@@ -29,6 +29,7 @@ import li.mercury.adblocker.core.data.repository.ActivityFeed
 import li.mercury.adblocker.core.data.repository.ActivityRepository
 import li.mercury.adblocker.core.data.repository.AppsRepository
 import li.mercury.adblocker.core.data.repository.RulesRepository
+import li.mercury.adblocker.core.data.repository.allowRule
 import li.mercury.adblocker.core.model.AppEntry
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.RequestEvent
@@ -91,7 +92,7 @@ class RequestViewModelTest {
         val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), blocking(blocked))
         backgroundScope.launch { viewModel.uiState.collect {} }
         runCurrent()
-        assertEquals("com.example.news", viewModel.uiState.value.blockPackage)
+        assertEquals("com.example.news", viewModel.uiState.value.rulePackage)
 
         viewModel.blockHostInApp()
         runCurrent()
@@ -125,7 +126,7 @@ class RequestViewModelTest {
         val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, null), blocking(blocked))
         backgroundScope.launch { viewModel.uiState.collect {} }
         runCurrent()
-        assertNull(viewModel.uiState.value.blockPackage)
+        assertNull(viewModel.uiState.value.rulePackage)
 
         viewModel.blockHostInApp()
         runCurrent()
@@ -133,6 +134,94 @@ class RequestViewModelTest {
         assertEquals(emptyList(), blocked)
         assertFalse(viewModel.uiState.value.done)
         assertTrue(viewModel.pendingMessages.value.isEmpty())
+    }
+
+    @Test
+    fun givenABlockedEndpointOrIpv6Address_whenAllowActionsAreInvoked_thenNoExceptionIsOfferedOrWritten() = runTest {
+        for (endpoint in listOf("1.2.3.4:443", "[2001:db8::1]:443", "2001:db8::1", "[2001:db8::1]")) {
+            val request = allowed("com.example.news").copy(host = endpoint, verdict = Verdict.HostBlocked)
+            val appended = mutableListOf<String>()
+            val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), allowing(appended))
+
+            assertNull(viewModel.uiState.value.allowHost, endpoint)
+            viewModel.allowHost()
+            viewModel.allowHostInApp()
+            runCurrent()
+
+            assertTrue(appended.isEmpty(), endpoint)
+            assertTrue(viewModel.pendingMessages.value.isEmpty(), endpoint)
+        }
+    }
+
+    @Test
+    fun givenABlockedNameOrIpv4Address_whenOpened_thenItCanBeAllowed() {
+        for ((host, ruleHost) in listOf(
+            "cdn.example.com" to "cdn.example.com",
+            "CDN.Example.com." to "cdn.example.com",
+            "1.2.3.4" to "1.2.3.4",
+        )) {
+            val request = allowed("com.example.news").copy(host = host, verdict = Verdict.HostBlocked)
+            assertEquals(ruleHost, RequestUiState(request = request).allowHost, host)
+        }
+    }
+
+    @Test
+    fun givenAHostWasRefused_whenAllowedInAllApps_thenTheExceptionNamesTheRecordedHost() = runTest {
+        val request = allowed("com.example.news").copy(host = "cdn.example.com", verdict = Verdict.HostBlocked)
+        val appended = mutableListOf<String>()
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), allowing(appended))
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+        assertEquals("example.com", viewModel.uiState.value.trustSite)
+        assertNull(viewModel.uiState.value.rule)
+
+        viewModel.allowHost()
+        runCurrent()
+
+        assertEquals(listOf("@@||cdn.example.com^"), appended)
+        assertTrue(viewModel.uiState.value.done)
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(R.string.feature_activity_allowed_host_everywhere, message.text)
+        assertEquals(listOf<Any>("\u2066cdn.example.com\u2069"), message.args)
+    }
+
+    @Test
+    fun givenAWorkAppAndBlockedHost_whenAllowedInThatApp_thenTheExceptionNamesItsPackageAndTheMessageItsLabel() = runTest {
+        val request = allowed("com.example.news", profileSerial = 12).copy(host = "cdn.example.com", verdict = Verdict.HostBlocked)
+        val appended = mutableListOf<String>()
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), allowing(appended))
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+
+        viewModel.allowHostInApp()
+        runCurrent()
+
+        assertEquals(listOf("@@||cdn.example.com^\$app=com.example.news"), appended)
+        assertTrue(viewModel.uiState.value.done)
+        val message = viewModel.pendingMessages.value.single().message
+        assertEquals(R.string.feature_activity_allowed_host_in_app, message.text)
+        assertEquals(listOf<Any>("\u2066cdn.example.com\u2069", "News"), message.args)
+    }
+
+    @Test
+    fun givenAnAllowedRequest_whenTrusted_thenItsSiteIsAddedToTrustedSites() = runTest {
+        val request = allowed("com.example.news").copy(host = "cdn.example.com")
+        val trusted = mutableListOf<String>()
+        val rules = object : RulesRepository by unexpected() {
+            override suspend fun trust(host: String) {
+                trusted += host
+            }
+        }
+        val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, null), rules)
+        backgroundScope.launch { viewModel.uiState.collect {} }
+        runCurrent()
+
+        viewModel.trustSite()
+        runCurrent()
+
+        assertEquals(listOf("example.com"), trusted)
+        assertTrue(viewModel.uiState.value.done)
+        assertEquals(R.string.feature_activity_trusted, viewModel.pendingMessages.value.single().message.text)
     }
 
     private fun allowed(packageName: String, profileSerial: Long? = null) = RequestEvent(1, Instant.EPOCH, packageName, Verdict.Allowed, "ads.example", null, null, null, null, profileSerial)
@@ -157,6 +246,12 @@ class RequestViewModelTest {
     private fun blocking(blocked: MutableList<Pair<String, String?>>) = object : RulesRepository by unexpected() {
         override suspend fun blockDomain(domain: String, app: String?) {
             blocked += domain to app
+        }
+    }
+
+    private fun allowing(appended: MutableList<String>) = object : RulesRepository by unexpected() {
+        override suspend fun allowDomain(domain: String, app: String?) {
+            appended += allowRule(domain, app)
         }
     }
 

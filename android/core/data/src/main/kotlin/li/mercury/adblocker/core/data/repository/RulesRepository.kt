@@ -53,6 +53,9 @@ interface RulesRepository {
     /** Adds a rule that blocks [domain] and every name below it, in the package [app] only when it is given. */
     suspend fun blockDomain(domain: String, app: String? = null)
 
+    /** Adds an exception for [domain] and every name below it, in the package [app] only when it is given. */
+    suspend fun allowDomain(domain: String, app: String? = null)
+
     /**
      * Adds the rules in [uri], a file the user picked, to the user's own, and
      * returns how many it had; 0 for a file with none, which changes nothing.
@@ -93,9 +96,11 @@ internal class AbdRulesRepository @Inject constructor(
 
     override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult = abd.check(url, page, kind, app)
 
-    override suspend fun blockDomain(domain: String, app: String?) {
-        changes.changing { abd.appendUserRules("${blockRule(domain, app)}\n", unique = true) }
-    }
+    override suspend fun blockDomain(domain: String, app: String?) = appendDomainRule(blockRule(domain, app))
+
+    override suspend fun allowDomain(domain: String, app: String?) = appendDomainRule(allowRule(domain, app))
+
+    private suspend fun appendDomainRule(rule: String) = changes.changing { abd.appendUserRules("$rule\n", unique = true) }
 
     override suspend fun import(uri: Uri): Int {
         val text = withContext(ioDispatcher) {
@@ -140,7 +145,12 @@ private const val READ_BUFFER = 64 * 1024
  * request: in every app, or in the package [app] only, in lower case as the
  * engine names it.
  */
-fun blockRule(domain: String, app: String? = null): String {
+fun blockRule(domain: String, app: String? = null): String = domainRule(domain, app)
+
+/** The exception for [domain] and every name below it, optionally restricted to [app]. */
+fun allowRule(domain: String, app: String? = null): String = "@@${domainRule(domain, app)}"
+
+private fun domainRule(domain: String, app: String?): String {
     val host = "||${domain.trim().trimStart('.').lowercase()}^"
     return if (app == null) host else "$host\$app=${app.lowercase()}"
 }

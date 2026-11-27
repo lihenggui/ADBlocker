@@ -299,7 +299,8 @@ Open the app's entry in **Apps**, pause filtering for an hour, and try
 again. If that fixes the problem, you can leave filtering off for that app.
 To find the rule involved, resume filtering, start a recording in
 **Activity**, and repeat the action that failed. Stop the recording and
-open a blocked request to see its details or allow a site you trust.
+open a blocked request to see its details or allow its domain in that app
+or in all apps.
 If you report the problem, include the name of the affected app.
 
 ### An app keeps rejecting HTTPS filtering

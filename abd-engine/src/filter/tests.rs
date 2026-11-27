@@ -728,6 +728,77 @@ mod lists {
     }
 
     #[test]
+    fn a_shared_exception_opens_only_its_host_under_a_shared_block() {
+        let f = filters("||example.com^\n@@||cdn.example.com^\n");
+        assert!(!f.blocks_host("cdn.example.com"));
+        assert!(f.blocks_host("ads.example.com"));
+        for package in ["com.reader", "com.other"] {
+            let app = f.for_app(package);
+            assert!(!app.blocks_host("cdn.example.com"));
+            assert!(app.blocks_host("ads.example.com"));
+        }
+    }
+
+    #[test]
+    fn an_app_exception_opens_its_host_under_a_shared_block_only_for_that_app() {
+        let f = filters("||example.com^\n@@||cdn.example.com^$app=com.reader\n");
+        let reader = f.for_app("com.reader");
+        assert!(!reader.blocks_host("cdn.example.com"));
+        assert!(reader.blocks_host("ads.example.com"));
+        assert!(f.for_app("com.other").blocks_host("cdn.example.com"));
+    }
+
+    #[test]
+    fn an_app_exception_opens_its_host_under_a_block_for_the_same_app() {
+        let f = filters("||example.com^$app=com.reader\n@@||cdn.example.com^$app=com.reader\n");
+        let reader = f.for_app("com.reader");
+        assert!(!reader.blocks_host("cdn.example.com"));
+        assert!(reader.blocks_host("ads.example.com"));
+    }
+
+    #[test]
+    fn a_host_exception_also_allows_requests_matching_a_path_block() {
+        let blocks = "||cdn.example.com/ads/\n";
+        let url = "https://cdn.example.com/ads/banner.png";
+        let baseline = filters(blocks);
+        assert!(!baseline.blocks_host("cdn.example.com"));
+        assert!(baseline.check(url, "", "image", "GET").blocked);
+        assert!(
+            !baseline
+                .check("https://cdn.example.com/content.png", "", "image", "GET")
+                .blocked
+        );
+
+        let shared = filters(&format!("{blocks}@@||cdn.example.com^\n"));
+        assert!(!shared.check(url, "", "image", "GET").blocked);
+
+        let scoped = filters(&format!("{blocks}@@||cdn.example.com^$app=com.reader\n"));
+        assert!(
+            !scoped
+                .for_app("com.reader")
+                .check_with_page(url, Page::NONE, "image", "GET")
+                .blocked
+        );
+        assert!(
+            scoped
+                .for_app("com.other")
+                .check_with_page(url, Page::NONE, "image", "GET")
+                .blocked
+        );
+    }
+
+    #[test]
+    fn a_host_exception_allows_a_request_blocked_by_path_on_an_ip_literal() {
+        for host in ["1.2.3.4", "[2001:db8::1]"] {
+            let blocks = format!("||{host}/ads/\n");
+            let url = format!("https://{host}/ads/banner.png");
+            assert!(filters(&blocks).check(&url, "", "image", "GET").blocked);
+            let allowed = filters(&format!("{blocks}@@||{host}^\n"));
+            assert!(!allowed.check(&url, "", "image", "GET").blocked);
+        }
+    }
+
+    #[test]
     fn the_host_lookup_matches_a_fully_parsed_request() {
         let f = filters(
             "||ads.example^\n\

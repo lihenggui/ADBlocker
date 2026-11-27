@@ -51,6 +51,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -93,24 +94,34 @@ fun RequestScreen(onClose: () -> Unit, viewModel: RequestViewModel, modifier: Mo
         RequestContent(
             request = request,
             state = state,
-            onTrust = viewModel::trustSite,
-            onBlock = viewModel::blockHost,
-            onBlockInApp = viewModel::blockHostInApp,
-            onForget = viewModel::forgetPinned,
+            actions = RequestActionCallbacks(
+                onTrust = viewModel::trustSite,
+                onBlock = viewModel::blockHost,
+                onBlockInApp = viewModel::blockHostInApp,
+                onAllow = viewModel::allowHost,
+                onAllowInApp = viewModel::allowHostInApp,
+                onForget = viewModel::forgetPinned,
+            ),
         )
         // Shown here only as a pane; in a sheet, the screen below shows it.
         AppSnackbarHost(Modifier.align(Alignment.BottomCenter))
     }
 }
 
+internal class RequestActionCallbacks(
+    val onTrust: () -> Unit,
+    val onBlock: () -> Unit,
+    val onBlockInApp: () -> Unit,
+    val onAllow: () -> Unit,
+    val onAllowInApp: () -> Unit,
+    val onForget: () -> Unit,
+)
+
 @Composable
 internal fun RequestContent(
     request: RequestEvent,
     state: RequestUiState,
-    onTrust: () -> Unit,
-    onBlock: () -> Unit,
-    onBlockInApp: () -> Unit,
-    onForget: () -> Unit,
+    actions: RequestActionCallbacks,
     modifier: Modifier = Modifier,
 ) {
     val clipboard = LocalClipboard.current
@@ -128,14 +139,9 @@ internal fun RequestContent(
         Spacer(Modifier.padding(top = 12.dp))
         RequestFacts(request, state)
         RequestActions(
-            verdict = request.verdict,
-            reason = request.reason,
-            trustSite = state.trustSite,
-            blockApp = state.blockPackage?.let { appLabelArgument(state.app?.label ?: it, it) },
-            onTrust = onTrust,
-            onBlock = onBlock,
-            onBlockInApp = onBlockInApp,
-            onForget = onForget,
+            request = request,
+            state = state,
+            actions = actions,
             onCopy = {
                 scope.launch { clipboard.setClipEntry(ClipEntry(ClipData.newPlainText(request.host, request.url ?: request.host))) }
             },
@@ -217,48 +223,58 @@ private fun RequestFacts(request: RequestEvent, state: RequestUiState) {
 
 @Composable
 private fun RequestActions(
-    verdict: Verdict,
-    reason: PassReason?,
-    trustSite: String?,
-    /** The app's label when the host can be blocked in that app alone. */
-    blockApp: String?,
-    onTrust: () -> Unit,
-    onBlock: () -> Unit,
-    onBlockInApp: () -> Unit,
-    onForget: () -> Unit,
+    request: RequestEvent,
+    state: RequestUiState,
+    actions: RequestActionCallbacks,
     onCopy: () -> Unit,
 ) {
+    val app = state.rulePackage?.let { appLabelArgument(state.app?.label ?: it, it) }
     FlowRow(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        when {
-            trustSite != null && (verdict == Verdict.Blocked || verdict == Verdict.HostBlocked) -> Button(onClick = onTrust) {
-                Icon(AdbIcons.VerifiedUser, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-                Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                Text(stringResource(R.string.feature_activity_trust_site, isolateLtr(trustSite)))
+        when (request.verdict) {
+            Verdict.Blocked, Verdict.HostBlocked -> when {
+                state.allowHost == null -> Unit
+
+                app != null -> {
+                    FilledActionButton(AdbIcons.CheckCircle, stringResource(R.string.feature_activity_allow_in_app, app), actions.onAllowInApp)
+                    FilledTonalButton(onClick = actions.onAllow) { Text(stringResource(R.string.feature_activity_allow_in_all_apps)) }
+                }
+
+                else -> FilledActionButton(AdbIcons.CheckCircle, stringResource(R.string.feature_activity_allow_host), actions.onAllow)
             }
 
-            // The request's own app first; every app is the wider alternative.
-            verdict == Verdict.Allowed && blockApp != null -> {
-                BlockButton(stringResource(R.string.feature_activity_block_in_app, blockApp), onBlockInApp)
-                FilledTonalButton(onClick = onBlock) { Text(stringResource(R.string.feature_activity_block_in_all_apps)) }
+            Verdict.Allowed -> {
+                if (app != null) {
+                    FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_in_app, app), actions.onBlockInApp)
+                    FilledTonalButton(onClick = actions.onBlock) { Text(stringResource(R.string.feature_activity_block_in_all_apps)) }
+                } else {
+                    FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_host), actions.onBlock)
+                }
+                state.trustSite?.let { site ->
+                    OutlinedButton(onClick = actions.onTrust) {
+                        ActionLabel(AdbIcons.VerifiedUser, stringResource(R.string.feature_activity_trust_site, isolateLtr(site)))
+                    }
+                }
             }
 
-            verdict == Verdict.Allowed -> BlockButton(stringResource(R.string.feature_activity_block_host), onBlock)
-
-            reason == PassReason.Pinned -> FilledTonalButton(onClick = onForget) { Text(stringResource(R.string.feature_activity_forget)) }
+            Verdict.Passed -> if (request.reason == PassReason.Pinned) {
+                FilledTonalButton(onClick = actions.onForget) { Text(stringResource(R.string.feature_activity_forget)) }
+            }
         }
         OutlinedButton(onClick = onCopy) {
-            Icon(AdbIcons.ContentCopy, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-            Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-            Text(stringResource(R.string.feature_activity_copy))
+            ActionLabel(AdbIcons.ContentCopy, stringResource(R.string.feature_activity_copy))
         }
     }
 }
 
 @Composable
-private fun BlockButton(label: String, onClick: () -> Unit) {
-    Button(onClick = onClick) {
-        Icon(AdbIcons.Block, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
-        Spacer(Modifier.size(ButtonDefaults.IconSpacing))
+private fun FilledActionButton(icon: ImageVector, label: String, onClick: () -> Unit) {
+    Button(onClick = onClick) { ActionLabel(icon, label) }
+}
+
+@Composable
+private fun ActionLabel(icon: ImageVector, label: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(ButtonDefaults.IconSpacing), verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, Modifier.size(ButtonDefaults.IconSize))
         Text(label)
     }
 }

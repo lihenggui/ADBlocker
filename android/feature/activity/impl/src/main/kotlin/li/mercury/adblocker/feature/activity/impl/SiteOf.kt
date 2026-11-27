@@ -24,10 +24,8 @@ internal fun siteOf(host: String): String? {
     if (isNumericAddress(normalized)) return normalized
     // DNS names may have a root label. Requests report international names in ASCII form.
     val name = normalized.removeSuffix(".")
-    if (name.length > 253 || name.any { it !in 'a'..'z' && it !in '0'..'9' && it != '.' && it != '-' }) return null
-    val labels = name.split('.')
-    if (labels.size !in 2..127 || labels.any { it.length !in 1..63 || it.first() == '-' || it.last() == '-' }) return null
-    if (labels.last().first() in '0'..'9') return null
+    val labels = dnsLabels(name) ?: return null
+    if (labels.size < 2) return null
 
     var start = 0
     var previous = 0
@@ -42,6 +40,25 @@ internal fun siteOf(host: String): String? {
         start = next
     }
     return name
+}
+
+/**
+ * The host spelling used in an exception for a recorded host: a DNS name or
+ * an IPv4 address. An endpoint with a port is not a host a rule can name, and
+ * the engine cannot keep an IPv6 exception for one app to its own address.
+ */
+internal fun exceptionHost(host: String): String? {
+    if (host.any { it.code >= 128 || it == ':' }) return null
+    val domain = host.lowercase().removeSuffix(".")
+    return domain.takeIf { isIpv4(it) || dnsLabels(it) != null }
+}
+
+private fun dnsLabels(name: String): List<String>? {
+    if (name.length > 253 || name.any { it !in 'a'..'z' && it !in '0'..'9' && it != '.' && it != '-' }) return null
+    val labels = name.split('.')
+    if (labels.any { it.length !in 1..63 || it.first() == '-' || it.last() == '-' }) return null
+    if (labels.last().first() in '0'..'9') return null
+    return labels
 }
 
 private object PublicSuffixRules {

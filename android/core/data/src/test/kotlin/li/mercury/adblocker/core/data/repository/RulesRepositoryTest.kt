@@ -122,6 +122,25 @@ class RulesRepositoryTest {
     }
 
     @Test
+    fun givenAHostWithMixedCase_whenAllowed_thenCanonicalExceptionsAreAppendedOncePerScope() = runTest {
+        val appended = mutableListOf<Pair<String, Boolean>>()
+        val abd = object : AbdClient by unexpected() {
+            override suspend fun appendUserRules(text: String, unique: Boolean) {
+                appended += text to unique
+            }
+        }
+        val repository = AbdRulesRepository(RuntimeEnvironment.getApplication(), abd, DataChanges(), DocumentWriter { _, _ -> }, StandardTestDispatcher(testScheduler))
+
+        repository.allowDomain(" .Cdn.Example.com ")
+        repository.allowDomain(" .Cdn.Example.com ", app = "com.Example.Reader")
+
+        assertEquals(
+            listOf("@@||cdn.example.com^\n" to true, "@@||cdn.example.com^\$app=com.example.reader\n" to true),
+            appended,
+        )
+    }
+
+    @Test
     fun aFileUpToTheLimitIsReadWhole() {
         val bytes = ByteArray(1_000) { 'a'.code.toByte() }
         assertEquals(1_000, readLimited(ByteArrayInputStream(bytes), max = 1_000).size)
