@@ -35,6 +35,7 @@ import li.mercury.adblocker.core.data.repository.RulesRepository
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.RequestEvent
 import li.mercury.adblocker.core.model.RuleCheckResult
+import li.mercury.adblocker.core.model.Verdict
 import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
 import li.mercury.adblocker.core.ui.appLabelArgument
@@ -46,14 +47,19 @@ data class RequestUiState(
     /** The request is no longer kept, as after the process ended: the page closes. */
     val gone: Boolean = false,
     val trustSite: String? = request?.let { siteOf(it.host) },
-    /** The package a block for this app alone names; null when the host can only be blocked in every app. */
-    val blockPackage: String? = request?.identity?.rulePackage,
+    /** The package a rule for this app alone names. */
+    val rulePackage: String? = request?.identity?.rulePackage,
     val app: InstalledApp? = null,
     /** The current rules’ result for testing the recorded URL as a GET request. */
     val rule: RuleCheckResult? = null,
     val ruleCheckUnavailable: Boolean = false,
     val done: Boolean = false,
-)
+) {
+    internal val allowHost: String? = when (request?.verdict) {
+        Verdict.Blocked, Verdict.HostBlocked -> exceptionHost(request.host)
+        else -> null
+    }
+}
 
 @HiltViewModel(assistedFactory = RequestViewModel.Factory::class)
 class RequestViewModel @AssistedInject constructor(
@@ -100,13 +106,31 @@ class RequestViewModel @AssistedInject constructor(
 
     /** Blocks the request's host and every name below it in the app that made the request, in each of its profiles. */
     fun blockHostInApp() {
-        val app = initial.blockPackage ?: return
+        val app = initial.rulePackage ?: return
         act { request ->
             rules.blockDomain(request.host, app)
-            val label = appLabelArgument(uiState.value.app?.label ?: app, app)
-            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(isolateLtr(request.host), label)))
+            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(isolateLtr(request.host), ruleAppLabel(app))))
         }
     }
+
+    fun allowHost() {
+        val host = initial.allowHost ?: return
+        act { request ->
+            rules.allowDomain(host)
+            messages.show(UiMessage(R.string.feature_activity_allowed_host_everywhere, listOf(isolateLtr(request.host))))
+        }
+    }
+
+    fun allowHostInApp() {
+        val host = initial.allowHost ?: return
+        val app = initial.rulePackage ?: return
+        act { request ->
+            rules.allowDomain(host, app)
+            messages.show(UiMessage(R.string.feature_activity_allowed_host_in_app, listOf(isolateLtr(request.host), ruleAppLabel(app))))
+        }
+    }
+
+    private fun ruleAppLabel(app: String) = appLabelArgument(uiState.value.app?.label ?: app, app)
 
     fun forgetPinned() = act { request ->
         apps.forgetPinned(request.appKey, request.host)

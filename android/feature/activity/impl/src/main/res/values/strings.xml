@@ -84,6 +84,10 @@
     <!-- %1$s is the originating app's label or package name. -->
     <string name="feature_activity_block_in_app">Block in %1$s</string>
     <string name="feature_activity_block_in_all_apps">Block in all apps</string>
+    <string name="feature_activity_allow_host">Allow this domain</string>
+    <!-- %1$s is the originating app's label or package name. -->
+    <string name="feature_activity_allow_in_app">Allow in %1$s</string>
+    <string name="feature_activity_allow_in_all_apps">Allow in all apps</string>
     <string name="feature_activity_forget">Retry decryption</string>
     <!-- Copies the recorded URL, or the host for a domain-only event. -->
     <string name="feature_activity_copy">Copy</string>
@@ -93,10 +97,14 @@
     <string name="feature_activity_blocked_host_everywhere">Blocked %1$s in all apps</string>
     <!-- %1$s is the host name and %2$s is the app label or package name. -->
     <string name="feature_activity_blocked_host_in_app">Blocked %1$s in %2$s</string>
+    <!-- %1$s is the allowed host name. -->
+    <string name="feature_activity_allowed_host_everywhere">Allowed %1$s in all apps</string>
+    <!-- %1$s is the host name and %2$s is the app label or package name. -->
+    <string name="feature_activity_allowed_host_in_app">Allowed %1$s in %2$s</string>
     <string name="feature_activity_forgotten">Decryption is retried at the next connection</string>
     <string name="feature_activity_failed">Action failed. Check the filtering service in Settings.</string>
     <string name="feature_activity_select">Select a request</string>
-    <string name="feature_activity_select_text">Check the URL against current rules, or trust or block the site</string>
+    <string name="feature_activity_select_text">Check the URL against current rules, or allow or block its domain</string>
     <string name="feature_activity_reason_host_blocked">The whole domain is blocked, so the connection was refused.</string>
     <string name="feature_activity_app_requests">Requests</string>
     <string name="feature_activity_open_activity">Open in Activity</string>

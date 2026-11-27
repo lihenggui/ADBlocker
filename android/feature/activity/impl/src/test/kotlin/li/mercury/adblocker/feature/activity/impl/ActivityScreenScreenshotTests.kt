@@ -33,6 +33,7 @@ import li.mercury.adblocker.core.screenshottesting.DemoClockRule
 import li.mercury.adblocker.core.screenshottesting.DemoData
 import li.mercury.adblocker.core.screenshottesting.captureForDevice
 import li.mercury.adblocker.core.screenshottesting.captureMultiDevice
+import li.mercury.adblocker.core.ui.isolateLtr
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.RuleChain
@@ -48,6 +49,14 @@ import org.robolectric.annotation.LooperMode
 class ActivityScreenScreenshotTests {
     private val clock = DemoClockRule()
     private val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+    private val requestActions = RequestActionCallbacks(
+        onTrust = {},
+        onBlock = {},
+        onBlockInApp = {},
+        onAllow = {},
+        onAllowInApp = {},
+        onForget = {},
+    )
 
     @get:Rule
     val rules: RuleChain = RuleChain.outerRule(clock).around(composeTestRule)
@@ -101,18 +110,22 @@ class ActivityScreenScreenshotTests {
     }
 
     @Test
-    fun givenBlockedRequest_whenOpened_thenNamesTheRuleAndOffersToTrustTheSite() {
+    fun givenBlockedRequest_whenOpened_thenNamesTheRuleAndOffersToAllowTheHost() {
         val event = DemoData.requests.first()
         val rule = RuleCheckResult(blocked = true, rule = "||adnet.example^\$third-party", source = RuleSource.List(DemoData.EASYLIST))
         capturePhone("Request") {
-            RequestContent(event.copy(reason = null), RequestUiState(request = event, app = DemoApp.News.installedApp, rule = rule), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
+            RequestContent(event, RequestUiState(request = event, app = DemoApp.News.installedApp, rule = rule), requestActions)
         }
+        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_activity_allow_in_all_apps)).assertHasClickAction()
     }
 
     @Test
-    fun givenAllowedRequest_whenOpened_thenOffersToBlockItInItsAppOrInAllApps() {
+    fun givenAllowedRequest_whenOpened_thenOffersToBlockItsHostOrTrustTheSite() {
         capturePhone("RequestAllowed") { AllowedRequest() }
-        composeTestRule.onNodeWithText(composeTestRule.activity.getString(R.string.feature_activity_block_in_all_apps)).assertHasClickAction()
+        val activity = composeTestRule.activity
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_block_in_all_apps)).assertHasClickAction()
+        val site = checkNotNull(siteOf(allowedEvent.host))
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_trust_site, isolateLtr(site))).assertHasClickAction()
     }
 
     @Test
@@ -123,24 +136,39 @@ class ActivityScreenScreenshotTests {
 
     @Composable
     private fun AllowedRequest() {
-        val event = DemoData.requests.first { it.verdict == Verdict.Allowed && it.packageName == DemoApp.News.packageName }
-        RequestContent(event, RequestUiState(request = event, app = DemoApp.News.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
+        val event = allowedEvent
+        RequestContent(event, RequestUiState(request = event, app = DemoApp.News.installedApp), requestActions)
     }
+
+    private val allowedEvent
+        get() = DemoData.requests.first { it.verdict == Verdict.Allowed && it.packageName == DemoApp.News.packageName }
 
     @Test
     fun givenBankRequest_whenOpened_thenSaysWhyItWasNotDecrypted() {
         val event = DemoData.requests.first { it.packageName == DemoApp.Bank.packageName }
         capturePhone("RequestPassed") {
-            RequestContent(event, RequestUiState(request = event, app = DemoApp.Bank.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
+            RequestContent(event, RequestUiState(request = event, app = DemoApp.Bank.installedApp), requestActions)
         }
     }
 
     @Test
-    fun givenHostBlocked_whenOpened_thenSaysTheConnectionWasRefusedWhole() {
+    fun givenHostBlocked_whenOpened_thenExplainsTheRefusalAndOffersToAllowTheHost() {
+        capturePhone("RequestHostBlocked") { HostBlockedRequest() }
+    }
+
+    @Test
+    @Config(qualifiers = "zh-rCN")
+    fun givenHostBlockedInChinese_whenOpened_thenBothAllowActionsFit() {
+        composeTestRule.captureForDevice("phone_zh", DefaultTestDevices.PHONE.spec, "RequestHostBlocked") { HostBlockedRequest() }
+        val activity = composeTestRule.activity
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_allow_in_app, DemoApp.Puzzle.installedApp.label)).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_allow_in_all_apps)).assertHasClickAction()
+    }
+
+    @Composable
+    private fun HostBlockedRequest() {
         val event = DemoData.requests.first { it.verdict == Verdict.HostBlocked }
-        capturePhone("RequestHostBlocked") {
-            RequestContent(event, RequestUiState(request = event, app = DemoApp.Puzzle.installedApp), onTrust = {}, onBlock = {}, onBlockInApp = {}, onForget = {})
-        }
+        RequestContent(event, RequestUiState(request = event, app = DemoApp.Puzzle.installedApp), requestActions)
     }
 
     @Test
