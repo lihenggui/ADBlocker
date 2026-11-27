@@ -43,13 +43,17 @@ internal fun siteOf(host: String): String? {
 }
 
 /**
- * The host spelling used in an exception for a recorded host: a DNS name or
- * an IPv4 address. An endpoint with a port is not a host a rule can name, and
- * the engine cannot keep an IPv6 exception for one app to its own address.
+ * The host spelling used in an exception for a recorded host: a DNS name, an
+ * IPv4 address, or an IPv6 address in brackets as requests name it. An
+ * endpoint with a port is not a host a rule can name.
  */
 internal fun exceptionHost(host: String): String? {
-    if (host.any { it.code >= 128 || it == ':' }) return null
+    if (host.any { it.code >= 128 || it == '%' }) return null
     val domain = host.lowercase().removeSuffix(".")
+    if (domain.startsWith('[') && domain.endsWith(']')) {
+        return domain.takeIf { isNumericAddress(it.substring(1, it.length - 1)) && ':' in it }
+    }
+    if (':' in domain) return null
     return domain.takeIf { isIpv4(it) || dnsLabels(it) != null }
 }
 
