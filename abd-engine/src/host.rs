@@ -51,6 +51,10 @@ fn hostname_labels(host: &str) -> bool {
     !empty_label
 }
 
+pub(crate) fn bracketed_ipv6(host: &str) -> Option<Ipv6Addr> {
+    host.strip_prefix('[')?.strip_suffix(']')?.parse().ok()
+}
+
 pub(crate) struct CanonicalAuthority {
     pub host: String,
     pub port: u16,
@@ -74,8 +78,8 @@ pub(crate) fn canonical_authority(
     }
     let authority: Authority = raw.parse().ok()?;
     let named = authority.host();
-    let host = if let Some(address) = named.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
-        format!("[{}]", address.parse::<Ipv6Addr>().ok()?)
+    let host = if named.starts_with('[') {
+        format!("[{}]", bracketed_ipv6(named)?)
     } else {
         let name = named.strip_suffix('.').unwrap_or(named);
         if !is_host(name)

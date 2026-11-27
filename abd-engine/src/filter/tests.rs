@@ -61,6 +61,112 @@ mod redirects;
 mod removeparam;
 
 #[test]
+fn bracketed_ipv6_blocks_apply_only_to_requests() {
+    for (rule, blocks_other_app) in [
+        ("||[2001:db8::1]^", true),
+        ("||[2001:db8::1]^$app=com.reader", false),
+    ] {
+        let filters = filters(rule);
+        for (app, blocked) in [("com.reader", true), ("com.other", blocks_other_app)] {
+            let app = filters.for_app(app);
+            assert!(!app.blocks_host("[2001:db8::1]"));
+            assert!(!app.blocks_domain("[2001:db8::1]"));
+            assert!(!app.blocks_unread("[2001:db8::1]"));
+            assert_eq!(
+                app.check_with_page("https://[2001:db8::1]/pass", Page::NONE, "script", "GET")
+                    .blocked,
+                blocked,
+                "{rule}"
+            );
+        }
+    }
+}
+
+#[test]
+fn ipv6_exceptions_leave_unrelated_whole_host_blocks_in_force() {
+    for exception in [
+        "@@||[2001:db8::1]^",
+        "@@||[2001:db8::1]^$app=com.reader",
+        "@@|https://[2001:db8::1]/pass^$app=com.reader",
+        "@@/pass^$to=[2001:db8::1],app=com.reader",
+    ] {
+        let filters = filters(&format!("||ads.example^\n{exception}\n"));
+        for app in ["com.reader", "com.other"] {
+            let rules = filters.for_app(app);
+            assert!(rules.blocks_host("ads.example"), "{exception} for {app}");
+            assert!(rules.blocks_domain("ads.example"), "{exception} for {app}");
+            assert!(rules.blocks_unread("ads.example"), "{exception} for {app}");
+        }
+    }
+}
+
+#[test]
+fn ipv6_exceptions_still_allow_matching_requests() {
+    for (exception, allows_other_app) in [
+        ("@@||[2001:db8::1]^", true),
+        ("@@||[2001:db8::1]^$app=com.reader", false),
+        ("@@|https://[2001:db8::1]/pass^$app=com.reader", false),
+        ("@@/pass^$to=[2001:db8::1],app=com.reader", false),
+    ] {
+        let filters = filters(&format!("||[2001:db8::1]^\n{exception}\n"));
+        for (app, allowed) in [("com.reader", true), ("com.other", allows_other_app)] {
+            let check = filters.for_app(app).check_with_page(
+                "https://[2001:db8::1]/pass",
+                Page::NONE,
+                "script",
+                "GET",
+            );
+            assert_eq!(!check.blocked, allowed, "{exception} for {app}");
+        }
+    }
+}
+
+#[test]
+fn an_ipv6_destination_keeps_other_destinations_in_the_exception() {
+    let filters =
+        filters("||ads.net^\n||ads.example^\n@@/pass^$to=[2001:db8::1]|net,app=com.reader\n");
+    let reader = filters.for_app("com.reader");
+    assert!(!reader.blocks_host("ads.net"));
+    assert!(reader.blocks_host("ads.example"));
+    assert!(reader.blocks_unread("ads.example"));
+    assert!(filters.for_app("com.other").blocks_host("ads.net"));
+    let check = reader.check_with_page("https://ads.net/pass", Page::NONE, "script", "GET");
+    assert!(!check.blocked);
+}
+
+#[test]
+fn an_unanchored_ipv6_literal_keeps_the_destinations_of_the_exception() {
+    for (pattern, url) in [
+        (
+            "[2001:db8::1]",
+            "https://ads.example/lookup?q=[2001:db8::1]",
+        ),
+        (
+            "https://[2001:db8::1]/pass",
+            "https://ads.example/?next=https://[2001:db8::1]/pass",
+        ),
+    ] {
+        for scope in ["", ",app=com.reader"] {
+            let filters = filters(&format!(
+                "||ads.example^\n@@{pattern}$to=ads.example{scope}\n"
+            ));
+            let reader = filters.for_app("com.reader");
+            assert!(!reader.blocks_host("ads.example"), "{pattern}{scope}");
+            let check = reader.check_with_page(url, Page::NONE, "xmlhttprequest", "GET");
+            assert!(!check.blocked, "{pattern}{scope}");
+        }
+    }
+}
+
+#[test]
+fn an_ipv6_literal_in_a_path_keeps_the_hostless_app_guard() {
+    let filters = filters("||ads.example^\n@@/[2001:db8::1]/pass$app=com.reader\n");
+    let reader = filters.for_app("com.reader");
+    assert!(!reader.blocks_host("ads.example"));
+    assert!(filters.for_app("com.other").blocks_host("ads.example"));
+}
+
+#[test]
 fn conditional_rules_and_badfilters_survive_a_cache_round_trip() {
     let (dir, cache) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
     std::fs::write(

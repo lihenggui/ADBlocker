@@ -48,6 +48,7 @@ pub(crate) fn canonical_host_options(line: &str) -> Cow<'_, str> {
 }
 
 pub(crate) enum ExceptionHost<'a> {
+    Ipv6,
     Anchored(&'a str),
     Leading {
         host: &'a str,
@@ -61,6 +62,18 @@ pub(super) fn host_token(pattern: &str) -> &str {
     &pattern[..pattern
         .find(['/', '^', '?', ':', '|', '$'])
         .unwrap_or(pattern.len())]
+}
+
+pub(super) fn starts_with_ipv6_host(pattern: &str) -> bool {
+    if !pattern.starts_with('[') {
+        return false;
+    }
+    let Some(end) = pattern.find(']') else {
+        return false;
+    };
+    let (host, tail) = pattern.split_at(end + 1);
+    (tail.is_empty() || tail.starts_with(['/', '^', '?', ':', '|', '$', '*']))
+        && crate::host::bracketed_ipv6(host).is_some()
 }
 
 fn registrable(host: &str) -> bool {

@@ -20,7 +20,7 @@ use adblock::filters::cosmetic::CosmeticFilterMask;
 use adblock::filters::network::NetworkFilter;
 use adblock::lists::{FilterParseError, ParseOptions, ParsedLine, RuleTypes, parse_filter};
 
-use self::host_pattern::{host_pattern, host_token, hosts_rule, whole_host};
+use self::host_pattern::{host_pattern, host_token, hosts_rule, starts_with_ipv6_host, whole_host};
 use self::modifiers::{APP, Kind as ModifierKind, NETWORK, lookup, may_have_owned_options};
 use self::options::{OptionToken, Options, Quoting, literal_parts};
 use self::quoting::unescaped;
@@ -485,16 +485,27 @@ impl<'a> Rule<'a> {
     pub(crate) fn exception_host(&self) -> Option<ExceptionHost<'a>> {
         let pattern = self.line.strip_prefix("@@")?;
         if let Some(host) = pattern.strip_prefix("||") {
-            return Some(ExceptionHost::Anchored(host_token(host)));
+            return Some(if starts_with_ipv6_host(host) {
+                ExceptionHost::Ipv6
+            } else {
+                ExceptionHost::Anchored(host_token(host))
+            });
         }
+        let anchored = pattern.starts_with('|');
         let pattern = pattern.strip_prefix('|').unwrap_or(pattern);
         let authority = ["https://", "http://", "://"]
             .into_iter()
             .find_map(|scheme| pattern.strip_prefix(scheme));
         let absolute = (pattern.starts_with("https://") || pattern.starts_with("http://"))
             && authority.is_some_and(|host| !host.starts_with('/'));
+        let host = authority.unwrap_or(pattern);
+        // Unless anchored at the start of the URL, the literal can match
+        // anywhere in it, such as in a query on another host.
+        if anchored && authority.is_some() && starts_with_ipv6_host(host) {
+            return Some(ExceptionHost::Ipv6);
+        }
         Some(ExceptionHost::Leading {
-            host: host_token(authority.unwrap_or(pattern).trim_start_matches('/')),
+            host: host_token(host.trim_start_matches('/')),
             has_scheme: authority.is_some(),
             absolute,
         })
