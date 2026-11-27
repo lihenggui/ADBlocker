@@ -21,8 +21,9 @@ use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
 use adblock::lists::{FilterSet, ParseOptions};
 
 use super::{SeenAnchors, domain_named, is_network_exception};
+use crate::host::{bracketed_ipv6, suffixes};
+use crate::public_suffix;
 use crate::rule::{self, ExceptionHost, Rule};
-use crate::{host::suffixes, public_suffix};
 
 fn name_matches_host_pattern(host: &str) -> bool {
     !host.is_empty()
@@ -44,12 +45,11 @@ fn wildcard_host(host: &str) -> bool {
         && host.bytes().any(|b| b.is_ascii_alphanumeric())
 }
 
-/// Writes to `out` a guard for the host that the exception `line` names,
-/// at least as wide as the host part of the exception, and returns whether
-/// it names one. An exception names a host by a host-anchored pattern, or
-/// by a pattern that begins with a host name.
+/// Whether the exception pattern names a host. Writes a guard at least as
+/// wide as the named host unless it is an IPv6 literal.
 fn exception_host(source: &Rule<'_>, rule: &NetworkFilter<'_>, out: &mut String) -> bool {
     match source.exception_host() {
+        Some(ExceptionHost::Ipv6) => true,
         Some(ExceptionHost::Anchored(host)) => anchored_guard(host, rule, out),
         Some(ExceptionHost::Leading {
             host,
@@ -323,11 +323,14 @@ pub(super) fn can_guard(source: &Rule<'_>, rule: &NetworkFilter<'_>) -> bool {
 
 /// What an exception was found to guard.
 pub(super) enum GuardCoverage {
-    /// The hosts written out as guards, which may be none.
+    /// The hosts written out as guards, which may be none. A bracketed
+    /// IPv6 literal is named but gets no guard: a whole-host block of one
+    /// is applied to requests only, never refused early.
     NamedHosts,
-    /// It names no host, and can apply to any. Among the rules for every
-    /// app this guards nothing; an exception for an app that names no
-    /// host is meant to open every host to that app (`app_rules.rs`).
+    /// It names no host, or hosts that could not all be written out.
+    /// Among the rules for every app it guards only the hosts written; an
+    /// exception for an app is then meant to open every host to that app
+    /// (`app_rules.rs`).
     Unbounded,
 }
 
@@ -342,13 +345,15 @@ pub(super) fn write_guards(
     } else if let Some(domains) = &rule.opt_to_domains {
         let mut scope = source
             .destinations()
-            .filter(|domain| name_matches_host_pattern(domain))
+            .filter(|domain| name_matches_host_pattern(domain) || bracketed_ipv6(domain).is_some())
             .filter(|domain| domain_named(domains, domain))
             .collect::<Vec<_>>();
         scope.sort_unstable();
         scope.dedup();
         for domain in &scope {
-            push_guard(scope_rules, domain, "^");
+            if !domain.starts_with('[') {
+                push_guard(scope_rules, domain, "^");
+            }
         }
         if scope.len() == domains.len() {
             GuardCoverage::NamedHosts

@@ -1896,6 +1896,19 @@ async fn a_pinned_host_its_domain_rules_block_is_refused_with_a_try_pending() {
 }
 
 #[tokio::test]
+async fn an_app_ipv6_exception_leaves_an_unrelated_tls_host_blocked() {
+    let rig = rig(Setup {
+        rules: "||site.test^\n@@||[2001:db8::1]^$app=com.app\n",
+        trusting: Trusting::No,
+        ..Setup::default()
+    })
+    .await;
+    assert!(rig.handshake(Trust::ServerOnly, H1).await.is_err());
+    assert_eq!(rig.dials.load(Relaxed), 0);
+    assert_eq!(rig.count(Counter::HostsBlocked), 1);
+}
+
+#[tokio::test]
 async fn an_app_not_made_to_trust_us_is_refused_a_host_that_no_exception_names() {
     let unnamed = rig(Setup {
         // This exception has only a path, so the host can be refused
