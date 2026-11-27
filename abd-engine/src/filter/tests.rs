@@ -60,6 +60,164 @@ mod javascript;
 mod redirects;
 mod removeparam;
 
+fn assert_guard_verdicts(
+    filters: &Filters,
+    package: &str,
+    host: &str,
+    path: &str,
+    expected: [bool; 4],
+) {
+    let app = filters.for_app(package);
+    let request = app.check_with_page(
+        &format!("https://{host}{path}"),
+        Page::NONE,
+        "script",
+        "GET",
+    );
+    assert_eq!(
+        [
+            app.blocks_host(host),
+            app.blocks_domain(host),
+            app.blocks_unread(host),
+            request.blocked,
+        ],
+        expected,
+        "{package} on {host}{path} (early, domain-only, unread, request)"
+    );
+}
+
+#[test]
+fn uppercase_https_names_a_host_for_app_guards() {
+    let filters =
+        filters("||cdn.example^\n||ads.example^\n@@|HTTPS://cdn.example/pass$app=com.reader");
+    assert_guard_verdicts(
+        &filters,
+        "com.reader",
+        "cdn.example",
+        "/pass",
+        [false, true, false, false],
+    );
+    assert_guard_verdicts(&filters, "com.other", "cdn.example", "/pass", [true; 4]);
+    for app in ["com.reader", "com.other"] {
+        assert_guard_verdicts(&filters, app, "ads.example", "/pass", [true; 4]);
+    }
+}
+
+#[test]
+fn mixed_case_http_anchors_do_not_guard_https() {
+    let filters =
+        filters("||cdn.example^\n||ads.example^\n@@|Http://cdn.example/pass$app=com.reader");
+    for app in ["com.reader", "com.other"] {
+        for host in ["cdn.example", "ads.example"] {
+            assert_guard_verdicts(&filters, app, host, "/pass", [true; 4]);
+        }
+    }
+}
+
+#[test]
+fn app_exceptions_from_mobile_lists_take_back_a_domain_block() {
+    for exception in [
+        "@@||imasdk.googleapis.com$app=com.reader",
+        "@@*$app=com.reader",
+    ] {
+        let filters = filters(&format!("||imasdk.googleapis.com^\n{exception}\n"));
+        let reader = filters.for_app("com.reader");
+        assert!(!reader.blocks_host("imasdk.googleapis.com"), "{exception}");
+        assert!(
+            !reader.blocks_domain("imasdk.googleapis.com"),
+            "{exception}"
+        );
+        let other = filters.for_app("com.other");
+        assert!(other.blocks_domain("imasdk.googleapis.com"), "{exception}");
+    }
+}
+
+#[test]
+fn mixed_case_exception_hosts_are_named_without_a_guard() {
+    for pattern in ["|https://CDN.example", "||CDN.example", "CDN.COM"] {
+        let host = if pattern.ends_with(".COM") {
+            "cdn.com"
+        } else {
+            "cdn.example"
+        };
+        let filters = filters(&format!(
+            "||{host}^\n||ads.example^\n@@{pattern}/pass$app=com.reader"
+        ));
+        // A host anchor is guarded by the matcher's lower-case host name.
+        let early = !pattern.starts_with("||");
+        assert_guard_verdicts(
+            &filters,
+            "com.reader",
+            host,
+            "/pass",
+            [early, true, early, false],
+        );
+        assert_guard_verdicts(&filters, "com.other", host, "/pass", [true; 4]);
+        for app in ["com.reader", "com.other"] {
+            assert_guard_verdicts(&filters, app, "ads.example", "/pass", [true; 4]);
+        }
+    }
+}
+
+#[test]
+fn positive_destinations_bound_an_app_exception_even_without_every_guard() {
+    for (other_block, other_destination, whole) in [
+        ("foo_bar.example", "foo_bar.example", false),
+        ("parent.example", "foo_bar.parent.example", true),
+    ] {
+        let filters = filters(&format!(
+            "||ads.example^\n||cdn.example^\n||{other_block}^\n\
+             @@/pass^$to=cdn.example|{other_destination},app=com.reader"
+        ));
+        assert_guard_verdicts(
+            &filters,
+            "com.reader",
+            "cdn.example",
+            "/pass",
+            [false, true, false, false],
+        );
+        assert_guard_verdicts(&filters, "com.other", "cdn.example", "/pass", [true; 4]);
+        assert_guard_verdicts(
+            &filters,
+            "com.reader",
+            other_destination,
+            "/pass",
+            [whole, whole, whole, false],
+        );
+        assert_guard_verdicts(
+            &filters,
+            "com.other",
+            other_destination,
+            "/pass",
+            [whole, whole, whole, true],
+        );
+        for app in ["com.reader", "com.other"] {
+            assert_guard_verdicts(&filters, app, "ads.example", "/pass", [true; 4]);
+        }
+    }
+}
+
+#[test]
+fn destination_exclusions_alone_leave_an_app_exception_unbounded() {
+    let filters = filters(
+        "||ads.example^\n||evil.example^\n||unrelated.test^\n@@/pass^$to=~evil.example,app=com.reader",
+    );
+    for (host, path, blocked) in [
+        ("ads.example", "/pass", false),
+        ("evil.example", "/pass", true),
+        ("unrelated.test", "/ads", true),
+    ] {
+        assert_guard_verdicts(
+            &filters,
+            "com.reader",
+            host,
+            path,
+            [false, true, false, blocked],
+        );
+        assert_guard_verdicts(&filters, "com.other", host, path, [true; 4]);
+    }
+}
+
 #[test]
 fn bracketed_ipv6_blocks_apply_only_to_requests() {
     for (rule, blocks_other_app) in [
