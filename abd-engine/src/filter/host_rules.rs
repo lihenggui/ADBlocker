@@ -21,7 +21,7 @@ use adblock::filters::network::{NetworkFilter, NetworkFilterMask as Mask};
 use adblock::lists::{FilterSet, ParseOptions};
 
 use super::{SeenAnchors, domain_named, is_network_exception};
-use crate::host::{bracketed_ipv6, suffixes};
+use crate::host::suffixes;
 use crate::public_suffix;
 use crate::rule::{self, ExceptionHost, Rule};
 
@@ -45,8 +45,7 @@ fn wildcard_host(host: &str) -> bool {
         && host.bytes().any(|b| b.is_ascii_alphanumeric())
 }
 
-/// Whether the exception pattern names a host. Writes a guard at least as
-/// wide as the named host unless it is an IPv6 literal.
+/// Whether the exception pattern names a host, even if it gets no guard.
 fn exception_host(source: &Rule<'_>, rule: &NetworkFilter<'_>, out: &mut String) -> bool {
     match source.exception_host() {
         Some(ExceptionHost::Ipv6) => true,
@@ -55,10 +54,7 @@ fn exception_host(source: &Rule<'_>, rule: &NetworkFilter<'_>, out: &mut String)
             host,
             has_scheme,
             absolute,
-        }) => {
-            let absolute = absolute && rule.mask.contains(Mask::IS_LEFT_ANCHOR);
-            leading_guard(host, has_scheme, absolute, out)
-        }
+        }) => leading_guard(host, has_scheme, absolute, rule, out),
         None => false,
     }
 }
@@ -86,7 +82,26 @@ fn anchored_guard(token: &str, rule: &NetworkFilter<'_>, out: &mut String) -> bo
     true
 }
 
-fn leading_guard(host: &str, has_scheme: bool, absolute: bool, out: &mut String) -> bool {
+fn leading_guard(
+    host: &str,
+    has_scheme: bool,
+    absolute: bool,
+    rule: &NetworkFilter<'_>,
+    out: &mut String,
+) -> bool {
+    if host.bytes().any(|b| b.is_ascii_uppercase()) {
+        // The matcher's spelling can identify a known suffix when the
+        // leading token could also be a filename. The guard uses source text.
+        return if has_scheme {
+            crate::host::has_hostname_labels(host)
+        } else {
+            rule.filter
+                .iter()
+                .next()
+                .and_then(|pattern| pattern.trim_start_matches('/').get(..host.len()))
+                .is_some_and(|name| name_matches_host_pattern(name) && has_known_suffix(name))
+        };
+    }
     // A leading hostname counts for its own host even when the pattern
     // could also match in the path on another host.
     if has_scheme
@@ -98,6 +113,7 @@ fn leading_guard(host: &str, has_scheme: bool, absolute: bool, out: &mut String)
         push_guard(out, host, "*^");
         return true;
     }
+    let absolute = absolute && rule.mask.contains(Mask::IS_LEFT_ANCHOR);
     if name_matches_host_pattern(host) && (absolute || has_known_suffix(host)) {
         push_guard(out, host, "^");
         return true;
@@ -323,14 +339,11 @@ pub(super) fn can_guard(source: &Rule<'_>, rule: &NetworkFilter<'_>) -> bool {
 
 /// What an exception was found to guard.
 pub(super) enum GuardCoverage {
-    /// The hosts written out as guards, which may be none. A bracketed
-    /// IPv6 literal is named but gets no guard: a whole-host block of one
-    /// is applied to requests only, never refused early.
+    /// The exception names hosts. Only names that can be represented as
+    /// guards are written out.
     NamedHosts,
-    /// It names no host, or hosts that could not all be written out.
-    /// Among the rules for every app it guards only the hosts written; an
-    /// exception for an app is then meant to open every host to that app
-    /// (`app_rules.rs`).
+    /// The exception names no bounded set of hosts. An app exception can
+    /// then guard every host for that app (`app_rules.rs`).
     Unbounded,
 }
 
@@ -345,21 +358,14 @@ pub(super) fn write_guards(
     } else if let Some(domains) = &rule.opt_to_domains {
         let mut scope = source
             .destinations()
-            .filter(|domain| name_matches_host_pattern(domain) || bracketed_ipv6(domain).is_some())
-            .filter(|domain| domain_named(domains, domain))
+            .filter(|domain| name_matches_host_pattern(domain) && domain_named(domains, domain))
             .collect::<Vec<_>>();
         scope.sort_unstable();
         scope.dedup();
-        for domain in &scope {
-            if !domain.starts_with('[') {
-                push_guard(scope_rules, domain, "^");
-            }
+        for domain in scope {
+            push_guard(scope_rules, domain, "^");
         }
-        if scope.len() == domains.len() {
-            GuardCoverage::NamedHosts
-        } else {
-            GuardCoverage::Unbounded
-        }
+        GuardCoverage::NamedHosts
     } else {
         GuardCoverage::Unbounded
     }

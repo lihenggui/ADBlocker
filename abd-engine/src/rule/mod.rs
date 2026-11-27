@@ -479,7 +479,10 @@ impl<'a> Rule<'a> {
     }
 
     pub(crate) fn http_only_anchor(&self) -> bool {
-        self.line.starts_with("@@|http://")
+        const PREFIX: &str = "@@|http://";
+        self.line
+            .get(..PREFIX.len())
+            .is_some_and(|prefix| prefix.eq_ignore_ascii_case(PREFIX))
     }
 
     pub(crate) fn exception_host(&self) -> Option<ExceptionHost<'a>> {
@@ -493,20 +496,22 @@ impl<'a> Rule<'a> {
         }
         let anchored = pattern.starts_with('|');
         let pattern = pattern.strip_prefix('|').unwrap_or(pattern);
-        let authority = ["https://", "http://", "://"]
-            .into_iter()
-            .find_map(|scheme| pattern.strip_prefix(scheme));
-        let absolute = (pattern.starts_with("https://") || pattern.starts_with("http://"))
-            && authority.is_some_and(|host| !host.starts_with('/'));
-        let host = authority.unwrap_or(pattern);
+        let scheme = pattern.split_once("://").filter(|(scheme, _)| {
+            scheme.is_empty()
+                || scheme.eq_ignore_ascii_case("https")
+                || scheme.eq_ignore_ascii_case("http")
+        });
+        let absolute =
+            scheme.is_some_and(|(scheme, host)| !scheme.is_empty() && !host.starts_with('/'));
+        let host = scheme.map_or(pattern, |(_, host)| host);
         // Unless anchored at the start of the URL, the literal can match
         // anywhere in it, such as in a query on another host.
-        if anchored && authority.is_some() && starts_with_ipv6_host(host) {
+        if anchored && scheme.is_some() && starts_with_ipv6_host(host) {
             return Some(ExceptionHost::Ipv6);
         }
         Some(ExceptionHost::Leading {
             host: host_token(host.trim_start_matches('/')),
-            has_scheme: authority.is_some(),
+            has_scheme: scheme.is_some(),
             absolute,
         })
     }
