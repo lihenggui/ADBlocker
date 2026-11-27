@@ -137,8 +137,8 @@ class RequestViewModelTest {
     }
 
     @Test
-    fun givenABlockedEndpointOrIpv6Address_whenAllowActionsAreInvoked_thenNoExceptionIsOfferedOrWritten() = runTest {
-        for (endpoint in listOf("1.2.3.4:443", "[2001:db8::1]:443", "2001:db8::1", "[2001:db8::1]")) {
+    fun givenABlockedEndpoint_whenAllowActionsAreInvoked_thenNoExceptionIsOfferedOrWritten() = runTest {
+        for (endpoint in listOf("1.2.3.4:443", "[2001:db8::1]:443", "2001:db8::1", "[1.2.3.4]", "[fe80::1%25wlan0]")) {
             val request = allowed("com.example.news").copy(host = endpoint, verdict = Verdict.HostBlocked)
             val appended = mutableListOf<String>()
             val viewModel = RequestViewModel(request.id, recorderOf(request), appsNaming(request, "News"), allowing(appended))
@@ -154,11 +154,13 @@ class RequestViewModelTest {
     }
 
     @Test
-    fun givenABlockedNameOrIpv4Address_whenOpened_thenItCanBeAllowed() {
+    fun givenABlockedNameOrAddress_whenOpened_thenItCanBeAllowed() {
         for ((host, ruleHost) in listOf(
             "cdn.example.com" to "cdn.example.com",
             "CDN.Example.com." to "cdn.example.com",
             "1.2.3.4" to "1.2.3.4",
+            "[2001:db8::1]" to "[2001:db8::1]",
+            "[2001:DB8::1]" to "[2001:db8::1]",
         )) {
             val request = allowed("com.example.news").copy(host = host, verdict = Verdict.HostBlocked)
             assertEquals(ruleHost, RequestUiState(request = request).allowHost, host)
