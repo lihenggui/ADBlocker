@@ -15,6 +15,7 @@
 //! On-demand request diagnostics. Only this engine needs original rule text.
 
 use std::borrow::Cow;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use adblock::{
@@ -27,14 +28,14 @@ use ring::digest::{SHA256, digest};
 use crate::{
     files,
     filter::{
-        AppProjections, AppRules, MatcherList, MatcherLists, OriginalLines, Patterns, RequestRules,
-        app_rule,
+        AppProjections, AppRules, Filters, MatcherList, MatcherLists, OriginalLines, Patterns,
+        RequestRules, badfilters,
     },
     list_files::{ListFiles, MAX_COMPILED, read_lists},
     paths::Paths,
     protocol_types::Check,
     rule::{
-        self, AppRule, Kind, Reason, ResponseRule, Rule, SourcePermissions, address,
+        self, AppRule, Reason, ResponseRule, Rule, SourcePermissions, address,
         driver::{Sink, drive},
         html,
         javascript::Scripts,
@@ -50,6 +51,8 @@ const MAX_INDEX: usize = 512 * 1024;
 
 struct Diagnostics {
     rules: RequestRules,
+    hosts: Engine,
+    host_originals: OriginalLines,
     apps: Option<AppRules>,
     patterns: Patterns,
     index: Vec<Entry>,
@@ -61,46 +64,39 @@ fn fingerprint(rule: &str) -> [u8; 16] {
         .unwrap()
 }
 
-fn app_name(rule: &Rule<'_>) -> Option<String> {
-    match &rule.kind {
-        Kind::App(app) => app_rule(app),
-        _ => None,
-    }
-}
-
-fn indexed_line<'a>(source: &'a Rule<'_>) -> Cow<'a, str> {
-    source
-        .original()
-        .map_or_else(|| source.normalized(), Cow::Borrowed)
-}
-
 fn index_rule(source: &Rule<'_>, number: usize, index: &mut Vec<Entry>) -> bool {
-    let normalized = indexed_line(source);
-    if normalized.is_empty() {
+    if source.line.is_empty() {
         return true;
     }
-    // A rule for apps takes two entries.
-    if index.len() + 2 > MAX_INDEX {
+    if index.len() == MAX_INDEX {
         *index = Vec::new();
         return false;
     }
-    // A rule for apps is named as the engine has it.
-    let named = app_name(source);
-    for rule in [Some(normalized.as_ref()), named.as_deref()]
-        .into_iter()
-        .flatten()
-    {
-        let mut entry = [0; 20];
-        entry[..16].copy_from_slice(&fingerprint(rule));
-        entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
-        index.push(entry);
-    }
+    let mut entry = [0; 20];
+    entry[..16].copy_from_slice(&fingerprint(source.line));
+    entry[16..].copy_from_slice(&(number as u32).to_be_bytes());
+    index.push(entry);
     true
+}
+
+fn project_host(hosts: &mut MatcherList, source: &Rule<'_>, disabled: &HashSet<u64>) {
+    let Some((whole, _)) = source.whole_host() else {
+        return;
+    };
+    let parsed = match &whole {
+        Cow::Owned(candidate) => rule::parse_network(candidate),
+        Cow::Borrowed(_) => source.network(),
+    };
+    if parsed.is_some_and(|rule| !rule.is_badfilter() && !disabled.contains(&rule.get_id())) {
+        hosts.push(&whole, (whole != source.line).then_some(source.line));
+    }
 }
 
 struct DiagnosticSink<'a, 'build> {
     matcher: &'build mut MatcherLists<'a>,
     normalized: &'build mut MatcherList,
+    hosts: &'build mut MatcherList,
+    disabled: &'build HashSet<u64>,
     apps: &'build mut AppProjections<'a>,
     patterns: &'build mut Patterns,
     number: usize,
@@ -117,6 +113,7 @@ impl<'a> Sink<'a> for DiagnosticSink<'a, '_> {
         if *self.indexing {
             *self.indexing = index_rule(source, self.number, self.index);
         }
+        project_host(self.hosts, source, self.disabled);
     }
 
     fn comment(&mut self, source: &Rule<'a>) {
@@ -172,15 +169,20 @@ impl Diagnostics {
         let mut index = Vec::new();
         let mut indexing = true;
         let lists = entries.collect::<std::io::Result<Vec<_>>>()?;
+        let disabled = badfilters(lists.iter().map(|(_, text)| text.as_str()));
         let mut matcher = MatcherLists::new(true);
+        let mut hosts = MatcherLists::new(true);
         let mut apps = AppProjections::default();
         let mut patterns = Patterns::default();
         for (file, text) in &lists {
             let mut normalized = MatcherList::with_capacity(text.len());
+            let mut whole = MatcherList::with_capacity(0);
             let number = paths.binary_search_by(|p| p.as_path().cmp(file)).unwrap();
             let mut sink = DiagnosticSink {
                 matcher: &mut matcher,
                 normalized: &mut normalized,
+                hosts: &mut whole,
+                disabled: &disabled,
                 apps: &mut apps,
                 patterns: &mut patterns,
                 number,
@@ -190,12 +192,14 @@ impl Diagnostics {
             // Diagnostics builds only the request matchers and has no script table.
             drive(text, SourcePermissions::default(), None, &mut sink);
             matcher.finish_list(normalized, options);
+            hosts.finish_list(whole, options);
         }
         index.sort_unstable();
         index.dedup_by(|next, first| next[..16] == first[..16]);
         let apps = apps.compile(true, |_, _| {}, None);
         patterns.report_dropped();
         let (full, originals) = matcher.compile();
+        let (hosts, host_originals) = hosts.compile();
         Ok(Self {
             apps,
             patterns,
@@ -204,6 +208,8 @@ impl Diagnostics {
                 originals,
                 redirects: None,
             },
+            hosts,
+            host_originals,
             index,
         })
     }
@@ -212,10 +218,7 @@ impl Diagnostics {
         // Very dense lists still get exact attribution within the text budget.
         if self.index.is_empty() {
             for (file, text) in read_lists(files).flatten() {
-                if preprocess::lines(&text).any(|line| {
-                    let source = rule::read(line);
-                    indexed_line(&source) == rule || app_name(&source).as_deref() == Some(rule)
-                }) {
+                if preprocess::lines(&text).any(|line| line.trim() == rule) {
                     return Some(file);
                 }
             }
@@ -251,6 +254,7 @@ impl Diagnostics {
             Some((decoded, tail))
         }
         let (full, rest) = engine(rest)?;
+        let (hosts, rest) = engine(rest)?;
         let mut rest = rest;
         let mut apps = [&[][..]; 5];
         for kept in &mut apps {
@@ -264,10 +268,17 @@ impl Diagnostics {
         let (patterns, rest) = Self::read_part(rest)?;
         let patterns = Patterns::cached(patterns)?;
         let (origins, entries) = Self::read_part(rest)?;
-        let (originals, app_originals): (OriginalLines, Option<OriginalLines>) =
-            serde_json::from_slice(origins).ok()?;
+        let (originals, host_originals, app_originals): (
+            OriginalLines,
+            OriginalLines,
+            Option<(OriginalLines, OriginalLines, OriginalLines)>,
+        ) = serde_json::from_slice(origins).ok()?;
         if let Some(apps) = &mut apps {
-            apps.block_originals = app_originals?;
+            (
+                apps.block_originals,
+                apps.exception_originals,
+                apps.host_originals,
+            ) = app_originals?;
         }
         let (entries, tail) = entries.as_chunks::<20>();
         if !tail.is_empty() || entries.len() > MAX_INDEX {
@@ -279,6 +290,8 @@ impl Diagnostics {
                 redirects: None,
                 originals,
             },
+            hosts: hosts?,
+            host_originals,
             apps,
             patterns,
             index: entries.to_vec(),
@@ -295,9 +308,16 @@ impl Diagnostics {
             .unwrap_or_default();
         let originals = serde_json::to_vec(&(
             &self.rules.originals,
-            self.apps.as_ref().map(|apps| &apps.block_originals),
+            &self.host_originals,
+            self.apps.as_ref().map(|apps| {
+                (
+                    &apps.block_originals,
+                    &apps.exception_originals,
+                    &apps.host_originals,
+                )
+            }),
         ))?;
-        let compiled = [full]
+        let compiled = [full, self.hosts.serialize()]
             .into_iter()
             .chain(apps)
             .chain([self.patterns.serialized(), originals]);
@@ -347,16 +367,61 @@ fn load(dirs: &[&Path], cache: &Path) -> Result<(Vec<PathBuf>, Diagnostics)> {
 /// `app` is the app that asks, as the engine names it, for the rules that
 /// are for apps; without one only the rules for every app are looked at.
 pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str) -> Result<Check> {
+    diagnose(paths, |diagnostics| {
+        diagnostics
+            .rules
+            .check_for(diagnostics.app(app), url, page, kind, "GET")
+    })
+}
+
+pub fn check_host(paths: &Paths, app: Option<&str>, host: &str) -> Result<Check> {
+    diagnose(paths, |diagnostics| diagnostics.check_host(app, host))
+}
+
+impl Diagnostics {
+    fn app(&self, app: Option<&str>) -> Option<(&AppRules, crate::filter::Scope<'_>)> {
+        self.apps
+            .as_ref()
+            .zip(app.and_then(|app| self.patterns.scope(app)))
+    }
+
+    fn check_host(&self, app: Option<&str>, host: &str) -> crate::filter::Check {
+        let Some(mut request) = Filters::host_request(host) else {
+            return crate::filter::Check::default();
+        };
+        if let Some((apps, scope)) = self.app(app) {
+            return apps.check(
+                &self.hosts,
+                (&apps.hosts, &apps.host_originals),
+                &mut request,
+                &scope,
+                Some(&self.host_originals),
+            );
+        }
+        let found = self.hosts.check_network_request(&request);
+        crate::filter::Check {
+            blocked: found.should_block(),
+            rule: found
+                .filter
+                .and_then(|rule| self.host_originals.shown(rule)),
+            exception: found
+                .exception
+                .and_then(|rule| self.host_originals.shown(rule)),
+            ..Default::default()
+        }
+    }
+}
+
+fn diagnose(
+    paths: &Paths,
+    check: impl FnOnce(&Diagnostics) -> crate::filter::Check,
+) -> Result<Check> {
     crate::public_suffix::install();
     let rules = paths.rules();
     let lists = paths.lists();
     let (files, diagnostics) = load(&[&lists, &rules], &paths.cache().join("diagnostic-v1"))?;
-    let apps = diagnostics
-        .apps
-        .as_ref()
-        .zip(app.and_then(|app| diagnostics.patterns.scope(app)));
-    let result = diagnostics.rules.check_for(apps, url, page, kind, "GET");
-    let source = result.rule.as_deref().and_then(|rule| {
+    let result = check(&diagnostics);
+    let source_of = |rule: &str| {
         let file = diagnostics.source(&files, rule)?;
         if file.parent() == Some(rules.as_path()) {
             return Some("rules".to_owned());
@@ -365,11 +430,15 @@ pub fn check(paths: &Paths, app: Option<&str>, url: &str, page: &str, kind: &str
             .into_iter()
             .find(|s| s.enabled && sources::active_copy(&lists, &s.url).1 == *file)
             .map(|s| s.url)
-    });
+    };
+    let source = result.rule.as_deref().and_then(source_of);
+    let exception_source = result.exception.as_deref().and_then(source_of);
     Ok(Check {
         blocked: result.blocked,
         rule: result.rule,
         source,
+        exception: result.exception,
+        exception_source,
     })
 }
 
@@ -418,6 +487,83 @@ mod tests {
         assert!(result.blocked);
         assert_eq!(result.rule.as_deref(), Some(rule));
         assert_eq!(result.source.as_deref(), Some("rules"));
+    }
+
+    #[test]
+    fn the_exception_that_overrides_a_block_keeps_its_spelling_and_source_across_cache_reads() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir(paths.lists()).unwrap();
+        std::fs::create_dir(paths.rules()).unwrap();
+        let url = "https://lists.example/a.txt";
+        let list = paths.lists().join(crate::list_url::file_name(url));
+        std::fs::write(paths.sources(), url).unwrap();
+        std::fs::write(
+            &list,
+            "||shared.example^\n||scoped.example^\n@@||subscribed.example^\n",
+        )
+        .unwrap();
+        let shared = "@@||shared.example^$to=SHARED.example";
+        let scoped = "@@||scoped.example^$app=com.Example.Reader,to=SCOPED.example";
+        std::fs::write(
+            paths.user_rules(),
+            format!("{shared}\n{scoped}\n||subscribed.example^$app=com.example.reader"),
+        )
+        .unwrap();
+
+        let files = ListFiles::read(&[&paths.lists(), &paths.rules()]).unwrap();
+        let cache = paths.cache().join("diagnostic-v1");
+        for _ in 0..2 {
+            for (name, app, exception, source) in [
+                ("shared.example", None, shared, "rules"),
+                (
+                    "scoped.example",
+                    Some("com.example.reader"),
+                    scoped,
+                    "rules",
+                ),
+                (
+                    "subscribed.example",
+                    Some("com.example.reader"),
+                    "@@||subscribed.example^",
+                    url,
+                ),
+            ] {
+                let found = check(&paths, app, &format!("https://{name}/ad"), "", "other").unwrap();
+                assert!(!found.blocked, "{name}");
+                assert_eq!(found.exception.as_deref(), Some(exception));
+                assert_eq!(found.exception_source.as_deref(), Some(source));
+            }
+            assert!(Diagnostics::read(&cache, files.generation).is_some());
+        }
+    }
+
+    #[test]
+    fn domain_diagnostics_use_whole_host_rules_and_keep_their_original_lines() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = Paths::new(dir.path());
+        std::fs::create_dir(paths.rules()).unwrap();
+        let scoped = "||mine.example^$app=com.Example.Reader";
+        let hosts = "0.0.0.0 hosts.example";
+        std::fs::write(paths.user_rules(), format!("{scoped}\n{hosts}\n||path.example/\n||disabled.example^\n||disabled.example^$badfilter\n")).unwrap();
+        for _ in 0..2 {
+            let found = check_host(&paths, Some("com.example.reader"), "mine.example").unwrap();
+            assert!(found.blocked);
+            assert_eq!(found.rule.as_deref(), Some(scoped));
+            assert_eq!(found.source.as_deref(), Some("rules"));
+            let found = check_host(&paths, None, "hosts.example").unwrap();
+            assert!(found.blocked);
+            assert_eq!(found.rule.as_deref(), Some(hosts));
+            assert_eq!(found.source.as_deref(), Some("rules"));
+            for host in [
+                "mine.example",
+                "path.example",
+                "disabled.example",
+                "hosts.example:443",
+            ] {
+                assert!(!check_host(&paths, None, host).unwrap().blocked, "{host}");
+            }
+        }
     }
 
     #[test]

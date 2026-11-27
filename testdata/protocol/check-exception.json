@@ -1,0 +1,7 @@
+{
+  "blocked": false,
+  "rule": "||adnet.example^",
+  "source": "https://easylist.to/easylist/easylist.txt",
+  "exception": "@@||adnet.example^$app=com.example.reader",
+  "exception_source": "rules"
+}

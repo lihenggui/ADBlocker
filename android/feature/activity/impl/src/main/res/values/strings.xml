@@ -60,8 +60,10 @@
     <string name="feature_activity_page">Page</string>
     <string name="feature_activity_rule">Current rule match (GET)</string>
     <string name="feature_activity_rule_unavailable">Unavailable</string>
+    <string name="feature_activity_domain_rule">Current domain rule</string>
     <string name="feature_activity_why">Reason</string>
     <string name="feature_activity_my_rules">My rules</string>
+    <string name="feature_activity_remove_rule">Remove this rule</string>
     <!-- Security: The app refuses the local certificate for this domain. -->
     <string name="feature_activity_reason_pinned">The app does not accept the ADBlocker certificate for this domain, so it is filtered by domain only.</string>
     <!-- Security: Explains why this connection was filtered without decryption. -->
@@ -101,6 +103,9 @@
     <string name="feature_activity_allowed_host_everywhere">Allowed %1$s in all apps</string>
     <!-- %1$s is the host name and %2$s is the app label or package name. -->
     <string name="feature_activity_allowed_host_in_app">Allowed %1$s in %2$s</string>
+    <string name="feature_activity_rule_removed">Rule removed</string>
+    <string name="feature_activity_rule_not_in_my_rules">This rule isn’t in My rules. Edit custom rules in rules/*.txt or in the rule editor.</string>
+    <string name="feature_activity_undo">Undo</string>
     <string name="feature_activity_forgotten">Decryption is retried at the next connection</string>
     <string name="feature_activity_failed">Action failed. Check the filtering service in Settings.</string>
     <string name="feature_activity_select">Select a request</string>

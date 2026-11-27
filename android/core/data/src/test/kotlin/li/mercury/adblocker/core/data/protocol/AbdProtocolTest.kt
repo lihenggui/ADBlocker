@@ -410,6 +410,39 @@ class AbdProtocolTest {
         assertTrue(result.blocked)
         assertEquals("||adnet.example^", result.rule)
         assertEquals(RuleSource.List("https://easylist.to/easylist/easylist.txt"), result.source)
+        assertTrue(result.hasExceptionField)
+        assertNull(result.exception)
+        assertNull(result.exceptionSource)
+    }
+
+    @Test
+    fun givenAnAppException_whenParsingACheck_thenItNamesBothRulesAndTheirSources() {
+        val result = parseCheck(case("check-exception.json"))
+
+        assertFalse(result.blocked)
+        assertEquals("||adnet.example^", result.rule)
+        assertEquals(RuleSource.List("https://easylist.to/easylist/easylist.txt"), result.source)
+        assertEquals("@@||adnet.example^\$app=com.example.reader", result.exception)
+        assertEquals(RuleSource.UserRules, result.exceptionSource)
+        assertTrue(result.hasExceptionField)
+    }
+
+    @Test
+    fun givenAnOlderDaemonResponse_whenParsingACheck_thenTheExceptionFieldIsAbsent() {
+        val result = parseCheck("""{ "blocked": true, "rule": "||adnet.example^", "source": "https://easylist.to/easylist/easylist.txt" }""")
+
+        assertTrue(result.blocked)
+        assertEquals("||adnet.example^", result.rule)
+        assertEquals(RuleSource.List("https://easylist.to/easylist/easylist.txt"), result.source)
+        assertFalse(result.hasExceptionField)
+        assertNull(result.exception)
+        assertNull(result.exceptionSource)
+    }
+
+    @Test
+    fun givenARuleEditReceipt_whenParsed_thenItReportsWhetherTheEditChangedAnything() {
+        assertTrue(parseRuleEdit(case("rules-edit.json")))
+        assertFalse(parseRuleEdit("""{"changed":false}"""))
     }
 
     @Test

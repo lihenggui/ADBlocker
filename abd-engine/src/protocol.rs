@@ -27,7 +27,7 @@ pub use crate::diagnostics::check;
 use crate::paths::Paths;
 use crate::pause::Pauses;
 pub use crate::protocol_types::{
-    Check, Dropped, Event, Issue, IssueKind, ListState, RulesCheck, Seen, Update,
+    Check, Dropped, Event, Issue, IssueKind, ListState, RuleEdit, RulesCheck, Seen, Update,
 };
 use crate::settings::Settings;
 use crate::{apps, policy, sources, state, stats};
@@ -1115,10 +1115,23 @@ mod tests {
             "! Title: EasyList\n||adnet.example^\n",
         )
         .unwrap();
-        std::fs::write(paths.user_rules(), "||mine.example^\n").unwrap();
+        std::fs::write(
+            paths.user_rules(),
+            "||mine.example^\n@@||adnet.example^$app=com.example.reader\n",
+        )
+        .unwrap();
         let url = "https://ads.adnet.example/v2/serve?slot=feed_3";
         let c = check(&paths, None, url, "https://news.example/", "script").unwrap();
         assert_eq!(value(c), json("check.json"));
+        let c = check(
+            &paths,
+            Some("com.example.reader"),
+            url,
+            "https://news.example/",
+            "script",
+        )
+        .unwrap();
+        assert_eq!(value(c), json("check-exception.json"));
 
         let c = check(
             &paths,

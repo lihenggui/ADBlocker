@@ -22,21 +22,27 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import li.mercury.adblocker.core.common.result.launchCatching
 import li.mercury.adblocker.core.common.result.suspendRunCatching
 import li.mercury.adblocker.core.data.repository.AppsRepository
 import li.mercury.adblocker.core.data.repository.RulesRepository
+import li.mercury.adblocker.core.data.repository.allowRule
+import li.mercury.adblocker.core.data.repository.blockRule
 import li.mercury.adblocker.core.model.InstalledApp
 import li.mercury.adblocker.core.model.RequestEvent
 import li.mercury.adblocker.core.model.RuleCheckResult
+import li.mercury.adblocker.core.model.RuleSource
 import li.mercury.adblocker.core.model.Verdict
-import li.mercury.adblocker.core.ui.MessageQueue
 import li.mercury.adblocker.core.ui.UiMessage
 import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.isolateLtr
@@ -50,15 +56,34 @@ data class RequestUiState(
     /** The package a rule for this app alone names. */
     val rulePackage: String? = request?.identity?.rulePackage,
     val app: InstalledApp? = null,
-    /** The current rules’ result for testing the recorded URL as a GET request. */
+    /** The current rule match for the recorded URL as a GET, or the blocked domain. */
     val rule: RuleCheckResult? = null,
+    val ruleCheckPending: Boolean = false,
     val ruleCheckUnavailable: Boolean = false,
     val done: Boolean = false,
+    val userAllowRule: String? = null,
 ) {
-    internal val allowHost: String? = when (request?.verdict) {
-        Verdict.Blocked, Verdict.HostBlocked -> exceptionHost(request.host)
-        else -> null
+    internal val ruleToRemove: String? = when {
+        request == null || request.verdict == Verdict.Passed || rule?.hasExceptionField != true -> null
+        rule.blocked && rule.source == RuleSource.UserRules -> rule.rule
+        !rule.blocked && rule.exceptionSource == RuleSource.UserRules -> rule.exception
+        else -> userAllowRule
     }
+
+    internal val canBlock: Boolean = request?.verdict == Verdict.Allowed && ruleToRemove == null && !ruleCheckPending
+
+    private val blockedHost: String? = request
+        ?.takeIf { it.blocked && !ruleCheckPending }
+        ?.let { exceptionHost(it.host) }
+
+    private val removesGlobalBlock = ruleToRemove != null && rule?.blocked == true && rule.source == RuleSource.UserRules &&
+        ruleToRemove.substringAfter('$', "").splitToSequence('$', ',').none { it.startsWith("app=") }
+
+    internal val allowHost: String? = blockedHost.takeIf { ruleToRemove == null }
+    internal val allowHostInApp: String? = blockedHost.takeIf { rulePackage != null && (ruleToRemove == null || removesGlobalBlock) }
+
+    internal val displayedRule: String? = ruleToRemove ?: rule?.rule?.takeIf { request?.url != null }
+    internal val displayedRuleSource: RuleSource? = if (ruleToRemove != null) RuleSource.UserRules else rule?.source
 }
 
 @HiltViewModel(assistedFactory = RequestViewModel.Factory::class)
@@ -67,27 +92,56 @@ class RequestViewModel @AssistedInject constructor(
     recorder: ActivityRecorder,
     private val apps: AppsRepository,
     private val rules: RulesRepository,
+    activityMessages: ActivityMessages = ActivityMessages(),
 ) : ViewModel() {
-    private val messages = MessageQueue()
-    val pendingMessages = messages.pending
+    private val messages = activityMessages.queue
+    internal val pendingMessages = messages.pending
 
-    fun onMessageShown(id: Long) = messages.onMessageShown(id)
     private val request: RequestEvent? = recorder.state.value.feed.events.firstOrNull { it.id == requestId }
-    private val initial = RequestUiState(request = request, gone = request == null)
+    private val hostToCheck = request?.takeIf { it.verdict == Verdict.HostBlocked }?.let { exceptionHost(it.host) }
+    private val initial = RequestUiState(request = request, gone = request == null, ruleCheckPending = request?.url != null || hostToCheck != null)
+    private val revision = MutableStateFlow(0)
     private val done = MutableStateFlow(false)
+    private var action: Job? = null
     val uiState: StateFlow<RequestUiState> = flow {
         emit(initial)
         val request = request ?: return@flow
         val entry = suspendRunCatching { apps.app(request.appKey) }.getOrNull()
         val withApp = initial.copy(app = entry?.app)
         emit(withApp)
-        // Only a recorded URL can be tested against today’s rules.
-        request.url?.let { url ->
-            val rule = suspendRunCatching { rules.checkUrl(url, request.page, request.kind, request.appKey) }
-            emit(withApp.copy(rule = rule.getOrNull(), ruleCheckUnavailable = rule.isFailure))
-        }
+        if (initial.ruleCheckPending) emitAll(revision.map { checkRule(request, withApp) })
     }.combine(done) { state, complete -> state.copy(done = complete) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), initial)
+
+    private suspend fun checkRule(request: RequestEvent, state: RequestUiState): RequestUiState {
+        val url = request.url
+        val rule = suspendRunCatching {
+            if (url != null) {
+                rules.checkUrl(url, request.page, request.kind, request.appKey)
+            } else {
+                rules.checkHost(checkNotNull(hostToCheck), request.appKey)
+            }
+        }
+        val checked = state.copy(rule = rule.getOrNull(), ruleCheckPending = false, ruleCheckUnavailable = url != null && rule.isFailure)
+        if (request.verdict != Verdict.Allowed || checked.rule?.hasExceptionField != true || checked.ruleToRemove != null) return checked
+
+        // A host exception is absent from diagnostics when there was no block to override.
+        val allowance = suspendRunCatching("read request allow rule") { findUserAllowRule(request.host, checked.rulePackage) }
+        return checked.copy(userAllowRule = allowance.getOrNull(), ruleCheckUnavailable = allowance.isFailure)
+    }
+
+    private suspend fun findUserAllowRule(host: String, app: String?): String? {
+        val name = exceptionHost(host) ?: return null
+        val site = siteOf(name) ?: name
+        val hosts = generateSequence(name) { it.takeUnless { it == site }?.substringAfter('.') }
+        val candidates = buildList {
+            if (app != null) hosts.forEach { add(allowRule(it, app)) }
+            hosts.forEach { add(allowRule(it)) }
+        }
+        val candidateSet = candidates.toHashSet()
+        val matches = rules.userRules().lineSequence().map(String::trim).filter(candidateSet::contains).toHashSet()
+        return candidates.firstOrNull(matches::contains)
+    }
 
     /** Trusts the site: its connections are no longer decrypted or blocked. */
     fun trustSite() {
@@ -98,36 +152,62 @@ class RequestViewModel @AssistedInject constructor(
         }
     }
 
-    /** Blocks the request's host and every name below it, in every app. */
-    fun blockHost() = act { request ->
-        rules.blockDomain(request.host)
-        messages.show(UiMessage(R.string.feature_activity_blocked_host_everywhere, listOf(isolateLtr(request.host))))
+    fun blockHost() = blockHost(inApp = false)
+
+    fun blockHostInApp() = blockHost(inApp = true)
+
+    private fun blockHost(inApp: Boolean) {
+        val state = uiState.value
+        if (!state.canBlock) return
+        val host = state.request?.host ?: return
+        val app = if (inApp) state.rulePackage ?: return else null
+        val text = if (inApp) R.string.feature_activity_blocked_host_in_app else R.string.feature_activity_blocked_host_everywhere
+        addHostRule(blockRule(host, app), text, app)
     }
 
-    /** Blocks the request's host and every name below it in the app that made the request, in each of its profiles. */
-    fun blockHostInApp() {
-        val app = initial.rulePackage ?: return
-        act { request ->
-            rules.blockDomain(request.host, app)
-            messages.show(UiMessage(R.string.feature_activity_blocked_host_in_app, listOf(isolateLtr(request.host), ruleAppLabel(app))))
+    fun allowHost() = allowHost(inApp = false)
+
+    fun allowHostInApp() = allowHost(inApp = true)
+
+    private fun allowHost(inApp: Boolean) {
+        val state = uiState.value
+        val host = (if (inApp) state.allowHostInApp else state.allowHost) ?: return
+        val app = if (inApp) state.rulePackage ?: return else null
+        val text = if (inApp) R.string.feature_activity_allowed_host_in_app else R.string.feature_activity_allowed_host_everywhere
+        addHostRule(allowRule(host, app), text, app)
+    }
+
+    private fun addHostRule(rule: String, text: Int, app: String?) = act { request ->
+        val args = listOfNotNull(isolateLtr(request.host), app?.let(::ruleAppLabel))
+        val changed = rules.addRule(rule)
+        showRuleEdit(text, args, changed) { rules.removeRule(rule) }
+    }
+
+    fun removeRule() {
+        val rule = uiState.value.ruleToRemove ?: return
+        act(closeOnSuccess = false) {
+            if (!rules.removeRule(rule)) {
+                revision.update { it + 1 }
+                messages.show(UiMessage(R.string.feature_activity_rule_not_in_my_rules))
+                return@act
+            }
+            showRuleEdit(R.string.feature_activity_rule_removed, emptyList(), changed = true) { rules.addRule(rule) }
+            done.value = true
         }
     }
 
-    fun allowHost() {
-        val host = initial.allowHost ?: return
-        act { request ->
-            rules.allowDomain(host)
-            messages.show(UiMessage(R.string.feature_activity_allowed_host_everywhere, listOf(isolateLtr(request.host))))
+    private fun showRuleEdit(text: Int, args: List<Any>, changed: Boolean, undo: suspend () -> Unit) {
+        revision.update { it + 1 }
+        if (!changed) {
+            messages.show(UiMessage(text, args))
+            return
         }
-    }
-
-    fun allowHostInApp() {
-        val host = initial.allowHost ?: return
-        val app = initial.rulePackage ?: return
-        act { request ->
-            rules.allowDomain(host, app)
-            messages.show(UiMessage(R.string.feature_activity_allowed_host_in_app, listOf(isolateLtr(request.host), ruleAppLabel(app))))
-        }
+        messages.show(
+            UiMessage(text, args, actionLabel = R.string.feature_activity_undo) {
+                suspendRunCatching("undo request rule", undo).onFailure { showFailure() }
+                revision.update { it + 1 }
+            },
+        )
     }
 
     private fun ruleAppLabel(app: String) = appLabelArgument(uiState.value.app?.label ?: app, app)
@@ -137,15 +217,16 @@ class RequestViewModel @AssistedInject constructor(
         messages.show(UiMessage(R.string.feature_activity_forgotten))
     }
 
-    private fun act(block: suspend (RequestEvent) -> Unit) {
+    private fun act(closeOnSuccess: Boolean = true, block: suspend (RequestEvent) -> Unit) {
         val request = request ?: return
-        viewModelScope.launchCatching("request action", onFailure = {
-            messages.show(UiMessage(R.string.feature_activity_failed))
-        }) {
+        if (action?.isActive == true) return
+        action = viewModelScope.launchCatching("request action", onFailure = { showFailure() }) {
             block(request)
-            done.value = true
+            if (closeOnSuccess) done.value = true
         }
     }
+
+    private fun showFailure() = messages.show(UiMessage(R.string.feature_activity_failed))
 
     @AssistedFactory
     interface Factory {

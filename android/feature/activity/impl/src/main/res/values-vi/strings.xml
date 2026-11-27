@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Trang</string>
     <string name="feature_activity_rule">Quy tắc khớp hiện tại (GET)</string>
     <string name="feature_activity_rule_unavailable">Không xác định được</string>
+    <string name="feature_activity_domain_rule">Quy tắc tên miền hiện tại</string>
     <string name="feature_activity_why">Lý do</string>
     <string name="feature_activity_my_rules">Quy tắc của tôi</string>
+    <string name="feature_activity_remove_rule">Xóa quy tắc này</string>
     <string name="feature_activity_reason_pinned">Ứng dụng không chấp nhận chứng chỉ ADBlocker cho tên miền này, nên kết nối chỉ được lọc theo tên miền.</string>
     <string name="feature_activity_reason_hosts_only">Kết nối này đã được lọc theo tên miền. Tính năng lọc theo URL đã tắt hoặc không thể kiểm tra HTTPS.</string>
     <string name="feature_activity_reason_excluded">Tên miền nằm trong danh sách loại trừ HTTPS, chẳng hạn như danh sách tên miền ngân hàng.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">Đã chặn %1$s trong %2$s</string>
     <string name="feature_activity_allowed_host_everywhere">Đã cho phép %1$s trong tất cả ứng dụng</string>
     <string name="feature_activity_allowed_host_in_app">Đã cho phép %1$s trong %2$s</string>
+    <string name="feature_activity_rule_removed">Đã xóa quy tắc</string>
+    <string name="feature_activity_rule_not_in_my_rules">Quy tắc này không có trong Quy tắc của tôi. Bạn có thể sửa quy tắc tùy chỉnh trong rules/*.txt hoặc trong trình chỉnh sửa quy tắc.</string>
+    <string name="feature_activity_undo">Hoàn tác</string>
     <string name="feature_activity_forgotten">Sẽ thử giải mã lại vào lần kết nối tiếp theo</string>
     <string name="feature_activity_failed">Không thực hiện được. Kiểm tra dịch vụ lọc trong phần Cài đặt.</string>
     <string name="feature_activity_select">Chọn một yêu cầu</string>

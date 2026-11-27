@@ -69,7 +69,6 @@ import li.mercury.adblocker.core.model.Verdict
 import li.mercury.adblocker.core.ui.AppIcon
 import li.mercury.adblocker.core.ui.AppSnackbarHost
 import li.mercury.adblocker.core.ui.LocalShowsDetailBesideList
-import li.mercury.adblocker.core.ui.MessageEffect
 import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.formatClockTime
 import li.mercury.adblocker.core.ui.isolateLtr
@@ -83,7 +82,6 @@ import li.mercury.adblocker.core.ui.profileAppLabel
 @Composable
 fun RequestScreen(onClose: () -> Unit, viewModel: RequestViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    MessageEffect(viewModel.pendingMessages, viewModel::onMessageShown)
     // Done in the sheet: close it. Beside the list, the pane stays.
     val beside = LocalShowsDetailBesideList.current
     LaunchedEffect(state.done, beside) { if (state.done && !beside) onClose() }
@@ -100,10 +98,10 @@ fun RequestScreen(onClose: () -> Unit, viewModel: RequestViewModel, modifier: Mo
                 onBlockInApp = viewModel::blockHostInApp,
                 onAllow = viewModel::allowHost,
                 onAllowInApp = viewModel::allowHostInApp,
+                onRemove = viewModel::removeRule,
                 onForget = viewModel::forgetPinned,
             ),
         )
-        // Shown here only as a pane; in a sheet, the screen below shows it.
         AppSnackbarHost(Modifier.align(Alignment.BottomCenter))
     }
 }
@@ -114,6 +112,7 @@ internal class RequestActionCallbacks(
     val onBlockInApp: () -> Unit,
     val onAllow: () -> Unit,
     val onAllowInApp: () -> Unit,
+    val onRemove: () -> Unit,
     val onForget: () -> Unit,
 )
 
@@ -191,9 +190,10 @@ private fun RequestFacts(request: RequestEvent, state: RequestUiState) {
     if (state.ruleCheckUnavailable) {
         Fact(stringResource(R.string.feature_activity_rule)) { Text(stringResource(R.string.feature_activity_rule_unavailable)) }
     }
-    state.rule?.rule?.let { rule ->
+    state.displayedRule?.let { rule ->
         // The rule as code, then the list it is in, by its name.
-        Fact(stringResource(R.string.feature_activity_rule)) {
+        val label = if (request.url == null) R.string.feature_activity_domain_rule else R.string.feature_activity_rule
+        Fact(stringResource(label)) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(4.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                 Text(
                     rule,
@@ -202,7 +202,7 @@ private fun RequestFacts(request: RequestEvent, state: RequestUiState) {
                         .background(MaterialTheme.colorScheme.surfaceContainerHighest, RoundedCornerShape(4.dp))
                         .padding(horizontal = 6.dp, vertical = 1.dp),
                 )
-                state.rule.source?.let {
+                state.displayedRuleSource?.let {
                     Text(
                         when (it) {
                             RuleSource.UserRules -> stringResource(R.string.feature_activity_my_rules)
@@ -230,24 +230,24 @@ private fun RequestActions(
 ) {
     val app = state.rulePackage?.let { appLabelArgument(state.app?.label ?: it, it) }
     FlowRow(Modifier.padding(top = 20.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        if (state.ruleToRemove != null) {
+            FilledActionButton(AdbIcons.Delete, stringResource(R.string.feature_activity_remove_rule), actions.onRemove)
+        }
         when (request.verdict) {
-            Verdict.Blocked, Verdict.HostBlocked -> when {
-                state.allowHost == null -> Unit
-
-                app != null -> {
+            Verdict.Blocked, Verdict.HostBlocked -> {
+                if (state.allowHostInApp != null && app != null) {
                     FilledActionButton(AdbIcons.CheckCircle, stringResource(R.string.feature_activity_allow_in_app, app), actions.onAllowInApp)
-                    FilledTonalButton(onClick = actions.onAllow) { Text(stringResource(R.string.feature_activity_allow_in_all_apps)) }
                 }
-
-                else -> FilledActionButton(AdbIcons.CheckCircle, stringResource(R.string.feature_activity_allow_host), actions.onAllow)
+                if (state.allowHost != null && app != null) {
+                    FilledTonalButton(onClick = actions.onAllow) { Text(stringResource(R.string.feature_activity_allow_in_all_apps)) }
+                } else if (state.allowHost != null) {
+                    FilledActionButton(AdbIcons.CheckCircle, stringResource(R.string.feature_activity_allow_host), actions.onAllow)
+                }
             }
 
             Verdict.Allowed -> {
-                if (app != null) {
-                    FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_in_app, app), actions.onBlockInApp)
-                    FilledTonalButton(onClick = actions.onBlock) { Text(stringResource(R.string.feature_activity_block_in_all_apps)) }
-                } else {
-                    FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_host), actions.onBlock)
+                if (state.canBlock) {
+                    BlockActions(app, actions)
                 }
                 state.trustSite?.let { site ->
                     OutlinedButton(onClick = actions.onTrust) {
@@ -263,6 +263,16 @@ private fun RequestActions(
         OutlinedButton(onClick = onCopy) {
             ActionLabel(AdbIcons.ContentCopy, stringResource(R.string.feature_activity_copy))
         }
+    }
+}
+
+@Composable
+private fun BlockActions(app: String?, actions: RequestActionCallbacks) {
+    if (app != null) {
+        FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_in_app, app), actions.onBlockInApp)
+        FilledTonalButton(onClick = actions.onBlock) { Text(stringResource(R.string.feature_activity_block_in_all_apps)) }
+    } else {
+        FilledActionButton(AdbIcons.Block, stringResource(R.string.feature_activity_block_host), actions.onBlock)
     }
 }
 

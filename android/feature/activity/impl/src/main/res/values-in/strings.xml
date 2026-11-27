@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Halaman</string>
     <string name="feature_activity_rule">Kecocokan aturan saat ini (GET)</string>
     <string name="feature_activity_rule_unavailable">Tidak tersedia</string>
+    <string name="feature_activity_domain_rule">Aturan domain saat ini</string>
     <string name="feature_activity_why">Alasan</string>
     <string name="feature_activity_my_rules">Aturan saya</string>
+    <string name="feature_activity_remove_rule">Hapus aturan ini</string>
     <string name="feature_activity_reason_pinned">Aplikasi tidak menerima sertifikat ADBlocker untuk domain ini, sehingga koneksinya hanya disaring berdasarkan domain.</string>
     <string name="feature_activity_reason_hosts_only">Koneksi ini disaring berdasarkan domain. Penyaringan URL nonaktif atau pemeriksaan HTTPS tidak tersedia.</string>
     <string name="feature_activity_reason_excluded">Domain ini ada dalam daftar pengecualian HTTPS, misalnya daftar situs bank.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%1$s diblokir di %2$s</string>
     <string name="feature_activity_allowed_host_everywhere">%1$s diizinkan di semua aplikasi</string>
     <string name="feature_activity_allowed_host_in_app">%1$s diizinkan di %2$s</string>
+    <string name="feature_activity_rule_removed">Aturan dihapus</string>
+    <string name="feature_activity_rule_not_in_my_rules">Aturan ini tidak ada di Aturan saya. Ubah aturan kustom di rules/*.txt atau di editor aturan.</string>
+    <string name="feature_activity_undo">Urungkan</string>
     <string name="feature_activity_forgotten">Dekripsi dicoba lagi pada koneksi berikutnya</string>
     <string name="feature_activity_failed">Tindakan gagal. Periksa layanan penyaringan di Setelan.</string>
     <string name="feature_activity_select">Pilih permintaan</string>

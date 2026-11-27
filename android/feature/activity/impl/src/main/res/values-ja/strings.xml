@@ -52,8 +52,10 @@
     <string name="feature_activity_page">ページ</string>
     <string name="feature_activity_rule">現在一致するルール（GET）</string>
     <string name="feature_activity_rule_unavailable">確認できません</string>
+    <string name="feature_activity_domain_rule">現在のドメインルール</string>
     <string name="feature_activity_why">理由</string>
     <string name="feature_activity_my_rules">マイルール</string>
+    <string name="feature_activity_remove_rule">このルールを削除</string>
     <string name="feature_activity_reason_pinned">アプリはこのドメインの ADBlocker 証明書を受け入れないため、ドメインのみでフィルタリングされます。</string>
     <string name="feature_activity_reason_hosts_only">この接続はドメインでフィルタリングされました。URL フィルタリングがオフだったか、HTTPS の検査を行えませんでした。</string>
     <string name="feature_activity_reason_excluded">このドメインは HTTPS 除外リスト（銀行のリストなど）に登録されています。</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%2$s で %1$s をブロックしました</string>
     <string name="feature_activity_allowed_host_everywhere">すべてのアプリで %1$s を許可しました</string>
     <string name="feature_activity_allowed_host_in_app">%2$s で %1$s を許可しました</string>
+    <string name="feature_activity_rule_removed">ルールを削除しました</string>
+    <string name="feature_activity_rule_not_in_my_rules">このルールはマイルールにありません。カスタムルールは rules/*.txt またはルールエディターで編集できます。</string>
+    <string name="feature_activity_undo">元に戻す</string>
     <string name="feature_activity_forgotten">次回接続時にもう一度復号を試みます</string>
     <string name="feature_activity_failed">操作に失敗しました。「設定」でフィルタリングサービスを確認してください。</string>
     <string name="feature_activity_select">リクエストを選択</string>

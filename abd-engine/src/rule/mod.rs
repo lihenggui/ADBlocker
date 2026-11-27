@@ -132,7 +132,7 @@ pub(crate) struct AppRule<'a> {
     options: Options<'a>,
     page: Option<PageException<'a>>,
     denyallow: Option<denyallow::Condition>,
-    pub(crate) original: Option<&'a str>,
+    pub(crate) original: &'a str,
 }
 
 /// The app value and the remaining matcher options after validation.
@@ -300,10 +300,7 @@ impl<'a> Rule<'a> {
                 options,
                 page,
                 denyallow,
-                // A changed host option still reports the list's spelling.
-                original: self.original().or_else(|| {
-                    (canonical_host_options(self.line).as_ref() != self.line).then_some(self.line)
-                }),
+                original: line,
             })
         } else if let Some(page) = page {
             Kind::PageException(page)

@@ -33,6 +33,7 @@ import li.mercury.adblocker.core.screenshottesting.DemoClockRule
 import li.mercury.adblocker.core.screenshottesting.DemoData
 import li.mercury.adblocker.core.screenshottesting.captureForDevice
 import li.mercury.adblocker.core.screenshottesting.captureMultiDevice
+import li.mercury.adblocker.core.ui.appLabelArgument
 import li.mercury.adblocker.core.ui.isolateLtr
 import org.junit.Rule
 import org.junit.Test
@@ -55,6 +56,7 @@ class ActivityScreenScreenshotTests {
         onBlockInApp = {},
         onAllow = {},
         onAllowInApp = {},
+        onRemove = {},
         onForget = {},
     )
 
@@ -126,6 +128,46 @@ class ActivityScreenScreenshotTests {
         composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_block_in_all_apps)).assertHasClickAction()
         val site = checkNotNull(siteOf(allowedEvent.host))
         composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_trust_site, isolateLtr(site))).assertHasClickAction()
+    }
+
+    @Test
+    fun givenBlockedByMyGlobalRule_whenOpened_thenOffersRemoveAllowInAppAndCopy() {
+        val event = DemoData.requests.first { it.verdict == Verdict.Blocked }
+        val app = DemoApp.News.installedApp
+        val rule = RuleCheckResult(blocked = true, rule = "||adnet.example^", source = RuleSource.UserRules, hasExceptionField = true)
+        capturePhone("RequestBlockedByMyRule") {
+            RequestContent(event, RequestUiState(request = event, app = app, rule = rule), requestActions)
+        }
+        val activity = composeTestRule.activity
+        val appLabel = appLabelArgument(app.label, checkNotNull(event.identity.rulePackage))
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_remove_rule)).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_allow_in_app, appLabel)).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_copy)).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_allow_in_all_apps)).assertDoesNotExist()
+    }
+
+    @Test
+    fun givenAllowedByMyException_whenOpened_thenShowsTheExceptionAndOffersRemoveTrustAndCopy() {
+        val event = allowedEvent
+        val exception = "@@||${event.host}^\$app=${event.packageName}"
+        val rule = RuleCheckResult(
+            blocked = false,
+            rule = "||${event.host}^",
+            source = RuleSource.List(DemoData.EASYLIST),
+            exception = exception,
+            exceptionSource = RuleSource.UserRules,
+            hasExceptionField = true,
+        )
+        capturePhone("RequestAllowedByMyRule") {
+            RequestContent(event, RequestUiState(request = event, app = DemoApp.News.installedApp, rule = rule), requestActions)
+        }
+        val activity = composeTestRule.activity
+        composeTestRule.onNodeWithText(exception).assertExists()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_remove_rule)).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_copy)).assertHasClickAction()
+        val site = checkNotNull(siteOf(event.host))
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_trust_site, isolateLtr(site))).assertHasClickAction()
+        composeTestRule.onNodeWithText(activity.getString(R.string.feature_activity_block_in_all_apps)).assertDoesNotExist()
     }
 
     @Test

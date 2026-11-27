@@ -88,7 +88,22 @@ class SnackbarLifetimeTest {
         }
     }
 
-    private fun showPanes() {
+    @Test
+    fun givenActivityOwnsTheUndo_whenTheSheetCloses_thenTheListCanStillUndo() {
+        var actions = 0
+        showPanes(messagesOwnedByList = true)
+        compose.runOnIdle {
+            messages.show(UiMessage(android.R.string.ok, actionLabel = android.R.string.cancel) { actions++ })
+            screenPresent.value = false
+        }
+        compose.onNodeWithText(action).performClick()
+        compose.runOnIdle {
+            assertEquals(1, actions)
+            assertTrue(messages.pending.value.isEmpty())
+        }
+    }
+
+    private fun showPanes(messagesOwnedByList: Boolean = false) {
         compose.setContent {
             ADBlockerTheme(useDynamicColor = false) {
                 CompositionLocalProvider(
@@ -98,10 +113,11 @@ class SnackbarLifetimeTest {
                     Box {
                         if (screenPresent.value) {
                             CompositionLocalProvider(LocalHostsSnackbar provides false) {
-                                MessageEffect(messages.pending, messages::onMessageShown)
+                                if (!messagesOwnedByList) MessageEffect(messages.pending, messages::onMessageShown)
                                 AppSnackbarHost()
                             }
                         }
+                        if (messagesOwnedByList) MessageEffect(messages.pending, messages::onMessageShown)
                         AppSnackbarHost()
                     }
                 }

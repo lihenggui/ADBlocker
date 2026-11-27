@@ -66,9 +66,11 @@ usage: abd <command>, as root
   update [--json] --list <url>         download one enabled list or refresh a parked previous copy
   rules get                           print your own rules
   rules set                           replace them with standard input
-  rules append [--unique]             append input, or one rule only if new
+  rules append [--unique [--json]]    append input, or one rule only if new
+  rules remove [--json]               remove exact rule lines from input
   rules check [--json]                check standard input with the user's rule permissions
   check [--json] [--app <app>] <url> [<page> [<kind>]]   what the lists say of a request
+  check [--json] [--app <app>] --host <host>             what the domain rules say
   pinned [--json [<app>]]             the hosts apps would not let us read
   pinned forget <app> [<host>]        have them read again
   watch [--json] [--app <app>]        what happens, as it happens, until standard input ends

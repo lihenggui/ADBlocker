@@ -12,6 +12,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program. If not, see <https://www.gnu.org/licenses/>.
 
+use std::collections::HashSet;
 use std::io::{Read, Write};
 
 use anyhow::{Context as _, Result, bail};
@@ -19,6 +20,7 @@ use anyhow::{Context as _, Result, bail};
 use super::{Ctx, print_json, unknown};
 use crate::list_files::{MAX_LIST, check_growth};
 use crate::paths::Paths;
+use crate::protocol::RuleEdit;
 use crate::{files, rulecheck};
 
 pub(super) fn run(
@@ -34,14 +36,25 @@ pub(super) fn run(
             write!(out, "{text}")?;
             Ok(())
         }
-        ["rules", "set"] | ["rules", "append"] | ["rules", "append", "--unique"] => {
+        ["rules", "set"]
+        | ["rules", "append"]
+        | ["rules", "append", "--unique", ..]
+        | ["rules", "remove", ..] => {
             let mode = match args {
                 ["rules", "set"] => RulesWrite::Replace,
-                ["rules", "append", "--unique"] => RulesWrite::AppendUnique,
-                _ => RulesWrite::Append,
+                ["rules", "append"] => RulesWrite::Append,
+                ["rules", "append", "--unique"] | ["rules", "append", "--unique", "--json"] => {
+                    RulesWrite::AppendUnique
+                }
+                ["rules", "remove"] | ["rules", "remove", "--json"] => RulesWrite::Remove,
+                _ => return unknown(args),
             };
-            if write_rules(paths, stdin(input)?, mode)? {
+            let changed = write_rules(paths, stdin(input)?, mode)?;
+            if changed {
                 host.reload();
+            }
+            if args.last() == Some(&"--json") {
+                return print_json(out, &RuleEdit { changed });
             }
             Ok(())
         }
@@ -73,6 +86,7 @@ enum RulesWrite {
     Replace,
     Append,
     AppendUnique,
+    Remove,
 }
 
 /// Reads and changes user.txt under the same lock for CLI processes and VPN commands.
@@ -87,6 +101,23 @@ fn write_rules(paths: &Paths, input: String, mode: RulesWrite) -> Result<bool> {
         return Ok(true);
     }
     let mut current = files::read_text(&file, MAX_LIST)?;
+    if matches!(mode, RulesWrite::Remove) {
+        // A blank line in the input names no rule; the user's blank lines stay.
+        let requested: HashSet<_> = input
+            .lines()
+            .map(str::trim)
+            .filter(|line| !line.is_empty())
+            .collect();
+        let kept: String = current
+            .split_inclusive('\n')
+            .filter(|line| !requested.contains(line.trim()))
+            .collect();
+        if kept.len() == current.len() {
+            return Ok(false);
+        }
+        files::replace(&file, kept.as_bytes())?;
+        return Ok(true);
+    }
     if matches!(mode, RulesWrite::AppendUnique) {
         let rule = input.trim();
         if rule.is_empty() || rule.lines().count() != 1 {

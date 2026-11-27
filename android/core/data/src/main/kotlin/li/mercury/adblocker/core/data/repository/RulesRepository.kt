@@ -50,11 +50,20 @@ interface RulesRepository {
     /** What the lists say about a request to [url], made by [app] when it is known. */
     suspend fun checkUrl(url: String, page: String?, kind: String?, app: String? = null): RuleCheckResult
 
+    /** Which whole-domain rule matches [host] in [app]. */
+    suspend fun checkHost(host: String, app: String): RuleCheckResult
+
     /** Adds a rule that blocks [domain] and every name below it, in the package [app] only when it is given. */
     suspend fun blockDomain(domain: String, app: String? = null)
 
     /** Adds an exception for [domain] and every name below it, in the package [app] only when it is given. */
     suspend fun allowDomain(domain: String, app: String? = null)
+
+    /** Appends a single rule if absent, returning whether it was added. */
+    suspend fun addRule(rule: String): Boolean
+
+    /** Removes exact matches for the rule, returning whether it was present. */
+    suspend fun removeRule(rule: String): Boolean
 
     /**
      * Adds the rules in [uri], a file the user picked, to the user's own, and
@@ -96,11 +105,17 @@ internal class AbdRulesRepository @Inject constructor(
 
     override suspend fun checkUrl(url: String, page: String?, kind: String?, app: String?): RuleCheckResult = abd.check(url, page, kind, app)
 
+    override suspend fun checkHost(host: String, app: String): RuleCheckResult = abd.checkHost(host, app)
+
     override suspend fun blockDomain(domain: String, app: String?) = appendDomainRule(blockRule(domain, app))
 
     override suspend fun allowDomain(domain: String, app: String?) = appendDomainRule(allowRule(domain, app))
 
     private suspend fun appendDomainRule(rule: String) = changes.changing { abd.appendUserRules("$rule\n", unique = true) }
+
+    override suspend fun addRule(rule: String): Boolean = changes.changing { abd.appendUniqueUserRule("$rule\n") }
+
+    override suspend fun removeRule(rule: String): Boolean = changes.changing { abd.removeUserRules("$rule\n") }
 
     override suspend fun import(uri: Uri): Int {
         val text = withContext(ioDispatcher) {

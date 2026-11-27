@@ -46,7 +46,7 @@ class UiMessage(
     @param:StringRes val actionLabel: Int? = null,
     val quantity: Int? = null,
     val additionalText: List<Int> = emptyList(),
-    val onAction: (() -> Unit)? = null,
+    val onAction: (suspend () -> Unit)? = null,
 )
 
 fun vpnTransferMessages(failed: Set<VpnTransferPart>): List<Int> = if (failed.isEmpty()) {
@@ -97,8 +97,7 @@ val LocalMessageScope = staticCompositionLocalOf<CoroutineScope?> { null }
 
 /**
  * Whether this screen shows the snackbar: only the front pane does, so that
- * a list and its detail side by side do not both show it, and a sheet leaves
- * it to the screen it covers.
+ * a list and its detail do not both show it.
  */
 val LocalHostsSnackbar = compositionLocalOf { true }
 

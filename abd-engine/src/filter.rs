@@ -31,11 +31,9 @@ use adblock::request::Request;
 use adblock::url_parser::{RequestUrl, parse_url};
 use adblock::utils::fast_hash;
 
-pub(crate) use self::app_patterns::Patterns;
-use self::app_patterns::Scope;
-pub(crate) use self::app_rules::{
-    AppProjections, AppRules, name as app_rule, validate as validate_app_rule,
-};
+pub(crate) use self::app_patterns::{Patterns, Scope};
+pub(crate) use self::app_rules::{AppProjections, AppRules, validate as validate_app_rule};
+pub(crate) use self::load::badfilters;
 pub(crate) use self::matcher::{MatcherList, MatcherLists, OriginalLines};
 use self::page_exceptions::PageExceptions;
 use self::response_rules::ResponseRules;
@@ -233,14 +231,19 @@ impl RequestRules {
 
     fn check_request(&self, req: &mut Request, apps: Option<(&AppRules, &Scope<'_>)>) -> Check {
         let mut check = match apps {
-            Some((rules, scope)) => {
-                rules.check(&self.full, &rules.blocks, req, scope, Some(&self.originals))
-            }
+            Some((rules, scope)) => rules.check(
+                &self.full,
+                (&rules.blocks, &rules.block_originals),
+                req,
+                scope,
+                Some(&self.originals),
+            ),
             None => {
                 let found = self.full.check_network_request(req);
                 Check {
                     blocked: found.should_block(),
                     rule: found.filter.and_then(|rule| self.originals.shown(rule)),
+                    exception: found.exception.and_then(|rule| self.originals.shown(rule)),
                     redirect: None,
                     rewritten_url: found.rewritten_url,
                 }
@@ -329,7 +332,7 @@ impl Filters {
         self.for_any_app().blocks_domain(host)
     }
 
-    fn host_request(host: &str) -> Option<Request> {
+    pub(crate) fn host_request(host: &str) -> Option<Request> {
         let authority = crate::host::canonical_authority(host, "https", 443)?;
         if authority.explicit_port {
             return None;
@@ -516,7 +519,13 @@ impl AppFilters<'_> {
         match self.app_rules() {
             Some((rules, scope)) => {
                 rules
-                    .check(hosts, &rules.hosts, request, scope, None)
+                    .check(
+                        hosts,
+                        (&rules.hosts, &rules.host_originals),
+                        request,
+                        scope,
+                        None,
+                    )
                     .blocked
             }
             None => hosts.check_network_request(request).should_block(),
@@ -647,6 +656,8 @@ pub struct Check {
     pub rewritten_url: Option<String>,
     /// The rule that matched, when the engine was built with debug info.
     pub rule: Option<String>,
+    /// The exception that overrode the block, when debug info is available.
+    pub exception: Option<String>,
 }
 
 #[cfg(test)]

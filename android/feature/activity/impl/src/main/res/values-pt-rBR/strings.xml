@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Página</string>
     <string name="feature_activity_rule">Regra correspondente (GET)</string>
     <string name="feature_activity_rule_unavailable">Indisponível</string>
+    <string name="feature_activity_domain_rule">Regra atual do domínio</string>
     <string name="feature_activity_why">Motivo</string>
     <string name="feature_activity_my_rules">Minhas regras</string>
+    <string name="feature_activity_remove_rule">Remover esta regra</string>
     <string name="feature_activity_reason_pinned">O app não aceita o certificado do ADBlocker para este domínio, por isso a filtragem é feita só por domínio.</string>
     <string name="feature_activity_reason_hosts_only">Esta conexão foi filtrada por domínio. A filtragem de URL estava desativada ou a inspeção de HTTPS estava indisponível.</string>
     <string name="feature_activity_reason_excluded">O domínio está em uma lista de exclusões de HTTPS, como a lista de bancos.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%1$s bloqueado em %2$s</string>
     <string name="feature_activity_allowed_host_everywhere">%1$s permitido em todos os apps</string>
     <string name="feature_activity_allowed_host_in_app">%1$s permitido em %2$s</string>
+    <string name="feature_activity_rule_removed">Regra removida</string>
+    <string name="feature_activity_rule_not_in_my_rules">Esta regra não está em Minhas regras. Edite as regras personalizadas em rules/*.txt ou no editor de regras.</string>
+    <string name="feature_activity_undo">Desfazer</string>
     <string name="feature_activity_forgotten">O ADBlocker tenta descriptografar de novo na próxima conexão</string>
     <string name="feature_activity_failed">Falha na ação. Confira o serviço de filtragem em Configurações.</string>
     <string name="feature_activity_select">Selecione uma solicitação</string>

@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Seite</string>
     <string name="feature_activity_rule">Aktuell passende Regel (GET)</string>
     <string name="feature_activity_rule_unavailable">Nicht verfügbar</string>
+    <string name="feature_activity_domain_rule">Aktuell passende Domainregel</string>
     <string name="feature_activity_why">Grund</string>
     <string name="feature_activity_my_rules">Eigene Regeln</string>
+    <string name="feature_activity_remove_rule">Diese Regel entfernen</string>
     <string name="feature_activity_reason_pinned">Die App akzeptiert das ADBlocker-Zertifikat für diese Domain nicht. Deshalb wird nur nach Domain gefiltert.</string>
     <string name="feature_activity_reason_hosts_only">Diese Verbindung wurde nach Domain gefiltert. Die URL-Filterung war aus oder eine HTTPS-Prüfung war nicht möglich.</string>
     <string name="feature_activity_reason_excluded">Die Domain steht auf einer Liste mit HTTPS-Ausnahmen, etwa der Liste der Banken.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%1$s in %2$s blockiert</string>
     <string name="feature_activity_allowed_host_everywhere">%1$s in allen Apps zugelassen</string>
     <string name="feature_activity_allowed_host_in_app">%1$s in %2$s zugelassen</string>
+    <string name="feature_activity_rule_removed">Regel entfernt</string>
+    <string name="feature_activity_rule_not_in_my_rules">Diese Regel ist nicht unter „Eigene Regeln“ aufgeführt. Benutzerdefinierte Regeln lassen sich in rules/*.txt oder im Regeleditor bearbeiten.</string>
+    <string name="feature_activity_undo">Rückgängig machen</string>
     <string name="feature_activity_forgotten">Beim nächsten Verbindungsaufbau wird die Entschlüsselung erneut versucht</string>
     <string name="feature_activity_failed">Aktion fehlgeschlagen. Prüfe den Filterdienst in den Einstellungen.</string>
     <string name="feature_activity_select">Anfrage auswählen</string>

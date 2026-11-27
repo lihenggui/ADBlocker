@@ -52,8 +52,10 @@
     <string name="feature_activity_page">来源页面</string>
     <string name="feature_activity_rule">当前规则匹配（GET）</string>
     <string name="feature_activity_rule_unavailable">无法检查</string>
+    <string name="feature_activity_domain_rule">当前匹配的域名规则</string>
     <string name="feature_activity_why">原因</string>
     <string name="feature_activity_my_rules">我的规则</string>
+    <string name="feature_activity_remove_rule">删除这条规则</string>
     <string name="feature_activity_reason_pinned">应用不接受 ADBlocker 为此域名提供的证书，因此仅按域名过滤。</string>
     <string name="feature_activity_reason_hosts_only">此连接仅按域名过滤。按网址过滤已关闭，或无法检查 HTTPS。</string>
     <string name="feature_activity_reason_excluded">此域名在 HTTPS 排除列表中，例如银行列表。</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">已在%2$s中拦截 %1$s</string>
     <string name="feature_activity_allowed_host_everywhere">已在所有应用中放行 %1$s</string>
     <string name="feature_activity_allowed_host_in_app">已在%2$s中放行 %1$s</string>
+    <string name="feature_activity_rule_removed">已删除规则</string>
+    <string name="feature_activity_rule_not_in_my_rules">我的规则中没有这条规则。可在 rules/*.txt 文件或规则编辑器中编辑自定义规则。</string>
+    <string name="feature_activity_undo">撤销</string>
     <string name="feature_activity_forgotten">下次连接时将重新尝试解密</string>
     <string name="feature_activity_failed">操作失败。请在“设置”中检查过滤服务。</string>
     <string name="feature_activity_select">选择请求</string>

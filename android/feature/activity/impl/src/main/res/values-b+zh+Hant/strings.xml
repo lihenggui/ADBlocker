@@ -52,8 +52,10 @@
     <string name="feature_activity_page">網頁</string>
     <string name="feature_activity_rule">目前比對到的規則 (GET)</string>
     <string name="feature_activity_rule_unavailable">無法取得</string>
+    <string name="feature_activity_domain_rule">目前比對到的網域規則</string>
     <string name="feature_activity_why">原因</string>
     <string name="feature_activity_my_rules">我的規則</string>
+    <string name="feature_activity_remove_rule">刪除這條規則</string>
     <string name="feature_activity_reason_pinned">這個應用程式不接受此網域的 ADBlocker 憑證，因此只會依網域過濾。</string>
     <string name="feature_activity_reason_hosts_only">這筆連線是依網域過濾的。當時依網址過濾已關閉，或無法檢查 HTTPS 流量。</string>
     <string name="feature_activity_reason_excluded">此網域列在某份 HTTPS 排除清單中，例如銀行清單。</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">已在 %2$s 中封鎖 %1$s</string>
     <string name="feature_activity_allowed_host_everywhere">已在所有應用程式中允許 %1$s</string>
     <string name="feature_activity_allowed_host_in_app">已在 %2$s 中允許 %1$s</string>
+    <string name="feature_activity_rule_removed">已刪除規則</string>
+    <string name="feature_activity_rule_not_in_my_rules">我的規則中沒有這條規則。可在 rules/*.txt 檔案或規則編輯器中編輯自訂規則。</string>
+    <string name="feature_activity_undo">復原</string>
     <string name="feature_activity_forgotten">下次連線時會再嘗試解密</string>
     <string name="feature_activity_failed">操作失敗。請在「設定」中檢查過濾服務。</string>
     <string name="feature_activity_select">選取請求</string>

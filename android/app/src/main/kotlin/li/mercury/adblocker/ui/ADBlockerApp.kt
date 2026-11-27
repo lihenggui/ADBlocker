@@ -59,7 +59,6 @@ import li.mercury.adblocker.core.navigation.Navigator
 import li.mercury.adblocker.core.navigation.rememberNavigationState
 import li.mercury.adblocker.core.navigation.toEntries
 import li.mercury.adblocker.feature.activity.api.navigation.ActivityNavKey
-import li.mercury.adblocker.feature.activity.api.navigation.RequestNavKey
 import li.mercury.adblocker.feature.activity.impl.AppRequestsPane
 import li.mercury.adblocker.feature.activity.impl.AppRequestsViewModel
 import li.mercury.adblocker.feature.activity.impl.navigation.activityEntries
@@ -162,14 +161,8 @@ internal fun ADBlockerShell(
     // show a request as a pane instead.
     val bottomSheetStrategy = remember(singlePane) { BottomSheetSceneStrategy<NavKey>(enabled = singlePane) }
 
-    // The screen that shows the snackbar: the front one, or under a sheet
-    // the one it covers.
-    val snackbarOwner by remember(navigationState, singlePane) {
-        derivedStateOf {
-            val stack = navigationState.currentSubStack
-            val last = stack.last()
-            if (singlePane && last is RequestNavKey) stack.getOrNull(stack.size - 2) else last
-        }
+    val snackbarOwner by remember(navigationState) {
+        derivedStateOf { navigationState.currentSubStack.last() }
     }
     // A list and its detail share the window only if a list is on the stack.
     val listOnStack = navigationState.currentSubStack.any { it in LIST_PANE_KEYS }

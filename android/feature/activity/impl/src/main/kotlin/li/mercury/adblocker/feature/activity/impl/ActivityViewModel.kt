@@ -71,7 +71,9 @@ class ActivityViewModel @Inject constructor(
     private val apps: AppsRepository,
     private val daemon: DaemonRepository,
     changes: DataChanges = DataChanges(),
+    activityMessages: ActivityMessages = ActivityMessages(),
 ) : ViewModel() {
+    internal val messages = activityMessages.queue
     private val verdict = MutableStateFlow(VerdictFilter.All)
     private val meta = MutableStateFlow(Meta())
 

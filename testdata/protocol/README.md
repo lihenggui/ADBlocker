@@ -32,6 +32,8 @@ commit.
 | `rules-check.json` | `abd rules check --json` | For `rules.txt` checked with user-rule permissions |
 | `rules.txt` | input of `abd rules check` and `abd rules set` | |
 | `check.json` | `abd check --json [--app <app>] <url> <page> <kind>` | |
+| `check-exception.json` | `abd check --json --app <app> <url> <page> <kind>` | An app-specific rule in My rules overrides a block |
+| `rules-edit.json` | `abd rules append --unique --json` or `abd rules remove --json` | The requested edit changed the rules |
 | `watch.jsonl` | `abd watch --json` | One event a line |
 
 ## Conventions
@@ -113,6 +115,9 @@ commit.
   a usable copy. The field is omitted otherwise.
 - `source` (`check.json`): the address of the list the rule is in, `rules`
   for the user's own rules, or `null`.
+- `exception` and `exception_source` (`check-exception.json`): the
+  original line that overrode the block and its source, or `null` when
+  no exception applied.
 - A `{"dropped":n}` line in `watch.jsonl` says that `n` events were left
   out because the reader fell behind.
 

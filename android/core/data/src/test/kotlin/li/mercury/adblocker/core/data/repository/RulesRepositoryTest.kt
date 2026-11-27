@@ -17,6 +17,9 @@
 package li.mercury.adblocker.core.data.repository
 
 import android.net.Uri
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.runTest
 import li.mercury.adblocker.core.data.AbdClient
@@ -31,6 +34,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 @RunWith(RobolectricTestRunner::class)
 @Config(manifest = Config.NONE)
@@ -138,6 +142,26 @@ class RulesRepositoryTest {
             listOf("@@||cdn.example.com^\n" to true, "@@||cdn.example.com^\$app=com.example.reader\n" to true),
             appended,
         )
+    }
+
+    @Test
+    fun givenAnOriginalRule_whenRemovedAndRestored_thenBothEditsUseItsExactLineAndNotify() = runTest {
+        val rule = "@@||Ads.Example.com^\$app=com.Example.Reader"
+        val edits = mutableListOf<Pair<String, String>>()
+        val abd = object : AbdClient by unexpected() {
+            override suspend fun removeUserRules(text: String): Boolean = true.also { edits += "remove" to text }
+            override suspend fun appendUniqueUserRule(text: String): Boolean = true.also { edits += "append unique" to text }
+        }
+        val changes = DataChanges()
+        val repository = AbdRulesRepository(RuntimeEnvironment.getApplication(), abd, changes, DocumentWriter { _, _ -> }, StandardTestDispatcher(testScheduler))
+        val removed = async(start = CoroutineStart.UNDISPATCHED) { changes.changes.first() }
+        assertTrue(repository.removeRule(rule))
+        removed.await()
+        val restored = async(start = CoroutineStart.UNDISPATCHED) { changes.changes.first() }
+        assertTrue(repository.addRule(rule))
+        restored.await()
+
+        assertEquals(listOf("remove" to "$rule\n", "append unique" to "$rule\n"), edits)
     }
 
     @Test

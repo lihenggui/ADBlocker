@@ -77,6 +77,18 @@ fn vpn_reports_the_version_of_the_packaged_module() {
     );
 }
 
+#[test]
+fn vpn_removes_an_exact_rule_through_the_shared_command() {
+    let (session, _, _dir) = session();
+    let rule = b"||ads.example^$app=com.app\n";
+    let add = session.command(&["rules", "append", "--unique", "--json"], rule);
+    assert_eq!(said(&add).trim(), r#"{"changed":true}"#);
+    let remove = session.command(&["rules", "remove", "--json"], rule);
+    assert_eq!(said(&remove).trim(), r#"{"changed":true}"#);
+    let rules = session.command(&["rules", "get"], b"");
+    assert_eq!(said(&rules), "");
+}
+
 fn close_with_a_delayed_callback() -> Duration {
     let (session, _, _dir) = session();
     let (started, ready) = mpsc::sync_channel(1);

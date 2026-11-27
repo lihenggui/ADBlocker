@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Página</string>
     <string name="feature_activity_rule">Regla aplicable ahora (GET)</string>
     <string name="feature_activity_rule_unavailable">No disponible</string>
+    <string name="feature_activity_domain_rule">Regla aplicable al dominio</string>
     <string name="feature_activity_why">Motivo</string>
     <string name="feature_activity_my_rules">Mis reglas</string>
+    <string name="feature_activity_remove_rule">Eliminar esta regla</string>
     <string name="feature_activity_reason_pinned">La aplicación no acepta el certificado de ADBlocker para este dominio. Por eso, el filtrado se limita al dominio.</string>
     <string name="feature_activity_reason_hosts_only">Esta conexión se filtró por dominio. El filtrado por URL estaba desactivado o no se podía inspeccionar el tráfico HTTPS.</string>
     <string name="feature_activity_reason_excluded">El dominio está en una lista de exclusión de HTTPS, como la lista de bancos.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">Se bloqueó %1$s en %2$s</string>
     <string name="feature_activity_allowed_host_everywhere">Se permitió %1$s en todas las aplicaciones</string>
     <string name="feature_activity_allowed_host_in_app">Se permitió %1$s en %2$s</string>
+    <string name="feature_activity_rule_removed">Se eliminó la regla</string>
+    <string name="feature_activity_rule_not_in_my_rules">Esta regla no está en Mis reglas. Edita las reglas personalizadas en rules/*.txt o en el editor de reglas.</string>
+    <string name="feature_activity_undo">Deshacer</string>
     <string name="feature_activity_forgotten">Se volverá a intentar el descifrado en la siguiente conexión</string>
     <string name="feature_activity_failed">La acción falló. Comprueba el servicio de filtrado en Ajustes.</string>
     <string name="feature_activity_select">Selecciona una solicitud</string>
