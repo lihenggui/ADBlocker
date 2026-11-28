@@ -1,18 +1,19 @@
-<p>ADBlocker dùng danh sách lọc cho các công cụ chặn quảng cáo trên trình duyệt (chẳng hạn như EasyList, uBlock Origin và AdGuard) để chặn quảng cáo và trình theo dõi trong ứng dụng Android. Bạn có thể chọn ứng dụng cần lọc hoặc lọc tất cả ứng dụng cá nhân của mình. ADBlocker tải xuống các danh sách lọc bạn đăng ký và không gửi dữ liệu đo từ xa.</p>
+<p>ADBlocker dùng danh sách lọc cho các công cụ chặn quảng cáo trên trình duyệt (chẳng hạn như EasyList, uBlock Origin và AdGuard) để chặn quảng cáo và trình theo dõi trong ứng dụng Android. Bạn có thể chọn ứng dụng cần lọc hoặc lọc tất cả ứng dụng cá nhân của mình. ADBlocker chạy cục bộ trên thiết bị, chỉ tải xuống các danh sách lọc bạn đăng ký và không gửi dữ liệu đo từ xa.</p>
 
 <p>Có hai cách lọc.</p>
 <ul>
-<li><b>Chế độ root</b> (cần quyền root, chẳng hạn qua KernelSU, Magisk hoặc APatch, và Android 12 trở lên với nhân GKI). ADBlocker dùng quyền root để thiết lập chế độ này mà không cần khởi động lại. Android vẫn còn chỗ cho một VPN khác và mỗi kết nối vẫn được quy về ứng dụng đã tạo kết nối đó.</li>
+<li><b>Chế độ root</b> (cần quyền root, chẳng hạn qua KernelSU, Magisk hoặc APatch, và Android 12 trở lên với nhân GKI). ADBlocker dùng quyền root để thiết lập chế độ này mà không cần khởi động lại hay sửa đổi /system. Android vẫn còn chỗ cho một VPN khác và mỗi kết nối vẫn được quy về ứng dụng đã tạo kết nối đó.</li>
 <li><b>Chế độ VPN</b> (không cần root, Android 10 trở lên). Lưu lượng của các ứng dụng được lọc đi qua VPN cục bộ của ADBlocker.</li>
 </ul>
 
-<p>Khi bật tính năng lọc theo URL, ADBlocker áp dụng các quy tắc về URL và tài nguyên trong kết nối HTTPS thông qua một CA cục bộ có khóa được giữ trên thiết bị. Ở chế độ root, ADBlocker cung cấp chứng chỉ của CA này cho các ứng dụng cá nhân được lọc. Ở chế độ VPN, bạn tự cài đặt chứng chỉ và chỉ các ứng dụng tin cậy chứng chỉ người dùng mới chấp nhận chứng chỉ đó. Trước khi cài đặt, cũng như đối với mọi ứng dụng từ chối chứng chỉ, HTTPS vẫn được mã hóa và chỉ các quy tắc tên miền được áp dụng. Bạn có thể tắt tính năng lọc theo URL để chỉ lọc theo tên miền.</p>
+<p>Khi bật tính năng lọc theo URL, ADBlocker áp dụng các quy tắc về URL, tài nguyên và ẩn phần tử trang trong kết nối HTTPS thông qua một CA cục bộ có khóa được giữ trên thiết bị. Ở chế độ root, ADBlocker cung cấp chứng chỉ của CA này cho các ứng dụng cá nhân được lọc. Ở chế độ VPN, bạn tự cài đặt chứng chỉ và chỉ các ứng dụng tin cậy chứng chỉ người dùng mới chấp nhận chứng chỉ đó. Trước khi cài đặt, cũng như đối với mọi ứng dụng từ chối chứng chỉ, HTTPS vẫn được mã hóa và chỉ các quy tắc tên miền được áp dụng. Bạn có thể tắt tính năng lọc theo URL để chỉ lọc theo tên miền.</p>
 
 <p>Tính năng</p>
 <ul>
 <li>Chọn từng ứng dụng hoặc lọc tất cả ứng dụng cá nhân với các mục loại trừ. Có thể lọc ứng dụng trong hồ sơ công việc khi có quyền root</li>
+<li>Lọc DNS không mã hóa cùng với quy tắc tên miền, URL và ẩn phần tử trang</li>
 <li>Đăng ký danh sách lọc của EasyList, uBlock Origin và AdGuard, dùng quy tắc tùy chỉnh và trang tin cậy</li>
-<li>Ghi lại các yêu cầu của một ứng dụng để xem quy tắc xử lý từng yêu cầu như thế nào</li>
+<li>Ghi lại yêu cầu của các ứng dụng được lọc để kiểm tra quy tắc khớp và chặn hoặc cho phép tên miền</li>
 <li>Tạm dừng lọc cho một ứng dụng hoặc tất cả ứng dụng, cùng với một ô Cài đặt nhanh</li>
 </ul>
 
