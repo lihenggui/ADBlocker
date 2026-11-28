@@ -4,11 +4,9 @@
 
 [English](README.md) | 简体中文
 
-本文译自英文版 README。两者不一致时，以英文版为准。
+> 本文译自英文版 README。如内容有出入，以英文版为准。
 
-ADBlocker 使用浏览器广告拦截器的过滤列表来拦截 Android 应用中的广告和跟踪器，支持 EasyList、uBlock Origin 和 AdGuard 等过滤列表。
-可以逐个选择要过滤的应用，也可以过滤全部个人应用。
-ADBlocker 会下载已订阅的过滤列表，不发送遥测数据。
+ADBlocker 是一款运行在本地的 Android 广告拦截工具，直接复用 EasyList、uBlock Origin、AdGuard 等主流浏览器过滤列表来拦截应用内的广告与跟踪器。你可以按需挑选要过滤的应用，也可以一键覆盖全部个人应用。除下载你订阅的过滤列表外，ADBlocker 不收集也不上传任何遥测数据。
 
 <p>
   <img src="android/feature/overview/impl/src/test/screenshots/Overview_phone_zh.png" width="200" alt="概览：过滤状态和今日拦截的请求">
@@ -17,313 +15,228 @@ ADBlocker 会下载已订阅的过滤列表，不发送遥测数据。
   <img src="android/feature/activity/impl/src/test/screenshots/Activity_phone_zh.png" width="200" alt="活动：录制结果中被拦截和放行的请求">
 </p>
 
-ADBlocker 有两种过滤方式，取决于设备是否有 root 权限。
+## root 模式与 VPN 模式对比
+
+ADBlocker 会根据设备是否具备 root 权限，自动采用对应的工作模式：
 
 | | root 模式 | VPN 模式 |
 | --- | --- | --- |
-| 所需权限 | root 权限 | 无需 root 权限 |
-| Android 的 VPN 名额 | 可供其他 VPN 使用 | 由 ADBlocker 占用 |
-| 按网址过滤 HTTPS | 适用于已过滤的个人应用。工作应用需要管理员安装 CA 证书 | 安装 ADBlocker 的证书后，适用于信任用户证书的应用 |
-| DNS 过滤 | 已过滤应用的明文 DNS 查询 | 已过滤应用发出的查询 |
+| 权限要求 | 需要 root 权限 | 无需 root |
+| Android VPN 通道 | 不占用，可与其他 VPN 共存 | 由 ADBlocker 占用 |
+| 按网址过滤 HTTPS | 支持已过滤的个人应用；工作应用需由管理员安装 CA 证书 | 安装 ADBlocker 证书后，适用于信任用户证书的应用 |
+| DNS 过滤 | 过滤所选应用的明文 DNS 查询 | 过滤所选应用的 DNS 查询 |
+| 应用流量归属 | 保留原应用身份（兼容 VPN 和防火墙的按应用规则） | 统一计入 ADBlocker |
 
-在 root 模式下，Android 仍将每条连接归到发起连接的应用，因此 VPN 和防火墙的按应用规则仍然生效。
-在 VPN 模式下，已过滤应用的流量经过 ADBlocker 的进程，Android 将这些流量计入 ADBlocker。
-
-## 过滤内容
-
-在 **过滤范围** 中，保留 **选定应用** 可逐个选择要过滤的应用。选择 **全部应用** 可过滤所有符合条件的个人应用，包括之后安装的应用。
-在 **应用** 页面使用 **排除** 或 **重新纳入**，可以调整个别应用。
-ADBlocker 和系统 UID 不在过滤范围内。工作应用仍需逐个选择。
-
-**按网址过滤** 默认开启。在支持的情况下，网址和资源规则对每个已过滤的应用生效。
-例如，规则可以拦截 `news.example/ads/banner`，同时放行 `news.example/articles/today`。
-发往 80 端口的普通 HTTP/1 请求无需证书。对于经 TCP 传输的 HTTPS，root 模式会向已过滤的个人应用提供本地 CA 证书。
-在 VPN 模式下，需要通过“设置”安装证书。只有信任用户安装的证书的应用才会接受它。
-安装前，HTTPS 保持加密，仅应用域名规则。在“设置”中关闭 **按网址过滤**，所有应用都只按域名过滤。
-参阅[这对证书信任的影响](SECURITY.md#what-using-it-changes)。
-
-开启按网址过滤后，如果过滤列表拦截某个主机，但也放行该主机的部分路径，该主机仍可访问。此时引擎逐条检查连接中的请求，不会拒绝整条连接。
-引擎根据 `Sec-Fetch-Dest` 或网址的文件扩展名判断资源类型。如果两者都无法判断，会在服务器的 `Content-Type` 提供类型时再次检查。
-如果规则为被拦截的请求指定了内置替代资源，ADBlocker 会在本地返回该资源，并将该请求计为已拦截。
-当网站或应用要求使用 ADBlocker 无法使用的证书时，HTTPS 保持加密，仅应用域名规则。
-
-ADBlocker 拒绝所选应用的 QUIC 连接，使应用可以改用 TCP 重试，继续使用常规 HTTPS 规则。
-仅支持 QUIC 的应用可能无法连接。
-
-在 root 模式下，同一资料中被 Android 划入同一个共享 UID 组的应用共用一个开关。
-打开任意成员的开关，即为整组开启过滤。新成员沿用该组的选择和暂停状态。
-活动和统计数据按组计算一次。
-
-### root 模式下的工作应用
-
-在“应用”页面，公文包图标标出应用的工作副本。每个副本都有独立的选择、暂停状态、活动和统计数据。
-如果 Android 暂时无法列出某个工作资料中的应用，可以在“应用”页面点“重试”。此时仍可管理其他应用。
-工作资料暂停时，root 模式会保留已选应用。删除工作资料会清除其中的选择和暂停状态，新建的工作资料没有任何选择或暂停记录。
-
-按域名过滤无需证书。要过滤 HTTPS 请求，请保持“按网址过滤”开启，打开工作副本的“设置 HTTPS 过滤”，再把公开证书交给工作资料管理员，由其安装到对应的工作资料中。
-工作应用还须对目标站点信任用户证书。应用详情会显示其 HTTP 和 HTTPS 流量的过滤方式。
-参阅[工作资料中的证书信任](SECURITY.md#work-profiles)。
+在 root 模式下，ADBlocker 不会修改 `/system` 分区，不包含 `post-fs-data` 脚本或 SELinux 规则，且采用故障开放（fail-open）设计：一旦守护进程停止，网络会自动恢复直连，不会导致断网。
 
 ## 系统要求
 
-两种方式均需要 64 位 ARM（arm64）或 x86（x86_64）设备。
+两种模式均要求设备为 64 位架构（`arm64` 或 `x86_64`）。
 
-- root 模式需要 Android 12 或更高版本、GKI 内核（5.10 或更高版本）以及 root 权限。
-  可通过 [KernelSU](https://kernelsu.org)、[Magisk](https://github.com/topjohnwu/Magisk) 或 [APatch](https://apatch.dev) 获得 root 权限。
-  如果通过其他方式获得 root 权限，ADBlocker 会在设备重启后自行启动 root 模式。如果设备限制应用开机启动，请允许 ADBlocker 自启动。
-- VPN 模式需要 Android 10 或更高版本。
+- **root 模式**：Android 12 及以上、GKI 内核（5.10 及以上）和 root 权限，推荐使用 [KernelSU](https://kernelsu.org)、[Magisk](https://github.com/topjohnwu/Magisk) 或 [APatch](https://apatch.dev)。若使用其他 root 方案，ADBlocker 会在开机后自行拉起 root 模式；如系统限制后台自启，请放行 ADBlocker 的自启动权限。
+- **VPN 模式**：Android 10 及以上。
 
 ## 安装
 
-从[发布页面](../../releases)下载并安装 `adblocker-<version>.apk`。
-`adblocker-<version>.apk.zip` 是同一个安装包，使用另一文件名供 root 管理器安装。
-如需自行构建，参阅[构建说明](CONTRIBUTING.md#building)。
+1. 前往 [Releases](https://github.com/lihenggui/ADBlocker/releases) 下载并安装 `adblocker-<version>.apk`。
+2. 打开 ADBlocker，按引导选择要过滤的应用和过滤列表：
+   - **已 root 设备**：应用会自动部署 root 模式并立即生效，无需重启，后续开机自动恢复。
+   - **未 root 设备**：应用会启用 VPN 模式并请求创建本地 VPN 连接。
 
-打开 ADBlocker，选择要过滤的应用和要订阅的列表。有 root 权限时，ADBlocker 会设置 root 模式，立即开始过滤，无需重启设备。此后每次重启都会重新开始过滤。
-没有 root 权限时，ADBlocker 会使用 VPN 模式并请求 VPN 权限。
+如需从源码自行编译，请参阅 [CONTRIBUTING.md](CONTRIBUTING.md#building)。
 
-在 MIUI 和 HyperOS 等系统中，ADBlocker 需要获得读取应用列表的权限，才能看到已安装的应用。
-首次设置时以及在 **应用** 页面，ADBlocker 会请求这项权限，并可打开 Android 系统设置中的 ADBlocker 页面。
-没有 root 权限时，**全部应用** 只过滤 ADBlocker 能从系统读取到的应用。授权前，**概览** 会显示“大部分应用未被过滤”。
+> **MIUI / HyperOS 提示**：部分系统默认会隐藏已安装应用列表，直到授予读取权限为止。首次引导和 **应用** 页面都会提供快捷授权入口；在 VPN 模式下，**全部应用** 只能覆盖系统允许 ADBlocker 读取到的应用。
 
-首次设置时会推荐通用过滤列表和地区过滤列表。与系统语言或系统区域设置中的地区匹配的地区列表默认开启。如果系统时区只对应一个国家，也会默认开启与该国匹配的地区列表。
-系统语言为中文，或地区为中国大陆、香港、澳门或台湾时，EasyList China、AdGuard Chinese、AWAvenue Ads Rule 和 anti-AD 默认开启。
+### 作为 root 模块安装
 
-ADBlocker 会保存选定的订阅，下载过滤列表，并按设定的间隔在后台更新。
-只处理指向列表所在 HTTPS 源和目录内文件的生效 `!#include` 指令。
-每次更新都会将整个列表连同它引用的文件一起替换。如果有必需的文件下载失败，继续使用旧副本。
-AdGuard Base、AdGuard Chinese 和 AdGuard Mobile Ads 使用各自的 Android 版。AdGuard Base 包含 EasyList。
-AdGuard Tracking Protection 使用其 uBlock Origin 版。要通过 root shell 下载过滤列表，运行 `abd update`。
+发布页中的 `adblocker-<version>.apk.zip` 与 APK 内容完全一致，只是换了扩展名方便 root 管理器识别。如果你想在 KernelSU、Magisk 或 APatch 中统一管理它，直接刷入 `.apk.zip` 即可（刷入时也会尝试安装应用本体）：
 
-### 作为模块安装
-
-同一个文件也可作为 KernelSU、Magisk 和 APatch 的模块安装。
-要在 root 管理器中查看和管理 root 模式，请在其中安装 `.apk.zip`。此操作也会尝试安装应用。
-KernelSU 会立即应用模块，Magisk 和 APatch 会在设备重启后应用模块。
-如果在重启前打开 ADBlocker，它会自行设置 root 模式。重启后，模块接管，并沿用同一套设置。
+- **KernelSU** 刷入后立即生效。
+- **Magisk** 和 **APatch** 需重启后生效。若重启前先打开了 ADBlocker，它会先临时启动 root 模式，重启后由模块无缝接管，原有配置不受影响。
 
 ### 更新
 
-用新的 APK 覆盖安装，再打开 ADBlocker，应用会更新 root 模式。
-在 root 管理器中安装的模块也可在该管理器中用新的 `.apk.zip` 更新。
+直接下载新版 APK 覆盖安装，然后打开一次 ADBlocker 即可完成 root 模式更新。通过 root 管理器刷入的用户，也可以直接在管理器里刷入新版 `.apk.zip`。
 
 ### 卸载
 
-在 root 模式下，先进入 **设置 › 移除 root 模式**，再卸载应用。
-移除 root 模式会停止过滤，并删除其证书颁发机构及其他数据。
-如果 ADBlocker 是作为模块安装的，请在 root 管理器中移除模块，再重启设备。
-若为工作应用过滤安装过 CA 证书，请由工作资料管理员移除。
+- **root 模式（应用内启用）**：请先进入 **设置 › 移除 root 模式**，再卸载应用。该操作会停止过滤，并彻底清理本地 CA 证书及所有数据。
+  - 若直接卸载应用，过滤会在约 1 分钟内自动停止；使用 KernelSU、Magisk 或 APatch 时，残留文件与数据会在下次重启时清理；使用其他 root 方案时，这些文件（包括本地 CA）会继续留在设备上，因此务必先在设置中移除。
+- **root 模式（root 管理器模块）**：在 root 管理器中卸载模块并重启，再卸载应用。
+- **工作资料证书**：如曾为工作应用安装过 CA 证书，请由工作资料管理员手动移除。
+- **VPN 模式**：如安装过证书，请在卸载前先进入 **设置 › 移除证书**。卸载应用会删除私钥和应用数据，但 Android 会在系统用户证书库中单独保留证书副本。
 
-如果先卸载应用，由 ADBlocker 设置的 root 模式会在约 1 分钟内停止过滤。
-装有 KernelSU、Magisk 或 APatch 时，模块的文件和数据会在下次重启时删除。
-如果通过其他方式取得 root 权限，这些文件和数据会保留，包括证书颁发机构。因此应先在“设置”中移除 root 模式，再卸载应用。
+## 使用说明
 
-在 VPN 模式下，如果安装过 ADBlocker 的证书，请在卸载应用前进入 **设置 › 移除证书**。
-卸载会删除私钥和应用数据。Android 单独存储证书。
+- **概览**：查看当前过滤状态和拦截统计，随时暂停或恢复过滤；若存在尚未下载的已启用列表，也会在此提醒并提供下载入口。
+- **应用**：在 **过滤范围** 中选择 **选定应用**（默认）或 **全部应用**，并查看各应用当前的过滤方式。切换到 **全部应用** 后，新安装的个人应用也会自动纳入过滤，个别不需要的应用可随时点 **排除** 或 **重新纳入**。ADBlocker 自身及系统 UID 始终不会被过滤；工作应用仍需逐个手动选择。
+- **规则**：管理过滤列表订阅、自定义规则（**我的规则**）以及信任的网站。
+- **活动**：点击 **开始录制** 后切回目标应用复现操作，再回来 **停止录制**，即可查看每条请求的命中与放行情况。点开已放行的请求，可以一键仅在该应用或所有应用中拦截对应域名（共享 UID 组仅支持在所有应用中拦截）。录制结果最多在内存中保留最近 500 条，不会写入磁盘。
 
-## 使用方法
+你还可以把 ADBlocker 添加到系统快捷设置磁贴，解锁屏幕后即可快速暂停/恢复过滤（VPN 模式下也能一键启动 VPN）。HTTPS 过滤配置以及系统的“始终开启的 VPN”入口均位于 **设置** 中。
 
-- **概览** 显示过滤状态和拦截的请求，也可暂停或恢复过滤。
-  如果某个已启用的过滤列表从未下载，页面会提示该列表尚未参与过滤，并提供下载入口。
-- **应用** 列出已安装的应用及其过滤方式。
-- **规则** 用于管理订阅、自定义规则和信任的网站。支持 EasyList、uBlock Origin 和 AdGuard 等过滤列表。
-- 在 **活动** 中点“开始录制”后，ADBlocker 会记录请求。切换到已过滤的应用，重复要检查的操作，然后点“停止录制”，即可查看当前规则如何处理各条请求。
-  打开一条已放行的请求，可选择仅在该应用中拦截其域名，或选择“在所有应用中拦截”。新增规则会保存到 **规则** 中的 **我的规则**。
-  对于共享 UID 组的请求，只能在所有应用中拦截。最近 500 条请求保留在内存中，直到开始下一次录制或 ADBlocker 退出。
+## 过滤能力
 
-快捷设置磁贴可以暂停和恢复过滤，在 VPN 模式下也可以启动 VPN。这些操作需要先解锁设备。
-“设置”提供 HTTPS 过滤的设置入口，也可打开 Android 的“始终开启的 VPN”设置。
+### 域名、网址与 DNS 过滤
+
+- **按网址过滤** 默认开启，在支持 HTTPS 解密或明文 HTTP/1（80 端口）的场景下精确到具体路径——例如拦截 `news.example/ads/banner`，同时放行 `news.example/articles/today`。在 root 模式下，本地 CA 仅对已过滤的个人应用可见；在 VPN 模式下，需先在 **设置** 中安装证书，且只有信任用户证书的应用才会生效。在未完成证书信任或无法解密时，连接保持加密并自动回退为按域名过滤。你也可以随时在 **设置** 中关闭 **按网址过滤**，让全部应用只做域名过滤。
+- **路径放行与本地替代**：开启按网址过滤后，若某域名虽被列表拦截，但同时存在针对部分路径的放行规则，引擎会放行连接并逐条检查请求，避免误杀。若规则为被拦截请求指定了内置替代资源，ADBlocker 会在本地返回该资源并计入拦截数。
+- **QUIC 回退**：ADBlocker 会拒绝已过滤应用的 QUIC 连接，促使应用回退到 TCP 协议以正常应用 HTTPS 规则。少数强制依赖 QUIC 的应用可能因此无法联网。
+- **DNS 过滤**：两种模式均支持拦截已过滤应用的明文 DNS 查询（加密 DNS 相关说明见[限制](#限制)）。
+
+### 页面元素隐藏与高阶规则
+
+**隐藏页面元素** 默认开启，作用于已解密的网页内容，可在 **设置** 中（或通过 `abd cosmetic off`）关闭。支持的规则能力包括：
+
+- **元素隐藏与 HTML 过滤**：支持标准 CSS 隐藏规则（`##`）、`:has-text()` 等程序化规则、AdGuard CSS 注入，以及在页面加载前直接裁剪 HTML 元素的规则（`$$` 与兼容的 uBlock Origin `##^`）。
+- **脚本片段与 JS 规则**：内置 uBlock Origin 与兼容的 AdGuard 脚本片段库，并支持受信任官方目录列表与自定义规则中的 AdGuard JavaScript 规则（可通过 `$jsinject` 在指定页面停用）。
+- **请求与响应改写**：支持来自自定义规则及受信任目录列表的 `$replace`、`$jsonprune`、`$hls`、`$removeheader`、`$urltransform` 规则，以及任意列表中的 `$cookie`、`$removeparam`、`$csp` 规则。
+- **按应用与按 IP 过滤**：支持 `$app=` 按包名、前缀（`*`）或正则匹配目标应用，支持 `$network` 按远端 IP/端口过滤，并支持嵌套的 `!#if` / `!#else` / `!#endif` 条件指令。
+
+各类规则的完整语法、匹配逻辑与信任边界请参阅 [docs/how-it-works.md](docs/how-it-works.md#filtering)。
+
+### 过滤列表
+
+支持 EasyList、uBlock Origin 与 AdGuard 规则格式。首次引导会自动推荐通用列表以及与系统语言、地区或单一国家时区对应的地区列表（当系统语言为中文，或地区为中国大陆、香港、澳门、台湾时，默认勾选 EasyList China、AdGuard Chinese、AWAvenue Ads Rule 与 anti-AD）。
+
+订阅列表会按设定周期在后台自动更新。内置目录会自动选用对应平台构建版本（AdGuard Base、AdGuard Chinese、AdGuard Mobile Ads 使用 Android 版，AdGuard Base 已包含 EasyList；AdGuard Tracking Protection 使用 uBlock Origin 版）。更新时仅处理同一 HTTPS 源和目录内生效的 `!#include` 指令，若任意必需文件下载失败，系统会保留原有完整副本继续生效。
+
+### 共享 UID 与工作资料（root 模式）
+
+- **共享 UID**：同一资料中共享同一个 Android UID 的应用共用一个过滤开关、暂停状态、活动记录与统计数据。开启任一成员即对整组生效，后续新安装的同组成员会自动沿用该组状态。
+- **工作资料**：工作应用在 **应用** 列表中带有公文包标识，与个人副本分别独立管理开关、暂停、活动和统计。暂停工作资料不会丢失选择，删除工作资料则会清空对应记录。按域名过滤开箱即用；如需按网址过滤 HTTPS，请在工作应用详情中导出公开证书，交由工作资料管理员安装到对应工作资料（且该应用需信任用户证书）。详见[工作资料中的证书信任](SECURITY.md#work-profiles)。
+
+## 安全与隐私
+
+所有过滤和 HTTPS 检查均在设备本地完成。ADBlocker 不发送任何遥测数据，默认日志也不会记录应用访问过的主机或地址。
+
+开启 **按网址过滤** 解密 HTTPS 流量时，应用或浏览器看到的是 ADBlocker 本地签发的证书而非站点原始证书，因此浏览器的部分校验（如证书透明度 CT、内置证书固定等）将不再适用。对于排除列表中的银行、支付等敏感网站、使用扩展验证（EV）证书的网站，以及启用了证书固定的应用，ADBlocker 会保持其加密连接并自动回退为仅按域名过滤。
+
+关于完整的安全模型与影响，请阅读 [SECURITY.md](SECURITY.md#what-using-it-changes) 及[页面元素隐藏的说明](SECURITY.md#hiding-page-elements)。如不希望解密任何 HTTPS 流量，随时在 **设置** 中关闭 **按网址过滤** 即可。
+
+## 限制
+
+### 通用限制
+
+- 明文 HTTP 过滤仅覆盖发往 80 端口的常规 HTTP/1 请求。
+- 当广告与正常内容来自完全相同的网址时，过滤规则无法将二者区分。
+- 敏感网站排除列表中的站点、使用 EV 证书的站点，以及启用证书固定的应用，均保持加密并只做域名级过滤。
+- 在 **隐藏页面元素** 中，程序化规则可匹配页面加载后动态插入的元素，而仅依赖类名或 ID 的通用 CSS 规则可能会漏掉它们。
+
+### root 模式
+
+- 仅过滤已过滤应用发出的明文 DNS 查询；经 Android“专用 DNS”（指定提供商主机名时始终生效；设为“自动”时在网络支持的情况下生效）或应用自带的加密 DNS（如 DoH）发出的查询不经过滤。若其他应用近期刚查询过同一域名，Android 也可能直接返回系统缓存而不再经过 ADBlocker。开启按网址过滤后，对于能够解密读取请求的主机，仅当过滤列表中不存在可能适用于该主机的网页放行规则时才会在 DNS 阶段拦截，否则留待请求阶段再做判断。
+- 对已选中且未暂停的应用，会拒绝发往 443 端口的所有 UDP 流量（包括非 QUIC 协议）。
+- `$network` 地址规则仅作用于捕获到的 80 和 443 端口 TCP 连接（关闭按网址过滤时同样生效）。
+- 仅支持主用户及其受管理的工作资料，不支持其他多用户。
+
+### VPN 模式
+
+- 占用 Android 唯一的 VPN 通道，启动其他 VPN 应用会中断 ADBlocker。
+- Android 系统会将已过滤应用的网络流量统一统计到 ADBlocker 名下。
+- 大多数第三方应用默认只信任系统证书，因此通常只能做到域名级过滤，无法进行按网址过滤。
+- 仅过滤经系统解析器发出的 DNS 查询（涵盖非 HTTP 流量）；Android 严格模式“专用 DNS”以及应用自带的 DoH 等加密 DNS 会绕过过滤。
+- 对已选中且未暂停的应用，会拒绝任意 UDP 端口上识别到的 QUIC 初始包（命中 `$network` 放行规则时除外）。
+- `$network` 地址规则覆盖 TCP 和 UDP 目标地址（关闭按网址过滤时同样生效）。对于允许的 TCP 地址，VPN 需在读取到主机名之前先与远端建立连接；若域名规则拦截该主机，VPN 会立即断开连接，不会发送应用数据。
+
+## 常见问题
+
+### 直接装 APK 和在 root 管理器里刷模块有什么区别？
+
+两者的过滤能力完全一致，共用 `/data/adb/adblocker` 下的数据。通过 root 管理器刷入 `.apk.zip` 的好处是可以在管理器列表里直接启停模块（停用模块时即停止过滤）。无论哪种方式，挑选应用和过滤列表都在 ADBlocker 应用内操作。
+
+### 某个应用开启过滤后无法正常使用
+
+先到 **应用** 里点开该应用，**暂停** 过滤 1 小时再试。如果恢复正常，可以直接关掉它的过滤开关；如果想保留过滤并精准放行，先恢复过滤，到 **活动** 中点 **开始录制** 后复现故障，停止录制即可点开被拦截的请求查看命中的规则，选择仅在该应用或所有应用中放行对应域名。如果命中了 **我的规则**，可以直接在详情里删除，或利用操作提示栏里的 **撤销** 按钮回退。反馈问题时请附上受影响的应用名称。
+
+### 应用反复拒绝 HTTPS 过滤
+
+部分应用启用了证书固定（Certificate Pinning），只认自己的指定证书，ADBlocker 检测到后会自动退回域名过滤，并在 **应用** 详情的 **不接受证书的域名** 中列出这些站点。
+
+在装有 LSPosed/Vector 的 root 环境下，可以在 LSPosed/Vector 中为该应用勾选 ADBlocker 模块并重启该应用：应用重新启动后，ADBlocker 会再次尝试对这些站点进行按网址过滤。只有存在证书固定的应用才需要开启 LSPosed/Vector，且该应用仍需在 **应用** 中保持开启过滤。需要注意，拒绝证书未满 1 分钟的站点不会立即重试，且应用建连后从未使用的连接也会记为一次拒绝，因此有时需要等 1 分钟后再重启一次应用。详见 [HTTPS 检查的限制](SECURITY.md#limits-of-https-inspection)。
+
+### 能否与其他 VPN 或代理模块同时使用？
+
+- **root 模式**：可以。由于不占用系统 VPN 通道，可与 Clash Meta 等 VPN 应用同时运行，且转发连接保留原应用身份，VPN 或代理模块的按应用分流规则照常生效。若遇到与特定 VPN 或代理模块组合断网的情况，欢迎提 Issue 反馈具体组合。
+- **VPN 模式**：不能。Android 同一时间只允许运行一个 VPN，启动其他 VPN 会停止 ADBlocker；代理模块也会把已过滤应用的流量全部识别为 ADBlocker 的流量。此外，若系统开启了“屏蔽未使用 VPN 的所有连接”，ADBlocker 的 VPN 停止期间所选应用将无法联网。
+
+### 耗电情况如何？
+
+HTTPS 按网址过滤需要在本地对流量进行解密和重新加密，会带来一定 CPU 开销；关闭按网址过滤仅做域名过滤可省去这部分计算。VPN 模式下，所选应用的所有数据包还需经过 ADBlocker 的用户态协议栈转发。
+
+### 数据存放在哪里？
+
+- **root 模式**：`/data/adb/adblocker`（仅 root 可读）。
+- **VPN 模式**：ADBlocker 应用的私有目录。
 
 <details>
 <summary>root 命令行参考</summary>
 
-在 root shell 中运行 `abd` 可管理 root 模式。由 ADBlocker 设置 root 模式时，路径为 `/data/adb/adblocker_direct/bin/abd`。
-作为模块安装时，路径为 `/data/adb/modules/adblocker/bin/abd`。下文用 `abd` 代替完整路径。
+可在 root shell 中通过 `abd` 命令管理 root 模式：
 
-| 命令 | 作用 |
+- 应用内启用的 root 模式：`/data/adb/adblocker_direct/bin/abd`
+- root 管理器刷入的模块：`/data/adb/modules/adblocker/bin/abd`
+
+下文均简写为 `abd`。绝大多数命令支持 `--json` 输出结构化数据；直接运行 `abd` 可查看完整命令列表。
+
+| 命令 | 说明 |
 | --- | --- |
-| `abd status` | 显示守护进程的状态和当前的过滤配置。 |
+| `abd status` | 查看守护进程状态及当前过滤配置。 |
 | `abd scope chosen\|all` | 设置个人应用的过滤范围。 |
-| `abd app add <package>` | 明确选定一个应用。 |
-| `abd app exclude <package>` | 从“全部应用”过滤范围中排除某个个人应用。用 `app include` 将其重新纳入。 |
-| `abd app remove <package>` | 取消对某个应用的选定。 |
-| `abd app list` | 列出过滤范围内的应用。用 `--json` 查看实际生效的过滤级别及可用状态。 |
-| `abd app selections --json` | 显示过滤范围、已保存的选择及排除项。 |
-| `abd app eligibility --json` | 列出个人应用是否符合过滤条件，以及每个具名组的成员。 |
-| `abd app profiles --json` | 列出工作资料序列号、符合条件的应用包及共享 UID 组。 |
-| `abd ca export` | 输出公开的 CA 证书，供工作资料管理员使用。 |
-| `abd app pause <package> --minutes <n>` | 暂停过滤某个应用。用 `abd app resume <package>` 提前恢复。 |
-| `abd pause [--minutes <n>]` | 暂停过滤所有应用。用 `abd resume` 提前恢复。 |
-| `abd url-filtering on\|off` | 为所有已过滤的应用开启或关闭按网址过滤。 |
-| `abd cosmetic on` | 隐藏已解密页面中匹配规则的元素。默认开启。用 `off` 关闭。 |
-| `abd allow add <host>` | 对指定主机及其子域名跳过拦截和解密。用 `abd allow remove <host>` 和 `abd allow list` 管理这些条目。 |
-| `abd lists` | 列出过滤列表。 |
-| `abd list add <url>` | 订阅过滤列表。用 `remove`、`disable` 或 `enable` 加上同一网址进行管理。 |
-| `abd update` | 下载过滤列表。 |
-| `abd rules get` | 输出自定义规则。用 `abd rules set` 从标准输入读取规则并替换现有规则。 |
-| `abd rules append [--unique]` | 从标准输入追加规则。指定 `--unique` 时，只在单条规则尚不存在时添加它。 |
-| `abd rules remove` | 删除与标准输入完全匹配的规则行，忽略行首和行尾的空白。 |
-| `abd rules check` | 检查标准输入中的自定义规则，报告每条未应用规则的类别和原因。 |
-| `abd pinned` | 列出应用曾拒绝接受本地证书的主机。用 `abd pinned forget <package> [<host>]` 可以在之后连接时重新尝试解密。 |
-| `abd reload` | 重新读取过滤列表、规则和应用。 |
-| `abd stats` | 显示过滤统计数据。 |
-| `abd check [--app <package>] <url>` | 检查过滤列表是否拦截某个网址，并指出匹配的列表。指定 `--app` 时，也会考虑该应用适用的规则。 |
+| `abd app add <package>` | 显式选定一个应用。 |
+| `abd app remove <package>` | 取消显式选定。 |
+| `abd app exclude <package>` | 在“全部应用”模式下排除某个个人应用；用 `abd app include <package>` 重新纳入。 |
+| `abd app list` | 列出当前过滤范围内的应用；加 `--json` 查看实际过滤级别与可用状态。 |
+| `abd app selections --json` | 查看过滤范围、已保存的选择和排除项。 |
+| `abd app eligibility --json` | 列出个人应用的过滤资格以及各具名共享 UID 组的成员。 |
+| `abd app profiles --json` | 列出工作资料序列号、可用包名及共享 UID 组。 |
+| `abd ca export` | 导出公开 CA 证书，供工作资料管理员安装。 |
+| `abd app pause <package> --minutes <n>` | 暂停过滤单个应用；用 `abd app resume <package>` 提前恢复。 |
+| `abd pause [--minutes <n>]` | 暂停过滤所有应用；用 `abd resume` 提前恢复。 |
+| `abd url-filtering on\|off` | 全局开启或关闭按网址过滤。 |
+| `abd cosmetic on\|off` | 开启或关闭已解密页面的元素隐藏（默认开启）。 |
+| `abd allow add <host>` | 将指定主机及其子域名加入信任列表（跳过拦截与解密）；用 `abd allow remove <host>` 和 `abd allow list` 管理。 |
+| `abd lists` | 查看已订阅的过滤列表。 |
+| `abd list add <url>` | 添加过滤列表订阅；用 `abd list remove\|disable\|enable <url>` 管理。 |
+| `abd update` | 立即下载/更新过滤列表。 |
+| `abd rules get` | 输出自定义规则；用 `abd rules set` 从标准输入整体替换。 |
+| `abd rules append [--unique]` | 从标准输入追加规则；加 `--unique` 时仅在单条规则尚不存在时写入。 |
+| `abd rules remove` | 删除与标准输入完全匹配的规则行（忽略首尾空白）。 |
+| `abd rules check` | 校验标准输入中的自定义规则，报告每条未生效规则的类别与原因。 |
+| `abd pinned` | 列出曾被应用拒绝本地证书的主机；用 `abd pinned forget <package> [<host>]` 在后续连接时重新尝试解密。 |
+| `abd reload` | 重新加载过滤列表、自定义规则与应用选择。 |
+| `abd stats` | 查看过滤统计数据。 |
+| `abd check [--app <package>] <url>` | 测试指定网址是否会被拦截及命中的列表；加 `--app` 时一并计入该应用的专属规则。 |
 
-对于工作应用，凡是接受应用参数的命令，都使用 `<profile-serial>:<package>` 格式，例如 `abd app add 10:com.example.news`。
-序列号以 `abd app profiles --json` 的输出为准，可能与 Android 用户 ID 不同。
+**指定工作应用与共享 UID：**
 
-对于共享 UID，可以用组内任意成员的包名或组键指定选择。
-例如，`abd app pause 10:@com.example.shared --minutes 15` 会暂停过滤工作资料 10 中的这个组。
+- 操作工作应用时，在需要包名参数的位置改用 `<profile-serial>:<package>` 格式（例如 `abd app add 10:com.example.news`）。序列号请以 `abd app profiles --json` 输出为准，它可能与 Android 用户 ID 不同。
+- 操作共享 UID 组时，传入组内任意成员包名或组键均可（例如 `abd app pause 10:@com.example.shared --minutes 15`）。
 
-大多数命令接受 `--json`，以应用使用的格式输出结果。不带参数运行 `abd` 可查看全部命令。
+**`/data/adb/adblocker` 目录下的主要配置文件：**
 
-在 `/data/adb/adblocker` 中，`sources` 保存过滤列表的地址，`exclusion-sources` 保存列出不解密主机的列表地址，每行一个。
-选定过滤列表之前，`sources` 不存在。此时使用通用列表，以及与系统语言和地区、时区匹配的地区列表。
-这些默认列表即使未列在 `sources` 中也会开启。在列表地址前加 `#` 可以关闭它。
-更新时会将缺少的内置排除列表源补入现有选择。如果未选任何排除列表，解密保持关闭。
-自定义规则保存在 `rules/*.txt`，语法与过滤列表相同。
-ADBlocker 使用 uBlock Origin 发布的过滤列表。过滤列表和自定义规则均支持嵌套的 `!#if`、`!#else` 和 `!#endif` 指令，可使用 `!`、`&&`、`||` 和括号。
-`adguard`、`adguard_app_android`、`ext_ublock`、`env_mobile`、`env_chromium` 和 `cap_html_filtering` 为真。
-`cap_user_stylesheet`、`false` 和其他所有名称都求值为假。
-`abd rules check` 会报告未解析的生效包含指令和格式错误的条件指令。自定义规则中的包含指令不会解析。
-`--json` 输出中，每个问题也包含相同的类别和原因。
-
-开启按网址过滤时，匹配的 `$replace` 规则可以覆盖对请求的拦截，并改写文本响应。
-匹配的 `$jsonprune` 规则会移除 JSON 或 JSONP 响应中的条目，请求拦截仍然生效。
-匹配的 `$hls` 规则会从 HLS 播放列表中移除片段及其关联的标签。
-`$removeheader=header-name` 移除响应头，`$removeheader=request:header-name` 移除请求头。
-`$urltransform` 规则可以在请求发出前修改路径和查询部分，也可以将 GET 或 HEAD 请求重定向到其他地址。
-文本响应规则、移除标头的规则和网址转换规则来自自定义规则和订阅目录中受信任的列表。
-
-开启按网址过滤时，任何列表都可以用 `$cookie` 移除 Cookie，或修改其过期时间和 SameSite 属性。
-`$removeparam=name` 会在发出已放行的请求之前移除指定名称的查询参数。
-`$csp` 为已放行的页面添加内容安全策略。
-参阅[网址和响应规则](docs/how-it-works.md#filtering)。
-
-`$app=` 接受包名、以 `*` 结尾的前缀，以及用 `/` 括起的正则表达式。
-用 `|` 分隔各项。在每项前加 `~` 可排除匹配的应用。
-正则表达式中的 `/`、`$`、`,` 和 `|` 要用反斜杠转义。
-
-`$network` 规则根据远端 IP 地址过滤连接，也可指定端口。IPv6 地址须放在方括号中。
-用 `/` 括起正则表达式，查找匹配时会分别检查带端口和不带端口的地址。
-精确地址模式也可以用 `|` 或 `||` 开头。
-`@@` 放行匹配的连接，不再进行后续过滤。
-只有 `$app` 和 `$important` 修饰符可以与 `$network` 同用。标记为重要的拦截规则优先于例外规则。
-修改后运行 `abd update` 或 `abd reload`。
+- `sources`：订阅的过滤列表网址，每行一条。尚未保存自定义订阅前该文件不存在，ADBlocker 会自动使用通用列表及匹配的地区列表；默认列表即使未出现在 `sources` 中也会保持开启，在对应网址前加 `#` 可将其关闭。
+- `exclusion-sources`：不进行 HTTPS 解密的排除列表网址，每行一条。更新时会自动补全缺失的内置排除源；若排除列表为空，HTTPS 解密将保持关闭。
+- `rules/*.txt`：自定义规则文件。手动修改后请运行 `abd update` 或 `abd reload` 使变更生效。
 
 </details>
 
-## 常见问题
-
-### APK 与 root 管理器中的模块
-
-两者使用相同的过滤方式，并共用 `/data/adb/adblocker` 中的数据。
-刷入的模块也会出现在 root 管理器中，只有在管理器中启用该模块才会过滤。
-两种安装方式都在应用内选择要过滤的应用和要订阅的列表。默认使用 **选定应用**，只有在 **应用** 中打开开关的应用才会过滤。
-
-### 已过滤的应用无法正常工作
-
-在 **应用** 中打开对应的条目，暂停过滤 1 小时，然后重试。如果问题消失，可以继续关闭该应用的过滤。
-要找出涉及的规则，先恢复过滤，再到 **活动** 中开始录制，并重复之前失败的操作。
-停止录制后，打开一条被拦截的请求，可以查看详情，或在发出请求的应用或所有应用中放行该域名。
-如果请求由 **我的规则** 中的规则决定，可以在详情中删除这条规则，也可以在放行、拦截或删除规则后的提示中选择 **撤销**。
-如果提交问题报告，请附上受影响的应用名称。
-
-### 应用反复拒绝 HTTPS 过滤
-
-有些应用对某个网站只接受其指定的证书。此时，ADBlocker 只对这些应用按域名过滤。
-在 **应用** 中打开对应的条目，可在 **不接受证书的域名** 下查看这些网站。
-在使用 LSPosed/Vector 的 root 模式下，请在 LSPosed/Vector 中为该应用启用 ADBlocker，再重启该应用。
-应用启动时，ADBlocker 会对这些网站重试，之后按网址过滤。
-只有这类应用才需要 LSPosed/Vector，并且要在 **应用** 中保持开启过滤。
-如果应用拒绝某网站的证书还不到 1 分钟，ADBlocker 暂时不会重试。应用打开后从未使用的连接也算作拒绝，因此可能需要等 1 分钟再重启一次应用。
-参阅[这样做的影响](SECURITY.md#limits-of-https-inspection)。
-
-### 使用 VPN 或代理模块
-
-root 模式不占用 Android 的 VPN 名额，可以同时使用 Clash Meta 等 VPN 应用。
-Android 将转发的连接归到原应用，因此 VPN 或代理模块的按应用规则对这些连接生效。
-如果使用某个 VPN 或代理模块时，有已过滤的应用无法联网，请提交问题报告并说明这个组合。
-
-VPN 模式占用 Android 唯一的 VPN 名额。启动其他 VPN 会停止 ADBlocker 的 VPN。
-代理模块会将已过滤应用的流量识别为 ADBlocker 的流量。
-如果 Android 开启了“屏蔽未使用 VPN 的所有连接”，所选应用在 VPN 停止期间无法访问网络。
-
-### 耗电
-
-检查 HTTPS 连接时，需要在设备上解密流量，再重新加密。按域名过滤无需做这两步。
-在 VPN 模式下，所选应用的每个数据包还会经过 ADBlocker 的进程。
-
-### 数据存储位置
-
-root 模式下，数据存放在 `/data/adb/adblocker`，只有 root 能读取。
-VPN 模式下，数据存放在应用的私有目录。
-
-## 安全
-
-按网址过滤允许 ADBlocker 在设备上读取 HTTPS 请求。
-当 ADBlocker 解密浏览器的连接时，浏览器看到的是 ADBlocker 为该网站提供的证书，浏览器通常执行的部分安全检查不再适用。
-参阅 [HTTPS 过滤带来的变化](SECURITY.md#what-using-it-changes)。
-关闭 **按网址过滤** 可让 HTTPS 保持加密。
-
-## 限制
-
-- **隐藏页面元素** 会在已解密的网页上隐藏过滤列表指定的元素，例如空白广告框。
-  AdGuard 的 `$$` 规则和兼容的 uBlock Origin `##^` 规则会在页面加载前从 HTML 中移除元素。
-  这项设置默认开启，可在“设置”中关闭，也可在 root shell 中运行 `abd cosmetic off` 关闭。
-  此功能还会运行受支持的 uBlock Origin 和 AdGuard 脚本片段、带有相应标记的列表及自定义规则中的 AdGuard JavaScript 规则、AdGuard CSS 注入规则，以及 `:has-text()` 等程序化规则。
-  `$jsinject` 页面例外会在匹配的页面上停用脚本片段和 JavaScript 规则。
-  程序化规则也能匹配网页后来添加的元素，仅依靠类名或 ID 的通用 CSS 规则可能漏掉这些元素。
-  参阅[这对网页的影响](SECURITY.md#hiding-page-elements)。
-- 明文 HTTP 过滤覆盖发往 80 端口的普通 HTTP/1 请求。
-- 对于敏感网站列表中的网站，按网址过滤会退回到仅按域名过滤。这些列表包括银行和支付服务。
-  应用为某个网站指定证书或密钥，或者网站使用扩展验证证书时，也同样只按域名过滤。
-- 规则无法区分来自同一地址的广告和内容。
-- root 模式会拦截已过滤应用的明文 DNS 查询中命中规则的域名，无论查询由 Android 的解析器发出，还是由应用自行发出。
-  Android 经“专用 DNS”发出的查询不经过滤。指定提供商主机名时，Android 始终通过“专用 DNS”发送查询。选择“自动”时，只有网络的 DNS 服务器支持才会使用。
-  应用自行发出的加密 DNS 查询（例如 DoH）也不经过滤。
-  如果另一个应用最近查询过某个域名，Android 可以直接用缓存回答，无需询问 ADBlocker。
-  开启按网址过滤后，如果该应用与某主机的连接保持加密，例如网站在排除列表中，或应用为其固定了证书，就按域名规则判断是否拦截查询。
-  如果 ADBlocker 能读取发往该主机的请求，只有当过滤列表中没有任何网页例外规则可能适用于该主机时，才按域名规则拦截查询。否则，改为过滤请求。
-- root 模式仅支持主用户及其受管理的工作资料。共享 UID 的应用在同一资料中共用一套选择和暂停状态。
-
-VPN 模式下：
-
-- VPN 会对所选应用通过系统解析器发出的 DNS 查询拦截命中规则的域名，包括 HTTP 和 HTTPS 以外的流量所需的查询。
-  Android 的“专用 DNS”设为“专用 DNS 提供商主机名”时，以及应用自行使用 DoH 等加密 DNS 时，查询会绕过 VPN 的 DNS 过滤。
-- 过滤 HTTPS 请求需要受信任的用户证书。大多数应用只接受系统证书，因此只按域名过滤。
-- 对于已选中且未暂停过滤的应用，无论使用哪个端口，VPN 都会拒绝识别出的 QUIC 连接的第一个数据包。
-  root 模式会对这些应用拒绝发往 443 端口的所有 UDP 流量，包括 QUIC 之外的协议。
-  命中 VPN 地址例外时，也会跳过 QUIC 拒绝。
-- 关闭按网址过滤后，地址规则仍然生效。VPN 模式检查 TCP 和 UDP 的目标地址，另行处理发往其虚拟解析器的查询。
-  root 模式检查捕获的、发往 80 和 443 端口的 TCP 连接的目标地址。
-- 检查完地址规则后，VPN 会在收到主机名之前与服务器建立 TCP 连接。
-  如果域名规则拦截该主机，VPN 会关闭连接，不发送应用数据。
-- 系统的“流量使用情况”将所选应用的流量计入 ADBlocker。
-- 无法同时使用另一个 VPN。
-
 ## 工作原理
 
-在 root 模式下，ADBlocker 会先查找发起连接的应用的 UID，再将连接交给过滤器。
-向网站建立连接时，ADBlocker 使用同一应用的网络身份。
-[设计说明](docs/how-it-works.md)以一条连接为例，说明它如何从内核经过 HTTPS 检查，再到[规则引擎](https://github.com/brave/adblock-rust)。
+在 root 模式下，ADBlocker 在接管连接前会先识别发起应用的 UID，并在转发上游连接时沿用同一应用的网络身份；在 VPN 模式下，同一套 Rust 过滤引擎直接运行在应用进程内，通过用户态 TCP/IP 协议栈处理流量。如果你想深入了解一条连接如何从内核路由、HTTPS 证书校验一路流经 [adblock-rust](https://github.com/brave/adblock-rust) 规则引擎，请参阅 [docs/how-it-works.md](docs/how-it-works.md)。
 
-## 语言
+## 多语言支持
 
-ADBlocker 支持英语、简体中文、繁体中文、法语、德语、印尼语、日语、韩语、巴西葡萄牙语、俄语、西班牙语、土耳其语和越南语。
-应用使用系统语言。在 Android 13 或更高版本中，可以在系统设置的“应用语言”中为 ADBlocker 选择其他语言。
-欢迎母语使用者指正。[Android 翻译说明](docs/translations.md)列出了各语言的术语，以及修改须通过的检查。
+ADBlocker 支持英语、简体中文、繁体中文、法语、德语、印尼语、日语、韩语、巴西葡萄牙语、俄语、西班牙语、土耳其语和越南语。应用默认跟随系统语言，Android 13 及以上可在系统设置的“应用语言”中单独切换。欢迎帮助完善各地译文，术语规范与校验要求见 [docs/translations.md](docs/translations.md)。
 
 ## 参与贡献
 
-欢迎提交问题报告和拉取请求。构建、测试和项目约定见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交 Issue 和 Pull Request。编译、测试步骤及代码规范请参阅 [CONTRIBUTING.md](CONTRIBUTING.md)，参与社区交流请遵守[行为准则](CODE_OF_CONDUCT.md)。
 
 ## 许可证
 
 Copyright (C) 2026 Mercury Li
 
-本程序是自由软件。你可以依照自由软件基金会发布的 GNU General Public License 第 3 版的条款，重新分发本程序、修改本程序，或同时进行这两项操作。参阅 [LICENSE](LICENSE)。
+本程序是自由软件，依据自由软件基金会发布的 GNU 通用公共许可证第 3 版（GPL-3.0-only）发布；你可以按该许可证条款自由分发或修改。详情见 [LICENSE](LICENSE)。
 
-过滤列表和 [AdGuard HTTPS 排除列表](https://github.com/AdguardTeam/HttpsExclusions)从各自的维护方下载。
-AdGuard 在其 [`package.json`](https://github.com/AdguardTeam/HttpsExclusions/blob/master/package.json) 中声明，排除列表项目采用 MIT 许可证。
-上游署名及随版本分发的许可证材料见[第三方声明](THIRD_PARTY_NOTICES.md)。
+过滤列表及 [AdGuard HTTPS 排除列表](https://github.com/AdguardTeam/HttpsExclusions) 均从各自维护方下载。AdGuard 在其 [`package.json`](https://github.com/AdguardTeam/HttpsExclusions/blob/master/package.json) 中声明排除列表采用 MIT 许可证。上游署名及随版本附带的第三方许可证材料见 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
