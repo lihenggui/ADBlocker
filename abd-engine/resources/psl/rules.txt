@@ -130,6 +130,7 @@ uwu.ai
 framer.ai
 *.airoapp.ai
 kiloapps.ai
+relumesite.ai
 al
 com.al
 edu.al
@@ -673,10 +674,13 @@ org.bt
 bv
 bw
 ac.bw
+agric.bw
 co.bw
 gov.bw
+me.bw
 net.bw
 org.bw
+shop.bw
 by
 gov.by
 mil.by
@@ -2037,6 +2041,7 @@ myoxypages.com
 pgfog.com
 gotpantheon.com
 *.paywhirl.com
+phronusercontent.com
 forgeblocks.com
 upsunapp.com
 postman-echo.com
@@ -5348,6 +5353,7 @@ org.kg
 us.kg
 xx.kg
 ae.kg
+fs.kg
 fj.kg
 kh
 com.kh
@@ -5829,6 +5835,7 @@ opik.net
 spryt.net
 dynv6.net
 twmail.net
+entrypages.net
 ru.net
 channelsdvr.net
 u.channelsdvr.net
@@ -6008,6 +6015,7 @@ vpndns.net
 cloudycluster.net
 *.hosting.ovh.net
 *.webpaas.ovh.net
+bg5.net
 rackmaze.net
 myradweb.net
 in.net
@@ -7643,9 +7651,11 @@ us.platform.sh
 surge.sh
 teleport.sh
 now.sh
+xport.sh
 si
 f5.si
 gitpage.si
+is-a.si
 sj
 sk
 org.sk
@@ -8662,6 +8672,7 @@ apartments
 app
 agilevibes.app
 aiven.app
+aiwebinfra.app
 claude.app
 *.beget.app
 blacktops.app
@@ -8704,9 +8715,10 @@ web.app
 hackclub.app
 hasura.app
 onhercules.app
+hostney.app
 botdash.app
+lambforge.app
 shiptoday.app
-leapcell.app
 loginline.app
 lovable.app
 auth.lovable.app
@@ -8719,6 +8731,7 @@ mocha.app
 modelence.app
 cloud.modelence.app
 sandbox.modelence.app
+mythex.app
 netlify.app
 ngrok.app
 ngrok-free.app
@@ -8728,6 +8741,7 @@ noop.app
 pplx.app
 *.upsun.app
 puter.app
+pymaia.app
 up.railway.app
 replit.app
 id.replit.app
@@ -8738,7 +8752,10 @@ sliplane.app
 *.snowflake.app
 *.privatelink.snowflake.app
 streamlit.app
+softr.app
 spawnbase.app
+staticrun.app
+strw.app
 telebit.app
 typedream.app
 vercel.app
@@ -9116,6 +9133,8 @@ eu.encoway.cloud
 *.host.cloud
 ravendb.cloud
 hstgr.cloud
+hostney.cloud
+infusion-ai.cloud
 online-server.cloud
 es-1.axarnet.cloud
 vip.jelastic.cloud
@@ -9468,6 +9487,7 @@ forum
 foundation
 fox
 free
+xport.free
 fresenius
 frl
 frogans
@@ -9589,6 +9609,7 @@ bolt.host
 voati.host
 wp2.host
 half.host
+xport.host
 hosting
 opencraft.hosting
 hot
@@ -9717,6 +9738,7 @@ live
 aem.live
 hlx.live
 *.ewp.live
+spheron.live
 living
 llc
 llp
@@ -9860,6 +9882,7 @@ eero-stage.online
 heimdns.online
 websitebuilder.online
 barsy.online
+tnas.online
 book.online
 ooo
 open
@@ -9878,6 +9901,7 @@ aem.page
 hlx.page
 blacktops.page
 prod.page
+bonto.page
 codeberg.page
 deuxfleurs.page
 mybox.page
@@ -10097,6 +10121,7 @@ silk
 sina
 singles
 site
+agental.site
 square.site
 my.canva.site
 ceero.site
@@ -10112,6 +10137,7 @@ fastvps.site
 figma.site
 figma-gov.site
 preview.site
+fusebase.site
 greybull.site
 heyflow.site
 jele.site
@@ -10141,6 +10167,7 @@ srht.site
 novecore.site
 cpanel.site
 wpsquared.site
+wirechunk.site
 sourcecraft.site
 ski
 skin
@@ -10341,6 +10368,8 @@ work
 puter.work
 works
 world
+atoms.world
+pub.atoms.world
 wow
 wtc
 wtf
@@ -10469,6 +10498,7 @@ zara
 zero
 zip
 zone
+eureka.zone
 stackit.zone
 lima.zone
 *.triton.zone

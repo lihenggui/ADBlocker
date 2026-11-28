@@ -33,7 +33,7 @@ const RULES: &str = include_str!("../resources/psl/rules.txt");
 
 /// The version of `psl` whose rules [`RULES`] are.
 #[cfg(test)]
-const RULES_OF_PSL: &str = "2.1.263";
+const RULES_OF_PSL: &str = "2.1.266";
 
 /// A name that is itself a rule: `co.uk`.
 const SUFFIX: u8 = 1;
