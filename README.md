@@ -4,10 +4,11 @@
 
 English | [简体中文](README.zh-CN.md)
 
-ADBlocker blocks ads and trackers in Android apps with the filter lists
-of browser ad blockers, such as EasyList, uBlock Origin and AdGuard. You
-choose the apps it filters, or let it filter all of your personal apps.
-ADBlocker downloads the lists you subscribe to and sends no telemetry.
+ADBlocker blocks ads and trackers in Android apps using standard browser filter
+lists such as EasyList, uBlock Origin, and AdGuard. Filtering runs locally on
+your device, either through a root module or a local VPN. You can filter
+selected apps or all personal apps. ADBlocker only downloads the lists you
+subscribe to and sends no telemetry.
 
 <p>
   <img src="android/feature/overview/impl/src/test/screenshots/Overview_phone.png" width="200" alt="Overview: filtering status and requests blocked today">
@@ -16,435 +17,399 @@ ADBlocker downloads the lists you subscribe to and sends no telemetry.
   <img src="android/feature/activity/impl/src/test/screenshots/Activity_phone.png" width="200" alt="Activity: recorded requests, blocked and allowed">
 </p>
 
-ADBlocker filters in one of two ways, depending on whether the device is
-rooted:
+## Root mode vs. VPN mode
+
+ADBlocker automatically chooses its filtering method based on whether root
+access is available:
 
 | | Root mode | VPN mode |
 | --- | --- | --- |
-| Needs | Root access | No root |
-| Android's VPN slot | Stays free for another VPN | Used by ADBlocker |
-| HTTPS filtering by URL | Filtered personal apps; work apps need their administrator to install the CA | Apps that trust user certificates, once you install ADBlocker's |
-| DNS filtering | Plain DNS lookups from filtered apps | Queries from filtered apps |
+| Requirements | Root access | No root |
+| Android VPN slot | Free for another VPN app | Used by ADBlocker |
+| HTTPS URL filtering | Filtered personal apps; work apps need the profile admin to install the CA | Apps that trust user certificates (after installing ADBlocker's CA) |
+| DNS filtering | Plain DNS lookups from filtered apps | DNS queries from filtered apps |
+| Per-app attribution | Preserved by Android (works alongside VPN and firewall per-app rules) | Counted under ADBlocker |
 
-In root mode, Android still attributes each connection to the app that
-made it, so per-app VPN and firewall rules keep working. In VPN mode, the
-filtered apps' traffic passes through ADBlocker's process, and Android
-counts its data usage under ADBlocker.
-
-## What it filters
-
-In **Filtering scope**, keep **Chosen apps** to select them individually, or
-choose **All apps** to filter eligible personal apps, including new installs.
-Use **Exclude** or **Include** on the **Apps** page to make exceptions.
-ADBlocker and system UIDs stay outside the filter. Work apps still use
-individual choices.
-
-**URL filtering** is on by default and applies URL and resource rules to
-every filtered app where possible. A rule can then block
-`news.example/ads/banner` while allowing `news.example/articles/today`.
-Ordinary HTTP/1 on port 80 needs no certificate. For HTTPS over TCP, root
-mode makes its local CA available to filtered personal apps.
-In VPN mode, install the certificate through Settings; only apps that trust
-user-installed certificates accept it. Until then, HTTPS stays encrypted
-and only domain rules apply. Turn off **URL filtering** in Settings to
-filter every app by domain only. See
-[how this affects certificate trust](SECURITY.md#what-using-it-changes).
-
-With URL filtering on, a host that a list blocks but also allows for
-some paths stays reachable: the engine checks each request on the
-connection instead of refusing it. The engine checks the resource type
-from `Sec-Fetch-Dest` or the URL's file extension. If neither identifies
-the type, it checks again when the server's `Content-Type` identifies it.
-When a rule supplies a bundled substitute for a blocked request, ADBlocker
-returns it locally and counts the request as blocked.
-When a site or app requires a certificate ADBlocker cannot use, HTTPS
-stays encrypted and only domain rules apply.
-
-ADBlocker refuses QUIC for selected apps so they can retry over TCP, where
-the usual HTTPS rules apply. Apps that only support QUIC may fail to connect.
-
-In Root mode, apps that Android puts in the same shared UID group have one
-switch per profile. Switching on any member enables filtering for the group.
-New members inherit its selection and pause. Activity and statistics
-are counted once for the group.
-
-### Work apps with root
-
-On the Apps page, a briefcase marks the work copy of an app. Each copy
-has its own selection, pause, activity and statistics. If Android cannot
-list a work profile's apps for a moment, retry from the Apps page; the
-other apps stay manageable meanwhile. Root mode keeps your choices while
-a work profile is paused. Deleting the work profile clears its selections
-and pauses, and a newly created profile starts with none.
-
-Domain filtering needs no certificate. For HTTPS request filtering, keep
-URL filtering on, open the work copy's certificate setup, and give the
-public certificate to the profile administrator to install in that
-profile. The work app must also trust user certificates for the
-destination. The app's details show how its HTTP and HTTPS traffic is
-filtered.
-See [work profile trust](SECURITY.md#work-profiles).
+Root mode does not modify `/system`, uses no `post-fs-data` script or SELinux
+rules, and fails open: if the daemon stops, traffic resumes through Android's
+normal network path.
 
 ## Requirements
 
-Both methods require a 64-bit ARM (arm64) or x86 (x86_64) device.
+Both modes require a 64-bit ARM (`arm64`) or x86 (`x86_64`) device.
 
-- Root mode: Android 12 or later, a GKI kernel (5.10 or newer), and root
-  access, for example from [KernelSU](https://kernelsu.org),
-  [Magisk](https://github.com/topjohnwu/Magisk) or
-  [APatch](https://apatch.dev). With root from another source, ADBlocker
-  starts root mode itself after a restart; on devices that keep apps from
-  starting at boot, allow ADBlocker to start automatically.
-- VPN mode: Android 10 or later.
+- **Root mode**: Android 12 or later, a GKI kernel (5.10 or newer), and root
+  access—for example via [KernelSU](https://kernelsu.org),
+  [Magisk](https://github.com/topjohnwu/Magisk), or
+  [APatch](https://apatch.dev). With other root solutions, ADBlocker starts
+  root mode itself on boot (enable auto-start if your ROM restricts background
+  boot launches).
+- **VPN mode**: Android 10 or later.
 
 ## Installation
 
-Download `adblocker-<version>.apk` from [Releases](../../releases) and
-install it. `adblocker-<version>.apk.zip` is the same package under a
-second name, for root managers. To build it yourself, see the
-[build instructions](CONTRIBUTING.md#building).
+1. Download `adblocker-<version>.apk` from
+   [Releases](https://github.com/lihenggui/ADBlocker/releases) and install it.
+2. Open ADBlocker and pick the apps and filter lists you want.
+   - **With root**: ADBlocker sets up root mode directly—filtering starts
+     immediately without rebooting and restarts automatically after each boot.
+   - **Without root**: ADBlocker switches to VPN mode and asks for VPN
+     permission.
 
-Open ADBlocker and choose your apps and lists. With root access, ADBlocker
-sets up root mode: filtering starts at once, without a restart, and again
-after every restart. Without root, it uses VPN mode and asks for VPN
-permission.
+To build from source, see [CONTRIBUTING.md](CONTRIBUTING.md#building).
 
-Some systems, such as MIUI and HyperOS, show ADBlocker the installed apps
-only after it is allowed to read them. Setup and **Apps** ask for this
-permission and can open ADBlocker's system settings. Without root, **All
-apps** filters only the apps the system shows, so until it is allowed
-**Overview** says that most apps are not filtered.
+> **MIUI / HyperOS note:** Some ROMs hide installed apps until ADBlocker is
+> granted permission to read the app list. Onboarding and **Apps** prompt for
+> this permission and link straight to system settings. In VPN mode, **All
+> apps** can only filter apps visible to ADBlocker.
 
-Setup suggests the general lists and regional lists. A regional list is
-on by default when it matches a system language, a region in the system
-locales, or the country of a time zone that belongs to one country.
-EasyList China, AdGuard Chinese, AWAvenue Ads Rule and anti-AD are on by
-default when the system language is Chinese or the region is mainland
-China, Hong Kong, Macau or Taiwan.
+### Installing as a root module
 
-ADBlocker saves the selected subscriptions, downloads the lists, and
-updates them in the background at the configured interval. It follows
-active `!#include` directives within the list's HTTPS origin and directory.
-An update replaces the entire list together with its included files. If a
-required download fails, the previous copy stays in use. AdGuard Base,
-AdGuard Chinese and AdGuard Mobile Ads use their Android builds. AdGuard
-Base includes EasyList. AdGuard Tracking Protection uses its uBlock Origin
-build. To download lists from a root shell, run `abd update`.
+`adblocker-<version>.apk.zip` is the exact same package under a second filename
+for root managers. Flash it in KernelSU, Magisk, or APatch if you prefer to
+manage root mode inside your root manager; this also attempts to install the
+app.
 
-### Installing as a module
-
-The same file is a module for KernelSU, Magisk and APatch. Install the
-`.apk.zip` in your root manager if you want root mode listed and managed
-there; this also attempts to install the app. KernelSU applies it
-immediately, Magisk and APatch after a restart. If ADBlocker is opened
-before that restart, it sets up root mode itself, and the module takes
-over afterwards with the same settings.
+- **KernelSU** applies the module immediately.
+- **Magisk** and **APatch** apply it after a reboot. If you open ADBlocker
+  before rebooting, it sets up root mode on its own, and the flashed module
+  takes over seamlessly with the same settings after the restart.
 
 ### Updating
 
-Install the new APK over the app, then open ADBlocker; it updates root
-mode. A module in a root manager can also be updated by installing the new
-`.apk.zip` there.
+Install the new APK over the existing app and open ADBlocker to update root
+mode. If you installed ADBlocker as a root manager module, you can also flash
+the new `.apk.zip` directly in your root manager.
 
 ### Uninstalling
 
-In root mode, follow **Settings › Remove root mode**, then uninstall the
-app. Removing root mode stops filtering and deletes its certificate
-authority and its other data. If you installed ADBlocker as a module,
-remove it in the root manager and restart instead. Have the work profile
-administrator remove any CA installed for work filtering.
-
-If the app is uninstalled first, root mode that ADBlocker set up stops
-filtering within about a minute. Where KernelSU, Magisk or APatch is
-installed, its files and data are deleted at the next restart. With root
-from another source they stay, including its certificate authority, so
-remove root mode in Settings before uninstalling the app.
-
-In VPN mode, if you installed ADBlocker's certificate, follow **Settings ›
-Remove the certificate** before uninstalling the app. Uninstalling deletes the
-private key and the app's data. Android stores the certificate separately.
+- **Root mode (app-managed)**: Open **Settings › Remove root mode** before
+  uninstalling the app. This stops filtering and deletes the local certificate
+  authority (CA) and all module data.
+  - If you uninstall the app first, filtering stops within about a minute. On
+    KernelSU, Magisk, or APatch, leftover files and data are cleaned up on the
+    next reboot. With other root providers, those files—including the CA—stay
+    behind unless removed in Settings first.
+- **Root mode (root manager module)**: Remove the module in your root manager
+  and reboot, then uninstall the app.
+- **Work profile CA**: Ask the work profile administrator to remove any CA
+  installed for work apps.
+- **VPN mode**: If you installed ADBlocker's certificate, open **Settings ›
+  Remove the certificate** before uninstalling. Uninstalling deletes the
+  private key and app data, while Android keeps the certificate in the user
+  store separately.
 
 ## Usage
 
-- **Overview** shows filtering status and blocked requests. Use it to
-  pause or resume filtering. It also says when an enabled list has never
-  been downloaded, and so filters nothing yet, and offers to download it.
-- **Apps** lists installed apps and how each is filtered.
-- **Filters** manages subscriptions, custom rules, and trusted sites.
-  Supported lists include EasyList, uBlock Origin lists, and AdGuard lists.
-- **Activity** records requests when you start a recording. Switch to
-  the filtered app, repeat the action you want to check, and stop the
-  recording to see how the current rules treat each request. Open an
-  allowed request to block its domain in that app only or in all apps;
-  the rule is added to **My rules** in **Filters**. A shared UID group's requests can be
-  blocked only in all apps. The latest 500 requests stay in memory until
-  the next recording or until ADBlocker exits.
+- **Overview**: Check filtering status and blocked counts, pause or resume
+  filtering, and download any enabled list that has not been fetched yet.
+- **Apps**: Choose **Chosen apps** (default) or **All apps** under **Filtering
+  scope**, and view how each app is filtered. In **All apps**, newly installed
+  personal apps are filtered automatically; use **Exclude** or **Include** for
+  exceptions. ADBlocker itself and system UIDs are never filtered, and work
+  apps always use individual selections.
+- **Filters**: Manage subscribed lists, custom rules (**My rules**), and
+  trusted sites.
+- **Activity**: Start a recording, switch to a filtered app to reproduce an
+  issue, then stop recording to inspect how each request was handled. Open any
+  allowed request to block its domain in that app or in all apps (shared UID
+  groups can only be blocked across all apps). Recordings keep up to the latest
+  500 requests in memory only—nothing is written to disk.
 
-The Quick Settings tile pauses and resumes filtering, and in VPN mode
-starts the VPN. These actions require unlocking the device. Settings links
-to Android's Always-on VPN setting and holds the HTTPS filtering setup.
+A **Quick Settings** tile pauses or resumes filtering (and starts the VPN in
+VPN mode) after unlocking the device. **Settings** provides HTTPS filtering
+setup and a shortcut to Android's "Always-on VPN" setting.
+
+## Filtering capabilities
+
+### Domain, URL, and DNS filtering
+
+- **URL filtering** is enabled by default and applies request-level rules
+  wherever available—blocking `news.example/ads/banner` while allowing
+  `news.example/articles/today`. Plain HTTP/1 on port 80 needs no certificate.
+  For HTTPS over TCP, root mode exposes its local CA only to filtered personal
+  apps; VPN mode requires installing the certificate in Settings, and only apps
+  that trust user certificates accept it. Until HTTPS inspection is available,
+  connections stay encrypted and only domain rules apply. Turn off **URL
+  filtering** in **Settings** to filter every app by domain only.
+- **Path-level exceptions and substitutes**: With URL filtering on, a host
+  blocked by a list stays reachable if an exception allows specific paths, so
+  the engine inspects individual requests instead of refusing the connection.
+  When a rule specifies a bundled substitute for a blocked request, ADBlocker
+  serves it locally and counts the request as blocked.
+- **QUIC fallback**: ADBlocker refuses QUIC from active filtered apps so they
+  fall back to TCP, where standard HTTPS rules apply. Apps that require QUIC
+  may fail to connect.
+- **DNS filtering**: Both modes filter plain DNS queries from active filtered
+  apps (see [Limitations](#limitations) for Private DNS and DoH).
+
+### Page element hiding and rule syntax
+
+**Hide page elements** is enabled by default on decrypted pages and can be
+turned off in **Settings** (or via `abd cosmetic off`). Supported rule
+capabilities include:
+
+- **Cosmetic and HTML filtering**: Standard CSS element hiding (`##`),
+  procedural filters such as `:has-text()`, AdGuard CSS injection, and
+  pre-load HTML element removal (`$$`, compatible uBlock Origin `##^`).
+- **Scriptlets and JavaScript rules**: Bundled uBlock Origin and compatible
+  AdGuard scriptlets, plus AdGuard JavaScript rules from trusted catalog lists
+  and custom rules (disabled on matching pages by `$jsinject`).
+- **Request and response rewriting**: `$replace`, `$jsonprune`, `$hls`,
+  `$removeheader`, and `$urltransform` (from custom rules and trusted catalog
+  lists), plus `$cookie`, `$removeparam`, and `$csp` from any list.
+- **App and IP rules**: Per-app targeting with `$app=` (package names, `*`
+  prefixes, or `/regex/`), IP/port rules with `$network`, and nested `!#if` /
+  `!#else` / `!#endif` conditionals.
+
+See [docs/how-it-works.md](docs/how-it-works.md#filtering) for exact syntax,
+matching behavior, and trusted-list rules.
+
+### Filter lists
+
+ADBlocker supports EasyList, uBlock Origin, and AdGuard filter lists. During
+setup, it suggests general lists along with regional lists matched to your
+system language, locale region, or single-country time zone (for example,
+EasyList China, AdGuard Chinese, AWAvenue Ads Rule, and anti-AD for Chinese
+locales or mainland China, Hong Kong, Macau, and Taiwan).
+
+Subscriptions update in the background on a schedule. Lists use their
+appropriate upstream builds (Android builds for AdGuard Base, AdGuard Chinese,
+and AdGuard Mobile Ads; uBlock Origin build for AdGuard Tracking Protection;
+AdGuard Base already includes EasyList). Active `!#include` directives are
+followed only within the list's HTTPS origin and directory; if a required file
+fails to download, the previous copy stays active.
+
+### Shared UIDs and work profiles (root mode)
+
+- **Shared UIDs**: Apps sharing an Android UID in the same profile share one
+  switch, pause state, activity feed, and statistics. Enabling any member
+  enables the group, and future members inherit its state.
+- **Work profiles**: Work copies of apps appear in **Apps** with a briefcase
+  icon and keep independent selections, pauses, activity, and counts. Choices
+  persist while a work profile is paused and are cleared if the profile is
+  deleted. Domain filtering works out of the box; for HTTPS URL filtering,
+  export the public certificate from the work app's HTTPS setup and have the
+  profile administrator install it (the app must also trust user certificates
+  for the target host). See [work profile trust](SECURITY.md#work-profiles).
+
+## Security and privacy
+
+All filtering and HTTPS inspection happen locally on your device. ADBlocker
+sends no telemetry and does not log visited hosts or addresses by default.
+
+When **URL filtering** decrypts an HTTPS connection, the app or browser sees
+ADBlocker's local certificate rather than the site's original certificate, so
+some browser checks (such as Certificate Transparency and built-in pins) no
+longer apply. Connections to sensitive sites on the exclusion lists (such as
+banks and payment services), sites using Extended Validation (EV) certificates,
+and hosts pinned by an app stay encrypted and fall back to domain filtering.
+
+Read [SECURITY.md](SECURITY.md#what-using-it-changes) for the full threat
+model and details on [page element hiding](SECURITY.md#hiding-page-elements).
+Turn off **URL filtering** in **Settings** at any time to keep all HTTPS
+traffic encrypted.
+
+## Limitations
+
+### General
+
+- Plaintext HTTP filtering covers standard HTTP/1 requests on port 80.
+- Rules cannot separate ads from legitimate content served from the exact same
+  URL.
+- Sensitive sites on exclusion lists, sites with EV certificates, and apps
+  using certificate pinning stay encrypted and use domain rules only.
+- Under **Hide page elements**, procedural rules match elements added
+  dynamically after page load, while generic CSS rules based only on a class or
+  ID may miss them.
+
+### Root mode
+
+- Plain DNS filtering covers unencrypted DNS lookups from filtered apps.
+  Queries sent through Android's Private DNS (always when a provider hostname
+  is set; in Automatic mode when the network supports it) or an app's own
+  encrypted DNS (such as DoH) are not filtered. Android may also answer from
+  its shared resolver cache if another app recently looked up the same domain.
+  With URL filtering on, a domain whose HTTPS traffic can be inspected is
+  blocked at DNS only if no web exception could apply to it; otherwise
+  individual requests are filtered.
+- Refuses all UDP traffic to port 443 from active filtered apps, including
+  non-QUIC protocols.
+- `$network` address rules apply to captured TCP connections on ports 80 and
+  443 (including when URL filtering is off).
+- Supports the primary user and its managed work profiles, not secondary users.
+
+### VPN mode
+
+- Occupies Android's single VPN slot—starting another VPN stops ADBlocker.
+- Android counts filtered apps' traffic under ADBlocker's data usage.
+- Most third-party apps trust only system certificates and therefore receive
+  domain filtering rather than URL filtering.
+- Filters DNS queries sent through the system resolver (including non-HTTP
+  traffic). Strict Private DNS and app-level encrypted DNS (such as DoH) bypass
+  it.
+- Refuses recognized QUIC Initial packets on any UDP port for active filtered
+  apps unless exempted by a `$network` address rule.
+- `$network` address rules cover both TCP and UDP destinations (including when
+  URL filtering is off). For allowed TCP addresses, the VPN opens the upstream
+  connection before reading the hostname; if a domain rule blocks the host, it
+  closes the connection without sending application data.
+
+## FAQ
+
+### Should I install the APK or flash the module in my root manager?
+
+Both filter identically and share the same data in `/data/adb/adblocker`.
+Flashing `.apk.zip` additionally registers ADBlocker in your root manager,
+where it only filters while enabled. In either case, you manage apps and lists
+inside the ADBlocker app.
+
+### A filtered app stopped working
+
+Open the app in **Apps**, pause filtering for an hour, and try again. If that
+resolves the issue, leave filtering off for that app—or resume filtering, start
+a recording in **Activity**, and repeat the failing action. Stop the recording
+and open blocked requests to inspect which rule matched, allow the domain for
+that app or all apps, or delete a custom rule from **My rules** (you can also
+tap **Undo** right after changing a rule). When reporting a broken app, include
+its name.
+
+### An app keeps rejecting HTTPS filtering
+
+Apps that enforce certificate pinning reject ADBlocker's local CA and fall back
+to domain filtering. Their entry in **Apps** lists affected hosts under
+**Domains that reject the certificate**.
+
+In root mode with LSPosed/Vector, enable ADBlocker's hook module for that app
+and restart it: ADBlocker retries those hosts on app launch and filters them by
+URL afterwards. LSPosed/Vector is only needed for pinned apps, and the app must
+remain enabled in **Apps**. Hosts refused less than a minute earlier are not
+retried immediately, and an opened connection that the app never uses counts as
+a refusal—so a host may need one more restart a minute later. See
+[limits of HTTPS inspection](SECURITY.md#limits-of-https-inspection).
+
+### Can I use another VPN or a proxy module alongside ADBlocker?
+
+- **Root mode**: Yes. Android's VPN slot remains free for apps such as Clash
+  Meta, and outbound connections keep the original app's UID so per-app VPN or
+  proxy rules continue to work. If a specific combination loses connectivity,
+  please open an issue with the details.
+- **VPN mode**: No—Android allows only one active VPN at a time, and proxy
+  modules see filtered traffic as coming from ADBlocker. Note that if Android's
+  "Block connections without VPN" setting is enabled, selected apps lose
+  network access whenever ADBlocker's VPN is stopped.
+
+### Battery use
+
+HTTPS inspection decrypts and re-encrypts traffic on the device; domain-only
+filtering avoids this overhead. In VPN mode, packets from selected apps also
+pass through ADBlocker's userspace tunnel.
+
+### Where is data stored?
+
+- **Root mode**: `/data/adb/adblocker` (readable only by root).
+- **VPN mode**: ADBlocker's private app storage.
 
 <details>
 <summary>Root command-line reference</summary>
 
-Run `abd` in a root shell to manage root mode: it is
-`/data/adb/adblocker_direct/bin/abd` when ADBlocker set up root mode, and
-`/data/adb/modules/adblocker/bin/abd` when it was installed as a module.
-The examples below abbreviate this path to `abd`.
+Run `abd` in a root shell to manage root mode:
 
-| Command | What it does |
+- App-managed root mode: `/data/adb/adblocker_direct/bin/abd`
+- Root manager module: `/data/adb/modules/adblocker/bin/abd`
+
+The examples below abbreviate this path to `abd`. Most commands accept `--json`
+for machine-readable output. Run `abd` with no arguments for the full command
+list.
+
+| Command | Description |
 | --- | --- |
-| `abd status` | Show the daemon's status and current filtering configuration. |
+| `abd status` | Show daemon status and current filtering configuration. |
 | `abd scope chosen\|all` | Set the personal filtering scope. |
-| `abd app add <package>` | Make an explicit selection. |
-| `abd app exclude <package>` | Keep a personal app out of All apps. Use `app include` to restore it. |
+| `abd app add <package>` | Explicitly select an app. |
 | `abd app remove <package>` | Remove an explicit selection. |
-| `abd app list` | List apps in scope. Use `--json` to see effective filtering levels and availability. |
-| `abd app selections --json` | Show the scope, saved choices and exclusions. |
-| `abd app eligibility --json` | List personal app eligibility and the members of each named group. |
-| `abd app profiles --json` | List work profile serials, eligible packages and shared UID groups. |
+| `abd app exclude <package>` | Exclude a personal app from All apps. Use `abd app include <package>` to restore it. |
+| `abd app list` | List apps in scope. Use `--json` for effective filtering levels and availability. |
+| `abd app selections --json` | Show the scope, saved selections, and exclusions. |
+| `abd app eligibility --json` | List personal app eligibility and members of each named group. |
+| `abd app profiles --json` | List work profile serials, eligible packages, and shared UID groups. |
 | `abd ca export` | Print the public CA certificate for a work profile administrator. |
 | `abd app pause <package> --minutes <n>` | Pause filtering for one app. Use `abd app resume <package>` to resume early. |
 | `abd pause [--minutes <n>]` | Pause filtering for all apps. Use `abd resume` to resume early. |
 | `abd url-filtering on\|off` | Enable or disable URL filtering for all filtered apps. |
-| `abd cosmetic on` | Hide matching elements on decrypted pages. On by default. Use `off` to disable it. |
-| `abd allow add <host>` | Exempt a host and its subdomains from blocking and decryption. Manage entries with `abd allow remove <host>` and `abd allow list`. |
-| `abd lists` | List the filter lists. |
-| `abd list add <url>` | Subscribe to a list. Use `remove`, `disable`, or `enable` with the same URL to manage it. |
-| `abd update` | Download the filter lists. |
+| `abd cosmetic on\|off` | Enable or disable page element hiding on decrypted pages (on by default). |
+| `abd allow add <host>` | Exempt a host and its subdomains from blocking and decryption. Manage with `abd allow remove <host>` and `abd allow list`. |
+| `abd lists` | List filter list subscriptions. |
+| `abd list add <url>` | Subscribe to a list. Manage with `abd list remove\|disable\|enable <url>`. |
+| `abd update` | Download filter lists. |
 | `abd rules get` | Print custom rules. Use `abd rules set` to replace them from standard input. |
 | `abd rules append [--unique]` | Append rules from standard input. With `--unique`, add a single rule only if absent. |
-| `abd rules remove` | Remove exact rule lines supplied on standard input, ignoring surrounding whitespace. |
-| `abd rules check` | Check user rules from standard input and report the class and reason for each unapplied line. |
-| `abd pinned` | List hosts for which an app has rejected the local certificate. Use `abd pinned forget <package> [<host>]` to retry decryption on a later connection. |
-| `abd reload` | Read the lists, rules and apps again. |
+| `abd rules remove` | Remove exact rule lines supplied on standard input (ignoring surrounding whitespace). |
+| `abd rules check` | Validate custom rules from standard input and report the class and reason for each unapplied line. |
+| `abd pinned` | List hosts whose local certificate an app rejected. Use `abd pinned forget <package> [<host>]` to retry decryption later. |
+| `abd reload` | Reload lists, rules, and app selections. |
 | `abd stats` | Show filtering statistics. |
-| `abd check [--app <package>] <url>` | Check whether the lists block a URL and identify the matching list. With `--app`, the rules for that app count as well. |
+| `abd check [--app <package>] <url>` | Test whether the lists block a URL and show the matching list. With `--app`, app-specific rules apply as well. |
 
-For a work app, use `<profile-serial>:<package>` wherever a command takes
-an app, for example `abd app add 10:com.example.news`. Use the serial
-reported by `abd app profiles --json`, which can differ from the Android
-user ID.
+**Addressing work apps and shared UIDs:**
 
-For a shared UID, either a member package or the group key identifies the
-selection. For example, `abd app pause 10:@com.example.shared --minutes 15`
-pauses the group in work profile 10.
+- For a work app, use `<profile-serial>:<package>` (for example,
+  `abd app add 10:com.example.news`). Use the serial from
+  `abd app profiles --json`, which may differ from the Android user ID.
+- For a shared UID, pass either a member package or the group key (for example,
+  `abd app pause 10:@com.example.shared --minutes 15`).
 
-Most commands accept `--json` for the output format used by the app.
-Run `abd` without arguments for the full command list.
+**Configuration files in `/data/adb/adblocker`:**
 
-In `/data/adb/adblocker`, `sources` holds the addresses of the filter lists
-and `exclusion-sources` those of the lists of hosts that are never
-decrypted, one a line. Until the filter lists are chosen, there is no
-`sources`, and the lists are the general ones and the regional lists for
-the system locale and time zone. One of these that `sources`
-does not name is on, and `#` before its address turns it off. Updates add missing bundled exclusion sources to
-an existing selection. An empty exclusion selection keeps decryption off.
-Custom rules go in `rules/*.txt`, in the syntax of the filter lists.
-ADBlocker uses uBlock Origin's published filter lists. Filter lists and
-custom rules support nested `!#if`, `!#else`, and `!#endif` directives with
-`!`, `&&`, `||`, and parentheses. The true constants are `adguard`,
-`adguard_app_android`, `ext_ublock`, `env_mobile`, `env_chromium`, and
-`cap_html_filtering`. `cap_user_stylesheet`, `false`, and all other names
-evaluate to false. `abd rules check` reports unresolved active includes
-and malformed conditionals. Includes in custom rules remain unresolved. The
-`--json` form includes the same class and reason on each issue.
-
-A matching `$replace` rule can override a request block and rewrite the
-text response when URL filtering is on. A matching `$jsonprune` rule
-removes items from a JSON or JSONP response and leaves request blocking
-in effect. A matching `$hls` rule removes segments and their associated
-tags from an HLS playlist.
-`$removeheader=header-name` removes a response
-header, and `$removeheader=request:header-name` removes a request header.
-A `$urltransform` rule can change a request's path and query before it
-is sent, or redirect a GET or HEAD request to another address.
-Text response rules, header removal and URL transformations come from
-your custom rules and trusted catalog lists.
-
-With URL filtering on, any list can use `$cookie` to remove cookies or
-change their expiration and SameSite attributes. `$removeparam=name`
-strips a named query parameter before sending an allowed request.
-`$csp` adds a Content Security Policy to an allowed page.
-[URL and response rules](docs/how-it-works.md#filtering)
-
-`$app=` accepts package names, prefixes ending in `*`, and
-regular expressions enclosed in `/`. Separate entries with `|` and
-prefix every entry with `~` to exclude the matching apps. In expressions,
-escape `/`, `$`, `,`, and `|` with a backslash.
-
-`$network` rules filter connections by remote IP address, with an
-optional port. Write IPv6 addresses in brackets. Enclose a regular
-expression in `/` to search the address both with and without its port.
-Exact address patterns also accept a leading `|` or `||`.
-`@@` passes a matching connection without further filtering.
-`$app` and `$important` are the only modifiers allowed alongside
-`$network`. An important block takes precedence over an exception.
-Run `abd update` or `abd reload` after a change.
+- `sources`: Subscribed filter list URLs, one per line. Until subscriptions are
+  saved, `sources` does not exist and ADBlocker uses the general and matching
+  regional defaults. Any default list omitted from `sources` remains enabled;
+  prefix its URL with `#` to disable it.
+- `exclusion-sources`: Lists of hosts that are never decrypted, one per line.
+  Updates add missing bundled exclusion sources to an existing selection; an
+  empty selection keeps decryption off.
+- `rules/*.txt`: Custom filter rules. Run `abd update` or `abd reload` after
+  manual edits.
 
 </details>
 
-## FAQ
-
-### The APK or the module in a root manager
-
-Both filter the same way and share the data in `/data/adb/adblocker`.
-A flashed module is also listed in the root manager, and filters only
-while it is turned on there. Either way, you choose apps and lists in the
-app: with **Chosen apps**, the default, only the apps you switch on in
-**Apps** are filtered.
-
-### A filtered app stopped working
-
-Open the app's entry in **Apps**, pause filtering for an hour, and try
-again. If that fixes the problem, you can leave filtering off for that app.
-To find the rule involved, resume filtering, start a recording in
-**Activity**, and repeat the action that failed. Stop the recording and
-open a blocked request to see its details or allow its domain in that app
-or in all apps.
-If **My rules** decided a request, remove that rule from its details, or use
-**Undo** in the confirmation after allowing, blocking, or removing a rule.
-If you report the problem, include the name of the affected app.
-
-### An app keeps rejecting HTTPS filtering
-
-Some apps accept only their own certificate for a site, and ADBlocker
-then filters them by domain only. The app's entry in **Apps** lists these
-sites under **Domains that reject the certificate**. In root mode with
-LSPosed/Vector, enable ADBlocker there for that app and restart the app:
-ADBlocker tries those sites again when the app starts, and filters them
-by URL from then on. LSPosed/Vector is needed only for these apps, and
-they must stay switched on in **Apps**. A site the app refused less than
-a minute before is not tried again yet, and a connection the app opens
-but never uses counts as a refusal, so a site can need one more restart a
-minute later. See [what this changes](SECURITY.md#limits-of-https-inspection).
-
-### Using a VPN or a proxy module
-
-Root mode leaves Android's VPN slot free for a VPN app such as Clash
-Meta. Android attributes forwarded connections to the original app, so
-the per-app rules of a VPN or proxy module apply to them. If a filtered
-app loses connectivity with a particular VPN or proxy module, report the
-combination in an issue.
-
-VPN mode uses Android's only VPN slot: starting another VPN stops
-ADBlocker's. A proxy module sees the filtered apps' traffic as
-ADBlocker's. If Android's "Block connections without VPN" setting is
-on, the selected apps lose network access while the VPN is down.
-
-### Battery use
-
-Inspecting an HTTPS connection requires decrypting and re-encrypting
-traffic on the device. Domain filtering avoids that work. In VPN mode,
-every packet from a selected app also passes through ADBlocker's process.
-
-### Where the data is stored
-
-Root mode: in `/data/adb/adblocker`, readable only by root. VPN mode: in
-the app's private storage.
-
-## Security
-
-URL filtering lets ADBlocker read HTTPS requests on your device. When it
-decrypts a browser connection, the browser sees ADBlocker's certificate
-for the site and some of its usual security checks no longer apply.
-Read [what HTTPS filtering changes](SECURITY.md#what-using-it-changes).
-Turn off **URL filtering** to keep HTTPS encrypted.
-
-## Limitations
-
-- **Hide page elements** hides elements named by your lists on decrypted
-  pages, such as empty ad frames. AdGuard `$$` rules and compatible uBlock
-  Origin `##^` rules remove elements from the HTML before the page loads.
-  The setting is on by default and can be turned off
-  in Settings or with `abd cosmetic off` in a root shell. It also runs
-  supported uBlock Origin and AdGuard scriptlets, AdGuard JavaScript rules
-  from marked lists and user rules, AdGuard CSS injection rules, and
-  procedural rules such as `:has-text()`. The `$jsinject` page exception
-  disables scriptlets and JavaScript rules on matching pages.
-  Procedural rules also match elements a page adds later; generic CSS rules
-  based only on a class or ID can miss them. See
-  [how this changes a page](SECURITY.md#hiding-page-elements).
-- Plain HTTP filtering covers ordinary HTTP/1 requests to port 80.
-- URL filtering falls back to domain checks for sites on the sensitive-site
-  lists, which include banks and payment services. The same applies when
-  an app requires a specific certificate or key for a site, or the site
-  uses an Extended Validation certificate.
-- A rule cannot tell an ad apart from content served from the same
-  address.
-- Root mode blocks domains in the plain DNS lookups of filtered apps,
-  whether Android's resolver or the app itself sends them. Lookups that
-  Android sends over Private DNS (always with a named provider; in
-  Automatic mode when the network's DNS server supports it) and apps' own
-  encrypted DNS, such as DoH, are not filtered. Android can answer a name
-  another app looked up recently from its cache, without asking ADBlocker.
-  With URL filtering on, a lookup is blocked by the domain rules when the
-  app's connections to that host stay encrypted, as for a site on an
-  exclusion list or one the app pins. For a host whose requests ADBlocker
-  can read, it is blocked only when no web exception in your lists could
-  apply to that host; otherwise requests are filtered instead.
-- Root mode supports the primary user and its managed work profiles, not
-  other users. Apps sharing a UID share one selection and pause within
-  their profile.
-
-In VPN mode:
-
-- The VPN blocks domains in the DNS queries that selected apps send
-  through the system resolver, including lookups for traffic other than
-  HTTP and HTTPS. Android's strict Private DNS and apps with their own
-  encrypted DNS, such as DoH, bypass it.
-- HTTPS filtering requires a trusted user certificate. Most apps accept
-  only system certificates and therefore use domain filtering.
-- The VPN refuses the first packet of a recognized QUIC connection from a
-  selected app that is not paused, on any port. Root mode refuses all UDP
-  traffic to port 443 from such apps, including protocols other than QUIC.
-  A VPN address exception also bypasses QUIC refusal.
-- Address rules apply with URL filtering off. VPN mode checks TCP and UDP
-  destinations and handles queries sent to its virtual resolver separately.
-  Root mode checks the destination of captured TCP connections on ports 80
-  and 443.
-- After checking the address rules, the VPN opens a TCP connection to the
-  server before it receives the host name. If a domain rule blocks the
-  host, the VPN closes the connection without sending application data.
-- The system's data usage counts the selected apps' traffic under ADBlocker.
-- Another VPN cannot be used at the same time.
-
 ## How it works
 
-In root mode, ADBlocker looks up the sending app's UID before handing a
-connection to the filter. When it connects to the site, it uses that
-same app's network identity. The [design walkthrough](docs/how-it-works.md)
-follows one connection from the kernel through the HTTPS checks to the
-[rule engine](https://github.com/brave/adblock-rust).
+In root mode, ADBlocker resolves the sending app's UID before passing a
+connection to the filter and connects upstream using that same app's network
+identity. In VPN mode, the same Rust filtering engine runs inside the app over
+a userspace TCP/IP stack. Follow a connection end-to-end—from kernel routing
+and HTTPS verification to the [adblock-rust](https://github.com/brave/adblock-rust)
+rule engine—in [docs/how-it-works.md](docs/how-it-works.md).
 
 ## Languages
 
-ADBlocker is available in English, Simplified Chinese, Traditional
-Chinese, French, German, Indonesian, Japanese, Korean, Brazilian
-Portuguese, Russian, Spanish, Turkish and Vietnamese. It uses the system
-language; on Android 13 or later you can choose another one for
-ADBlocker under App languages in the system settings. Corrections from
-native speakers are welcome. [Android translations](docs/translations.md)
-lists the terms each language uses and the checks a change must pass.
+ADBlocker is available in English, Simplified Chinese, Traditional Chinese,
+French, German, Indonesian, Japanese, Korean, Brazilian Portuguese, Russian,
+Spanish, Turkish, and Vietnamese. It follows the system language, and on
+Android 13 or later you can pick a separate language under Android's "App
+languages" settings. Translation fixes from native speakers are welcome—see
+[docs/translations.md](docs/translations.md) for terminology and verification
+checks.
 
 ## Contributing
 
-Bug reports and pull requests are welcome. See
-[CONTRIBUTING.md](CONTRIBUTING.md) for building, testing and the project's
-conventions.
+Bug reports and pull requests are welcome. Please read
+[CONTRIBUTING.md](CONTRIBUTING.md) for build steps, tests, and conventions, and
+follow our [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## License
 
 Copyright (C) 2026 Mercury Li
 
-This program is free software: you can redistribute it and/or modify it
-under the terms of the GNU General Public License version 3 as published by
-the Free Software Foundation. See [LICENSE](LICENSE).
+This program is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License version 3 as published by the Free
+Software Foundation. See [LICENSE](LICENSE).
 
-The filter lists and the
-[AdGuard HTTPS exclusions](https://github.com/AdguardTeam/HttpsExclusions)
-are downloaded from their maintainers. AdGuard declares the exclusions
+Filter lists and
+[AdGuard HTTPS exclusions](https://github.com/AdguardTeam/HttpsExclusions) are
+downloaded from their respective maintainers. AdGuard declares the exclusions
 project under MIT in its
 [`package.json`](https://github.com/AdguardTeam/HttpsExclusions/blob/master/package.json).
-See [third-party notices](THIRD_PARTY_NOTICES.md) for the upstream
-attributions and the license materials distributed with the release.
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for upstream attributions
+and license materials distributed with releases.
