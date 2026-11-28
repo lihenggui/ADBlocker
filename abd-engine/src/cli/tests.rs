@@ -239,6 +239,83 @@ fn an_append_over_the_combined_size_limit_preserves_the_existing_rules() {
 }
 
 #[test]
+fn removing_exact_rules_preserves_other_bytes_and_reloads_only_after_a_change() {
+    #[derive(Default)]
+    struct Owner(std::cell::Cell<usize>);
+    impl Host for Owner {
+        fn running(&self) -> Option<i32> {
+            None
+        }
+        fn reload(&self) {
+            self.0.set(self.0.get() + 1);
+        }
+        fn version(&self) -> Option<String> {
+            None
+        }
+        fn boot_guard(&self) -> Option<u64> {
+            None
+        }
+    }
+
+    let dir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(dir.path());
+    let host = Owner::default();
+    let current = "! comment\r\n  ||remove.example^ \n||remove.example^$app=com.keep\n\n\t||remove.example^\r\n@@||second.example^\n||keep.example^";
+    let remaining = "! comment\r\n||remove.example^$app=com.keep\n\n||keep.example^";
+    ask(&paths, &["rules", "set"], current).unwrap();
+    // The blank line in the input leaves the user's own blank line alone.
+    let remove = " \t||remove.example^\r\n\n@@||second.example^ \n||absent.example^\n";
+    let mut out = Vec::new();
+    run(
+        &paths,
+        &host,
+        &["rules", "remove"],
+        &mut remove.as_bytes(),
+        &mut out,
+    )
+    .unwrap();
+    assert!(out.is_empty());
+    assert_eq!(ask(&paths, &["rules", "get"], "").unwrap(), remaining);
+    assert_eq!(host.0.get(), 1);
+
+    run(
+        &paths,
+        &host,
+        &["rules", "remove"],
+        &mut remove.as_bytes(),
+        &mut out,
+    )
+    .unwrap();
+    assert!(out.is_empty());
+    assert_eq!(ask(&paths, &["rules", "get"], "").unwrap(), remaining);
+    assert_eq!(host.0.get(), 1);
+    assert!(
+        ask(&paths, &["rules", "remove", "extra"], "")
+            .unwrap_err()
+            .is::<Malformed>()
+    );
+}
+
+#[test]
+fn rule_edit_reports_whether_the_locked_edit_changed_the_file() {
+    let dir = tempfile::tempdir().unwrap();
+    let paths = Paths::new(dir.path());
+    let added: serde_json::Value =
+        serde_json::from_str(include_str!("../../../testdata/protocol/rules-edit.json")).unwrap();
+    let rule = "||mine.example^";
+    for args in [
+        &["rules", "append", "--unique", "--json"][..],
+        &["rules", "remove", "--json"],
+    ] {
+        let edit = |args| {
+            serde_json::from_str::<serde_json::Value>(&ask(&paths, args, rule).unwrap()).unwrap()
+        };
+        assert_eq!(edit(args), added);
+        assert_eq!(edit(args), serde_json::json!({ "changed": false }));
+    }
+}
+
+#[test]
 fn what_only_one_program_does_is_not_known_here() {
     let dir = tempfile::tempdir().unwrap();
     let paths = Paths::new(dir.path());

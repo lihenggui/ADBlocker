@@ -58,7 +58,7 @@ impl ListFiles {
     }
 }
 
-fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
+pub(crate) fn badfilters<'a>(lists: impl Iterator<Item = &'a str>) -> HashSet<u64> {
     lists
         .flat_map(preprocess::lines)
         .filter(|line| rule::badfilter_candidate(line))

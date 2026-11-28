@@ -86,6 +86,10 @@ data class RuleCheckResult(
     val blocked: Boolean,
     val rule: String?,
     val source: RuleSource?,
+    val exception: String? = null,
+    val exceptionSource: RuleSource? = null,
+    /** Daemons that support removing a rule include the `exception` key even when its value is null. */
+    val hasExceptionField: Boolean = false,
 )
 
 sealed interface RuleSource {

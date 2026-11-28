@@ -29,6 +29,7 @@ use std::collections::HashSet;
 use adblock::Engine;
 use adblock::lists::{FilterSet, ParseOptions, RuleTypes};
 use adblock::request::Request;
+use adblock::sourcemap::FilterRuleDebugInfo;
 
 use super::Check;
 use super::app_patterns::{Patterns, Scope};
@@ -48,9 +49,11 @@ pub(crate) struct AppRules {
     pub(super) blocks: Engine,
     pub(super) parameters: Engine,
     pub(crate) block_originals: OriginalLines,
+    pub(crate) exception_originals: OriginalLines,
+    pub(crate) host_originals: OriginalLines,
     exceptions: Engine,
     /// The blocks of a whole host, for a connection that stays encrypted.
-    pub(super) hosts: Engine,
+    pub(crate) hosts: Engine,
     /// Where an exception may apply, for a host refused before a request.
     guards: Engine,
 }
@@ -85,7 +88,7 @@ struct Projected<'a> {
     is_removeparam: bool,
     redirect_exception: bool,
     line: String,
-    original: Option<&'a str>,
+    original: &'a str,
 }
 
 fn scoped<'a>(rule: &AppRule<'a>, patterns: &mut Patterns) -> Result<Projected<'a>, RuleReason> {
@@ -173,7 +176,8 @@ fn shown(rule: String, patterns: &Patterns) -> String {
 }
 
 /// How a rule for apps is named when it matched.
-pub(crate) fn name(rule: &AppRule<'_>) -> Option<String> {
+#[cfg(test)]
+fn name(rule: &AppRule<'_>) -> Option<String> {
     let mut patterns = Patterns::default();
     let projected = scoped(rule, &mut patterns).ok()?;
     Some(shown(projected.line, &patterns))
@@ -227,7 +231,9 @@ impl<'a> AppProjections<'a> {
             .filter_map(|entry| entry.bad.then_some(entry.id))
             .collect();
         let mut blocks = MatcherList::with_capacity(0);
-        let [mut exceptions, mut hosts, mut guards, mut parameters] = [const { String::new() }; 4];
+        let mut exceptions = MatcherList::with_capacity(0);
+        let mut hosts = MatcherList::with_capacity(0);
+        let [mut guards, mut parameters] = [const { String::new() }; 2];
         for Projected {
             rule,
             id,
@@ -250,12 +256,12 @@ impl<'a> AppProjections<'a> {
                 continue;
             }
             // The CSP matcher resolves its own exceptions alongside policies.
+            let original = debug.then_some(original);
             if is_csp {
-                blocks.push(&line, original.filter(|_| debug));
+                blocks.push(&line, original);
             } else if rule.exception() {
                 rule.guards(&mut guards);
-                exceptions.push_str(&line);
-                exceptions.push('\n');
+                exceptions.push(&line, original);
             } else {
                 if is_removeparam {
                     parameters.push_str(&line);
@@ -263,27 +269,33 @@ impl<'a> AppProjections<'a> {
                 }
                 if let Some((line, host)) = rule.whole_host() {
                     visit_host(host, &rule.apps);
-                    hosts.push_str(&line);
-                    hosts.push('\n');
+                    hosts.push(&line, original);
                 }
-                blocks.push(&line, original.filter(|_| debug));
+                blocks.push(&line, original);
             }
         }
-        let mut matcher = MatcherLists::new(debug);
-        matcher.finish_list(
-            blocks,
-            ParseOptions {
-                rule_types: RuleTypes::NetworkOnly,
-                ..ParseOptions::default()
-            },
-        );
-        let (blocks, block_originals) = matcher.compile();
+        let compile = |list| {
+            let mut matcher = MatcherLists::new(debug);
+            matcher.finish_list(
+                list,
+                ParseOptions {
+                    rule_types: RuleTypes::NetworkOnly,
+                    ..ParseOptions::default()
+                },
+            );
+            matcher.compile()
+        };
+        let (blocks, block_originals) = compile(blocks);
+        let (exceptions, exception_originals) = compile(exceptions);
+        let (hosts, host_originals) = compile(hosts);
         Some(AppRules {
             blocks,
             parameters: engine(parameters, false),
             block_originals,
-            exceptions: engine(exceptions, debug),
-            hosts: engine(hosts, false),
+            exceptions,
+            exception_originals,
+            hosts,
+            host_originals,
             guards: engine(guards, false),
         })
     }
@@ -315,6 +327,8 @@ impl AppRules {
             blocks: engine(blocks)?,
             parameters: engine(parameters)?,
             block_originals: OriginalLines::default(),
+            exception_originals: OriginalLines::default(),
+            host_originals: OriginalLines::default(),
             exceptions: engine(exceptions)?,
             hosts: engine(hosts)?,
             guards: engine(guards)?,
@@ -325,25 +339,21 @@ impl AppRules {
     /// a block of either is taken back by an exception of either, and an
     /// `$important` block by none. `blocks` is the engine of this that
     /// stands beside `web`.
-    pub(super) fn check(
+    pub(crate) fn check(
         &self,
         web: &Engine,
-        blocks: &Engine,
+        blocks: (&Engine, &OriginalLines),
         req: &mut Request,
         scope: &Scope<'_>,
         web_originals: Option<&OriginalLines>,
     ) -> Check {
         let found = web.check_network_request(req);
         let web_rule = found.filter.is_some();
+        let show_web = |rule| shown_web(rule, web_originals);
         let mut check = Check {
             blocked: found.should_block(),
-            rule: found.filter.and_then(|rule| {
-                if let Some(originals) = web_originals {
-                    originals.shown(rule)
-                } else {
-                    rule.raw_line
-                }
-            }),
+            rule: found.filter.and_then(show_web),
+            exception: found.exception.and_then(show_web),
             redirect: None,
             rewritten_url: found.rewritten_url,
         };
@@ -351,17 +361,17 @@ impl AppRules {
             return check;
         }
         let own = scope.with_source(req, |req| {
-            let own = blocks.check_network_request_subset(req, false, false);
-            let excepted = !own.important
-                && (web_rule || own.filter.is_some())
-                && self
-                    .exceptions
-                    .check_network_request_subset(req, true, true)
-                    .exception
-                    .is_some();
-            (own, excepted)
+            let own = blocks.0.check_network_request_subset(req, false, false);
+            let exception = (!own.important && (web_rule || own.filter.is_some()))
+                .then(|| {
+                    self.exceptions
+                        .check_network_request_subset(req, true, true)
+                        .exception
+                })
+                .flatten();
+            (own, exception)
         });
-        let (own, excepted) = own;
+        let (own, exception) = own;
         if !own.important {
             check.rewritten_url = match (check.rewritten_url, own.rewritten_url) {
                 (Some(web), Some(app)) => super::removeparam::merge(&req.url, web, app),
@@ -370,24 +380,22 @@ impl AppRules {
         }
         if own.important {
             check.blocked = true;
-        } else if excepted {
+            check.exception = None;
+        } else if let Some(exception) = exception {
             check.blocked = false;
+            check.exception = shown_app(exception, &self.exception_originals, scope.patterns);
         } else if !web_rule && own.filter.is_some() {
             // The web rules had no block to look for an exception to.
-            check.blocked = web
-                .check_network_request_subset(req, true, true)
-                .exception
-                .is_none();
+            let exception = web.check_network_request_subset(req, true, true).exception;
+            check.blocked = exception.is_none();
+            check.exception = exception.and_then(show_web);
         }
         // The rule that decided: the app's where no web rule matched, and
         // where its `$important` block stands against a web exception.
         if !web_rule || own.important {
-            check.rule = own.filter.and_then(|rule| {
-                self.block_originals
-                    .get(&rule)
-                    .map(str::to_owned)
-                    .or_else(|| rule.raw_line.map(|rule| shown(rule, scope.patterns)))
-            });
+            check.rule = own
+                .filter
+                .and_then(|rule| shown_app(rule, blocks.1, scope.patterns));
         }
         check
     }
@@ -405,6 +413,24 @@ impl AppRules {
                 && web.is_none_or(|guards| super::unguarded(guards, req))
         })
     }
+}
+
+fn shown_web(rule: FilterRuleDebugInfo, originals: Option<&OriginalLines>) -> Option<String> {
+    match originals {
+        Some(originals) => originals.shown(rule),
+        None => rule.raw_line,
+    }
+}
+
+fn shown_app(
+    rule: FilterRuleDebugInfo,
+    originals: &OriginalLines,
+    patterns: &Patterns,
+) -> Option<String> {
+    originals
+        .get(&rule)
+        .map(str::to_owned)
+        .or_else(|| rule.raw_line.map(|rule| shown(rule, patterns)))
 }
 
 #[cfg(test)]
@@ -584,7 +610,10 @@ mod tests {
             "GET",
         );
         assert!(check.blocked);
-        assert_eq!(check.rule.as_deref(), Some(rule));
+        assert_eq!(
+            check.rule.as_deref(),
+            Some("||shop.example^$app=com.Reader,script")
+        );
     }
 
     #[test]

@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Страница</string>
     <string name="feature_activity_rule">Совпадение с текущим правилом (GET)</string>
     <string name="feature_activity_rule_unavailable">Недоступно</string>
+    <string name="feature_activity_domain_rule">Текущее правило для домена</string>
     <string name="feature_activity_why">Причина</string>
     <string name="feature_activity_my_rules">Мои правила</string>
+    <string name="feature_activity_remove_rule">Удалить это правило</string>
     <string name="feature_activity_reason_pinned">Приложение не принимает сертификат ADBlocker для этого домена, поэтому соединение фильтруется только по домену.</string>
     <string name="feature_activity_reason_hosts_only">Соединение отфильтровано по домену. Фильтрация по URL была отключена или анализ HTTPS был недоступен.</string>
     <string name="feature_activity_reason_excluded">Домен есть в списке исключений HTTPS, например в списке банков.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%1$s заблокирован в %2$s</string>
     <string name="feature_activity_allowed_host_everywhere">%1$s разрешён во всех приложениях</string>
     <string name="feature_activity_allowed_host_in_app">%1$s разрешён в %2$s</string>
+    <string name="feature_activity_rule_removed">Правило удалено</string>
+    <string name="feature_activity_rule_not_in_my_rules">Этого правила нет в разделе «Мои правила». Пользовательские правила можно изменить в файлах rules/*.txt или в редакторе правил.</string>
+    <string name="feature_activity_undo">Отменить</string>
     <string name="feature_activity_forgotten">При следующем подключении будет предпринята новая попытка расшифровки</string>
     <string name="feature_activity_failed">Не удалось выполнить действие. Проверьте службу фильтрации в настройках.</string>
     <string name="feature_activity_select">Выберите запрос</string>

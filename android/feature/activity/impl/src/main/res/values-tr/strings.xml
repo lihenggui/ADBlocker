@@ -52,8 +52,10 @@
     <string name="feature_activity_page">Sayfa</string>
     <string name="feature_activity_rule">Geçerli kural eşleşmesi (GET)</string>
     <string name="feature_activity_rule_unavailable">Kullanılamıyor</string>
+    <string name="feature_activity_domain_rule">Geçerli alan adı kuralı</string>
     <string name="feature_activity_why">Neden</string>
     <string name="feature_activity_my_rules">Kurallarım</string>
+    <string name="feature_activity_remove_rule">Bu kuralı kaldır</string>
     <string name="feature_activity_reason_pinned">Uygulama bu alan adı için ADBlocker sertifikasını kabul etmiyor, bu yüzden yalnızca alan adına göre filtreleme yapılıyor.</string>
     <string name="feature_activity_reason_hosts_only">Bu bağlantı alan adına göre filtrelendi. URL filtreleme kapalıydı veya HTTPS incelemesi kullanılamıyordu.</string>
     <string name="feature_activity_reason_excluded">Alan adı, banka listesi gibi bir HTTPS hariç tutma listesinde yer alıyor.</string>
@@ -77,6 +79,9 @@
     <string name="feature_activity_blocked_host_in_app">%1$s, %2$s uygulamasında engellendi</string>
     <string name="feature_activity_allowed_host_everywhere">%1$s için tüm uygulamalarda izin verildi</string>
     <string name="feature_activity_allowed_host_in_app">%1$s için %2$s uygulamasında izin verildi</string>
+    <string name="feature_activity_rule_removed">Kural kaldırıldı</string>
+    <string name="feature_activity_rule_not_in_my_rules">Bu kural Kurallarım’da yok. Özel kuralları rules/*.txt dosyalarında veya kural düzenleyicisinde düzenleyin.</string>
+    <string name="feature_activity_undo">Geri al</string>
     <string name="feature_activity_forgotten">Sonraki bağlantıda şifre çözme yeniden denenir</string>
     <string name="feature_activity_failed">İşlem başarısız oldu. Ayarlar\'dan filtreleme hizmetini kontrol edin.</string>
     <string name="feature_activity_select">İstek seçin</string>

@@ -214,6 +214,7 @@ The examples below abbreviate this path to `abd`.
 | `abd update` | Download the filter lists. |
 | `abd rules get` | Print custom rules. Use `abd rules set` to replace them from standard input. |
 | `abd rules append [--unique]` | Append rules from standard input. With `--unique`, add a single rule only if absent. |
+| `abd rules remove` | Remove exact rule lines supplied on standard input, ignoring surrounding whitespace. |
 | `abd rules check` | Check user rules from standard input and report the class and reason for each unapplied line. |
 | `abd pinned` | List hosts for which an app has rejected the local certificate. Use `abd pinned forget <package> [<host>]` to retry decryption on a later connection. |
 | `abd reload` | Read the lists, rules and apps again. |
@@ -301,6 +302,8 @@ To find the rule involved, resume filtering, start a recording in
 **Activity**, and repeat the action that failed. Stop the recording and
 open a blocked request to see its details or allow its domain in that app
 or in all apps.
+If **My rules** decided a request, remove that rule from its details, or use
+**Undo** in the confirmation after allowing, blocking, or removing a rule.
 If you report the problem, include the name of the affected app.
 
 ### An app keeps rejecting HTTPS filtering

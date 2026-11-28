@@ -34,6 +34,7 @@ import li.mercury.adblocker.core.data.protocol.parseCheck
 import li.mercury.adblocker.core.data.protocol.parseLists
 import li.mercury.adblocker.core.data.protocol.parseOverview
 import li.mercury.adblocker.core.data.protocol.parsePinned
+import li.mercury.adblocker.core.data.protocol.parseRuleEdit
 import li.mercury.adblocker.core.data.protocol.parseRulesCheck
 import li.mercury.adblocker.core.data.protocol.parseStats
 import li.mercury.adblocker.core.data.protocol.parseStatus
@@ -104,9 +105,17 @@ interface AbdClient {
     /** How the rules treat a request; with [app], as `watch` names it, the rules for that app are considered too. */
     suspend fun check(url: String, page: String?, kind: String?, app: String? = null): RuleCheckResult
 
+    suspend fun checkHost(host: String, app: String): RuleCheckResult
+
     suspend fun setUserRules(text: String)
 
     suspend fun appendUserRules(text: String, unique: Boolean = false)
+
+    /** Whether a previously absent line was appended. */
+    suspend fun appendUniqueUserRule(text: String): Boolean
+
+    /** Whether one or more exact matching lines were removed. */
+    suspend fun removeUserRules(text: String): Boolean
 
     /** Pauses filtering of every app, for [minutes], or until [resume] if null. */
     suspend fun pause(minutes: Int?)
@@ -236,11 +245,29 @@ internal class DefaultAbdClient @Inject constructor(
         return parseCheck(abd(*args.toTypedArray(), label = "check"))
     }
 
+    override suspend fun checkHost(host: String, app: String): RuleCheckResult = parseCheck(abd("check", "--json", "--app", app, "--host", host, label = "check"))
+
     override suspend fun setUserRules(text: String) = write("rules", "set", label = "rules set", input = text)
 
     override suspend fun appendUserRules(text: String, unique: Boolean) {
         val args = if (unique) arrayOf("rules", "append", "--unique") else arrayOf("rules", "append")
         write(*args, label = "rules append", input = text)
+    }
+
+    override suspend fun appendUniqueUserRule(text: String): Boolean = writes.mutex.withLock {
+        val transport = transports.current()
+        val args = listOf("rules", "append", "--unique")
+        try {
+            parseRuleEdit(transport.run(args + "--json", label = "rules append", input = text))
+        } catch (_: AbdException.ModuleOutdated) {
+            // An older root daemon can still add the rule but cannot confirm that it was new.
+            transport.run(args, label = "rules append", input = text)
+            false
+        }
+    }
+
+    override suspend fun removeUserRules(text: String): Boolean = writes.mutex.withLock {
+        parseRuleEdit(abd("rules", "remove", "--json", label = "rules remove", input = text))
     }
 
     override suspend fun setUrlFiltering(on: Boolean) = write("url-filtering", if (on) "on" else "off", label = "url-filtering")

@@ -39,7 +39,7 @@ impl OriginalLines {
         Some(&self.0[at].2)
     }
 
-    pub(super) fn shown(&self, rule: FilterRuleDebugInfo) -> Option<String> {
+    pub(crate) fn shown(&self, rule: FilterRuleDebugInfo) -> Option<String> {
         self.get(&rule).map(str::to_owned).or(rule.raw_line)
     }
 }
@@ -59,7 +59,7 @@ impl MatcherList {
         }
     }
 
-    pub(super) fn push(&mut self, line: &str, original: Option<&str>) {
+    pub(crate) fn push(&mut self, line: &str, original: Option<&str>) {
         if let Some(original) = original {
             self.original.push((self.lines, original.to_owned()));
         }

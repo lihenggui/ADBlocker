@@ -110,7 +110,7 @@ fn forget(paths: &Paths, on: &dyn Host, package: &str, host: Option<&str>) -> Re
     }
 }
 
-/// `abd check [--json] [--app <app>] <url> [<page> [<kind>]]`.
+/// A recorded URL and its context, or a domain blocked before a URL was read.
 fn check(paths: &Paths, args: &[&str], out: &mut dyn Write) -> Result<()> {
     let (json, args) = match args {
         ["--json", rest @ ..] => (true, rest),
@@ -122,14 +122,14 @@ fn check(paths: &Paths, args: &[&str], out: &mut dyn Write) -> Result<()> {
         }
         _ => (None, args),
     };
-    let [url, rest @ ..] = args else {
-        return unknown(&[&["check"], args].concat());
+    let found = match args {
+        ["--host", host] if !host.starts_with("--") => diagnostics::check_host(paths, app, host)?,
+        [url, rest @ ..] if rest.len() <= 2 && !url.starts_with("--") => {
+            let (page, kind) = request(url, rest);
+            diagnostics::check(paths, app, url, page, kind)?
+        }
+        _ => return unknown(&[&["check"], args].concat()),
     };
-    if rest.len() > 2 || url.starts_with("--") {
-        return unknown(&[&["check"], args].concat());
-    }
-    let (page, kind) = request(url, rest);
-    let found = diagnostics::check(paths, app, url, page, kind)?;
     if json {
         return print_json(out, &found);
     }

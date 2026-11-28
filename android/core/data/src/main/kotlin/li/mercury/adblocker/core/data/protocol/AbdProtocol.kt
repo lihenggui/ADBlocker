@@ -374,20 +374,37 @@ private fun ruleIssueReason(value: String): RuleIssueReason {
 }
 
 @Serializable
-private class CheckDto(val blocked: Boolean, val rule: String? = null, val source: String? = null)
+private class CheckDto(
+    val blocked: Boolean,
+    val rule: String? = null,
+    val source: String? = null,
+    val exception: String? = null,
+    @SerialName("exception_source") val exceptionSource: String? = null,
+)
 
 fun parseCheck(text: String): RuleCheckResult = reading("check") {
-    val dto = json.decodeFromString<CheckDto>(text)
+    val obj = json.parseToJsonElement(text).jsonObject
+    val dto = json.decodeFromJsonElement(CheckDto.serializer(), obj)
     RuleCheckResult(
         blocked = dto.blocked,
         rule = dto.rule,
-        source = when (dto.source) {
-            null -> null
-            "rules" -> RuleSource.UserRules
-            else -> RuleSource.List(dto.source)
-        },
+        source = ruleSource(dto.source),
+        exception = dto.exception,
+        exceptionSource = ruleSource(dto.exceptionSource),
+        hasExceptionField = "exception" in obj,
     )
 }
+
+private fun ruleSource(source: String?): RuleSource? = when (source) {
+    null -> null
+    "rules" -> RuleSource.UserRules
+    else -> RuleSource.List(source)
+}
+
+@Serializable
+private class RuleEditDto(val changed: Boolean)
+
+internal fun parseRuleEdit(text: String): Boolean = reading("rules edit") { json.decodeFromString<RuleEditDto>(text).changed }
 
 @Serializable
 private class WatchDto(

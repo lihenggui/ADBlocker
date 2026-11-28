@@ -25,11 +25,13 @@ import androidx.navigation3.runtime.NavKey
 import li.mercury.adblocker.core.designsystem.icon.AdbIcons
 import li.mercury.adblocker.core.navigation.BottomSheetSceneStrategy
 import li.mercury.adblocker.core.navigation.Navigator
+import li.mercury.adblocker.core.ui.MessageEffect
 import li.mercury.adblocker.core.ui.PaneSurface
 import li.mercury.adblocker.core.ui.Placeholder
 import li.mercury.adblocker.feature.activity.api.navigation.ActivityNavKey
 import li.mercury.adblocker.feature.activity.api.navigation.RequestNavKey
 import li.mercury.adblocker.feature.activity.impl.ActivityScreen
+import li.mercury.adblocker.feature.activity.impl.ActivityViewModel
 import li.mercury.adblocker.feature.activity.impl.R
 import li.mercury.adblocker.feature.activity.impl.RequestScreen
 import li.mercury.adblocker.feature.activity.impl.RequestViewModel
@@ -48,6 +50,10 @@ fun EntryProviderScope<NavKey>.activityEntries(navigator: Navigator) {
             },
         ),
     ) {
+        // The list stays when a request sheet closes, so its scope owns Undo.
+        val viewModel = hiltViewModel<ActivityViewModel>()
+        val messages = viewModel.messages
+        MessageEffect(messages.pending, messages::onMessageShown)
         val selected = navigator.state.currentSubStack.lastOrNull() as? RequestNavKey
         ActivityScreen(
             selectedId = selected?.id,
@@ -56,7 +62,7 @@ fun EntryProviderScope<NavKey>.activityEntries(navigator: Navigator) {
                 navigator.navigate(RequestNavKey(event.id))
             },
             onOpenSettings = { navigator.navigate(SettingsNavKey) },
-            viewModel = hiltViewModel(),
+            viewModel = viewModel,
         )
     }
     entry<RequestNavKey>(metadata = ListDetailSceneStrategy.detailPane() + BottomSheetSceneStrategy.bottomSheet()) { key ->

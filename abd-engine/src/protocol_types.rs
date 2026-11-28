@@ -76,6 +76,14 @@ pub struct Check {
     pub rule: Option<String>,
     /// The address of the list the rule is in, `rules` for the user's.
     pub source: Option<String>,
+    pub exception: Option<String>,
+    /// The address of the list the exception is in, `rules` for the user's.
+    pub exception_source: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RuleEdit {
+    pub changed: bool,
 }
 
 /// A line of `abd watch --json`: a request, or a connection.
