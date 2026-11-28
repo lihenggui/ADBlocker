@@ -1,18 +1,19 @@
-<p>O ADBlocker bloqueia anúncios e rastreadores em apps Android com listas de filtros usadas por bloqueadores de anúncios para navegadores, como as de EasyList, uBlock Origin e AdGuard. Você pode escolher os apps a filtrar ou deixar que todos os seus apps pessoais sejam filtrados. O ADBlocker baixa as listas de filtros que você assina e não envia dados de telemetria.</p>
+<p>O ADBlocker bloqueia anúncios e rastreadores em apps Android com listas de filtros usadas por bloqueadores de anúncios para navegadores, como as de EasyList, uBlock Origin e AdGuard. Você pode escolher os apps a filtrar ou deixar que todos os seus apps pessoais sejam filtrados. O ADBlocker funciona localmente, baixa apenas as listas que você assina e não envia dados de telemetria.</p>
 
 <p>Há dois modos de filtragem.</p>
 <ul>
-<li><b>Modo root</b> (acesso root, por exemplo via KernelSU, Magisk ou APatch, e Android 12 ou posterior com kernel GKI). O ADBlocker configura esse modo com acesso root, sem reiniciar o dispositivo. O espaço do Android reservado para VPN fica livre para outra VPN, e cada conexão continua associada ao app que a iniciou.</li>
+<li><b>Modo root</b> (acesso root, por exemplo via KernelSU, Magisk ou APatch, e Android 12 ou posterior com kernel GKI). O ADBlocker configura esse modo com acesso root, sem reiniciar o dispositivo nem modificar /system. O espaço do Android reservado para VPN fica livre para outra VPN, e cada conexão continua associada ao app que a iniciou.</li>
 <li><b>Modo VPN</b> (sem root, Android 10 ou posterior). O tráfego dos apps filtrados passa pela VPN local do ADBlocker.</li>
 </ul>
 
-<p>Com a filtragem de URL ativada, o ADBlocker aplica regras de URL e de recursos dentro de conexões HTTPS por meio de uma autoridade certificadora local cuja chave permanece no dispositivo. No modo root, o ADBlocker disponibiliza o certificado dessa autoridade aos apps pessoais filtrados. No modo VPN, você instala o certificado por conta própria, e só os apps que confiam em certificados do usuário o aceitam. Até a instalação, e nos apps que rejeitam o certificado, o HTTPS permanece criptografado e só as regras de domínio são aplicadas. Você pode desativar a filtragem de URL para filtrar apenas por domínio.</p>
+<p>Com a filtragem de URL ativada, o ADBlocker aplica regras de URL, de recursos e para ocultar elementos da página dentro de conexões HTTPS por meio de uma autoridade certificadora local cuja chave permanece no dispositivo. No modo root, o ADBlocker disponibiliza o certificado dessa autoridade aos apps pessoais filtrados. No modo VPN, você instala o certificado por conta própria, e só os apps que confiam em certificados do usuário o aceitam. Até a instalação, e nos apps que rejeitam o certificado, o HTTPS permanece criptografado e só as regras de domínio são aplicadas. Você pode desativar a filtragem de URL para filtrar apenas por domínio.</p>
 
 <p>Recursos</p>
 <ul>
 <li>Seleção por app ou filtragem de todos os apps pessoais com exclusões. Com root, também é possível filtrar os apps do perfil de trabalho</li>
+<li>Filtragem de DNS sem criptografia junto com regras de domínio, URL e para ocultar elementos da página</li>
 <li>Assinaturas de listas de filtros do EasyList, uBlock Origin e AdGuard, regras personalizadas e sites confiáveis</li>
-<li>Registro das solicitações de um app para ver como as regras tratam cada uma</li>
+<li>Registro das solicitações dos apps filtrados para ver as regras correspondentes e bloquear ou permitir domínios</li>
 <li>Pausa da filtragem para um app ou para todos, e um bloco nas Configurações rápidas</li>
 </ul>
 
